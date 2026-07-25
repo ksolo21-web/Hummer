@@ -1,0 +1,258 @@
+name: Bootstrap Hummer Engineering Stack
+
+on:
+  push:
+    paths:
+      - '.tooling/bootstrap-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Prepare workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p packages/{godot,git-lfs,su2,orcaslicer,wheelhouse,calculix}
+          printf '[]\n' > packages/resolution.json
+
+      - name: Download latest official GitHub release tools
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          fetch_asset() {
+            local tool="$1" repo="$2" regex="$3" outdir="$4"
+            local json tag url filename digest
+            json="$(curl --fail --silent --show-error --location \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$repo/releases/latest")"
+            tag="$(jq -r '.tag_name' <<<"$json")"
+            url="$(jq -r --arg regex "$regex" \
+              '[.assets[] | select(.name | test($regex; "i"))][0].browser_download_url // empty' <<<"$json")"
+            digest="$(jq -r --arg regex "$regex" \
+              '[.assets[] | select(.name | test($regex; "i"))][0].digest // empty' <<<"$json")"
+
+            if [[ -z "$url" ]]; then
+              echo "No matching asset for $tool in $repo. Available assets:" >&2
+              jq -r '.assets[].name' <<<"$json" >&2
+              jq --arg tool "$tool" --arg repo "$repo" --arg tag "$tag" \
+                '. += [{tool:$tool, repository:$repo, release:$tag, status:"no-matching-asset"}]' \
+                packages/resolution.json > packages/resolution.tmp
+              mv packages/resolution.tmp packages/resolution.json
+              return 0
+            fi
+
+            filename="${url##*/}"
+            curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 \
+              --connect-timeout 30 --max-time 3600 \
+              --output "$outdir/$filename" "$url"
+            test -s "$outdir/$filename"
+            sha256sum "$outdir/$filename" > "$outdir/SHA256SUMS.txt"
+            cat > "$outdir/SOURCE.txt" <<EOF
+          Tool: $tool
+          Official repository: $repo
+          Release: $tag
+          Source URL: $url
+          GitHub asset digest: $digest
+          Retrieved by: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+
+            jq --arg tool "$tool" --arg repo "$repo" --arg tag "$tag" \
+               --arg filename "$filename" --arg url "$url" --arg digest "$digest" \
+              '. += [{tool:$tool, repository:$repo, release:$tag, filename:$filename, source_url:$url, github_digest:$digest, status:"downloaded"}]' \
+              packages/resolution.json > packages/resolution.tmp
+            mv packages/resolution.tmp packages/resolution.json
+          }
+
+          fetch_asset godot godotengine/godot \
+            'Godot_v.*-stable_linux\.x86_64\.zip$' packages/godot
+
+          fetch_asset git-lfs git-lfs/git-lfs \
+            'git-lfs-linux-amd64-v.*\.tar\.gz$' packages/git-lfs
+
+          fetch_asset su2 su2code/SU2 \
+            '(linux|manylinux).*(x86_64|amd64|linux64).*(zip|tar\.gz|tgz)$' packages/su2
+
+          fetch_asset orcaslicer OrcaSlicer/OrcaSlicer \
+            '(linux|ubuntu).*(x86_64|x64).*(AppImage|tar\.gz|zip)$' packages/orcaslicer
+
+      - name: Download Python geometry and visualization wheelhouse
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip download \
+            --only-binary=:all: \
+            --dest packages/wheelhouse \
+            gmsh \
+            pymeshlab \
+            pyvista \
+            vtk \
+            meshio \
+            manifold3d \
+            rtree \
+            ezdxf \
+            networkx \
+            lxml
+          sha256sum packages/wheelhouse/* > packages/wheelhouse/SHA256SUMS.txt
+          cat > packages/wheelhouse/SOURCE.txt <<EOF
+          Packages downloaded from the official Python Package Index.
+          Target interpreter: CPython 3.13, Linux x86-64.
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+
+      - name: Build portable CalculiX solver bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends calculix-ccx
+
+          CCX_BIN="$(command -v ccx)"
+          test -x "$CCX_BIN"
+          mkdir -p packages/calculix/bin packages/calculix/lib
+          cp -L "$CCX_BIN" packages/calculix/bin/ccx
+
+          ldd "$CCX_BIN" | awk '/=> \/|^\// {for(i=1;i<=NF;i++) if($i ~ /^\//) print $i}' | sort -u \
+            | while read -r lib; do
+                case "$lib" in
+                  */libc.so.*|*/libm.so.*|*/libpthread.so.*|*/libdl.so.*|*/librt.so.*|*/ld-linux-*.so.*) ;;
+                  *) cp -L "$lib" packages/calculix/lib/ ;;
+                esac
+              done
+
+          cat > packages/calculix/ccx <<'EOF'
+          #!/bin/sh
+          HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+          export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec "$HERE/bin/ccx" "$@"
+          EOF
+          chmod +x packages/calculix/ccx packages/calculix/bin/ccx
+          packages/calculix/ccx -v || true
+          sha256sum packages/calculix/ccx packages/calculix/bin/ccx packages/calculix/lib/* > packages/calculix/SHA256SUMS.txt
+          cat > packages/calculix/SOURCE.txt <<EOF
+          Tool: CalculiX CrunchiX finite-element solver
+          Ubuntu package: calculix-ccx
+          Bundled on: ubuntu-24.04
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+
+      - name: Package tool directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in godot git-lfs su2 orcaslicer wheelhouse calculix; do
+            tar --format=posix -C packages -cf "$name.tar" "$name"
+            sha256sum "$name.tar"
+            ls -lh "$name.tar"
+          done
+
+      - name: Upload Godot
+        id: godot
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-godot
+          path: godot.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload Git LFS
+        id: gitlfs
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-git-lfs
+          path: git-lfs.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload SU2
+        id: su2
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-su2
+          path: su2.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload OrcaSlicer
+        id: orca
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-orcaslicer
+          path: orcaslicer.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload Python wheelhouse
+        id: wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-python-geometry-wheelhouse
+          path: wheelhouse.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload CalculiX
+        id: calculix
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-calculix
+          path: calculix.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record bootstrap artifacts
+        shell: bash
+        env:
+          GODOT_ID: ${{ steps.godot.outputs.artifact-id }}
+          GITLFS_ID: ${{ steps.gitlfs.outputs.artifact-id }}
+          SU2_ID: ${{ steps.su2.outputs.artifact-id }}
+          ORCA_ID: ${{ steps.orca.outputs.artifact-id }}
+          WHEELS_ID: ${{ steps.wheels.outputs.artifact-id }}
+          CALCULIX_ID: ${{ steps.calculix.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg godot "$GODOT_ID" \
+            --arg gitlfs "$GITLFS_ID" \
+            --arg su2 "$SU2_ID" \
+            --arg orca "$ORCA_ID" \
+            --arg wheels "$WHEELS_ID" \
+            --arg calculix "$CALCULIX_ID" \
+            --slurpfile resolution packages/resolution.json \
+            '{status:"complete", run_id:$run_id, run_url:$run_url, artifacts:{godot:($godot|tonumber), git_lfs:($gitlfs|tonumber), su2:($su2|tonumber), orcaslicer:($orca|tonumber), python_wheelhouse:($wheels|tonumber), calculix:($calculix|tonumber)}, resolution:$resolution[0]}' \
+            > .tooling/bootstrap-status.json
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/bootstrap-status.json
+          git commit -m 'Record full engineering toolchain artifacts' || exit 0
+          git push
