@@ -1,0 +1,135 @@
+name: Fetch Engineering Tool
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: Official direct-download URL
+        required: true
+        type: string
+      filename:
+        description: Exact output filename
+        required: true
+        type: string
+      sha256:
+        description: Published SHA-256 checksum, or SKIP when unavailable
+        required: true
+        default: SKIP
+        type: string
+      artifact_name:
+        description: GitHub artifact name
+        required: true
+        default: engineering-tool
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-tool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        env:
+          DOWNLOAD_URL: ${{ inputs.download_url }}
+          FILENAME: ${{ inputs.filename }}
+          SHA256: ${{ inputs.sha256 }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+        run: |
+          set -euo pipefail
+
+          case "$DOWNLOAD_URL" in
+            https://*) ;;
+            *) echo "Only HTTPS download URLs are allowed." >&2; exit 1 ;;
+          esac
+
+          if [[ -z "$FILENAME" || "$FILENAME" == */* || "$FILENAME" == *".."* ]]; then
+            echo "filename must be a plain filename with no path traversal." >&2
+            exit 1
+          fi
+
+          if [[ -z "$ARTIFACT_NAME" || "$ARTIFACT_NAME" == *"/"* ]]; then
+            echo "artifact_name is invalid." >&2
+            exit 1
+          fi
+
+          if [[ "$SHA256" != "SKIP" && ! "$SHA256" =~ ^[A-Fa-f0-9]{64}$ ]]; then
+            echo "sha256 must be exactly 64 hexadecimal characters or SKIP." >&2
+            exit 1
+          fi
+
+      - name: Download package
+        shell: bash
+        env:
+          DOWNLOAD_URL: ${{ inputs.download_url }}
+          FILENAME: ${{ inputs.filename }}
+        run: |
+          set -euo pipefail
+          mkdir -p downloads
+
+          curl \
+            --fail \
+            --location \
+            --retry 5 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 30 \
+            --max-time 2400 \
+            --user-agent "Hummer-Engineering-Toolchain/1.0" \
+            --output "downloads/$FILENAME" \
+            "$DOWNLOAD_URL"
+
+          test -s "downloads/$FILENAME"
+          ls -lh "downloads/$FILENAME"
+
+      - name: Verify SHA-256
+        shell: bash
+        env:
+          FILENAME: ${{ inputs.filename }}
+          SHA256: ${{ inputs.sha256 }}
+        run: |
+          set -euo pipefail
+
+          ACTUAL_SHA256="$(sha256sum "downloads/$FILENAME" | cut -d' ' -f1)"
+          echo "Downloaded SHA-256: $ACTUAL_SHA256"
+
+          if [[ "$SHA256" == "SKIP" ]]; then
+            echo "WARNING: No published checksum supplied; integrity was not independently verified."
+          else
+            echo "$SHA256  downloads/$FILENAME" | sha256sum --check --strict
+          fi
+
+          printf '%s  %s\n' "$ACTUAL_SHA256" "$FILENAME" > downloads/SHA256SUMS.txt
+
+      - name: Preserve package and metadata
+        shell: bash
+        env:
+          FILENAME: ${{ inputs.filename }}
+          DOWNLOAD_URL: ${{ inputs.download_url }}
+        run: |
+          set -euo pipefail
+
+          cat > downloads/SOURCE.txt <<EOF
+          Source URL: $DOWNLOAD_URL
+          Filename: $FILENAME
+          Retrieved by: GitHub Actions
+          Repository: $GITHUB_REPOSITORY
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+
+          tar --format=posix -C downloads -cf engineering-tool.tar \
+            "$FILENAME" SHA256SUMS.txt SOURCE.txt
+
+          ls -lh engineering-tool.tar
+
+      - name: Upload verified package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: engineering-tool.tar
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
