@@ -1,0 +1,12 @@
+{
+  "request_id": "hummer-full-stack-20260725-01",
+  "requested_by": "Kaleb",
+  "scope": [
+    "godot",
+    "git-lfs",
+    "su2",
+    "orcaslicer",
+    "python-geometry-wheelhouse",
+    "calculix"
+  ]
+}
