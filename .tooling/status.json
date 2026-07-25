@@ -3,8 +3,13 @@
   "tool": "freecad",
   "release": "1.1.3",
   "filename": "FreeCAD_1.1.3-Linux-x86_64-py311.AppImage",
-  "artifact_id": "8625199191",
-  "artifact_url": "https://github.com/ksolo21-web/Hummer/actions/runs/30179710040/artifacts/8625199191",
-  "run_id": "30179710040",
-  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/30179710040"
+  "part_count": 3,
+  "artifact_ids": [
+    8625214000,
+    8625214458,
+    8625214757
+  ],
+  "checksums_artifact_id": 8625214846,
+  "run_id": "30179763088",
+  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/30179763088"
 }
