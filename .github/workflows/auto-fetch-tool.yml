@@ -1,0 +1,171 @@
+name: Auto Fetch Engineering Tool
+
+on:
+  push:
+    paths:
+      - '.tooling/request.json'
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: Tool to fetch
+        required: true
+        type: choice
+        options:
+          - freecad
+          - godot
+          - git-lfs
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve requested tool
+        id: request
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_TOOL: ${{ inputs.tool }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            TOOL="$MANUAL_TOOL"
+          else
+            TOOL="$(jq -r '.tool' .tooling/request.json)"
+          fi
+
+          case "$TOOL" in
+            freecad)
+              RELEASE_REPO='FreeCAD/FreeCAD'
+              ASSET_REGEX='Linux.*x86_64.*AppImage$'
+              ;;
+            godot)
+              RELEASE_REPO='godotengine/godot'
+              ASSET_REGEX='Godot_v.*-stable_linux\.x86_64\.zip$'
+              ;;
+            git-lfs)
+              RELEASE_REPO='git-lfs/git-lfs'
+              ASSET_REGEX='git-lfs-linux-amd64-v.*\.tar\.gz$'
+              ;;
+            *)
+              echo "Unsupported tool: $TOOL" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "tool=$TOOL" >> "$GITHUB_OUTPUT"
+          echo "release_repo=$RELEASE_REPO" >> "$GITHUB_OUTPUT"
+          echo "asset_regex=$ASSET_REGEX" >> "$GITHUB_OUTPUT"
+
+      - name: Find latest official release asset
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REPO: ${{ steps.request.outputs.release_repo }}
+          ASSET_REGEX: ${{ steps.request.outputs.asset_regex }}
+        run: |
+          set -euo pipefail
+
+          RELEASE_JSON="$(curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$RELEASE_REPO/releases/latest")"
+
+          TAG="$(jq -r '.tag_name' <<<"$RELEASE_JSON")"
+          URL="$(jq -r --arg regex "$ASSET_REGEX" \
+            '[.assets[] | select(.name | test($regex; "i"))][0].browser_download_url // empty' \
+            <<<"$RELEASE_JSON")"
+
+          if [[ -z "$URL" ]]; then
+            echo "No matching Linux x86-64 asset found for $RELEASE_REPO using $ASSET_REGEX" >&2
+            jq -r '.assets[].name' <<<"$RELEASE_JSON" >&2
+            exit 1
+          fi
+
+          FILENAME="${URL##*/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "filename=$FILENAME" >> "$GITHUB_OUTPUT"
+          echo "Resolved $RELEASE_REPO $TAG -> $FILENAME"
+
+      - name: Download package
+        shell: bash
+        env:
+          URL: ${{ steps.release.outputs.url }}
+          FILENAME: ${{ steps.release.outputs.filename }}
+        run: |
+          set -euo pipefail
+          mkdir -p downloads
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 30 --max-time 2400 \
+            --output "downloads/$FILENAME" "$URL"
+          test -s "downloads/$FILENAME"
+          sha256sum "downloads/$FILENAME" | tee downloads/SHA256SUMS.txt
+          ls -lh "downloads/$FILENAME"
+
+      - name: Package source and metadata
+        shell: bash
+        env:
+          TOOL: ${{ steps.request.outputs.tool }}
+          TAG: ${{ steps.release.outputs.tag }}
+          URL: ${{ steps.release.outputs.url }}
+          FILENAME: ${{ steps.release.outputs.filename }}
+        run: |
+          set -euo pipefail
+          cat > downloads/SOURCE.txt <<EOF
+          Tool: $TOOL
+          Official release: $TAG
+          Source URL: $URL
+          Filename: $FILENAME
+          Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+          tar --format=posix -C downloads -cf engineering-tool.tar \
+            "$FILENAME" SHA256SUMS.txt SOURCE.txt
+
+      - name: Upload package artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}
+          path: engineering-tool.tar
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Record completed download
+        shell: bash
+        env:
+          TOOL: ${{ steps.request.outputs.tool }}
+          TAG: ${{ steps.release.outputs.tag }}
+          FILENAME: ${{ steps.release.outputs.filename }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n \
+            --arg tool "$TOOL" \
+            --arg tag "$TAG" \
+            --arg filename "$FILENAME" \
+            --arg artifact_id "$ARTIFACT_ID" \
+            --arg artifact_url "$ARTIFACT_URL" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete", tool:$tool, release:$tag, filename:$filename, artifact_id:$artifact_id, artifact_url:$artifact_url, run_id:$run_id, run_url:$run_url}' \
+            > .tooling/status.json
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/status.json
+          git commit -m "Record $TOOL download artifact" || exit 0
+          git push
