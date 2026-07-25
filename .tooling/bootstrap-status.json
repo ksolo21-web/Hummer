@@ -1,0 +1,45 @@
+{
+  "status": "complete",
+  "run_id": "30180173918",
+  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/30180173918",
+  "artifacts": {
+    "godot": 8625320985,
+    "git_lfs": 8625321065,
+    "su2": 8625321147,
+    "orcaslicer": 8625321228,
+    "python_wheelhouse": 8625321568,
+    "calculix": 8625321675
+  },
+  "resolution": [
+    {
+      "tool": "godot",
+      "repository": "godotengine/godot",
+      "release": "4.7.1-stable",
+      "filename": "Godot_v4.7.1-stable_linux.x86_64.zip",
+      "source_url": "https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip",
+      "github_digest": "sha256:c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba",
+      "status": "downloaded"
+    },
+    {
+      "tool": "git-lfs",
+      "repository": "git-lfs/git-lfs",
+      "release": "v3.7.1",
+      "filename": "git-lfs-linux-amd64-v3.7.1.tar.gz",
+      "source_url": "https://github.com/git-lfs/git-lfs/releases/download/v3.7.1/git-lfs-linux-amd64-v3.7.1.tar.gz",
+      "github_digest": "sha256:1c0b6ee5200ca708c5cebebb18fdeb0e1c98f1af5c1a9cba205a4c0ab5a5ec08",
+      "status": "downloaded"
+    },
+    {
+      "tool": "su2",
+      "repository": "su2code/SU2",
+      "release": "v8.5.0",
+      "status": "no-matching-asset"
+    },
+    {
+      "tool": "orcaslicer",
+      "repository": "OrcaSlicer/OrcaSlicer",
+      "release": "v2.4.2",
+      "status": "no-matching-asset"
+    }
+  ]
+}
