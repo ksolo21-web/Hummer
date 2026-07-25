@@ -132,13 +132,68 @@ jobs:
           tar --format=posix -C downloads -cf engineering-tool.tar \
             "$FILENAME" SHA256SUMS.txt SOURCE.txt
 
-      - name: Upload package artifact
-        id: upload
+      - name: Split package for connector transfer
+        id: split
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p parts
+          split -b 300M -d -a 2 engineering-tool.tar parts/part-
+          PART_COUNT="$(find parts -maxdepth 1 -type f -name 'part-*' | wc -l | tr -d ' ')"
+          echo "part_count=$PART_COUNT" >> "$GITHUB_OUTPUT"
+          sha256sum parts/part-* > parts/PARTS-SHA256SUMS.txt
+          ls -lh parts/
+
+      - name: Upload part 00
+        id: upload0
+        if: ${{ hashFiles('parts/part-00') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}
-          path: engineering-tool.tar
+          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}-part-00
+          path: parts/part-00
           compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload part 01
+        id: upload1
+        if: ${{ hashFiles('parts/part-01') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}-part-01
+          path: parts/part-01
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload part 02
+        id: upload2
+        if: ${{ hashFiles('parts/part-02') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}-part-02
+          path: parts/part-02
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload part 03
+        id: upload3
+        if: ${{ hashFiles('parts/part-03') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}-part-03
+          path: parts/part-03
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload part checksums
+        id: checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.request.outputs.tool }}-${{ steps.release.outputs.tag }}-parts-checksums
+          path: parts/PARTS-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 7
 
@@ -148,8 +203,12 @@ jobs:
           TOOL: ${{ steps.request.outputs.tool }}
           TAG: ${{ steps.release.outputs.tag }}
           FILENAME: ${{ steps.release.outputs.filename }}
-          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
-          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          PART_COUNT: ${{ steps.split.outputs.part_count }}
+          PART0_ID: ${{ steps.upload0.outputs.artifact-id }}
+          PART1_ID: ${{ steps.upload1.outputs.artifact-id }}
+          PART2_ID: ${{ steps.upload2.outputs.artifact-id }}
+          PART3_ID: ${{ steps.upload3.outputs.artifact-id }}
+          CHECKSUM_ID: ${{ steps.checksums.outputs.artifact-id }}
         run: |
           set -euo pipefail
           mkdir -p .tooling
@@ -157,15 +216,19 @@ jobs:
             --arg tool "$TOOL" \
             --arg tag "$TAG" \
             --arg filename "$FILENAME" \
-            --arg artifact_id "$ARTIFACT_ID" \
-            --arg artifact_url "$ARTIFACT_URL" \
+            --arg part_count "$PART_COUNT" \
+            --arg p0 "$PART0_ID" \
+            --arg p1 "$PART1_ID" \
+            --arg p2 "$PART2_ID" \
+            --arg p3 "$PART3_ID" \
+            --arg checksums "$CHECKSUM_ID" \
             --arg run_id "$GITHUB_RUN_ID" \
             --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{status:"complete", tool:$tool, release:$tag, filename:$filename, artifact_id:$artifact_id, artifact_url:$artifact_url, run_id:$run_id, run_url:$run_url}' \
+            '{status:"complete", tool:$tool, release:$tag, filename:$filename, part_count:($part_count|tonumber), artifact_ids:[$p0,$p1,$p2,$p3|select(length>0)|tonumber], checksums_artifact_id:($checksums|tonumber), run_id:$run_id, run_url:$run_url}' \
             > .tooling/status.json
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .tooling/status.json
-          git commit -m "Record $TOOL download artifact" || exit 0
+          git commit -m "Record $TOOL split download artifacts" || exit 0
           git push
