@@ -1,0 +1,107 @@
+name: Fetch Hummer Extra Engineering Tools
+
+on:
+  push:
+    paths:
+      - '.tooling/extras-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download latest official SU2 and OrcaSlicer packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p packages/{su2,orcaslicer}
+          printf '[]\n' > packages/resolution.json
+
+          fetch_asset() {
+            local tool="$1" repo="$2" regex="$3" outdir="$4"
+            local json tag url filename digest actual
+            json="$(curl --fail --silent --show-error --location \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$repo/releases/latest")"
+            tag="$(jq -r '.tag_name' <<<"$json")"
+            url="$(jq -r --arg regex "$regex" '[.assets[] | select(.name | test($regex; "i"))][0].browser_download_url // empty' <<<"$json")"
+            digest="$(jq -r --arg regex "$regex" '[.assets[] | select(.name | test($regex; "i"))][0].digest // empty' <<<"$json")"
+            test -n "$url"
+            filename="${url##*/}"
+            curl --fail --location --retry 5 --retry-all-errors --retry-delay 5 \
+              --connect-timeout 30 --max-time 3600 --output "$outdir/$filename" "$url"
+            test -s "$outdir/$filename"
+            actual="$(sha256sum "$outdir/$filename" | cut -d' ' -f1)"
+            printf '%s  %s\n' "$actual" "$filename" > "$outdir/SHA256SUMS.txt"
+            if [[ "$digest" == sha256:* ]]; then
+              test "$actual" = "${digest#sha256:}"
+            fi
+            cat > "$outdir/SOURCE.txt" <<EOF
+          Tool: $tool
+          Official repository: $repo
+          Release: $tag
+          Source URL: $url
+          GitHub asset digest: $digest
+          Workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+            jq --arg tool "$tool" --arg repo "$repo" --arg tag "$tag" --arg filename "$filename" --arg digest "$actual" \
+              '. += [{tool:$tool, repository:$repo, release:$tag, filename:$filename, sha256:$digest}]' \
+              packages/resolution.json > packages/resolution.tmp
+            mv packages/resolution.tmp packages/resolution.json
+          }
+
+          fetch_asset su2 su2code/SU2 'SU2-v.*-linux64-omp\.zip$' packages/su2
+          fetch_asset orcaslicer OrcaSlicer/OrcaSlicer 'OrcaSlicer_Linux_AppImage_Ubuntu2404_V.*\.AppImage$' packages/orcaslicer
+
+          tar --format=posix -C packages -cf su2.tar su2
+          tar --format=posix -C packages -cf orcaslicer.tar orcaslicer
+
+      - name: Upload SU2
+        id: su2
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-su2-corrected
+          path: su2.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Upload OrcaSlicer
+        id: orca
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-orcaslicer-corrected
+          path: orcaslicer.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record artifacts
+        shell: bash
+        env:
+          SU2_ID: ${{ steps.su2.outputs.artifact-id }}
+          ORCA_ID: ${{ steps.orca.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          jq -n --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg su2 "$SU2_ID" --arg orca "$ORCA_ID" \
+            --slurpfile resolution packages/resolution.json \
+            '{status:"complete", run_id:$run_id, run_url:$run_url, artifacts:{su2:($su2|tonumber), orcaslicer:($orca|tonumber)}, resolution:$resolution[0]}' \
+            > .tooling/extras-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/extras-status.json
+          git commit -m 'Record corrected SU2 and OrcaSlicer artifacts'
+          git push
