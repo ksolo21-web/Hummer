@@ -1,0 +1,91 @@
+name: Fetch glTF Pipeline Tools
+
+on:
+  push:
+    paths:
+      - '.tooling/gltf-tools-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install official glTF pipeline packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p gltf-tools
+          cd gltf-tools
+          npm init -y
+          npm install --omit=dev @gltf-transform/cli gltf-validator gltfpack
+
+          cat > validate-gltf.mjs <<'EOF'
+          import fs from 'node:fs/promises';
+          import validator from 'gltf-validator';
+
+          const filename = process.argv[2];
+          if (!filename) {
+            console.error('Usage: validate-gltf <file.glb|file.gltf>');
+            process.exit(2);
+          }
+          const data = await fs.readFile(filename);
+          const result = await validator.validateBytes(new Uint8Array(data), {
+            uri: filename,
+            maxIssues: 1000,
+            ignoredIssues: []
+          });
+          console.log(JSON.stringify(result, null, 2));
+          process.exit(result.issues.numErrors > 0 ? 1 : 0);
+          EOF
+
+          cat > versions.txt <<EOF
+          Node: $(node --version)
+          @gltf-transform/cli: $(node_modules/.bin/gltf-transform --version 2>/dev/null || true)
+          gltfpack: $(node_modules/.bin/gltfpack -h 2>&1 | head -1 || true)
+          EOF
+          npm list --depth=0 >> versions.txt
+          sha256sum package-lock.json validate-gltf.mjs versions.txt > SHA256SUMS.txt
+
+      - name: Package tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --format=posix -cf gltf-tools.tar gltf-tools
+          ls -lh gltf-tools.tar
+
+      - name: Upload tools
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-gltf-pipeline-tools
+          path: gltf-tools.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record artifact
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          jq -n --arg artifact "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete", artifact_id:($artifact|tonumber), run_id:$run_id, run_url:$run_url}' \
+            > .tooling/gltf-tools-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/gltf-tools-status.json
+          git commit -m 'Record glTF pipeline tools artifact'
+          git push
