@@ -1,0 +1,146 @@
+name: Fetch Hummer from S3D3C Public Archive
+
+on:
+  push:
+    paths:
+      - '.tooling/s3d3c-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Recursively inspect public OSF project and retrieve exact UID
+        id: scan
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -u
+          python -m pip install --upgrade pip
+          python -m pip install requests
+          mkdir -p s3d3c
+          python - <<'PY'
+          import hashlib, json, pathlib, requests, traceback
+
+          NODE='w2qu9'
+          UIDS=['b686365d37a94cbdbb3a01d169f5a0de','7cd584fc9ba54acd9002d4286a08e419']
+          root=pathlib.Path('s3d3c')
+          s=requests.Session();s.headers.update({'User-Agent':'HummerDesignResearch/1.0'})
+          report={'node':NODE,'uids':UIDS,'providers':[],'files':[],'matches':[],'errors':[]}
+
+          def get_json(url):
+              r=s.get(url,timeout=300);r.raise_for_status();return r.json()
+
+          def walk(url,provider,path=''):
+              while url:
+                  data=get_json(url)
+                  for item in data.get('data',[]):
+                      attrs=item.get('attributes',{});links=item.get('links',{})
+                      kind=attrs.get('kind');name=attrs.get('name','');materialized=attrs.get('materialized_path') or path+'/'+name
+                      rec={'provider':provider,'id':item.get('id'),'kind':kind,'name':name,'path':materialized,'size':attrs.get('size'),'download':links.get('download')}
+                      report['files'].append(rec)
+                      low=(name+' '+materialized).lower()
+                      if any(uid in low for uid in UIDS) or ('hummer' in low and kind=='file'):
+                          report['matches'].append(rec)
+                      if kind=='folder':
+                          rel=links.get('new_folder') or links.get('move')
+                          # OSF folder relationship endpoint is the item links.related.href when available
+                          child=item.get('relationships',{}).get('files',{}).get('links',{}).get('related',{}).get('href')
+                          if not child:
+                              child=links.get('new_folder')
+                          if child:
+                              try: walk(child,provider,materialized)
+                              except Exception as exc: report['errors'].append({'folder':materialized,'error':repr(exc)})
+                  url=data.get('links',{}).get('next')
+
+          try:
+              providers=get_json(f'https://api.osf.io/v2/nodes/{NODE}/files/')
+              for p in providers.get('data',[]):
+                  provider=p.get('attributes',{}).get('name') or p.get('id')
+                  url=p.get('relationships',{}).get('files',{}).get('links',{}).get('related',{}).get('href')
+                  report['providers'].append({'id':p.get('id'),'name':provider,'url':url})
+                  if url:
+                      try: walk(url,p.get('id'))
+                      except Exception as exc: report['errors'].append({'provider':provider,'error':repr(exc)})
+          except Exception as exc:
+              report['fatal_error']=repr(exc);report['traceback']=traceback.format_exc()
+
+          # Also scan all text/CSV/JSON metadata files for exact UIDs.
+          metadata_hits=[]
+          for rec in list(report['files']):
+              if rec['kind']!='file' or not rec.get('download'): continue
+              name=rec['name'].lower();size=rec.get('size') or 0
+              if size and size>500_000_000: continue
+              if not any(name.endswith(ext) for ext in ('.json','.jsonl','.csv','.tsv','.txt','.gz','.zip','.parquet','.tar','.tar.gz')): continue
+              try:
+                  r=s.get(rec['download'],timeout=600);r.raise_for_status();data=r.content
+                  hit_uids=[uid for uid in UIDS if uid.encode() in data]
+                  if hit_uids:
+                      out=root/rec['name'].replace('/','_')
+                      out.write_bytes(data)
+                      metadata_hits.append({'file':rec,'uids':hit_uids,'local':out.name})
+              except Exception as exc:
+                  report['errors'].append({'metadata':rec['path'],'error':repr(exc)})
+          report['metadata_hits']=metadata_hits
+
+          # Download directly matched model/archive files.
+          downloads=[]
+          candidates=report['matches'][:]
+          for hit in metadata_hits:
+              candidates.append(hit['file'])
+          seen=set()
+          for rec in candidates:
+              url=rec.get('download');name=rec.get('name','file.bin')
+              if not url or url in seen: continue
+              seen.add(url)
+              try:
+                  r=s.get(url,stream=True,timeout=1200);r.raise_for_status()
+                  out=root/name.replace('/','_')
+                  with out.open('wb') as f:
+                      for c in r.iter_content(1024*1024):
+                          if c:f.write(c)
+                  downloads.append({'name':out.name,'size':out.stat().st_size,'sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'source':url})
+              except Exception as exc:report['errors'].append({'download':name,'error':repr(exc)})
+          report['downloads']=downloads
+          (root/'report.json').write_text(json.dumps(report,indent=2,default=str))
+          print(json.dumps({'providers':report['providers'],'file_count':len(report['files']),'matches':report['matches'],'metadata_hits':metadata_hits,'downloads':downloads,'error_count':len(report['errors']),'fatal_error':report.get('fatal_error')},indent=2,default=str))
+          PY
+          tar --format=posix -C s3d3c -cf hummer-s3d3c-resolver.tar .
+          ls -lh s3d3c hummer-s3d3c-resolver.tar
+
+      - name: Upload resolver results
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-s3d3c-resolver
+          path: hummer-s3d3c-resolver.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record resolver result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          cp s3d3c/report.json .tooling/s3d3c-report.json || echo '{"error":"report missing"}' > .tooling/s3d3c-report.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg outcome "$SCAN_OUTCOME" --arg run_id "$GITHUB_RUN_ID" --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:$outcome,artifact_id:(if ($artifact_id|length)>0 then ($artifact_id|tonumber) else null end),run_id:$run_id,run_url:$run_url}' > .tooling/s3d3c-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/s3d3c-status.json .tooling/s3d3c-report.json
+          git commit -m 'Record S3D3C Hummer resolver result' || exit 0
+          git push
