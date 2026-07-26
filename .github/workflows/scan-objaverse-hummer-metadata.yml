@@ -1,0 +1,159 @@
+name: Scan Objaverse Metadata for Hummer
+
+on:
+  push:
+    paths:
+      - '.tooling/objaverse-shard-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Scan official metadata shards and download candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install requests trimesh
+          mkdir -p scan
+          python - <<'PY'
+          import concurrent.futures as cf
+          import gzip, hashlib, io, json, pathlib, re, requests, traceback
+          import trimesh
+
+          root=pathlib.Path('scan')
+          session=requests.Session()
+          headers={'User-Agent':'HummerDesignResearch/1.0'}
+          api='https://huggingface.co/api/datasets/allenai/objaverse/tree/main/metadata?recursive=true&expand=false&limit=1000'
+          listing=session.get(api,headers=headers,timeout=300)
+          listing.raise_for_status()
+          entries=listing.json()
+          files=[e['path'] for e in entries if e.get('type')=='file' and e.get('path','').endswith('.json.gz')]
+          print('metadata shards',len(files))
+
+          terms=re.compile(r'(gmc\s+hummer|hummer\s+ev|\bhummer\b|\bhumvee\b)',re.I)
+          def scan_one(path):
+              url='https://huggingface.co/datasets/allenai/objaverse/resolve/main/'+path
+              r=requests.get(url,headers=headers,timeout=300)
+              r.raise_for_status()
+              raw=gzip.decompress(r.content)
+              data=json.loads(raw)
+              hits=[]
+              items=data.items() if isinstance(data,dict) else []
+              for uid,ann in items:
+                  text=json.dumps(ann,ensure_ascii=False)
+                  if terms.search(text):
+                      hits.append({'uid':uid,'annotation':ann,'shard':path})
+              return path,hits
+
+          matches=[]
+          failures=[]
+          with cf.ThreadPoolExecutor(max_workers=12) as ex:
+              futs={ex.submit(scan_one,p):p for p in files}
+              for n,f in enumerate(cf.as_completed(futs),1):
+                  p=futs[f]
+                  try:
+                      _,hits=f.result();matches.extend(hits)
+                      if hits: print('MATCH',p,len(hits))
+                  except Exception as exc:
+                      failures.append({'path':p,'error':repr(exc)})
+                  if n%20==0: print('scanned',n,'of',len(files),'matches',len(matches))
+
+          def score(item):
+              ann=item['annotation'];text=json.dumps(ann,ensure_ascii=False).lower();s=0
+              if 'hummer ev' in text:s+=200
+              if 'gmc hummer' in text:s+=180
+              if 'hummer' in text:s+=50
+              if any(k in text for k in ['suv','pickup','truck','vehicle','car']):s+=40
+              if any(k in text for k in ['2022','2023','2024','2025','electric']):s+=25
+              name=str(ann.get('name','')).lower()
+              if 'hummer' in name:s+=100
+              return s
+          for x in matches:x['score']=score(x)
+          matches.sort(key=lambda x:x['score'],reverse=True)
+
+          # official UID to GLB path mapping
+          idx=root/'object-paths.json.gz'
+          with session.get('https://huggingface.co/datasets/allenai/objaverse/resolve/main/object-paths.json.gz',headers=headers,stream=True,timeout=600) as r:
+              r.raise_for_status()
+              with idx.open('wb') as f:
+                  for c in r.iter_content(1024*1024):
+                      if c:f.write(c)
+          with gzip.open(idx,'rt',encoding='utf-8') as f: object_paths=json.load(f)
+          idx.unlink()
+
+          downloaded=[]
+          for item in matches:
+              uid=item['uid']
+              if uid not in object_paths:continue
+              out=root/f'{uid}.glb'
+              url='https://huggingface.co/datasets/allenai/objaverse/resolve/main/'+object_paths[uid]
+              try:
+                  with session.get(url,headers=headers,stream=True,timeout=600) as r:
+                      r.raise_for_status()
+                      with out.open('wb') as f:
+                          for c in r.iter_content(1024*1024):
+                              if c:f.write(c)
+                  info={'uid':uid,'score':item['score'],'name':item['annotation'].get('name'),'license':item['annotation'].get('license'),'viewerUrl':item['annotation'].get('viewerUrl'),'size_bytes':out.stat().st_size,'sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'annotation':item['annotation']}
+                  try:
+                      scene=trimesh.load(out,force='scene')
+                      info['geometry_count']=len(scene.geometry)
+                      info['vertices']=sum(len(g.vertices) for g in scene.geometry.values())
+                      info['faces']=sum(len(g.faces) for g in scene.geometry.values())
+                      info['bounds']=scene.bounds.tolist()
+                  except Exception as exc:info['mesh_error']=repr(exc)
+                  downloaded.append(info)
+                  if len(downloaded)>=12:break
+              except Exception as exc:item['download_error']=repr(exc)
+
+          report={'shard_count':len(files),'failures':failures,'match_count':len(matches),'matches':matches[:100],'downloaded':downloaded}
+          (root/'report.json').write_text(json.dumps(report,indent=2,ensure_ascii=False,default=str))
+          print(json.dumps({'shard_count':len(files),'failure_count':len(failures),'match_count':len(matches),'downloaded':downloaded},indent=2,default=str))
+          PY
+          shopt -s nullglob
+          glbs=(scan/*.glb)
+          if (( ${#glbs[@]} )); then sha256sum "${glbs[@]}" > scan/SHA256SUMS.txt; else : > scan/SHA256SUMS.txt; fi
+          cat > scan/LICENSE_NOTICE.txt <<'EOF'
+          Candidate objects were retrieved from the official Allen Institute for AI Objaverse archive.
+          Each object retains its original creator attribution and Creative Commons license in report.json.
+          No candidate may be used outside the terms of its recorded license.
+          EOF
+          tar --format=posix -C scan -cf objaverse-hummer-shard-scan.tar .
+          ls -lh scan objaverse-hummer-shard-scan.tar
+
+      - name: Upload scan package
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: objaverse-hummer-shard-scan
+          path: objaverse-hummer-shard-scan.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record scan result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          cp scan/report.json .tooling/objaverse-shard-report.json || echo '{"error":"report missing"}' > .tooling/objaverse-shard-report.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:(if ($artifact_id|length)>0 then ($artifact_id|tonumber) else null end),run_id:$run_id,run_url:$run_url}' > .tooling/objaverse-shard-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/objaverse-shard-status.json .tooling/objaverse-shard-report.json
+          git commit -m 'Record Objaverse Hummer metadata scan' || exit 0
+          git push
