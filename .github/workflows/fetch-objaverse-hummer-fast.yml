@@ -17,45 +17,59 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve exact UID paths and download GLBs
+        id: resolve
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           mkdir -p models
           python - <<'PY'
-          import gzip, hashlib, json, pathlib, urllib.request
+          import gzip, hashlib, json, pathlib, traceback, urllib.request
 
           uids = [
               'b686365d37a94cbdbb3a01d169f5a0de',
               '7cd584fc9ba54acd9002d4286a08e419',
           ]
           root = pathlib.Path('models')
-          index = root / 'object-paths.json.gz'
-          urllib.request.urlretrieve(
-              'https://huggingface.co/datasets/allenai/objaverse/resolve/main/object-paths.json.gz',
-              index,
-          )
-          with gzip.open(index, 'rt', encoding='utf-8') as f:
-              paths = json.load(f)
-
-          report = {'objects': []}
-          for uid in uids:
-              item = {'uid': uid, 'available': uid in paths}
-              if uid in paths:
-                  hf_path = paths[uid]
-                  item['hf_path'] = hf_path
-                  url = 'https://huggingface.co/datasets/allenai/objaverse/resolve/main/' + hf_path
-                  out = root / f'{uid}.glb'
-                  urllib.request.urlretrieve(url, out)
-                  item['size_bytes'] = out.stat().st_size
-                  item['sha256'] = hashlib.sha256(out.read_bytes()).hexdigest()
-              report['objects'].append(item)
-          index.unlink()
+          report = {'objects': [], 'pipeline_error': None}
+          try:
+              index = root / 'object-paths.json.gz'
+              urllib.request.urlretrieve(
+                  'https://huggingface.co/datasets/allenai/objaverse/resolve/main/object-paths.json.gz',
+                  index,
+              )
+              with gzip.open(index, 'rt', encoding='utf-8') as f:
+                  paths = json.load(f)
+              report['index_uid_count'] = len(paths)
+              for uid in uids:
+                  item = {'uid': uid, 'available': uid in paths}
+                  if uid in paths:
+                      hf_path = paths[uid]
+                      item['hf_path'] = hf_path
+                      url = 'https://huggingface.co/datasets/allenai/objaverse/resolve/main/' + hf_path
+                      out = root / f'{uid}.glb'
+                      try:
+                          urllib.request.urlretrieve(url, out)
+                          item['size_bytes'] = out.stat().st_size
+                          item['sha256'] = hashlib.sha256(out.read_bytes()).hexdigest()
+                      except Exception as exc:
+                          item['download_error'] = repr(exc)
+                  report['objects'].append(item)
+              index.unlink(missing_ok=True)
+          except Exception as exc:
+              report['pipeline_error'] = repr(exc)
+              report['traceback'] = traceback.format_exc()
           (root/'report.json').write_text(json.dumps(report, indent=2))
           print(json.dumps(report, indent=2))
-          if not any(x.get('available') and x.get('size_bytes',0)>10000 for x in report['objects']):
-              raise SystemExit('Neither requested Hummer UID exists in Objaverse')
           PY
-          sha256sum models/*.glb > models/SHA256SUMS.txt
+
+          shopt -s nullglob
+          glbs=(models/*.glb)
+          if (( ${#glbs[@]} )); then
+            sha256sum "${glbs[@]}" > models/SHA256SUMS.txt
+          else
+            : > models/SHA256SUMS.txt
+          fi
           cat > models/LICENSE_NOTICE.txt <<'EOF'
           Retrieved from the official Allen Institute for AI Objaverse archive.
           Original creator attribution and Creative Commons license must be preserved.
@@ -64,7 +78,7 @@ jobs:
           tar --format=posix -C models -cf hummer-objaverse-fast.tar .
           ls -lh models hummer-objaverse-fast.tar
 
-      - name: Upload exact model package
+      - name: Upload resolver package
         id: upload
         uses: actions/upload-artifact@v4
         with:
@@ -75,18 +89,21 @@ jobs:
           if-no-files-found: error
 
       - name: Record result
+        if: ${{ always() }}
         shell: bash
         env:
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          RESOLVE_OUTCOME: ${{ steps.resolve.outcome }}
         run: |
           set -euo pipefail
           mkdir -p .tooling
-          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+          cp models/report.json .tooling/objaverse-fast-report.json || echo '{"pipeline_error":"report missing"}' > .tooling/objaverse-fast-report.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg outcome "$RESOLVE_OUTCOME" --arg run_id "$GITHUB_RUN_ID" \
             --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            '{status:$outcome,artifact_id:(if ($artifact_id|length)>0 then ($artifact_id|tonumber) else null end),run_id:$run_id,run_url:$run_url}' \
             > .tooling/objaverse-fast-status.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .tooling/objaverse-fast-status.json
-          git commit -m 'Record direct Objaverse Hummer artifact' || exit 0
+          git add .tooling/objaverse-fast-status.json .tooling/objaverse-fast-report.json
+          git commit -m 'Record direct Objaverse Hummer resolver result' || exit 0
           git push
