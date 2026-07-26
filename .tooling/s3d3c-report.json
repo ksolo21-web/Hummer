@@ -1,0 +1,38 @@
+{
+  "node": "w2qu9",
+  "uids": [
+    "b686365d37a94cbdbb3a01d169f5a0de",
+    "7cd584fc9ba54acd9002d4286a08e419"
+  ],
+  "providers": [
+    {
+      "id": "w2qu9:osfstorage",
+      "name": "osfstorage",
+      "url": "https://api.osf.io/v2/nodes/w2qu9/files/osfstorage/"
+    }
+  ],
+  "files": [
+    {
+      "provider": "w2qu9:osfstorage",
+      "id": "65cde8afc3ab4901f046af81",
+      "kind": "file",
+      "name": "Sketchfab_3D_Creative_Commons_Collection_model_metadata.zip",
+      "path": "/Sketchfab_3D_Creative_Commons_Collection_model_metadata.zip",
+      "size": 94770282,
+      "download": "https://osf.io/download/7xu45/"
+    },
+    {
+      "provider": "w2qu9:osfstorage",
+      "id": "6894cb077f2f1bcf0a1b51ef",
+      "kind": "file",
+      "name": "s3d3c-model-paths.txt",
+      "path": "/s3d3c-model-paths.txt",
+      "size": 7467140,
+      "download": "https://osf.io/download/egc96/"
+    }
+  ],
+  "matches": [],
+  "errors": [],
+  "metadata_hits": [],
+  "downloads": []
+}
