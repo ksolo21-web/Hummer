@@ -1,0 +1,65 @@
+name: Probe Free3D Public Hummer API
+
+on:
+  push:
+    paths:
+      - '.tooling/free3d-api-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public search and MCP endpoints
+        shell: bash
+        run: |
+          set -u
+          mkdir -p probe
+          UA='HummerDesignResearch/1.0'
+          urls=(
+            'https://free3d.online/api-embeddings/?q=Hummer%20EV'
+            'https://free3d.online/api-embeddings/?query=Hummer%20EV'
+            'https://free3d.online/api-embeddings/?search=Hummer%20EV'
+            'https://free3d.online/api-embeddings/?query_string=Hummer%20EV&limit_int=20'
+            'https://free3d.online/api-embeddings/browse?search=Hummer%20EV'
+            'https://free3d.online/api-embeddings/browse?q=Hummer%20EV'
+            'https://free3d.online/api/manifest.yaml'
+            'https://free3d.online/mcp/'
+          )
+          n=0
+          for url in "${urls[@]}"; do
+            code="$(curl --silent --show-error --location -A "$UA" -H 'Accept: application/json,text/yaml,text/plain,*/*' -D "probe/$n.headers" -o "probe/$n.body" -w '%{http_code}' "$url" || true)"
+            printf '%s\n' "$url" > "probe/$n.url"
+            printf '%s\n' "$code" > "probe/$n.code"
+            file "probe/$n.body" > "probe/$n.file" || true
+            wc -c "probe/$n.body" >> "probe/$n.file" || true
+            n=$((n+1))
+          done
+          tar --format=posix -C probe -cf free3d-public-api-probe.tar .
+          find probe -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+      - name: Upload probe
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: free3d-public-api-probe
+          path: free3d-public-api-probe.tar
+          compression-level: 0
+          retention-days: 7
+      - name: Record result
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id}' > .tooling/free3d-api-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/free3d-api-status.json
+          git commit -m 'Record Free3D public API probe' || exit 0
+          git push
