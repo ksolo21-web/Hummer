@@ -1,0 +1,104 @@
+name: Probe 3D Warehouse Client Download
+
+on:
+  push:
+    paths:
+      - '.tooling/warehouse-client-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe official client download forms
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          ID='2265fc01-d043-4b42-82cc-2d1bc9a93898'
+          BASE='https://3dwarehouse.sketchup.com/warehouse/getpubliccontent'
+          UAS=(
+            'SketchUp Pro/25.0 (Windows 11; x64)'
+            'SketchUp Pro/24.0 (Macintosh; Intel Mac OS X 14.0)'
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SketchUp Pro/25.0'
+          )
+          QUERIES=(
+            "contentId=$ID&fn=2022_GMC_Hummer_EV.skp"
+            "contentId=$ID&fn=2022-GMC-Hummer-EV.skp"
+            "contentId=$ID&name=s25"
+            "contentId=$ID&name=s24"
+            "contentId=$ID&name=s23"
+            "contentId=$ID&name=zip"
+          )
+          n=0
+          for ua in "${UAS[@]}"; do
+            for q in "${QUERIES[@]}"; do
+              url="$BASE?$q"
+              code="$(curl --silent --show-error --location --http1.1 --max-time 180 \
+                -A "$ua" -H 'Accept: application/octet-stream,*/*' \
+                -H 'Referer: https://3dwarehouse.sketchup.com/' \
+                -D "probe/$n.headers" -o "probe/$n.body" -w '%{http_code}' "$url" || true)"
+              printf '%s\n' "$url" > "probe/$n.url"
+              printf '%s\n' "$ua" > "probe/$n.ua"
+              printf '%s\n' "$code" > "probe/$n.code"
+              file "probe/$n.body" > "probe/$n.file" || true
+              wc -c "probe/$n.body" >> "probe/$n.file" || true
+              n=$((n+1))
+            done
+          done
+          grep -H . probe/*.file
+
+      - name: Select any real model archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p selected
+          found=0
+          for p in probe/*.body; do
+            size=$(stat -c '%s' "$p")
+            type=$(file -b "$p")
+            if (( size > 100000 )) && [[ "$type" != *HTML* ]] && [[ "$type" != *JSON* ]]; then
+              cp "$p" selected/model-download.bin
+              cp "${p%.body}.headers" selected/headers.txt
+              cp "${p%.body}.url" selected/source-url.txt
+              cp "${p%.body}.ua" selected/user-agent.txt
+              found=1
+              break
+            fi
+          done
+          echo "$found" > selected/found.txt
+          if (( found )); then sha256sum selected/model-download.bin > selected/SHA256SUMS.txt; fi
+          tar --format=posix -cf warehouse-client-probe.tar probe selected
+
+      - name: Upload probe
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-client-download-probe
+          path: warehouse-client-probe.tar
+          compression-level: 0
+          retention-days: 7
+
+      - name: Record result
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          found=$(cat selected/found.txt)
+          mkdir -p .tooling
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg found "$found" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",download_found:($found=="1"),artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            > .tooling/warehouse-client-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/warehouse-client-status.json
+          git commit -m 'Record 3D Warehouse client download probe' || exit 0
+          git push
