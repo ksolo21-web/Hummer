@@ -1,0 +1,162 @@
+name: Search Objaverse for Hummer Candidates
+
+on:
+  push:
+    paths:
+      - '.tooling/objaverse-search-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Search official Objaverse metadata and download candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install pandas pyarrow requests trimesh
+          mkdir -p candidates
+          python - <<'PY'
+          import gzip, hashlib, json, pathlib, re, requests
+          import pandas as pd
+          import trimesh
+
+          root = pathlib.Path('candidates')
+          meta_path = root/'metadata.parquet'
+          url = 'https://huggingface.co/datasets/allenai/objaverse-xl/resolve/main/objaverse_v1/object-metadata.parquet'
+          with requests.get(url, stream=True, timeout=600) as r:
+              r.raise_for_status()
+              with meta_path.open('wb') as f:
+                  for c in r.iter_content(1024*1024):
+                      if c: f.write(c)
+          df = pd.read_parquet(meta_path)
+          columns = list(df.columns)
+          string_cols = [c for c in columns if df[c].dtype == object or str(df[c].dtype).startswith('string')]
+          terms = re.compile(r'\b(hummer|humvee|h1|h2|h3)\b', re.I)
+          mask = pd.Series(False, index=df.index)
+          for col in string_cols:
+              mask |= df[col].astype(str).str.contains(terms, na=False)
+          hits = df[mask].copy()
+
+          # rank strongly toward actual GMC Hummer EV names
+          def row_text(row):
+              return ' '.join(str(row[c]) for c in string_cols if c in row.index).lower()
+          scored=[]
+          for idx,row in hits.iterrows():
+              text=row_text(row)
+              score=0
+              if 'hummer ev' in text: score += 100
+              if 'gmc hummer' in text: score += 80
+              if 'hummer' in text: score += 30
+              if 'vehicle' in text or 'car' in text or 'truck' in text or 'suv' in text: score += 20
+              if '2022' in text or '2023' in text or '2024' in text or '2025' in text: score += 10
+              scored.append((score, idx, text[:1000]))
+          scored.sort(reverse=True)
+          top_indexes=[idx for _,idx,_ in scored[:50]]
+          top=hits.loc[top_indexes] if top_indexes else hits.head(0)
+
+          # identify UIDs from any URL/id-like column
+          uid_pattern=re.compile(r'([0-9a-f]{32})',re.I)
+          candidates=[]
+          for score,idx,text in scored[:50]:
+              row=hits.loc[idx]
+              rec={}
+              uid=None
+              for c in columns:
+                  v=row[c]
+                  try:
+                      if pd.isna(v): continue
+                  except Exception: pass
+                  s=str(v)
+                  m=uid_pattern.search(s)
+                  if m and ('sketchfab' in s.lower() or len(s.strip())==32): uid=m.group(1).lower()
+                  if isinstance(v,(str,int,float,bool)):
+                      rec[c]=v
+                  else:
+                      rec[c]=s
+              candidates.append({'score':score,'uid':uid,'metadata':rec})
+
+          # load official object path mapping
+          path_index=root/'object-paths.json.gz'
+          with requests.get('https://huggingface.co/datasets/allenai/objaverse/resolve/main/object-paths.json.gz',stream=True,timeout=600) as r:
+              r.raise_for_status()
+              with path_index.open('wb') as f:
+                  for c in r.iter_content(1024*1024):
+                      if c:f.write(c)
+          with gzip.open(path_index,'rt',encoding='utf-8') as f:
+              object_paths=json.load(f)
+
+          downloaded=[]
+          for item in candidates:
+              uid=item.get('uid')
+              if not uid or uid not in object_paths: continue
+              hf_path=object_paths[uid]
+              out=root/f'{uid}.glb'
+              model_url='https://huggingface.co/datasets/allenai/objaverse/resolve/main/'+hf_path
+              try:
+                  with requests.get(model_url,stream=True,timeout=600) as r:
+                      r.raise_for_status()
+                      with out.open('wb') as f:
+                          for c in r.iter_content(1024*1024):
+                              if c:f.write(c)
+                  entry={'uid':uid,'score':item['score'],'path':hf_path,'size_bytes':out.stat().st_size,'sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'metadata':item['metadata']}
+                  try:
+                      scene=trimesh.load(out,force='scene')
+                      entry['geometry_count']=len(scene.geometry)
+                      entry['vertices']=sum(len(g.vertices) for g in scene.geometry.values())
+                      entry['faces']=sum(len(g.faces) for g in scene.geometry.values())
+                      entry['bounds']=scene.bounds.tolist()
+                  except Exception as exc:
+                      entry['mesh_error']=repr(exc)
+                  downloaded.append(entry)
+                  if len(downloaded)>=10: break
+              except Exception as exc:
+                  item['download_error']=repr(exc)
+
+          report={'columns':columns,'metadata_hit_count':len(hits),'candidate_count':len(candidates),'candidates':candidates,'downloaded':downloaded}
+          (root/'search_report.json').write_text(json.dumps(report,indent=2,default=str))
+          print(json.dumps({'metadata_hit_count':len(hits),'candidate_count':len(candidates),'downloaded':downloaded},indent=2,default=str))
+          meta_path.unlink(missing_ok=True);path_index.unlink(missing_ok=True)
+          PY
+          shopt -s nullglob
+          glbs=(candidates/*.glb)
+          if (( ${#glbs[@]} )); then sha256sum "${glbs[@]}" > candidates/SHA256SUMS.txt; else : > candidates/SHA256SUMS.txt; fi
+          tar --format=posix -C candidates -cf objaverse-hummer-candidates.tar .
+          ls -lh candidates objaverse-hummer-candidates.tar
+
+      - name: Upload candidate package
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: objaverse-hummer-candidates
+          path: objaverse-hummer-candidates.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          cp candidates/search_report.json .tooling/objaverse-search-report.json || echo '{"error":"report missing"}' > .tooling/objaverse-search-report.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:(if ($artifact_id|length)>0 then ($artifact_id|tonumber) else null end),run_id:$run_id,run_url:$run_url}' > .tooling/objaverse-search-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/objaverse-search-status.json .tooling/objaverse-search-report.json
+          git commit -m 'Record Objaverse Hummer candidate search' || exit 0
+          git push
