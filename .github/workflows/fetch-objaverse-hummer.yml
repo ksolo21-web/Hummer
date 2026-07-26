@@ -1,0 +1,154 @@
+name: Fetch Hummer Models from Objaverse
+
+on:
+  push:
+    paths:
+      - '.tooling/objaverse-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Retrieve exact Objaverse objects and metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install pandas pyarrow requests trimesh
+          mkdir -p objaverse
+          python - <<'PY'
+          import gzip, json, hashlib, os, pathlib, requests
+          import pandas as pd
+          import trimesh
+
+          UIDS = [
+              'b686365d37a94cbdbb3a01d169f5a0de',
+              '7cd584fc9ba54acd9002d4286a08e419',
+          ]
+          root = pathlib.Path('objaverse')
+          root.mkdir(exist_ok=True)
+
+          paths_url = 'https://huggingface.co/datasets/allenai/objaverse/resolve/main/object-paths.json.gz'
+          metadata_url = 'https://huggingface.co/datasets/allenai/objaverse-xl/resolve/main/objaverse_v1/object-metadata.parquet'
+
+          paths_gz = root / 'object-paths.json.gz'
+          with requests.get(paths_url, stream=True, timeout=300) as r:
+              r.raise_for_status()
+              with paths_gz.open('wb') as f:
+                  for chunk in r.iter_content(1024 * 1024):
+                      if chunk: f.write(chunk)
+          with gzip.open(paths_gz, 'rt', encoding='utf-8') as f:
+              object_paths = json.load(f)
+
+          metadata_file = root / 'object-metadata.parquet'
+          with requests.get(metadata_url, stream=True, timeout=300) as r:
+              r.raise_for_status()
+              with metadata_file.open('wb') as f:
+                  for chunk in r.iter_content(1024 * 1024):
+                      if chunk: f.write(chunk)
+          metadata = pd.read_parquet(metadata_file)
+
+          report = {'requested_uids': UIDS, 'objects': []}
+          for uid in UIDS:
+              entry = {'uid': uid, 'available': uid in object_paths}
+              if uid not in object_paths:
+                  report['objects'].append(entry)
+                  continue
+
+              hf_path = object_paths[uid]
+              entry['hf_path'] = hf_path
+              url = f'https://huggingface.co/datasets/allenai/objaverse/resolve/main/{hf_path}'
+              out = root / f'{uid}.glb'
+              with requests.get(url, stream=True, timeout=600) as r:
+                  r.raise_for_status()
+                  with out.open('wb') as f:
+                      for chunk in r.iter_content(1024 * 1024):
+                          if chunk: f.write(chunk)
+              sha = hashlib.sha256(out.read_bytes()).hexdigest()
+              entry['filename'] = out.name
+              entry['size_bytes'] = out.stat().st_size
+              entry['sha256'] = sha
+
+              try:
+                  scene = trimesh.load(out, force='scene')
+                  entry['geometry_count'] = len(scene.geometry)
+                  entry['vertices'] = int(sum(len(g.vertices) for g in scene.geometry.values()))
+                  entry['faces'] = int(sum(len(g.faces) for g in scene.geometry.values()))
+                  entry['bounds'] = scene.bounds.tolist()
+              except Exception as exc:
+                  entry['mesh_error'] = str(exc)
+
+              row = metadata[metadata.astype(str).apply(lambda col: col.str.contains(uid, regex=False)).any(axis=1)]
+              if not row.empty:
+                  record = row.iloc[0].to_dict()
+                  clean = {}
+                  for k, v in record.items():
+                      try:
+                          if pd.isna(v): continue
+                      except Exception:
+                          pass
+                      if isinstance(v, (str, int, float, bool)):
+                          clean[str(k)] = v
+                      else:
+                          clean[str(k)] = str(v)
+                  entry['metadata'] = clean
+              report['objects'].append(entry)
+
+          (root / 'report.json').write_text(json.dumps(report, indent=2, default=str))
+          (root / 'ATTRIBUTION_NOTICE.txt').write_text(
+              'Models retrieved from the official Allen Institute for AI Objaverse archive.\n'
+              'Each object retains the creator and license metadata recorded in report.json.\n'
+              'Use of any retrieved model must comply with its original Creative Commons license.\n'
+          )
+          print(json.dumps(report, indent=2, default=str))
+          if not any(x.get('available') and x.get('size_bytes', 0) > 10000 for x in report['objects']):
+              raise SystemExit('No requested Hummer object was available in Objaverse')
+          PY
+
+      - name: Package retrieved models
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f objaverse/object-paths.json.gz objaverse/object-metadata.parquet
+          sha256sum objaverse/*.glb > objaverse/SHA256SUMS.txt
+          tar --format=posix -C objaverse -cf hummer-objaverse-models.tar .
+          ls -lh objaverse hummer-objaverse-models.tar
+
+      - name: Upload model package
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-objaverse-models
+          path: hummer-objaverse-models.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record result
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            > .tooling/objaverse-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/objaverse-status.json
+          git commit -m 'Record Objaverse Hummer model artifact' || exit 0
+          git push
