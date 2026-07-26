@@ -1,0 +1,52 @@
+name: Fetch DownloadFree3D Hummer Index
+
+on:
+  push:
+    paths:
+      - '.tooling/downloadfree3d-index-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch raw public pages and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p raw
+          UA='Mozilla/5.0 HummerDesignResearch/1.0'
+          curl --fail --location -A "$UA" -o raw/index.html 'https://downloadfree3d.com/file-format/obj/page/95/'
+          curl --location -A "$UA" -o raw/wp-search.json 'https://downloadfree3d.com/wp-json/wp/v2/search?search=Hummer%20EV&per_page=100'
+          curl --location -A "$UA" -o raw/wp-posts.json 'https://downloadfree3d.com/wp-json/wp/v2/posts?search=Hummer%20EV&per_page=100&_embed=1'
+          curl --location -A "$UA" -o raw/sitemap-index.xml 'https://downloadfree3d.com/sitemap_index.xml'
+          curl --location -A "$UA" -o raw/wp-sitemap.xml 'https://downloadfree3d.com/wp-sitemap.xml'
+          sha256sum raw/* > raw/SHA256SUMS.txt
+          tar --format=posix -C raw -cf downloadfree3d-hummer-index.tar .
+          ls -lh raw downloadfree3d-hummer-index.tar
+      - name: Upload raw index
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: downloadfree3d-hummer-index
+          path: downloadfree3d-hummer-index.tar
+          compression-level: 0
+          retention-days: 7
+      - name: Record result
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id}' > .tooling/downloadfree3d-index-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/downloadfree3d-index-status.json
+          git commit -m 'Record DownloadFree3D Hummer index artifact' || exit 0
+          git push
