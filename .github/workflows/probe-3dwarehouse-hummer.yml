@@ -1,0 +1,119 @@
+name: Probe Public 3D Warehouse Hummer
+
+on:
+  push:
+    paths:
+      - '.tooling/warehouse-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe public metadata and content endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          ID='2265fc01-d043-4b42-82cc-2d1bc9a93898'
+          mkdir -p warehouse
+          urls=(
+            "https://3dwarehouse.sketchup.com/warehouse/v1.0/content/public/$ID"
+            "https://3dwarehouse.sketchup.com/warehouse/getpubliccontent?contentId=$ID"
+            "https://3dwarehouse.sketchup.com/warehouse/getpubliccontent?contentId=$ID&fn=2022-GMC-Hummer-EV.skp"
+            "https://3dwarehouse.sketchup.com/model/$ID/2022-GMC-Hummer-EV"
+          )
+          i=0
+          for url in "${urls[@]}"; do
+            echo "$url" > "warehouse/url-$i.txt"
+            code="$(curl --silent --show-error --location --max-time 120 \
+              -A 'Mozilla/5.0 HummerDesignResearch/1.0' \
+              -D "warehouse/headers-$i.txt" \
+              -o "warehouse/body-$i.bin" \
+              -w '%{http_code}' "$url" || true)"
+            printf '%s\n' "$code" > "warehouse/http-$i.txt"
+            file "warehouse/body-$i.bin" > "warehouse/file-$i.txt" || true
+            wc -c "warehouse/body-$i.bin" >> "warehouse/file-$i.txt" || true
+            i=$((i+1))
+          done
+
+          python - <<'PY'
+          from pathlib import Path
+          import json, re, urllib.parse, subprocess
+          root=Path('warehouse')
+          found=[]
+          for p in root.glob('body-*.bin'):
+              data=p.read_bytes()
+              text=data.decode('utf-8','ignore')
+              for pattern in [r'https?[^"\\ ]+getpubliccontent[^"\\ ]+', r'https?[^"\\ ]+\.(?:skp|dae|kmz|zip)[^"\\ ]*']:
+                  for value in re.findall(pattern,text,re.I):
+                      value=value.replace('\\u002F','/').replace('\\/','/')
+                      found.append(value)
+              try:
+                  obj=json.loads(text)
+                  (root/(p.stem+'.json')).write_text(json.dumps(obj,indent=2))
+              except Exception:
+                  pass
+          found=list(dict.fromkeys(found))
+          (root/'discovered_urls.txt').write_text('\n'.join(found))
+          print('discovered',len(found),'candidate URLs')
+          for u in found[:50]: print(u[:500])
+          PY
+
+      - name: Download discovered candidate binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p warehouse/downloads
+          n=0
+          while IFS= read -r url; do
+            [[ -n "$url" ]] || continue
+            out="warehouse/downloads/candidate-$n.bin"
+            curl --silent --show-error --location --max-time 300 \
+              -A 'Mozilla/5.0 HummerDesignResearch/1.0' \
+              -D "warehouse/downloads/candidate-$n.headers" \
+              -o "$out" "$url" || true
+            file "$out" > "warehouse/downloads/candidate-$n.file" || true
+            wc -c "$out" >> "warehouse/downloads/candidate-$n.file" || true
+            n=$((n+1))
+            [[ $n -lt 20 ]] || break
+          done < warehouse/discovered_urls.txt
+          find warehouse -maxdepth 3 -type f -printf '%p %s bytes\n'
+
+      - name: Package probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --format=posix -cf warehouse-probe.tar warehouse
+          sha256sum warehouse-probe.tar
+
+      - name: Upload probe
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-3dwarehouse-probe
+          path: warehouse-probe.tar
+          compression-level: 0
+          retention-days: 7
+
+      - name: Record probe status
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            > .tooling/warehouse-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/warehouse-status.json
+          git commit -m 'Record 3D Warehouse Hummer probe artifact' || exit 0
+          git push
