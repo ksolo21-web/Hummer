@@ -39,16 +39,12 @@ jobs:
           cat sketchfab/download-response.json || true
 
       - name: Download official glTF archive when authorized
-        id: asset
         if: ${{ steps.request.outputs.http_code == '200' }}
         shell: bash
         run: |
           set -euo pipefail
           URL="$(jq -r '.gltf.url // empty' sketchfab/download-response.json)"
-          if [[ -z "$URL" ]]; then
-            echo 'No glTF URL returned' >&2
-            exit 1
-          fi
+          test -n "$URL"
           curl --fail --location --retry 5 --output sketchfab/hummer-base.zip "$URL"
           sha256sum sketchfab/hummer-base.zip | tee sketchfab/SHA256SUMS.txt
           split -b 300M -d -a 2 sketchfab/hummer-base.zip sketchfab/hummer-base.part-
@@ -118,7 +114,8 @@ jobs:
             --arg response "$RESPONSE_ID" \
             --arg p0 "$P0" --arg p1 "$P1" --arg p2 "$P2" --arg sums "$SUMS" \
             --arg run_id "$GITHUB_RUN_ID" \
-            '{http_code:$status,response_artifact_id:($response|tonumber),part_artifact_ids:[$p0,$p1,$p2|select(length>0)|tonumber],checksums_artifact_id:($sums|select(length>0)|tonumber?),run_id:$run_id}' > .tooling/sketchfab-status.json
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{http_code:$status,response_artifact_id:($response|tonumber),part_artifact_ids:([$p0,$p1,$p2]|map(select(length>0)|tonumber)),checksums_artifact_id:(if ($sums|length)>0 then ($sums|tonumber) else null end),run_id:$run_id,run_url:$run_url}' > .tooling/sketchfab-status.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .tooling/sketchfab-status.json
