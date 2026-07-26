@@ -1,0 +1,75 @@
+name: Fetch Official Hummer References
+
+on:
+  push:
+    paths:
+      - '.tooling/official-reference-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download official GMC image references
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p references
+          fetch() {
+            local name="$1" url="$2"
+            curl --fail --location --retry 5 --retry-all-errors \
+              -A 'Mozilla/5.0 HummerDesignReference/1.0' \
+              --output "references/$name" "$url"
+            test -s "references/$name"
+            file "references/$name"
+          }
+
+          fetch suv_side.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-suv/trim-cards/2026-hummer-ev-suv-limited-edition-carbon-fiber-1280x640-26PGHMS80006.jpg?imwidth=1920'
+          fetch suv_front.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-suv/safety/2026-hummer-ev-suv-safety-driver-assistance-technologies-1280x640-26PGHM80004_.jpg?imwidth=1920'
+          fetch suv_overhead.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-suv/exterior/2026-hummer-ev-suv-mov-exterior-header-1280x960-26PGHMS80020.jpg?imwidth=1920'
+          fetch suv_rear3q.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-suv/safety/2026-hummer-ev-suv-safety-personalize-your-pickup-1280x640-26_GMC_HUM_RCR_01.jpg?imwidth=1920'
+          fetch suv_rear.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-suv/specs/2026-hummer-ev-suv-specs-specs-image-1280x960-26PGHMS80013.jpg?imwidth=1920'
+          fetch pickup_side.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-pickup/assets/exterior/v2/2026-hummer-ev-pic-exterior-header-1280x960-26PGHMT80023.jpg?imwidth=1920'
+          fetch pickup_front3q.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-pickup/assets/capability/v3/2026-hummer-ev-pic-capability-4-wheel-steer-1280x640-26PGHMT80009.jpg?imwidth=1920'
+          fetch pickup_rear3q.jpg 'https://www.gmc.com/content/dam/gmc/na/us/english/index/vehicles/2026/electric/hummer-ev-pickup/assets/specs/images-02/2026-hummer-ev-pic-specs-image-1920x960-26PGHMT80023-v2.jpg?imwidth=1920'
+
+          sha256sum references/* > references/SHA256SUMS.txt
+          cat > references/SOURCE.txt <<'EOF'
+          Official GMC.com production-vehicle image references downloaded for dimensional and visual modeling reference only.
+          The images remain copyright General Motors/GMC and are not included as redistributable vehicle assets.
+          EOF
+          tar --format=posix -C references -cf official-hummer-references.tar .
+          ls -lh references/* official-hummer-references.tar
+
+      - name: Upload reference archive
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-hummer-references
+          path: official-hummer-references.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record reference artifact
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            > .tooling/official-reference-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/official-reference-status.json
+          git commit -m 'Record official Hummer reference artifact' || exit 0
+          git push
