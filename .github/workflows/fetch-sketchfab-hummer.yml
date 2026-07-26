@@ -1,0 +1,126 @@
+name: Fetch Licensed Sketchfab Hummer Base
+
+on:
+  push:
+    paths:
+      - '.tooling/sketchfab-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Request official Sketchfab download endpoint
+        id: request
+        shell: bash
+        env:
+          MODEL_UID: b686365d37a94cbdbb3a01d169f5a0de
+          SKETCHFAB_TOKEN: ${{ secrets.SKETCHFAB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p sketchfab
+          AUTH=()
+          if [[ -n "${SKETCHFAB_TOKEN:-}" ]]; then
+            AUTH=(-H "Authorization: Bearer $SKETCHFAB_TOKEN")
+          fi
+          CODE="$(curl --silent --show-error --location \
+            -o sketchfab/download-response.json \
+            -w '%{http_code}' \
+            "${AUTH[@]}" \
+            "https://api.sketchfab.com/v3/models/$MODEL_UID/download")"
+          echo "http_code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "HTTP $CODE"
+          cat sketchfab/download-response.json || true
+
+      - name: Download official glTF archive when authorized
+        id: asset
+        if: ${{ steps.request.outputs.http_code == '200' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="$(jq -r '.gltf.url // empty' sketchfab/download-response.json)"
+          if [[ -z "$URL" ]]; then
+            echo 'No glTF URL returned' >&2
+            exit 1
+          fi
+          curl --fail --location --retry 5 --output sketchfab/hummer-base.zip "$URL"
+          sha256sum sketchfab/hummer-base.zip | tee sketchfab/SHA256SUMS.txt
+          split -b 300M -d -a 2 sketchfab/hummer-base.zip sketchfab/hummer-base.part-
+          ls -lh sketchfab
+
+      - name: Upload response
+        id: response
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchfab-download-response
+          path: sketchfab/download-response.json
+          retention-days: 7
+
+      - name: Upload model part 00
+        id: p0
+        if: ${{ hashFiles('sketchfab/hummer-base.part-00') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchfab-hummer-part-00
+          path: sketchfab/hummer-base.part-00
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload model part 01
+        id: p1
+        if: ${{ hashFiles('sketchfab/hummer-base.part-01') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchfab-hummer-part-01
+          path: sketchfab/hummer-base.part-01
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload model part 02
+        id: p2
+        if: ${{ hashFiles('sketchfab/hummer-base.part-02') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchfab-hummer-part-02
+          path: sketchfab/hummer-base.part-02
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload checksums
+        id: sums
+        if: ${{ hashFiles('sketchfab/SHA256SUMS.txt') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchfab-hummer-checksums
+          path: sketchfab/SHA256SUMS.txt
+          retention-days: 7
+
+      - name: Record result
+        shell: bash
+        env:
+          HTTP_CODE: ${{ steps.request.outputs.http_code }}
+          RESPONSE_ID: ${{ steps.response.outputs.artifact-id }}
+          P0: ${{ steps.p0.outputs.artifact-id }}
+          P1: ${{ steps.p1.outputs.artifact-id }}
+          P2: ${{ steps.p2.outputs.artifact-id }}
+          SUMS: ${{ steps.sums.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          jq -n \
+            --arg status "$HTTP_CODE" \
+            --arg response "$RESPONSE_ID" \
+            --arg p0 "$P0" --arg p1 "$P1" --arg p2 "$P2" --arg sums "$SUMS" \
+            --arg run_id "$GITHUB_RUN_ID" \
+            '{http_code:$status,response_artifact_id:($response|tonumber),part_artifact_ids:[$p0,$p1,$p2|select(length>0)|tonumber],checksums_artifact_id:($sums|select(length>0)|tonumber?),run_id:$run_id}' > .tooling/sketchfab-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/sketchfab-status.json
+          git commit -m 'Record Sketchfab Hummer base-model fetch result' || exit 0
+          git push
