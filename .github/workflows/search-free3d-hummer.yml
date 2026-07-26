@@ -1,0 +1,121 @@
+name: Search Free3D Hummer Catalog
+
+on:
+  push:
+    paths:
+      - '.tooling/free3d-search-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Search catalog and download free candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install requests
+          mkdir -p free3d
+          python - <<'PY'
+          import json, pathlib, requests, urllib.parse, hashlib, re
+          root=pathlib.Path('free3d')
+          s=requests.Session(); s.headers.update({'User-Agent':'HummerDesignResearch/1.0'})
+          queries=['hummer','hummer ev','gmc hummer','gmc hummer ev','electric hummer','hummer pickup','hummer suv','2022 hummer','2024 hummer']
+          variants=[]
+          for q in queries:
+              for params in [
+                  {'q':q,'limit':100},
+                  {'q':q,'limit':100,'category':'Car'},
+                  {'q':q,'limit':100,'category':'Vehicles'},
+                  {'q':q,'limit':100,'category':'car'},
+                  {'q':q,'limit':100,'offset':24},
+                  {'q':q,'limit':100,'offset':48},
+              ]:
+                  variants.append(params)
+          responses=[]; all_results={}
+          for i,params in enumerate(variants):
+              try:
+                  r=s.get('https://free3d.online/api-embeddings/',params=params,timeout=180)
+                  r.raise_for_status(); data=r.json()
+                  (root/f'search-{i:03d}.json').write_text(json.dumps(data,indent=2))
+                  responses.append({'params':params,'status':r.status_code,'count':len(data.get('results',[])),'query':data.get('query')})
+                  for item in data.get('results',[]): all_results[str(item.get('guid'))]=item
+              except Exception as exc: responses.append({'params':params,'error':repr(exc)})
+          def relevance(x):
+              text=(' '.join(str(x.get(k,'')) for k in ['title','description','category','subcategory'])).lower(); score=0
+              if 'hummer ev' in text: score+=500
+              if 'gmc hummer' in text: score+=450
+              if re.search(r'\bhummer\b',text): score+=250
+              if 'electric' in text:score+=50
+              if 'pickup' in text or 'suv' in text or 'truck' in text:score+=40
+              if x.get('category','').lower() in ['car','vehicles']:score+=30
+              score+=float(x.get('score') or 0)*10
+              return score
+          ranked=sorted(all_results.values(),key=relevance,reverse=True)
+          exact=[x for x in ranked if re.search(r'\bhummer\b',(' '.join(str(x.get(k,'')) for k in ['title','description'])),re.I)]
+          report={'responses':responses,'unique_result_count':len(ranked),'exact_hummer_count':len(exact),'exact':exact,'top_ranked':ranked[:100]}
+          (root/'search-report.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps({'unique_result_count':len(ranked),'exact_hummer_count':len(exact),'exact':exact},indent=2))
+
+          # Try documented public 1k download routes for exact candidates only.
+          downloads=[]
+          for item in exact[:20]:
+              guid=str(item['guid'])
+              routes=[item.get('glb1kUrl'),f'/download/{guid}/glb1k',f'/download/{guid}/glb?lod=1k']
+              for route in routes:
+                  if not route:continue
+                  url=urllib.parse.urljoin('https://free3d.online',route)
+                  try:
+                      r=s.get(url,stream=True,timeout=600,allow_redirects=True)
+                      ctype=r.headers.get('content-type','').lower()
+                      if r.status_code!=200:continue
+                      first=next(r.iter_content(64),b'')
+                      if not first:continue
+                      out=root/f'{guid}.glb'
+                      with out.open('wb') as f:
+                          f.write(first)
+                          for c in r.iter_content(1024*1024):
+                              if c:f.write(c)
+                      if out.stat().st_size<1000 or (first[:4] not in [b'glTF',b'PK\x03\x04'] and 'model' not in ctype and 'octet' not in ctype):
+                          out.unlink(missing_ok=True);continue
+                      downloads.append({'guid':guid,'title':item.get('title'),'source_route':route,'final_url':r.url,'filename':out.name,'size_bytes':out.stat().st_size,'sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'content_type':ctype})
+                      break
+                  except Exception:pass
+          report['downloads']=downloads
+          (root/'search-report.json').write_text(json.dumps(report,indent=2))
+          print('downloads',json.dumps(downloads,indent=2))
+          PY
+          sha256sum free3d/*.glb > free3d/SHA256SUMS.txt 2>/dev/null || : > free3d/SHA256SUMS.txt
+          tar --format=posix -C free3d -cf free3d-hummer-search.tar .
+          ls -lh free3d free3d-hummer-search.tar
+      - name: Upload results
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: free3d-hummer-search
+          path: free3d-hummer-search.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - name: Record result
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          cp free3d/search-report.json .tooling/free3d-search-report.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id}' > .tooling/free3d-search-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/free3d-search-status.json .tooling/free3d-search-report.json
+          git commit -m 'Record Free3D Hummer catalog search' || exit 0
+          git push
