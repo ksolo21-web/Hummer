@@ -1,0 +1,79 @@
+name: Probe Public Neural 3D APIs
+
+on:
+  push:
+    paths:
+      - '.tooling/neural-3d-probe-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Inspect public Gradio APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install 'gradio_client>=1.8,<2' requests
+          mkdir -p neural3d
+          python - <<'PY'
+          import json, pathlib, traceback
+          from gradio_client import Client
+
+          spaces = [
+              'trellis-community/TRELLIS',
+              'TencentARC/InstantMesh',
+              'crevelop/Trellis',
+          ]
+          report = {'spaces': []}
+          for space in spaces:
+              item = {'space': space}
+              try:
+                  client = Client(space, verbose=False)
+                  item['api'] = client.view_api(return_format='dict')
+                  item['connected'] = True
+              except Exception as exc:
+                  item['connected'] = False
+                  item['error'] = repr(exc)
+                  item['traceback'] = traceback.format_exc()
+              report['spaces'].append(item)
+          pathlib.Path('neural3d/api_report.json').write_text(json.dumps(report, indent=2, default=str))
+          print(json.dumps(report, indent=2, default=str))
+          PY
+
+      - name: Upload API report
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: neural-3d-api-report
+          path: neural3d/api_report.json
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record probe status
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          cp neural3d/api_report.json .tooling/neural-3d-api-report.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            > .tooling/neural-3d-probe-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/neural-3d-api-report.json .tooling/neural-3d-probe-status.json
+          git commit -m 'Record public neural 3D API probe' || exit 0
+          git push
