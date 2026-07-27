@@ -1,0 +1,227 @@
+name: Generate Neural Hummer Baseline
+
+on:
+  push:
+    paths:
+      - '.tooling/neural-hummer-request.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install neural 3D client and validation tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install 'gradio_client>=1.8,<2' requests pillow trimesh pygltflib
+
+      - name: Download licensed production Hummer reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p neural_hummer/input neural_hummer/output
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output neural_hummer/input/hummer_ev_suv_front3q.jpg \
+            'https://upload.wikimedia.org/wikipedia/commons/c/c4/2024_GMC_Hummer_EV3X_SUV%2C_front_left%2C_10-29-2023.jpg'
+          file neural_hummer/input/hummer_ev_suv_front3q.jpg
+          sha256sum neural_hummer/input/hummer_ev_suv_front3q.jpg > neural_hummer/input/SHA256SUMS.txt
+
+      - name: Generate high-density Hummer mesh with public TRELLIS GPU
+        id: trellis
+        continue-on-error: true
+        shell: bash
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, pathlib, shutil, traceback
+          from gradio_client import Client, handle_file
+
+          root = pathlib.Path('neural_hummer')
+          output = root / 'output'
+          report = {'generator': 'trellis-community/TRELLIS', 'success': False}
+
+          def collect_files(value, found):
+              if isinstance(value, str):
+                  p = pathlib.Path(value)
+                  if p.exists() and p.is_file():
+                      found.append(p)
+              elif isinstance(value, dict):
+                  for k in ('path', 'url'):
+                      v = value.get(k)
+                      if isinstance(v, str):
+                          p = pathlib.Path(v)
+                          if p.exists() and p.is_file():
+                              found.append(p)
+                  for v in value.values(): collect_files(v, found)
+              elif isinstance(value, (list, tuple)):
+                  for v in value: collect_files(v, found)
+
+          try:
+              client = Client('trellis-community/TRELLIS', verbose=True)
+              image_path = root / 'input' / 'hummer_ev_suv_front3q.jpg'
+              preprocessed = client.predict(
+                  image=handle_file(str(image_path)),
+                  api_name='/preprocess_image',
+              )
+              report['preprocess_result'] = str(preprocessed)
+              result = client.predict(
+                  image=preprocessed,
+                  multiimages=[],
+                  seed=1942,
+                  ss_guidance_strength=7.5,
+                  ss_sampling_steps=20,
+                  slat_guidance_strength=3.5,
+                  slat_sampling_steps=20,
+                  multiimage_algo='stochastic',
+                  mesh_simplify=0.90,
+                  texture_size=2048,
+                  api_name='/generate_and_extract_glb',
+              )
+              report['raw_result'] = str(result)
+              files=[]; collect_files(result, files)
+              copied=[]
+              for i,p in enumerate(dict.fromkeys(files)):
+                  suffix=p.suffix.lower()
+                  if suffix not in {'.glb','.mp4','.ply','.splat','.zip'}: continue
+                  name=f'trellis_{i:02d}{suffix}'
+                  dest=output/name
+                  shutil.copy2(p,dest)
+                  copied.append(str(dest))
+              glbs=list(output.glob('*.glb'))
+              if not glbs:
+                  raise RuntimeError(f'TRELLIS returned no GLB; collected files: {files!r}')
+              best=max(glbs,key=lambda p:p.stat().st_size)
+              shutil.copy2(best,output/'hummer_ev_neural_baseline.glb')
+              report['success']=True
+              report['copied_files']=copied
+              report['selected_glb']=str(output/'hummer_ev_neural_baseline.glb')
+          except Exception as exc:
+              report['error']=repr(exc)
+              report['traceback']=traceback.format_exc()
+          (output/'trellis_report.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          if not report['success']:
+              raise SystemExit(1)
+          PY
+
+      - name: Fallback to public InstantMesh GPU
+        if: ${{ steps.trellis.outcome != 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, pathlib, shutil, traceback
+          from gradio_client import Client, handle_file
+
+          root=pathlib.Path('neural_hummer'); output=root/'output'
+          report={'generator':'TencentARC/InstantMesh','success':False}
+          def collect(value, files):
+              if isinstance(value,str):
+                  p=pathlib.Path(value)
+                  if p.exists() and p.is_file(): files.append(p)
+              elif isinstance(value,dict):
+                  for v in value.values(): collect(v,files)
+              elif isinstance(value,(list,tuple)):
+                  for v in value: collect(v,files)
+          try:
+              client=Client('TencentARC/InstantMesh',verbose=True)
+              src=root/'input'/'hummer_ev_suv_front3q.jpg'
+              client.predict(input_image=handle_file(str(src)),api_name='/check_input_image')
+              processed=client.predict(input_image=handle_file(str(src)),do_remove_background=True,api_name='/preprocess')
+              client.predict(input_image=processed,sample_steps=75,sample_seed=1942,api_name='/generate_mvs')
+              result=client.predict(api_name='/make3d')
+              files=[];collect(result,files)
+              copied=[]
+              for i,p in enumerate(dict.fromkeys(files)):
+                  if p.suffix.lower() not in {'.glb','.obj','.mp4','.png'}:continue
+                  dest=output/f'instantmesh_{i:02d}{p.suffix.lower()}'
+                  shutil.copy2(p,dest);copied.append(str(dest))
+              glbs=list(output.glob('instantmesh_*.glb'))
+              if not glbs:raise RuntimeError(f'InstantMesh returned no GLB: {files!r}')
+              shutil.copy2(max(glbs,key=lambda p:p.stat().st_size),output/'hummer_ev_neural_baseline.glb')
+              report.update(success=True,copied_files=copied)
+          except Exception as exc:
+              report['error']=repr(exc);report['traceback']=traceback.format_exc()
+          (output/'instantmesh_report.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          if not report['success']:raise SystemExit(1)
+          PY
+
+      - name: Validate generated GLB and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,pathlib
+          import trimesh
+          p=pathlib.Path('neural_hummer/output/hummer_ev_neural_baseline.glb')
+          if not p.exists() or p.stat().st_size<100000:
+              raise SystemExit('Generated GLB is missing or unexpectedly small')
+          scene=trimesh.load(p,force='scene')
+          geometries=list(scene.geometry.values())
+          report={
+            'filename':p.name,
+            'size_bytes':p.stat().st_size,
+            'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'geometry_count':len(geometries),
+            'vertices':int(sum(len(g.vertices) for g in geometries)),
+            'faces':int(sum(len(g.faces) for g in geometries)),
+            'bounds':scene.bounds.tolist(),
+            'purpose':'High-density surface starting point; requires Blender retopology, dimensional correction and panel separation.'
+          }
+          pathlib.Path('neural_hummer/output/validation.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          PY
+          cat > neural_hummer/output/ATTRIBUTION.txt <<'EOF'
+          Input reference photograph:
+          2024 GMC Hummer EV3X SUV, front left, photographed by Elise240SX.
+          Wikimedia Commons license: Creative Commons Attribution-ShareAlike 4.0.
+
+          Neural reconstruction software:
+          TRELLIS by Microsoft Research, or InstantMesh by TencentARC when fallback is required.
+          The generated mesh is a reconstruction starting point and not GM CAD or an OEM surface.
+          EOF
+          tar --format=posix -C neural_hummer -cf hummer-neural-baseline.tar input output
+          sha256sum hummer-neural-baseline.tar
+          ls -lh hummer-neural-baseline.tar neural_hummer/output/*
+
+      - name: Upload neural Hummer package
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: hummer-neural-baseline
+          path: hummer-neural-baseline.tar
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record neural baseline status
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tooling
+          cp neural_hummer/output/validation.json .tooling/neural-hummer-validation.json
+          jq -n --arg artifact_id "$ARTIFACT_ID" --arg run_id "$GITHUB_RUN_ID" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{status:"complete",artifact_id:($artifact_id|tonumber),run_id:$run_id,run_url:$run_url}' \
+            > .tooling/neural-hummer-status.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/neural-hummer-validation.json .tooling/neural-hummer-status.json
+          git commit -m 'Record neural Hummer baseline artifact' || exit 0
+          git push
