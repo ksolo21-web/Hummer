@@ -80,6 +80,7 @@ jobs:
 
           try:
               client = Client('trellis-community/TRELLIS', verbose=True)
+              client.predict(api_name='/start_session')
               source = root / 'input' / 'hummer_ev_suv_front3q.jpg'
               preprocessed = client.predict(
                   image=handle_file(str(source)),
