@@ -1,10 +1,22 @@
 {
-  "success": false,
-  "trellis": {
-    "generator": "trellis-community/TRELLIS",
-    "success": false,
-    "preprocessed_path": "/tmp/gradio/28d77087dcd6d9748eee16ec1e64cd2d2622506d4672bf4e43ac3077339724a7/image.png",
-    "error": "AppError('FileNotFoundError')",
-    "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 46, in <module>\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/gradio_client/client.py\", line 513, in predict\n    ).result()\n      ^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/gradio_client/client.py\", line 1622, in result\n    return super().result(timeout=timeout)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/concurrent/futures/_base.py\", line 456, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/concurrent/futures/_base.py\", line 401, in __get_result\n    raise self._exception\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/concurrent/futures/thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/gradio_client/client.py\", line 1226, in _inner\n    predictions = _predict(*data, **kwargs)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/gradio_client/client.py\", line 1346, in _predict\n    raise AppError(message=message, **result)\ngradio_client.exceptions.AppError: FileNotFoundError\n"
-  }
+  "success": true,
+  "filename": "hummer_ev_neural_baseline.glb",
+  "size_bytes": 1992904,
+  "sha256": "d9e681bb379bf9076c373958690083933bdccbde9a20b3f10c442e5a3daf39e7",
+  "geometry_count": 1,
+  "vertices": 24689,
+  "faces": 29536,
+  "bounds": [
+    [
+      -0.24608464539051056,
+      -0.2005787491798401,
+      -0.49845415353775024
+    ],
+    [
+      0.24777062237262726,
+      0.20526070892810822,
+      0.49961045384407043
+    ]
+  ],
+  "purpose": "High-density surface starting point; requires Blender retopology, dimensional correction and panel separation."
 }
