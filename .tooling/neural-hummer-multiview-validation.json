@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "filename": "hummer_ev_suv_multiview.glb",
+  "size_bytes": 1832852,
+  "sha256": "6c798120db4e5a02c121dd57a77b9ad4c9f4ea3d49211b61b1a4fbb7f5eb3a0c",
+  "geometry_count": 1,
+  "vertices": 22662,
+  "faces": 27732,
+  "bounds": [
+    [
+      -0.2421979457139969,
+      -0.202963188290596,
+      -0.5003905892372131
+    ],
+    [
+      0.24187970161437988,
+      0.19913765788078308,
+      0.4998159110546112
+    ]
+  ]
+}
