@@ -95,13 +95,15 @@ path.write_text(text, encoding="utf-8")
 # Glance has separate generic and Intent activity-action overload packages.
 path = root / "app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt"
 text = path.read_text(encoding="utf-8")
-text = text.replace(
-    "import androidx.glance.action.actionStartActivity\n",
-    "import androidx.glance.action.actionStartActivity\nimport androidx.glance.appwidget.action.actionStartActivity as actionStartActivityIntent\n",
-)
+intent_alias = "import androidx.glance.appwidget.action.actionStartActivity as actionStartActivityIntent\n"
+if intent_alias not in text:
+    text = text.replace(
+        "import androidx.glance.action.actionStartActivity\n",
+        "import androidx.glance.action.actionStartActivity\n" + intent_alias,
+    )
 text = text.replace(
     "import androidx.glance.appwidget.action.actionStartActivity\n",
-    "import androidx.glance.action.actionStartActivity\nimport androidx.glance.appwidget.action.actionStartActivity as actionStartActivityIntent\n",
+    "import androidx.glance.action.actionStartActivity\n" + intent_alias,
 )
 text = text.replace("import androidx.glance.layout.defaultWeight\n", "")
 text = text.replace(
