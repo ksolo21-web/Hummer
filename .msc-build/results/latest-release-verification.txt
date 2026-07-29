@@ -4,5 +4,5 @@ phone_asset=https://github.com/ksolo21-web/Hummer/releases/download/my-study-com
 wear_asset=https://github.com/ksolo21-web/Hummer/releases/download/my-study-companion-private-alpha-0.9.1/MyStudyCompanion-wear-debug.apk
 checksums_asset=https://github.com/ksolo21-web/Hummer/releases/download/my-study-companion-private-alpha-0.9.1/SHA256SUMS.txt
 
-77cd9291410d55fbaba8c246c5a4db690066a546b4ef95aa869f9334903645fb  MyStudyCompanion-phone-debug.apk
-b6c4384d4c0395cbd1503cfb593cc2a961df98d64bef5f08b99dee4c0704a494  MyStudyCompanion-wear-debug.apk
+f4c3aa1bda8ff81148f4a46d5de2beb8afd5321967e8ee60a384dcd4aca25403  MyStudyCompanion-phone-debug.apk
+bd5c1958e05745afd4520c2d292b62fb90f0dd803db72735694609ff4e60b9f8  MyStudyCompanion-wear-debug.apk
