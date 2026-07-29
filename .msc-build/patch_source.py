@@ -2,6 +2,25 @@ from pathlib import Path
 
 root = Path("MyStudyCompanion")
 
+# The custom privateAlpha build type does not compile src/release sources.
+# Give it the signed-build App Check provider explicitly so the main
+# application initializer resolves without turning the APK into a debug build.
+release_app_check = (
+    root
+    / "app/src/release/java/com/mystudycompanion/app/AppCheckProviderInstaller.kt"
+)
+private_alpha_app_check = (
+    root
+    / "app/src/privateAlpha/java/com/mystudycompanion/app/AppCheckProviderInstaller.kt"
+)
+if not release_app_check.is_file():
+    raise RuntimeError(f"Missing signed App Check provider: {release_app_check}")
+private_alpha_app_check.parent.mkdir(parents=True, exist_ok=True)
+private_alpha_app_check.write_text(
+    release_app_check.read_text(encoding="utf-8"),
+    encoding="utf-8",
+)
+
 # Kotlin 2.4 compilerOptions DSL.
 for rel in ["app/build.gradle.kts", "wear/build.gradle.kts", "benchmark/build.gradle.kts"]:
     path = root / rel
