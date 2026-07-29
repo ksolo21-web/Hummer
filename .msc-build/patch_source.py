@@ -123,3 +123,21 @@ text = path.read_text(encoding="utf-8").replace(
 path.write_text(text, encoding="utf-8")
 
 print("Applied Kotlin, Compose, graphics, Material 3, Glance, Tile, and complication fixes.")
+
+
+# Bind debug variants to the explicitly configured stable private-alpha key.
+for rel in ["app/build.gradle.kts", "wear/build.gradle.kts"]:
+    path = root / rel
+    text = path.read_text(encoding="utf-8")
+    needle = "        debug {\n            applicationIdSuffix"
+    replacement = (
+        "        debug {\n"
+        "            if (privateSigningConfigured) {\n"
+        "                signingConfig = signingConfigs.getByName(\"privateRelease\")\n"
+        "            }\n"
+        "            applicationIdSuffix"
+    )
+    if needle not in text:
+        raise RuntimeError(f"No debug signing insertion anchor in {path}")
+    text = text.replace(needle, replacement, 1)
+    path.write_text(text, encoding="utf-8")
