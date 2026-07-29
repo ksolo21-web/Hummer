@@ -60,9 +60,10 @@ jobs:
             "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
           fi
 
-          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.0.tar.xz
-          echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
-          tar -xJf MyStudyCompanion_0.9.0.tar.xz
+          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.1.tar.xz
+          echo "491c973a7f230c1d4ddbfce9db1d27f911513e5125bfdb70a942c7475787fc11  MyStudyCompanion_0.9.1.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.1.tar.xz
+          python3 .msc-build/patch_source.py
 
           cd MyStudyCompanion
           gradle --no-daemon --stacktrace \
@@ -85,7 +86,7 @@ jobs:
       - name: Replace private prerelease assets
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: my-study-companion-private-alpha-0.9.0
+          TAG: my-study-companion-private-alpha-0.9.1
         shell: bash
         run: |
           set -euo pipefail
@@ -96,6 +97,6 @@ jobs:
             dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "My Study Companion Private Alpha 0.9.0" \
-            --notes "Private owner-mode debug APKs for Kaleb's physical-device testing. This prerelease is stored inside the private repository and is not a public app release." \
+            --title "My Study Companion Private Alpha 0.9.1 — Theme Studio" \
+            --notes "Private owner-mode 0.9.1 Theme Studio APKs for Kaleb's physical-device testing. Includes full themed backgrounds, per-theme custom colors, and prominent Owl, Fox, Lion, and Tiger artwork. This is not a public app release." \
             --prerelease
