@@ -1,4 +1,4 @@
-name: My Study Companion Scene Themes APK Build
+name: My Study Companion Unified App APK Build
 
 on:
   push:
@@ -57,7 +57,7 @@ jobs:
           echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  MyStudyCompanion_0.9.2.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.2.tar.xz
           cat .msc-build/scene-0.9.3.part*.b64 | base64 --decode > MyStudyCompanion_0.9.3_scene_overlay.tar.xz
-          echo "735f1fe0b63fefb5b189adb68cc1ab4a6a6d7ce189e1e2203d4287fecda8d907  MyStudyCompanion_0.9.3_scene_overlay.tar.xz" | sha256sum -c -
+          echo "48b6aa28b630bdbf0ade5fcfadd77af7b4a259807df0b73c4318f17fede4eec4  MyStudyCompanion_0.9.3_scene_overlay.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.3_scene_overlay.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeArtwork.kt
@@ -97,34 +97,44 @@ jobs:
             echo "MSC_RELEASE_KEY_PASSWORD=android"
           } >> "$GITHUB_ENV"
 
-      - name: Build phone and Wear OS scene-theme APKs
+      - name: Build canonical phone and Wear OS APKs
         working-directory: MyStudyCompanion
         shell: bash
         run: |
           set -euo pipefail
           gradle --no-daemon --stacktrace \
             -PMSC_LOCAL_OWNER_MODE=true \
-            :app:assembleDebug \
-            :wear:assembleDebug
+            :app:assemblePrivateAlpha \
+            :wear:assemblePrivateAlpha
 
       - name: Collect, verify, and identify APKs
         shell: bash
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
           APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          test -x "$AAPT"
           test -x "$APKSIGNER"
           mkdir -p dist
-          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
-          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
           test -f "$PHONE_APK"
           test -f "$WEAR_APK"
-          cp "$PHONE_APK" dist/MyStudyCompanion-phone-scene-themes-0.9.3.apk
-          cp "$WEAR_APK" dist/MyStudyCompanion-wear-scene-themes-0.9.3.apk
-          unzip -tq dist/MyStudyCompanion-phone-scene-themes-0.9.3.apk
-          unzip -tq dist/MyStudyCompanion-wear-scene-themes-0.9.3.apk
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-scene-themes-0.9.3.apk | tee dist/PHONE-SIGNING.txt
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-wear-scene-themes-0.9.3.apk | tee dist/WEAR-SIGNING.txt
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.9.3.apk
+          cp "$WEAR_APK" dist/MyStudyCompanion-wear-unified-0.9.3.apk
+          unzip -tq dist/MyStudyCompanion-phone-unified-0.9.3.apk
+          unzip -tq dist/MyStudyCompanion-wear-unified-0.9.3.apk
+          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.9.3.apk | tee dist/PHONE-IDENTITY.txt
+          "$AAPT" dump badging dist/MyStudyCompanion-wear-unified-0.9.3.apk | tee dist/WEAR-IDENTITY.txt
+          PHONE_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" dist/PHONE-IDENTITY.txt | head -n 1)"
+          WEAR_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" dist/WEAR-IDENTITY.txt | head -n 1)"
+          test "$PHONE_PACKAGE" = "com.mystudycompanion.app"
+          test "$WEAR_PACKAGE" = "com.mystudycompanion.app"
+          printf 'Verified canonical phone package: %s\n' "$PHONE_PACKAGE"
+          printf 'Verified canonical Wear package: %s\n' "$WEAR_PACKAGE"
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.9.3.apk | tee dist/PHONE-SIGNING.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-wear-unified-0.9.3.apk | tee dist/WEAR-SIGNING.txt
           grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/PHONE-SIGNING.txt
           grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/WEAR-SIGNING.txt
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
@@ -134,7 +144,7 @@ jobs:
       - name: Upload scene-theme APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-scene-themes-0.9.3-apks
+          name: MyStudyCompanion-unified-0.9.3-apks
           if-no-files-found: error
           retention-days: 30
           path: dist/
