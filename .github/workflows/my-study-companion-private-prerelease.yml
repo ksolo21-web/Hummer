@@ -60,6 +60,12 @@ jobs:
             "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
           fi
 
+          mkdir -p "$HOME/.android"
+          base64 --decode .msc-build/private-alpha-debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | tee private-alpha-key-report.txt
+          grep -q 'SHA256: 28:0F:9C:9A:D4:BE:BA:33:72:1A:BD:09:A5:B8:04:60:7A:AE:7C:9D:07:91:8D:67:44:6A:F7:AD:55:6D:EC:44' private-alpha-key-report.txt
+
           cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.1.tar.xz
           echo "491c973a7f230c1d4ddbfce9db1d27f911513e5125bfdb70a942c7475787fc11  MyStudyCompanion_0.9.1.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.1.tar.xz
