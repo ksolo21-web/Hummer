@@ -86,7 +86,7 @@ jobs:
           echo "48b6aa28b630bdbf0ade5fcfadd77af7b4a259807df0b73c4318f17fede4eec4  MyStudyCompanion_0.9.3_scene_overlay.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.3_scene_overlay.tar.xz
           cat .msc-build/semantic-0.9.4.part*.b64 | base64 --decode > MyStudyCompanion_0.9.4_semantic_overlay.tar.xz
-          echo "0cc968f36842395dfd3faffcc37ecb853375e2f1dc94d34fe5f02cfc2e4e966e  MyStudyCompanion_0.9.4_semantic_overlay.tar.xz" | sha256sum -c -
+          echo "f693bcb607ad00a30c4338e8819250ed5f1d44f372e40093682a13c4beed6277  MyStudyCompanion_0.9.4_semantic_overlay.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.4_semantic_overlay.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/build.gradle.kts
