@@ -86,6 +86,37 @@ jobs:
           test -f MyStudyCompanion/app/build.gradle.kts
           test -f MyStudyCompanion/wear/build.gradle.kts
 
+      - name: Apply Kotlin 2 compiler DSL migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          files = [
+              Path("MyStudyCompanion/app/build.gradle.kts"),
+              Path("MyStudyCompanion/wear/build.gradle.kts"),
+              Path("MyStudyCompanion/benchmark/build.gradle.kts"),
+          ]
+          pattern = re.compile(r"\n\s*kotlinOptions\s*\{\s*jvmTarget\s*=\s*\"17\"\s*\}", re.S)
+          block = """
+
+          kotlin {
+              compilerOptions {
+                  jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+              }
+          }
+          """
+          for path in files:
+              text = path.read_text(encoding="utf-8")
+              updated, count = pattern.subn("", text)
+              if count != 1:
+                  raise SystemExit(f"Expected one legacy kotlinOptions block in {path}, found {count}")
+              path.write_text(updated.rstrip() + block, encoding="utf-8")
+              print(f"Migrated {path}")
+          PY
+
       - name: Build phone and Wear OS debug APKs
         working-directory: MyStudyCompanion
         shell: bash
