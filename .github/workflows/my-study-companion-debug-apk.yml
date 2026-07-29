@@ -1,4 +1,4 @@
-name: Build My Study Companion 0.9.5 Unified App Independently
+name: Build My Study Companion 0.9.6 Unified App Independently
 
 on:
   push:
@@ -75,7 +75,7 @@ jobs:
           test -f "$SDK_ROOT/platforms/android-36/android.jar"
           test -d "$SDK_ROOT/build-tools/36.0.0"
 
-      - name: Reconstruct and verify 0.9.5 Watchtower Study source
+      - name: Reconstruct and verify 0.9.6 preparation source
         shell: bash
         run: |
           set -euo pipefail
@@ -91,16 +91,20 @@ jobs:
           cat .msc-build/watchtower-0.9.5.part*.b64 | base64 --decode > MyStudyCompanion_0.9.5_watchtower_overlay.tar.xz
           echo "a742f0c76ba81b87fff0fe97e93e3c03e3968f2dc6ef6ef5ed24dd039bcf5d6e  MyStudyCompanion_0.9.5_watchtower_overlay.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.5_watchtower_overlay.tar.xz
+          cat .msc-build/verified-preparation-0.9.6.part*.b64 | base64 --decode > MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz
+          echo "2214a3ac356d2d192f6c4a0e66c1e53fa4bbe9ed36e74d080ac1138237c30e76  MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/build.gradle.kts
           test -f MyStudyCompanion/wear/build.gradle.kts
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeArtwork.kt
           test -f MyStudyCompanion/app/src/main/res/drawable-nodpi/theme_scene_lion.webp
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialWatchtowerStudyRepository.kt
-          grep -q 'versionName = "0.9.5-private-alpha-watchtower-study"' MyStudyCompanion/app/build.gradle.kts
-          grep -q 'versionCode = 18' MyStudyCompanion/app/build.gradle.kts
-          grep -q 'versionName = "0.9.5-wear-private-alpha-watchtower-study"' MyStudyCompanion/wear/build.gradle.kts
-          grep -q 'versionCode = 360090501' MyStudyCompanion/wear/build.gradle.kts
+          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/PreparationTasks.kt
+          grep -q 'versionName = "0.9.6-private-alpha-verified-preparation"' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionCode = 19' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionName = "0.9.6-wear-private-alpha-verified-preparation"' MyStudyCompanion/wear/build.gradle.kts
+          grep -q 'versionCode = 360090601' MyStudyCompanion/wear/build.gradle.kts
 
       - name: Apply Android source compatibility fixes
         shell: bash
@@ -113,6 +117,14 @@ jobs:
           ! grep -R 'import androidx.glance.material3.GlanceTheme' MyStudyCompanion --include='*.kt'
           ! grep -R '::Color' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
           python3 MyStudyCompanion/tools/validate_source.py
+
+      - name: Verify backend contracts independently
+        working-directory: MyStudyCompanion/backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m pytest -q
 
       - name: Install stable private-alpha debug signing key
         shell: bash
@@ -156,18 +168,18 @@ jobs:
           WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
           test -f "$PHONE_APK"
           test -f "$WEAR_APK"
-          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.9.5.apk
-          cp "$WEAR_APK" dist/MyStudyCompanion-wear-unified-0.9.5.apk
-          unzip -tq dist/MyStudyCompanion-phone-unified-0.9.5.apk
-          unzip -tq dist/MyStudyCompanion-wear-unified-0.9.5.apk
-          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.9.5.apk | tee dist/PHONE-IDENTITY.txt
-          "$AAPT" dump badging dist/MyStudyCompanion-wear-unified-0.9.5.apk | tee dist/WEAR-IDENTITY.txt
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.9.6.apk
+          cp "$WEAR_APK" dist/MyStudyCompanion-wear-unified-0.9.6.apk
+          unzip -tq dist/MyStudyCompanion-phone-unified-0.9.6.apk
+          unzip -tq dist/MyStudyCompanion-wear-unified-0.9.6.apk
+          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.9.6.apk | tee dist/PHONE-IDENTITY.txt
+          "$AAPT" dump badging dist/MyStudyCompanion-wear-unified-0.9.6.apk | tee dist/WEAR-IDENTITY.txt
           PHONE_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" dist/PHONE-IDENTITY.txt | head -n 1)"
           WEAR_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" dist/WEAR-IDENTITY.txt | head -n 1)"
           test "$PHONE_PACKAGE" = "com.mystudycompanion.app"
           test "$WEAR_PACKAGE" = "com.mystudycompanion.app"
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.9.5.apk | tee dist/PHONE-SIGNING.txt
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-wear-unified-0.9.5.apk | tee dist/WEAR-SIGNING.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.9.6.apk | tee dist/PHONE-SIGNING.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-wear-unified-0.9.6.apk | tee dist/WEAR-SIGNING.txt
           grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/PHONE-SIGNING.txt
           grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/WEAR-SIGNING.txt
           printf 'Verified canonical phone package: %s\n' "$PHONE_PACKAGE"
@@ -179,7 +191,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-unified-0.9.5-independent-apks
+          name: MyStudyCompanion-unified-0.9.6-independent-apks
           if-no-files-found: error
           retention-days: 14
           path: dist/
