@@ -20,6 +20,22 @@ for rel in ["app/build.gradle.kts", "wear/build.gradle.kts", "benchmark/build.gr
             raise RuntimeError(f"No compiler-options insertion anchor in {path}")
     path.write_text(text, encoding="utf-8")
 
+# Wear Material 3 Tile APIs require the direct ProtoLayout Material3 artifact.
+path = root / "gradle/libs.versions.toml"
+text = path.read_text(encoding="utf-8")
+needle = 'androidx-wear-protolayout-material = { module = "androidx.wear.protolayout:protolayout-material", version.ref = "wearProtoLayout" }\n'
+addition = needle + 'androidx-wear-protolayout-material3 = { module = "androidx.wear.protolayout:protolayout-material3", version.ref = "wearProtoLayout" }\n'
+if "androidx-wear-protolayout-material3" not in text:
+    text = text.replace(needle, addition)
+path.write_text(text, encoding="utf-8")
+
+path = root / "wear/build.gradle.kts"
+text = path.read_text(encoding="utf-8")
+needle = "    implementation(libs.androidx.wear.protolayout.material)\n"
+if "implementation(libs.androidx.wear.protolayout.material3)" not in text:
+    text = text.replace(needle, needle + "    implementation(libs.androidx.wear.protolayout.material3)\n")
+path.write_text(text, encoding="utf-8")
+
 # Compose graphics Path moved under androidx.compose.ui.graphics.
 for rel in [
     "app/src/main/java/com/mystudycompanion/app/design/ThemeEmblem.kt",
@@ -76,18 +92,34 @@ text = text.replace(
 )
 path.write_text(text, encoding="utf-8")
 
-# Glance app-widget APIs live in Glance and appwidget.action packages.
+# Glance has separate generic and Intent activity-action overload packages.
 path = root / "app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt"
 text = path.read_text(encoding="utf-8")
 text = text.replace(
     "import androidx.glance.action.actionStartActivity\n",
+    "import androidx.glance.action.actionStartActivity\nimport androidx.glance.appwidget.action.actionStartActivity as actionStartActivityIntent\n",
+)
+text = text.replace(
     "import androidx.glance.appwidget.action.actionStartActivity\n",
+    "import androidx.glance.action.actionStartActivity\nimport androidx.glance.appwidget.action.actionStartActivity as actionStartActivityIntent\n",
 )
 text = text.replace("import androidx.glance.layout.defaultWeight\n", "")
 text = text.replace(
     "import androidx.glance.material3.GlanceTheme\n",
     "import androidx.glance.GlanceTheme\n",
 )
+text = text.replace(
+    "actionStartActivity(\n                            Intent(",
+    "actionStartActivityIntent(\n                            Intent(",
+)
 path.write_text(text, encoding="utf-8")
 
-print("Applied Kotlin, Compose, graphics, Material 3, and Glance compatibility fixes.")
+# Public complication services cannot expose an internal model type.
+path = root / "wear/src/main/java/com/mystudycompanion/app/wear/WearComplicationContent.kt"
+text = path.read_text(encoding="utf-8").replace(
+    "internal data class WearComplicationText(",
+    "data class WearComplicationText(",
+)
+path.write_text(text, encoding="utf-8")
+
+print("Applied Kotlin, Compose, graphics, Material 3, Glance, Tile, and complication fixes.")
