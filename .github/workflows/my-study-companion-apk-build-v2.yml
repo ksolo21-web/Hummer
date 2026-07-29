@@ -80,6 +80,23 @@ jobs:
           grep -q 'versionName = "0.9.6-wear-private-alpha-verified-preparation"' MyStudyCompanion/wear/build.gradle.kts
           grep -q 'versionCode = 360090601' MyStudyCompanion/wear/build.gradle.kts
 
+      - name: Archive exact reconstructed source for AI integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -cJf MyStudyCompanion-0.9.6-reconstructed-source.tar.xz MyStudyCompanion
+          sha256sum MyStudyCompanion-0.9.6-reconstructed-source.tar.xz > MyStudyCompanion-0.9.6-reconstructed-source.sha256
+
+      - name: Upload reconstructed source artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MyStudyCompanion-0.9.6-reconstructed-source
+          if-no-files-found: error
+          retention-days: 3
+          path: |
+            MyStudyCompanion-0.9.6-reconstructed-source.tar.xz
+            MyStudyCompanion-0.9.6-reconstructed-source.sha256
+
       - name: Apply Android source compatibility fixes
         shell: bash
         run: |
