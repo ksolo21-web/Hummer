@@ -54,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.2.tar.xz
-          echo "571690217abc3813b0b139a20377e59d12479327f20e9efa47c3f4531e875732  MyStudyCompanion_0.9.2.tar.xz" | sha256sum -c -
+          echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  MyStudyCompanion_0.9.2.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.2.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeCustomization.kt
