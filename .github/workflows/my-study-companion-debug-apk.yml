@@ -92,7 +92,7 @@ jobs:
           echo "a742f0c76ba81b87fff0fe97e93e3c03e3968f2dc6ef6ef5ed24dd039bcf5d6e  MyStudyCompanion_0.9.5_watchtower_overlay.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.5_watchtower_overlay.tar.xz
           cat .msc-build/verified-preparation-0.9.6.part*.b64 | base64 --decode > MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz
-          echo "2214a3ac356d2d192f6c4a0e66c1e53fa4bbe9ed36e74d080ac1138237c30e76  MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz" | sha256sum -c -
+          echo "f320e0d36adcd21b2c8c1b1583620a37c38d3415f981cc34b35c77eafcd27278  MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.6_verified_preparation_overlay.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/build.gradle.kts
