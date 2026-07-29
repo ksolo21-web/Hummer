@@ -71,9 +71,9 @@ jobs:
           export MSC_RELEASE_KEY_ALIAS=androiddebugkey
           export MSC_RELEASE_KEY_PASSWORD=android
 
-          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.1.tar.xz
-          echo "491c973a7f230c1d4ddbfce9db1d27f911513e5125bfdb70a942c7475787fc11  MyStudyCompanion_0.9.1.tar.xz" | sha256sum -c -
-          tar -xJf MyStudyCompanion_0.9.1.tar.xz
+          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.2.tar.xz
+          echo "571690217abc3813b0b139a20377e59d12479327f20e9efa47c3f4531e875732  MyStudyCompanion_0.9.2.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.2.tar.xz
           python3 .msc-build/patch_source.py
 
           cd MyStudyCompanion
@@ -97,7 +97,7 @@ jobs:
       - name: Replace private prerelease assets
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: my-study-companion-private-alpha-0.9.1
+          TAG: my-study-companion-private-alpha-0.9.2
         shell: bash
         run: |
           set -euo pipefail
@@ -108,6 +108,6 @@ jobs:
             dist/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "My Study Companion Private Alpha 0.9.1 — Theme Studio" \
-            --notes "Private owner-mode 0.9.1 Theme Studio APKs for Kaleb's physical-device testing. Includes full themed backgrounds, per-theme custom colors, and prominent Owl, Fox, Lion, and Tiger artwork. This is not a public app release." \
+            --title "My Study Companion Private Alpha 0.9.2 — Daily Text + Widgets" \
+            --notes "Private owner-mode 0.9.2 Daily Text + Widgets APKs for Kaleb's physical-device testing. Includes full themed backgrounds, per-theme custom colors, and prominent Owl, Fox, Lion, and Tiger artwork. This is not a public app release." \
             --prerelease
