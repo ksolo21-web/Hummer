@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: my-study-companion-private-alpha-0.9.0
+      TAG: my-study-companion-private-alpha-0.9.1
 
     steps:
       - name: Check out isolated build branch
