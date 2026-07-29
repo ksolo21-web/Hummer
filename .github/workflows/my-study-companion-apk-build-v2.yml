@@ -1,4 +1,4 @@
-name: My Study Companion APK Build v4
+name: My Study Companion Theme Studio APK Build
 
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
           test -f "$SDK_ROOT/platforms/android-36/android.jar"
           test -d "$SDK_ROOT/build-tools/36.0.0"
 
-      - name: Reconstruct verified source
+      - name: Reconstruct verified 0.9.0 source
         shell: bash
         run: |
           set -euo pipefail
@@ -57,6 +57,17 @@ jobs:
           echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.0.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
+
+      - name: Apply verified Theme Studio 0.9.1 overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/theme-0.9.1-overlay.b64 > theme-0.9.1-overlay.tar.xz
+          echo "a943c2801405d2eee56170eb7b1976645f53b9decdf7b50b7badaf687d70fbb2  theme-0.9.1-overlay.tar.xz" | sha256sum -c -
+          tar -xJf theme-0.9.1-overlay.tar.xz -C MyStudyCompanion
+          grep -q '0.9.1-theme-studio-private-alpha' MyStudyCompanion/app/build.gradle.kts
+          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeAppearance.kt
+          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeBackdrop.kt
 
       - name: Apply Android source compatibility fixes
         shell: bash
@@ -67,8 +78,23 @@ jobs:
           ! grep -R 'androidx.compose.ui.geometry.Path' MyStudyCompanion --include='*.kt'
           ! grep -R 'import androidx.compose.foundation.layout.weight' MyStudyCompanion --include='*.kt'
           ! grep -R 'import androidx.glance.material3.GlanceTheme' MyStudyCompanion --include='*.kt'
+          ! grep -R '::Color' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
 
-      - name: Build phone and Wear OS debug APKs
+      - name: Install stable private-alpha debug signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          base64 --decode .msc-build/private-alpha-debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+          keytool -list -v \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            | tee private-alpha-key-report.txt
+          grep -q 'SHA256: 0A:6E:95:B9:EA:84:52:3D:F3:70:45:B1:72:A2:00:D8:96:D2:3A:D0:B3:4D:A9:60:04:FC:0A:56:69:F1:65:43' private-alpha-key-report.txt
+
+      - name: Build phone and Wear OS Theme Studio APKs
         working-directory: MyStudyCompanion
         shell: bash
         run: |
@@ -78,27 +104,34 @@ jobs:
             :app:assembleDebug \
             :wear:assembleDebug
 
-      - name: Collect and verify APKs
+      - name: Collect, verify, and identify APKs
         shell: bash
         run: |
           set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          test -x "$APKSIGNER"
           mkdir -p dist
           PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
           WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
           test -f "$PHONE_APK"
           test -f "$WEAR_APK"
-          cp "$PHONE_APK" dist/MyStudyCompanion-phone-debug.apk
-          cp "$WEAR_APK" dist/MyStudyCompanion-wear-debug.apk
-          unzip -tq dist/MyStudyCompanion-phone-debug.apk
-          unzip -tq dist/MyStudyCompanion-wear-debug.apk
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-theme-studio-0.9.1.apk
+          cp "$WEAR_APK" dist/MyStudyCompanion-wear-theme-studio-0.9.1.apk
+          unzip -tq dist/MyStudyCompanion-phone-theme-studio-0.9.1.apk
+          unzip -tq dist/MyStudyCompanion-wear-theme-studio-0.9.1.apk
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-theme-studio-0.9.1.apk | tee dist/PHONE-SIGNING.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-wear-theme-studio-0.9.1.apk | tee dist/WEAR-SIGNING.txt
+          grep -qi '0a6e95b9ea84523df37045b172a200d896d23ad0b34da96004fc0a5669f16543' dist/PHONE-SIGNING.txt
+          grep -qi '0a6e95b9ea84523df37045b172a200d896d23ad0b34da96004fc0a5669f16543' dist/WEAR-SIGNING.txt
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
           ls -lh dist
           cat dist/SHA256SUMS.txt
 
-      - name: Upload APK artifact
+      - name: Upload Theme Studio APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-debug-apks-v4
+          name: MyStudyCompanion-theme-studio-0.9.1-apks
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
           path: dist/
