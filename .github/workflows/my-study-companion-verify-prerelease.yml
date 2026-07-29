@@ -1,0 +1,87 @@
+name: Verify My Study Companion Private Prerelease
+
+on:
+  push:
+    branches:
+      - agent/my-study-companion-apk-build
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-private-prerelease:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: my-study-companion-private-alpha-0.9.0
+
+    steps:
+      - name: Check out isolated build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+          fetch-depth: 0
+
+      - name: Wait for and verify private prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULT_DIR=.msc-build/results
+          VERIFY_DIR="$RUNNER_TEMP/msc-release-verify"
+          mkdir -p "$RESULT_DIR" "$VERIFY_DIR"
+          rm -f "$RESULT_DIR/RELEASE_SUCCESS" "$RESULT_DIR/RELEASE_FAILURE"
+
+          FOUND=0
+          for attempt in $(seq 1 40); do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              FOUND=1
+              break
+            fi
+            echo "Waiting for prerelease $TAG (attempt $attempt/40)..."
+            sleep 15
+          done
+
+          if [[ $FOUND -ne 1 ]]; then
+            touch "$RESULT_DIR/RELEASE_FAILURE"
+            printf 'Private prerelease %s was not found after waiting.\n' "$TAG" > "$RESULT_DIR/latest-release-verification.txt"
+          else
+            gh release download "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --dir "$VERIFY_DIR" \
+              --pattern 'MyStudyCompanion-phone-debug.apk' \
+              --pattern 'MyStudyCompanion-wear-debug.apk' \
+              --pattern 'SHA256SUMS.txt'
+
+            test -s "$VERIFY_DIR/MyStudyCompanion-phone-debug.apk"
+            test -s "$VERIFY_DIR/MyStudyCompanion-wear-debug.apk"
+            test -s "$VERIFY_DIR/SHA256SUMS.txt"
+            unzip -t "$VERIFY_DIR/MyStudyCompanion-phone-debug.apk"
+            unzip -t "$VERIFY_DIR/MyStudyCompanion-wear-debug.apk"
+            (cd "$VERIFY_DIR" && sha256sum -c SHA256SUMS.txt)
+
+            {
+              echo "tag=$TAG"
+              echo "release_url=https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+              echo "phone_asset=https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/MyStudyCompanion-phone-debug.apk"
+              echo "wear_asset=https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/MyStudyCompanion-wear-debug.apk"
+              echo "checksums_asset=https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/SHA256SUMS.txt"
+              echo
+              cat "$VERIFY_DIR/SHA256SUMS.txt"
+            } > "$RESULT_DIR/latest-release-verification.txt"
+            touch "$RESULT_DIR/RELEASE_SUCCESS"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$RESULT_DIR"
+          if git diff --cached --quiet; then
+            echo "No release verification changes."
+          else
+            git commit -m "Verify My Study Companion private prerelease [skip ci]"
+            git push origin HEAD:agent/my-study-companion-apk-build
+          fi
+
+          test -f "$RESULT_DIR/RELEASE_SUCCESS"
