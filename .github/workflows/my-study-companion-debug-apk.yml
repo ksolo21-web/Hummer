@@ -1,0 +1,84 @@
+name: Build My Study Companion Debug APK
+
+on:
+  push:
+    branches:
+      - agent/my-study-companion-apk-build
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out build branch
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct and verify app source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.0.tar.xz
+          echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.0.tar.xz
+          test -f MyStudyCompanion/settings.gradle.kts
+          test -f MyStudyCompanion/app/build.gradle.kts
+          test -f MyStudyCompanion/wear/build.gradle.kts
+
+      - name: Build phone and Wear OS debug APKs
+        working-directory: MyStudyCompanion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            :app:assembleDebug \
+            :wear:assembleDebug
+
+      - name: Collect APKs and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          test -n "$PHONE_APK"
+          test -n "$WEAR_APK"
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-debug.apk
+          cp "$WEAR_APK" dist/MyStudyCompanion-wear-debug.apk
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          ls -lh dist
+          cat dist/SHA256SUMS.txt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MyStudyCompanion-debug-apks
+          if-no-files-found: error
+          retention-days: 14
+          path: dist/
