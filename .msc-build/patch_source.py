@@ -21,6 +21,37 @@ private_alpha_app_check.write_text(
     encoding="utf-8",
 )
 
+# BIND_LISTENER is deprecated and rejected by release-grade Wear lint.
+# Use event- and path-specific Data Layer filters so background sync keeps
+# working without subscribing either service to unrelated wearable traffic.
+manifest_filter_updates = {
+    "wear/src/main/AndroidManifest.xml": (
+        '                <action android:name="com.google.android.gms.wearable.BIND_LISTENER" />',
+        '                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />\n'
+        '                <data\n'
+        '                    android:scheme="wear"\n'
+        '                    android:host="*"\n'
+        '                    android:path="/msc/study-snapshot" />',
+    ),
+    "app/src/main/AndroidManifest.xml": (
+        '                <action android:name="com.google.android.gms.wearable.BIND_LISTENER" />',
+        '                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />\n'
+        '                <data\n'
+        '                    android:scheme="wear"\n'
+        '                    android:host="*"\n'
+        '                    android:path="/msc/action/considered" />',
+    ),
+}
+for relative, (legacy_filter, current_filter) in manifest_filter_updates.items():
+    path = root / relative
+    text = path.read_text(encoding="utf-8")
+    if legacy_filter not in text:
+        raise RuntimeError(f"Legacy Wear listener filter changed unexpectedly: {path}")
+    path.write_text(
+        text.replace(legacy_filter, current_filter, 1),
+        encoding="utf-8",
+    )
+
 # Kotlin 2.4 compilerOptions DSL.
 for rel in ["app/build.gradle.kts", "wear/build.gradle.kts", "benchmark/build.gradle.kts"]:
     path = root / rel
