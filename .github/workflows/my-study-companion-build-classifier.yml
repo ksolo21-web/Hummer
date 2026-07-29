@@ -11,4 +11,4 @@ jobs:
     if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Build classification writes are paused for the 0.9.3 artifact-only build."
+      - run: echo "Build classification is paused; no release or repository writes will run."
