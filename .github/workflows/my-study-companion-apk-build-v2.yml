@@ -53,9 +53,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.0.tar.xz
-          echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
-          tar -xJf MyStudyCompanion_0.9.0.tar.xz
+          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.1.tar.xz
+          echo "491c973a7f230c1d4ddbfce9db1d27f911513e5125bfdb70a942c7475787fc11  MyStudyCompanion_0.9.1.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.1.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
 
       - name: Apply verified Theme Studio 0.9.1 overlay
