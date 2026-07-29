@@ -117,6 +117,12 @@ jobs:
               print(f"Migrated {path}")
           PY
 
+      - name: Apply current Android source compatibility fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .msc-build/apply-source-fixes.py
+
       - name: Build phone and Wear OS debug APKs
         working-directory: MyStudyCompanion
         shell: bash
