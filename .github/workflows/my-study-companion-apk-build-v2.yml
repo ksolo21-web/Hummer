@@ -1,4 +1,4 @@
-name: My Study Companion APK Build v3
+name: My Study Companion APK Build v4
 
 on:
   push:
@@ -58,45 +58,15 @@ jobs:
           tar -xJf MyStudyCompanion_0.9.0.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
 
-      - name: Migrate Kotlin compiler options
+      - name: Apply Android source compatibility fixes
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          paths = [
-              Path("MyStudyCompanion/app/build.gradle.kts"),
-              Path("MyStudyCompanion/wear/build.gradle.kts"),
-              Path("MyStudyCompanion/benchmark/build.gradle.kts"),
-          ]
-          for path in paths:
-              text = path.read_text(encoding="utf-8")
-              if "import org.jetbrains.kotlin.gradle.dsl.JvmTarget" not in text:
-                  text = "import org.jetbrains.kotlin.gradle.dsl.JvmTarget\n" + text
-              text = text.replace(
-                  '    kotlinOptions {\n        jvmTarget = "17"\n    }\n',
-                  "",
-              )
-              text = text.replace('    kotlinOptions { jvmTarget = "17" }\n', "")
-              anchor = "\ndependencies {"
-              if "\nkotlin {\n    compilerOptions" not in text:
-                  block = (
-                      "\nkotlin {\n"
-                      "    compilerOptions {\n"
-                      "        jvmTarget.set(JvmTarget.JVM_17)\n"
-                      "    }\n"
-                      "}\n"
-                  )
-                  if anchor in text:
-                      text = text.replace(anchor, block + anchor, 1)
-                  elif "\nksp {" in text:
-                      text = text.replace("\nksp {", block + "\nksp {", 1)
-                  else:
-                      raise RuntimeError(f"No insertion anchor in {path}")
-              path.write_text(text, encoding="utf-8")
-          PY
+          python3 .msc-build/patch_source.py
           ! grep -R 'jvmTarget = "17"' MyStudyCompanion --include='*.gradle.kts'
+          ! grep -R 'androidx.compose.ui.geometry.Path' MyStudyCompanion --include='*.kt'
+          ! grep -R 'import androidx.compose.foundation.layout.weight' MyStudyCompanion --include='*.kt'
+          ! grep -R 'import androidx.glance.material3.GlanceTheme' MyStudyCompanion --include='*.kt'
 
       - name: Build phone and Wear OS debug APKs
         working-directory: MyStudyCompanion
@@ -128,7 +98,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-debug-apks-v3
+          name: MyStudyCompanion-debug-apks-v4
           if-no-files-found: error
           retention-days: 14
           path: dist/
