@@ -1,0 +1,61 @@
+name: Classify My Study Companion Build
+
+on:
+  push:
+    branches:
+      - agent/my-study-companion-apk-build
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  classify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out isolated build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+          fetch-depth: 0
+
+      - name: Classify latest APK build
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULT_DIR=.msc-build/results
+          test -f "$RESULT_DIR/latest-status.json"
+          STATUS="$(python3 -c 'import json; print(json.load(open(".msc-build/results/latest-status.json"))["status"])')"
+          rm -f "$RESULT_DIR/BUILD_SUCCESS" "$RESULT_DIR/BUILD_FAILURE" \
+                "$RESULT_DIR/SDK_FAILURE" "$RESULT_DIR/GRADLE_FAILURE" \
+                "$RESULT_DIR/KOTLIN_FAILURE" "$RESULT_DIR/RESOURCE_FAILURE"
+
+          if [[ "$STATUS" == "success" ]]; then
+            touch "$RESULT_DIR/BUILD_SUCCESS"
+          else
+            touch "$RESULT_DIR/BUILD_FAILURE"
+            LOG="$RESULT_DIR/latest-build.log"
+            if grep -Eqi 'sdkmanager|Android SDK root is unavailable|platforms;android-36|build-tools;36\.0\.0' "$LOG"; then
+              touch "$RESULT_DIR/SDK_FAILURE"
+            fi
+            if grep -Eqi 'Could not resolve|Plugin .* was not found|Gradle build daemon|A problem occurred configuring|FAILURE: Build failed' "$LOG"; then
+              touch "$RESULT_DIR/GRADLE_FAILURE"
+            fi
+            if grep -Eqi 'Compilation error|e: .*\.kt:|Kotlin compilation|compile.*Kotlin.*FAILED' "$LOG"; then
+              touch "$RESULT_DIR/KOTLIN_FAILURE"
+            fi
+            if grep -Eqi 'Android resource linking failed|AAPT2|resource .* not found|merge.*Resources.*FAILED' "$LOG"; then
+              touch "$RESULT_DIR/RESOURCE_FAILURE"
+            fi
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$RESULT_DIR"
+          if git diff --cached --quiet; then
+            echo "No classification changes."
+          else
+            git commit -m "Classify My Study Companion build [skip ci]"
+            git push origin HEAD:agent/my-study-companion-apk-build
+          fi
