@@ -1,4 +1,4 @@
-name: My Study Companion APK Build v2
+name: My Study Companion APK Build v3
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-apks:
@@ -19,7 +19,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -32,139 +31,101 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Build phone and Wear OS APKs with diagnostics
-        id: build
-        shell: bash
-        run: |
-          set -uo pipefail
-          RESULT_DIR="$GITHUB_WORKSPACE/.msc-build/results"
-          LOG_FILE="$RUNNER_TEMP/my-study-companion-build.log"
-          DIST_DIR="$GITHUB_WORKSPACE/dist"
-          mkdir -p "$RESULT_DIR" "$DIST_DIR"
-          : > "$LOG_FILE"
-
-          run_build() {
-            set -euo pipefail
-            SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-            if [[ -z "$SDK_ROOT" || ! -d "$SDK_ROOT" ]]; then
-              echo "Android SDK root is unavailable." >&2
-              return 20
-            fi
-            echo "Android SDK root: $SDK_ROOT"
-
-            if [[ ! -f "$SDK_ROOT/platforms/android-36/android.jar" || ! -d "$SDK_ROOT/build-tools/36.0.0" ]]; then
-              SDKMANAGER=""
-              for candidate in \
-                "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-                "$SDK_ROOT/cmdline-tools/bin/sdkmanager" \
-                "$SDK_ROOT/tools/bin/sdkmanager"; do
-                if [[ -x "$candidate" ]]; then
-                  SDKMANAGER="$candidate"
-                  break
-                fi
-              done
-              if [[ -z "$SDKMANAGER" && -d "$SDK_ROOT/cmdline-tools" ]]; then
-                SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1 || true)"
-              fi
-              if [[ -z "$SDKMANAGER" ]]; then
-                echo "sdkmanager could not be located under $SDK_ROOT." >&2
-                find "$SDK_ROOT" -maxdepth 5 -name sdkmanager -type f -print || true
-                return 21
-              fi
-              echo "Using sdkmanager: $SDKMANAGER"
-              yes | "$SDKMANAGER" --licenses >/dev/null || true
-              "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
-            else
-              echo "Android API 36 and Build Tools 36.0.0 are already installed."
-            fi
-
-            test -f "$SDK_ROOT/platforms/android-36/android.jar"
-            test -d "$SDK_ROOT/build-tools/36.0.0"
-
-            cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.0.tar.xz
-            echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
-            tar -xJf MyStudyCompanion_0.9.0.tar.xz
-            test -f MyStudyCompanion/settings.gradle.kts
-            test -f MyStudyCompanion/app/build.gradle.kts
-            test -f MyStudyCompanion/wear/build.gradle.kts
-
-            cd MyStudyCompanion
-            gradle --no-daemon --stacktrace \
-              -PMSC_LOCAL_OWNER_MODE=true \
-              :app:assembleDebug \
-              :wear:assembleDebug
-            cd "$GITHUB_WORKSPACE"
-
-            PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
-            WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
-            test -n "$PHONE_APK"
-            test -n "$WEAR_APK"
-            cp "$PHONE_APK" "$DIST_DIR/MyStudyCompanion-phone-debug.apk"
-            cp "$WEAR_APK" "$DIST_DIR/MyStudyCompanion-wear-debug.apk"
-            (cd "$DIST_DIR" && sha256sum *.apk > SHA256SUMS.txt)
-          }
-
-          set +e
-          run_build > >(tee "$LOG_FILE") 2>&1
-          EXIT_CODE=$?
-          set -e
-
-          if [[ $EXIT_CODE -eq 0 ]]; then
-            BUILD_STATUS="success"
-          else
-            BUILD_STATUS="failure"
-          fi
-
-          python3 - "$RESULT_DIR/latest-status.json" "$BUILD_STATUS" "$EXIT_CODE" <<'PY'
-          import json, os, sys
-          path, status, exit_code = sys.argv[1:]
-          payload = {
-              "status": status,
-              "exit_code": int(exit_code),
-              "run_id": os.environ.get("GITHUB_RUN_ID"),
-              "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
-              "commit_sha": os.environ.get("GITHUB_SHA"),
-              "workflow": os.environ.get("GITHUB_WORKFLOW"),
-              "artifact_name": "MyStudyCompanion-debug-apks" if status == "success" else None,
-          }
-          with open(path, "w", encoding="utf-8") as f:
-              json.dump(payload, f, indent=2, sort_keys=True)
-              f.write("\n")
-          PY
-
-          tail -n 4000 "$LOG_FILE" > "$RESULT_DIR/latest-build.log"
-          echo "build_status=$BUILD_STATUS" >> "$GITHUB_OUTPUT"
-          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
-          cat "$RESULT_DIR/latest-status.json"
-          exit 0
-
-      - name: Upload phone and Wear OS APKs
-        if: steps.build.outputs.build_status == 'success'
-        uses: actions/upload-artifact@v7
-        with:
-          name: MyStudyCompanion-debug-apks
-          if-no-files-found: error
-          retention-days: 14
-          path: dist/
-
-      - name: Publish build diagnostics to isolated branch
-        if: always()
+      - name: Verify Android SDK
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .msc-build/results/latest-status.json .msc-build/results/latest-build.log
-          if git diff --cached --quiet; then
-            echo "No diagnostic changes to publish."
-          else
-            git commit -m "Record My Study Companion APK build result [skip ci]"
-            git push origin HEAD:agent/my-study-companion-apk-build
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT"
+          if [[ ! -f "$SDK_ROOT/platforms/android-36/android.jar" || ! -d "$SDK_ROOT/build-tools/36.0.0" ]]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+            test -x "$SDKMANAGER"
+            yes | "$SDKMANAGER" --licenses >/dev/null || true
+            "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
           fi
+          test -f "$SDK_ROOT/platforms/android-36/android.jar"
+          test -d "$SDK_ROOT/build-tools/36.0.0"
 
-      - name: Fail workflow when APK build failed
-        if: steps.build.outputs.build_status != 'success'
+      - name: Reconstruct verified source
         shell: bash
         run: |
-          echo "APK build failed with exit code ${{ steps.build.outputs.exit_code }}." >&2
-          exit 1
+          set -euo pipefail
+          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.0.tar.xz
+          echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.0.tar.xz
+          test -f MyStudyCompanion/settings.gradle.kts
+
+      - name: Migrate Kotlin compiler options
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path("MyStudyCompanion/app/build.gradle.kts"),
+              Path("MyStudyCompanion/wear/build.gradle.kts"),
+              Path("MyStudyCompanion/benchmark/build.gradle.kts"),
+          ]
+          for path in paths:
+              text = path.read_text(encoding="utf-8")
+              if "import org.jetbrains.kotlin.gradle.dsl.JvmTarget" not in text:
+                  text = "import org.jetbrains.kotlin.gradle.dsl.JvmTarget\n" + text
+              text = text.replace(
+                  '    kotlinOptions {\n        jvmTarget = "17"\n    }\n',
+                  "",
+              )
+              text = text.replace('    kotlinOptions { jvmTarget = "17" }\n', "")
+              anchor = "\ndependencies {"
+              if "\nkotlin {\n    compilerOptions" not in text:
+                  block = (
+                      "\nkotlin {\n"
+                      "    compilerOptions {\n"
+                      "        jvmTarget.set(JvmTarget.JVM_17)\n"
+                      "    }\n"
+                      "}\n"
+                  )
+                  if anchor in text:
+                      text = text.replace(anchor, block + anchor, 1)
+                  elif "\nksp {" in text:
+                      text = text.replace("\nksp {", block + "\nksp {", 1)
+                  else:
+                      raise RuntimeError(f"No insertion anchor in {path}")
+              path.write_text(text, encoding="utf-8")
+          PY
+          ! grep -R 'jvmTarget = "17"' MyStudyCompanion --include='*.gradle.kts'
+
+      - name: Build phone and Wear OS debug APKs
+        working-directory: MyStudyCompanion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            :app:assembleDebug \
+            :wear:assembleDebug
+
+      - name: Collect and verify APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          test -f "$PHONE_APK"
+          test -f "$WEAR_APK"
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-debug.apk
+          cp "$WEAR_APK" dist/MyStudyCompanion-wear-debug.apk
+          unzip -tq dist/MyStudyCompanion-phone-debug.apk
+          unzip -tq dist/MyStudyCompanion-wear-debug.apk
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          ls -lh dist
+          cat dist/SHA256SUMS.txt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MyStudyCompanion-debug-apks-v3
+          if-no-files-found: error
+          retention-days: 14
+          path: dist/
