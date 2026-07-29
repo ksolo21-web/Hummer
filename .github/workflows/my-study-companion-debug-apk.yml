@@ -106,6 +106,12 @@ jobs:
           chmod 600 "$HOME/.android/debug.keystore"
           keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | tee private-alpha-key-report.txt
           grep -q 'SHA256: 28:0F:9C:9A:D4:BE:BA:33:72:1A:BD:09:A5:B8:04:60:7A:AE:7C:9D:07:91:8D:67:44:6A:F7:AD:55:6D:EC:44' private-alpha-key-report.txt
+          {
+            echo "MSC_RELEASE_STORE_FILE=$HOME/.android/debug.keystore"
+            echo "MSC_RELEASE_STORE_PASSWORD=android"
+            echo "MSC_RELEASE_KEY_ALIAS=androiddebugkey"
+            echo "MSC_RELEASE_KEY_PASSWORD=android"
+          } >> "$GITHUB_ENV"
 
       - name: Build phone and Wear OS debug APKs
         working-directory: MyStudyCompanion
