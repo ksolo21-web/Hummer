@@ -1,4 +1,4 @@
-name: Build My Study Companion Debug APK
+name: Build My Study Companion 0.9.3 Scene Themes Debug APK
 
 on:
   push:
@@ -75,16 +75,22 @@ jobs:
           test -f "$SDK_ROOT/platforms/android-36/android.jar"
           test -d "$SDK_ROOT/build-tools/36.0.0"
 
-      - name: Reconstruct and verify app source
+      - name: Reconstruct and verify 0.9.3 scene-theme source
         shell: bash
         run: |
           set -euo pipefail
           cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.2.tar.xz
           echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  MyStudyCompanion_0.9.2.tar.xz" | sha256sum -c -
           tar -xJf MyStudyCompanion_0.9.2.tar.xz
+          cat .msc-build/scene-0.9.3.part*.b64 | base64 --decode > MyStudyCompanion_0.9.3_scene_overlay.tar.xz
+          echo "735f1fe0b63fefb5b189adb68cc1ab4a6a6d7ce189e1e2203d4287fecda8d907  MyStudyCompanion_0.9.3_scene_overlay.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.3_scene_overlay.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/build.gradle.kts
           test -f MyStudyCompanion/wear/build.gradle.kts
+          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeArtwork.kt
+          test -f MyStudyCompanion/app/src/main/res/drawable-nodpi/theme_scene_lion.webp
+          grep -q 'versionName = "0.9.3-private-alpha-scene-themes"' MyStudyCompanion/app/build.gradle.kts
 
       - name: Apply Android source compatibility fixes
         shell: bash
@@ -132,8 +138,8 @@ jobs:
           WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
           test -n "$PHONE_APK"
           test -n "$WEAR_APK"
-          cp "$PHONE_APK" dist/MyStudyCompanion-phone-debug.apk
-          cp "$WEAR_APK" dist/MyStudyCompanion-wear-debug.apk
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-scene-themes-0.9.3.apk
+          cp "$WEAR_APK" dist/MyStudyCompanion-wear-scene-themes-0.9.3.apk
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
           ls -lh dist
           cat dist/SHA256SUMS.txt
@@ -141,7 +147,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-debug-apks-daily-widgets-v5
+          name: MyStudyCompanion-scene-themes-0.9.3-debug-apks
           if-no-files-found: error
           retention-days: 14
           path: dist/
