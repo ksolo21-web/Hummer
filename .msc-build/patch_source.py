@@ -45,6 +45,8 @@ manifest_filter_updates = {
 for relative, (legacy_filter, current_filter) in manifest_filter_updates.items():
     path = root / relative
     text = path.read_text(encoding="utf-8")
+    if current_filter in text:
+        continue
     if legacy_filter not in text:
         raise RuntimeError(f"Legacy Wear listener filter changed unexpectedly: {path}")
     path.write_text(
