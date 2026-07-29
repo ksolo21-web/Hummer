@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode .msc-build/theme-0.9.1-overlay.b64 > theme-0.9.1-overlay.tar.xz
+          cat .msc-build/theme-0.9.1.part*.b64 | base64 --decode > theme-0.9.1-overlay.tar.xz
           echo "a943c2801405d2eee56170eb7b1976645f53b9decdf7b50b7badaf687d70fbb2  theme-0.9.1-overlay.tar.xz" | sha256sum -c -
           tar -xJf theme-0.9.1-overlay.tar.xz -C MyStudyCompanion
           grep -q '0.9.1-theme-studio-private-alpha' MyStudyCompanion/app/build.gradle.kts
