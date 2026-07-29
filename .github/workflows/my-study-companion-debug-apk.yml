@@ -79,49 +79,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.0.tar.xz
-          echo "5186002f8c687b561975e4a17c9697334b0587081fac40dcef837ad72cbeec10  MyStudyCompanion_0.9.0.tar.xz" | sha256sum -c -
-          tar -xJf MyStudyCompanion_0.9.0.tar.xz
+          cat .msc-build/source.part*.b64 | base64 --decode > MyStudyCompanion_0.9.1.tar.xz
+          echo "491c973a7f230c1d4ddbfce9db1d27f911513e5125bfdb70a942c7475787fc11  MyStudyCompanion_0.9.1.tar.xz" | sha256sum -c -
+          tar -xJf MyStudyCompanion_0.9.1.tar.xz
           test -f MyStudyCompanion/settings.gradle.kts
           test -f MyStudyCompanion/app/build.gradle.kts
           test -f MyStudyCompanion/wear/build.gradle.kts
 
-      - name: Apply Kotlin 2 compiler DSL migration
+      - name: Apply Android source compatibility fixes
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          files = [
-              Path("MyStudyCompanion/app/build.gradle.kts"),
-              Path("MyStudyCompanion/wear/build.gradle.kts"),
-              Path("MyStudyCompanion/benchmark/build.gradle.kts"),
-          ]
-          pattern = re.compile(r"\n\s*kotlinOptions\s*\{\s*jvmTarget\s*=\s*\"17\"\s*\}", re.S)
-          block = """
-
-          kotlin {
-              compilerOptions {
-                  jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-              }
-          }
-          """
-          for path in files:
-              text = path.read_text(encoding="utf-8")
-              updated, count = pattern.subn("", text)
-              if count != 1:
-                  raise SystemExit(f"Expected one legacy kotlinOptions block in {path}, found {count}")
-              path.write_text(updated.rstrip() + block, encoding="utf-8")
-              print(f"Migrated {path}")
-          PY
-
-      - name: Apply current Android source compatibility fixes
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 .msc-build/apply-source-fixes.py
+          python3 .msc-build/patch_source.py
+          ! grep -R 'jvmTarget = "17"' MyStudyCompanion --include='*.gradle.kts'
+          ! grep -R 'androidx.compose.ui.geometry.Path' MyStudyCompanion --include='*.kt'
+          ! grep -R 'import androidx.compose.foundation.layout.weight' MyStudyCompanion --include='*.kt'
+          ! grep -R 'import androidx.glance.material3.GlanceTheme' MyStudyCompanion --include='*.kt'
+          ! grep -R '::Color' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
 
       - name: Build phone and Wear OS debug APKs
         working-directory: MyStudyCompanion
@@ -151,7 +125,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-debug-apks
+          name: MyStudyCompanion-debug-apks-theme-studio-v5
           if-no-files-found: error
           retention-days: 14
           path: dist/
