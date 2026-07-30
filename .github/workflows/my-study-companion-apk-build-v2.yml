@@ -102,8 +102,8 @@ jobs:
           grep -q 'Caleb and Sophia' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/YouthStudyPlanner.kt
           grep -q 'Young People Ask' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/YouthStudyPlanner.kt
           grep -q 'Research Guide' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
-          grep -q 'Family worship ideas' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
-          grep -q 'Ministry conductor' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          grep -q 'Ideas and family votes' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          grep -q 'Generate a ministry outline' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
           python3 - <<'PY'
           from pathlib import Path
           source = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app')
