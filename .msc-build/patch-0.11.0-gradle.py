@@ -19,35 +19,42 @@ elif "JvmTarget.JVM_17" not in text:
     raise SystemExit("Neither the legacy nor migrated Kotlin JVM-target block was found.")
 build_file.write_text(text, encoding="utf-8")
 
-# Compose 1.10 exposes weight through RowScope/ColumnScope. Explicitly importing the
-# internal implementation symbol fails compilation, so remove those imports.
+# Apply the same cleanup immediately for the 0.11.0 source.
 ui_dir = Path("MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui")
 for filename in (
     "AiStudyScreen.kt",
     "CompanionHubScreen.kt",
+    "HomeScreen.kt",
     "MyStudyCompanionApp.kt",
     "NotesScreen.kt",
     "SettingsScreen.kt",
+    "StudyScreen.kt",
 ):
     path = ui_dir / filename
+    if not path.is_file():
+        continue
     source = path.read_text(encoding="utf-8")
     source = source.replace("import androidx.compose.foundation.layout.weight\n", "")
+    source = source.replace("import androidx.compose.foundation.layout.matchParentSize\n", "")
     path.write_text(source, encoding="utf-8")
 
-# TopAppBar remains an experimental Material 3 API in the resolved dependency set.
 app_ui = ui_dir / "MyStudyCompanionApp.kt"
 source = app_ui.read_text(encoding="utf-8")
 opt_in = "@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)\n\n"
 if not source.startswith(opt_in):
     source = opt_in + source
+source = source.replace(
+    "@OptIn(ExperimentalMaterial3Api::class)",
+    "@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)",
+)
 app_ui.write_text(source, encoding="utf-8")
 
 # Material3TileService in Tiles 1.6.1 requires the ProtoLayout Material 3 artifact.
-# Add it through the root project so the checksum-locked Wear build overlay can still
-# replace its version metadata without losing this compile dependency.
+# The root build also owns a pre-compile cleanup task. It runs after every source
+# overlay, so later feature overlays cannot reintroduce internal Compose imports.
 root_build = Path("MyStudyCompanion/build.gradle.kts")
 root_text = root_build.read_text(encoding="utf-8")
-wear_material3_block = '''
+compatibility_block = r'''
 
 project(":wear") {
     pluginManager.withPlugin("com.android.application") {
@@ -57,9 +64,49 @@ project(":wear") {
         )
     }
 }
+
+val applyMscPostOverlayCompatibility by tasks.registering {
+    doLast {
+        val uiDirectory = rootProject.file("app/src/main/java/com/mystudycompanion/app/ui")
+        listOf(
+            "AiStudyScreen.kt",
+            "CompanionHubScreen.kt",
+            "HomeScreen.kt",
+            "MyStudyCompanionApp.kt",
+            "NotesScreen.kt",
+            "SettingsScreen.kt",
+            "StudyScreen.kt",
+        ).forEach { filename ->
+            val sourceFile = uiDirectory.resolve(filename)
+            if (sourceFile.isFile) {
+                var source = sourceFile.readText()
+                    .replace("import androidx.compose.foundation.layout.weight\n", "")
+                    .replace("import androidx.compose.foundation.layout.matchParentSize\n", "")
+                if (filename == "MyStudyCompanionApp.kt") {
+                    val optIn = "@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)\n\n"
+                    if (!source.startsWith(optIn)) source = optIn + source
+                    source = source.replace(
+                        "@OptIn(ExperimentalMaterial3Api::class)",
+                        "@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)",
+                    )
+                }
+                sourceFile.writeText(source)
+            }
+        }
+    }
+}
+
+subprojects {
+    tasks.matching {
+        it.name.startsWith("compile") && it.name.endsWith("Kotlin")
+    }.configureEach {
+        dependsOn(rootProject.tasks.named("applyMscPostOverlayCompatibility"))
+    }
+}
 '''
-if "androidx.wear.protolayout:protolayout-material3:1.4.1" not in root_text:
-    root_text += wear_material3_block
+marker = 'val applyMscPostOverlayCompatibility by tasks.registering'
+if marker not in root_text:
+    root_text += compatibility_block
     root_build.write_text(root_text, encoding="utf-8")
 
-print("Applied Kotlin, Compose, and Wear ProtoLayout Material 3 compatibility repairs.")
+print("Applied Kotlin, Compose post-overlay, and Wear ProtoLayout Material 3 compatibility repairs.")
