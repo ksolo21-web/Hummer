@@ -1,4 +1,4 @@
-name: My Study Companion 0.12.0 Source Traceability Build
+name: My Study Companion 0.12.1 Grounded Links Build
 
 on:
   pull_request:
@@ -7,7 +7,12 @@ on:
       - '.github/workflows/msc-0.12.0-source-traceability.yml'
       - '.msc-build/reconstruct-build-0120.sh'
       - '.msc-build/source-traceability-0.12.0.patch.part*'
+      - '.msc-build/patch-0.12.1-hardening.py.xz.b64'
   workflow_dispatch:
+
+concurrency:
+  group: msc-0121-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -43,7 +48,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct 0.12.0, test source traceability, and build phone and Wear APKs
+      - name: Reconstruct 0.12.1, test grounded links, and build phone and Wear APKs
         shell: bash
         run: bash .msc-build/reconstruct-build-0120.sh
 
@@ -59,10 +64,10 @@ jobs:
             echo 'BLOCKED: Firebase credentials are not configured; Google sign-in and cross-device family sync remain excluded from verified claims.' | tee dist/FIREBASE-STATUS.txt
           fi
 
-      - name: Upload 0.12.0 verification bundle
+      - name: Upload 0.12.1 verification bundle
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.0-source-traceability-debug-bundle
+          name: msc-0.12.1-grounded-links-debug-bundle
           path: dist/
           retention-days: 5
           if-no-files-found: error
