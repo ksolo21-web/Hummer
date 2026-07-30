@@ -66,6 +66,9 @@ jobs:
           cat .msc-build/ai-0.10.0.part*.b64 | base64 --decode > ai.tar.xz
           echo "7e7dde1ad7e8a26fdc797b7df154a416ebdc12c588915e79f00d497a45b70461  ai.tar.xz" | sha256sum -c -
           tar -xJf ai.tar.xz
+          base64 --decode .msc-build/ai-0.10.0-fix1.b64 > ai-fix1.tar.xz
+          echo "817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.tar.xz" | sha256sum -c -
+          tar -xJf ai-fix1.tar.xz
           grep -q 'versionName = "0.10.0-private-alpha-local-ai"' MyStudyCompanion/app/build.gradle.kts
           grep -q 'versionCode = 20' MyStudyCompanion/app/build.gradle.kts
           grep -q 'versionName = "0.10.0-wear-private-alpha-local-ai"' MyStudyCompanion/wear/build.gradle.kts
@@ -73,6 +76,7 @@ jobs:
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/AiProviderRouter.kt
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/OfficialKnowledgeSyncEngine.kt
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/preparation/PreparationReviewEngine.kt
+          grep -q 'response.candidates.first().text' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/GeminiNanoStudyProvider.kt
 
       - name: Apply Android source compatibility fixes
         shell: bash
