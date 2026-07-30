@@ -1,8 +1,8 @@
 name: My Study Companion 0.10.1 Phone APK Build
 
 on:
-  push:
-    branches: [agent/my-study-companion-apk-build]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
