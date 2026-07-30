@@ -67,7 +67,7 @@ jobs:
           find diagnostics -type f -maxdepth 8 -print | sort
 
       - name: Upload failing-test diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: msc-0.11.1-resolver-parser-diagnostics
