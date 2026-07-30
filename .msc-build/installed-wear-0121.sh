@@ -22,20 +22,85 @@ bash /tmp/installed-wear-0121-generated.sh
 EVIDENCE='installed-0121-evidence/wear'
 PACKAGE='com.mystudycompanion.app.debug'
 COMPONENT="${PACKAGE}/com.mystudycompanion.app.wear.MainActivity"
+REMOTE_XML='/sdcard/watch-awake.xml'
+LOCAL_XML="$EVIDENCE/watch-awake.xml"
+FINAL_PNG="$EVIDENCE/watch-awake.png"
+
 adb shell svc power stayon true || true
 adb shell settings put system screen_off_timeout 2147483647 || true
+adb shell settings put global device_provisioned 1 || true
+adb shell settings put secure user_setup_complete 1 || true
+adb shell am force-stop com.google.android.wearable.setupwizard || true
 adb shell input keyevent KEYCODE_WAKEUP || true
 adb shell wm dismiss-keyguard || true
-adb shell am start -n "$COMPONENT" | tee "$EVIDENCE/visual-launch.txt"
-grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/visual-launch.txt"
-sleep 2
-adb shell dumpsys activity activities > "$EVIDENCE/visual-activity.txt"
-grep -E "mResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|Resumed: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" "$EVIDENCE/visual-activity.txt" >/dev/null
-adb shell input keyevent KEYCODE_WAKEUP || true
-adb shell uiautomator dump /sdcard/watch-awake.xml | tee "$EVIDENCE/ui-dump.txt"
-adb pull /sdcard/watch-awake.xml "$EVIDENCE/watch-awake.xml"
-grep -Eq 'My Study Companion|TODAY.S TEXT|BIBLE JOURNEY' "$EVIDENCE/watch-awake.xml"
-adb exec-out screencap -p > "$EVIDENCE/watch-awake.png"
+
+hierarchy_ok=false
+for attempt in $(seq 1 8); do
+  printf 'Wear visual verification attempt %d/8.\n' "$attempt" | tee -a "$EVIDENCE/visual-retry.txt"
+  adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+  adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
+  adb shell am start -n "$COMPONENT" | tee "$EVIDENCE/visual-launch-${attempt}.txt"
+  grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/visual-launch-${attempt}.txt"
+
+  # Wait for the actual activity window, not the launch splash, to own focus.
+  focused=false
+  for settle in $(seq 1 20); do
+    adb shell dumpsys activity activities > "$EVIDENCE/visual-activity-${attempt}.txt" 2>&1 || true
+    adb shell dumpsys window windows > "$EVIDENCE/visual-window-${attempt}.txt" 2>&1 || true
+    if grep -E "mResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|Resumed: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
+        "$EVIDENCE/visual-activity-${attempt}.txt" >/dev/null \
+      && grep -E "mCurrentFocus=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|mFocusedApp=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
+        "$EVIDENCE/visual-window-${attempt}.txt" >/dev/null \
+      && ! grep -q "Splash Screen ${PACKAGE}" "$EVIDENCE/visual-window-${attempt}.txt"; then
+      focused=true
+      break
+    fi
+    sleep 2
+  done
+  if [[ "$focused" != true ]]; then
+    echo "Attempt ${attempt}: real Wear activity window did not settle." | tee -a "$EVIDENCE/visual-retry.txt"
+    adb shell input keyevent 3 >/dev/null 2>&1 || true
+    sleep 2
+    continue
+  fi
+
+  # Capture every settled attempt before asking UiAutomator for its hierarchy.
+  adb exec-out screencap -p > "$EVIDENCE/watch-awake-attempt-${attempt}.png" || true
+  adb shell rm -f "$REMOTE_XML" >/dev/null 2>&1 || true
+  rm -f "$LOCAL_XML"
+  dump_ok=false
+  if timeout 45s adb shell uiautomator dump --compressed "$REMOTE_XML" \
+      > "$EVIDENCE/ui-dump-${attempt}-compressed.txt" 2>&1; then
+    dump_ok=true
+  elif timeout 45s adb shell uiautomator dump "$REMOTE_XML" \
+      > "$EVIDENCE/ui-dump-${attempt}-plain.txt" 2>&1; then
+    dump_ok=true
+  fi
+  if [[ "$dump_ok" == true ]] \
+    && adb shell test -s "$REMOTE_XML" \
+    && adb pull "$REMOTE_XML" "$LOCAL_XML" > "$EVIDENCE/ui-pull-${attempt}.txt" 2>&1 \
+    && grep -Eqi 'My Study Companion|TODAY.?S TEXT|BIBLE JOURNEY|FAMILY WORSHIP' "$LOCAL_XML"; then
+    cp "$EVIDENCE/watch-awake-attempt-${attempt}.png" "$FINAL_PNG"
+    cp "$EVIDENCE/visual-activity-${attempt}.txt" "$EVIDENCE/visual-activity.txt"
+    cp "$EVIDENCE/visual-window-${attempt}.txt" "$EVIDENCE/visual-window.txt"
+    hierarchy_ok=true
+    printf 'PASS: Wear hierarchy exposed app content on attempt %d.\n' "$attempt" | tee -a "$EVIDENCE/visual-retry.txt"
+    break
+  fi
+
+  echo "Attempt ${attempt}: UiAutomator did not return the rendered app hierarchy." | tee -a "$EVIDENCE/visual-retry.txt"
+  adb shell input keyevent 3 >/dev/null 2>&1 || true
+  sleep 2
+done
+
+if [[ "$hierarchy_ok" != true ]]; then
+  adb shell dumpsys activity activities > "$EVIDENCE/visual-activity-final.txt" 2>&1 || true
+  adb shell dumpsys window windows > "$EVIDENCE/visual-window-final.txt" 2>&1 || true
+  adb logcat -d > "$EVIDENCE/visual-failure-logcat.txt" 2>&1 || true
+  echo 'Wear app reached foreground, but the rendered hierarchy could not be captured after eight settled retries.' >&2
+  exit 1
+fi
+
 python3 - <<'PY'
 import struct, zlib
 from pathlib import Path
@@ -106,5 +171,5 @@ Path('installed-0121-evidence/wear/visual-check.txt').write_text(
     encoding='utf-8',
 )
 PY
-printf '%s\n' 'PASS: Wear UI hierarchy exposed My Study Companion content and the captured screenshot was not black.' \
+printf '%s\n' 'PASS: Wear UI hierarchy exposed My Study Companion content after the launch splash cleared, and the captured screenshot was visibly rendered rather than black.' \
   | tee -a "$EVIDENCE/RESULT.txt"
