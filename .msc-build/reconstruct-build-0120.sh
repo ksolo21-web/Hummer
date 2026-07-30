@@ -18,7 +18,31 @@ base64 --decode .msc-build/ai-0.10.0-fix1.b64 > ai-fix1.tar.xz
 echo '817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.tar.xz' | sha256sum -c -
 tar -xJf ai-fix1.tar.xz
 python3 .msc-build/patch_source.py
-python3 MyStudyCompanion/tools/validate_source.py
+
+# The inherited validator still hard-codes the temporary 0.10.0 version name.
+# Run every other source-integrity check at this stage, then verify the final
+# 0.12.0 source version and built APK identities explicitly below.
+python3 - <<'PY'
+from pathlib import Path
+
+source = Path("MyStudyCompanion/tools/validate_source.py")
+stage = source.with_name("validate_source_stage.py")
+text = source.read_text(encoding="utf-8")
+obsolete = '    assert \'versionName = "0.10.0-private-alpha-local-ai"\' in build\n'
+if text.count(obsolete) != 1:
+    raise RuntimeError("Expected exactly one obsolete 0.10.0 version assertion")
+stage.write_text(
+    text.replace(
+        obsolete,
+        "    # Final version and APK identity are validated after the 0.12.0 overlay.\n",
+        1,
+    ),
+    encoding="utf-8",
+)
+PY
+python3 MyStudyCompanion/tools/validate_source_stage.py
+rm -f MyStudyCompanion/tools/validate_source_stage.py
+
 base64 --decode .msc-build/patch-0.10.1.py.gz.b64 | gzip -dc > /tmp/patch-0.10.1.py
 python3 /tmp/patch-0.10.1.py
 cat .msc-build/companion-0.11.0.part*.b64 | base64 --decode > /tmp/companion-0.11.0-overlay.tar.xz
