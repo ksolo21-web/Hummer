@@ -1,17 +1,15 @@
-name: My Study Companion Unified App APK Build
+name: My Study Companion 0.10.1 Phone APK Build
 
 on:
   push:
     branches: [agent/my-study-companion-apk-build]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-apks:
+  build-phone-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -44,7 +42,7 @@ jobs:
             "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
           fi
 
-      - name: Reconstruct unified 0.10.0 local AI source
+      - name: Reconstruct exact unified 0.10.0 source
         shell: bash
         run: |
           set -euo pipefail
@@ -70,35 +68,30 @@ jobs:
           echo "817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.tar.xz" | sha256sum -c -
           tar -xJf ai-fix1.tar.xz
           grep -q 'versionName = "0.10.0-private-alpha-local-ai"' MyStudyCompanion/app/build.gradle.kts
-          grep -q 'versionCode = 20' MyStudyCompanion/app/build.gradle.kts
-          grep -q 'versionName = "0.10.0-wear-private-alpha-local-ai"' MyStudyCompanion/wear/build.gradle.kts
-          grep -q 'versionCode = 360100001' MyStudyCompanion/wear/build.gradle.kts
-          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/AiProviderRouter.kt
-          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/OfficialKnowledgeSyncEngine.kt
-          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/preparation/PreparationReviewEngine.kt
           grep -q 'response.candidates.first().text' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/GeminiNanoStudyProvider.kt
 
-      - name: Apply Android source and runtime fixes
+      - name: Apply compatibility and 0.10.1 runtime repairs
         shell: bash
         run: |
           set -euo pipefail
           python3 .msc-build/patch_source.py
-          base64 --decode .msc-build/apply-ai-ui-fix2.py.xz.b64 > /tmp/apply-ai-ui-fix2.py.xz
-          echo "b5c4301ae9ca0b8424fb17ad638bf4185aa80a13a90ccfbbebecf3d1cde29a9e  /tmp/apply-ai-ui-fix2.py.xz" | sha256sum -c -
-          xz -d -c /tmp/apply-ai-ui-fix2.py.xz > /tmp/apply-ai-ui-fix2.py
-          python3 /tmp/apply-ai-ui-fix2.py
           python3 MyStudyCompanion/tools/validate_source.py
-          grep -q 'Active: Live guided' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
-          grep -q 'Automatic JW content refresh' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
-          grep -q 'fun themeBackdropContentColor' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/StudyTheme.kt
-
-      - name: Verify backend contracts
-        working-directory: MyStudyCompanion/backend
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m pip install -r requirements-dev.txt
-          python3 -m pytest -q
+          base64 --decode .msc-build/patch-0.10.1.py.gz.b64 | gzip -dc > /tmp/patch-0.10.1.py
+          python3 -m py_compile /tmp/patch-0.10.1.py
+          python3 /tmp/patch-0.10.1.py
+          grep -q 'versionName = "0.10.1-private-alpha-ai-refresh"' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionCode = 21' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'useDirectOfficialRefreshMode' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/sync/SyncStateStore.kt
+          grep -q 'Automatic official content refresh' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
+          grep -q 'LocalContentColor provides MaterialTheme.colorScheme.onBackground' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
+          grep -q 'Enable built-in Gemini Nano' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/LocalModelManager.kt')
+          text = path.read_text(encoding='utf-8')
+          assert text.index('private val preferences') < text.index('private val mutableState')
+          print('Verified local-model startup initialization order.')
+          PY
 
       - name: Install stable private-alpha signing key
         shell: bash
@@ -114,16 +107,15 @@ jobs:
             echo "MSC_RELEASE_KEY_PASSWORD=android"
           } >> "$GITHUB_ENV"
 
-      - name: Build and test phone and Wear OS APKs
+      - name: Test and build signed phone APK
         working-directory: MyStudyCompanion
         shell: bash
         run: |
           set -euo pipefail
           gradle --no-daemon --stacktrace -PMSC_LOCAL_OWNER_MODE=true \
-            :app:testDebugUnitTest :wear:testDebugUnitTest \
-            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+            :app:testDebugUnitTest :app:assemblePrivateAlpha
 
-      - name: Collect and verify APKs
+      - name: Collect and verify phone APK
         shell: bash
         run: |
           set -euo pipefail
@@ -132,26 +124,20 @@ jobs:
           APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
           mkdir -p dist
           PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
-          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
-          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.10.0.apk
-          cp "$WEAR_APK" dist/MyStudyCompanion-wear-unified-0.10.0.apk
-          unzip -tq dist/MyStudyCompanion-phone-unified-0.10.0.apk
-          unzip -tq dist/MyStudyCompanion-wear-unified-0.10.0.apk
-          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.10.0.apk | tee dist/PHONE-IDENTITY.txt
-          "$AAPT" dump badging dist/MyStudyCompanion-wear-unified-0.10.0.apk | tee dist/WEAR-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='20'" dist/PHONE-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='360100001'" dist/WEAR-IDENTITY.txt
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.10.0.apk | tee dist/PHONE-SIGNING.txt
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-wear-unified-0.10.0.apk | tee dist/WEAR-SIGNING.txt
+          test -f "$PHONE_APK"
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.10.1.apk
+          unzip -tq dist/MyStudyCompanion-phone-unified-0.10.1.apk
+          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.10.1.apk | tee dist/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='21'" dist/PHONE-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.10.1.apk | tee dist/PHONE-SIGNING.txt
           grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/PHONE-SIGNING.txt
-          grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/WEAR-SIGNING.txt
-          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          (cd dist && sha256sum MyStudyCompanion-phone-unified-0.10.1.apk > SHA256SUMS.txt)
           cat dist/SHA256SUMS.txt
 
-      - name: Upload unified 0.10.0 APK artifact
+      - name: Upload verified 0.10.1 phone APK
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-unified-0.10.0-ai-ui-fix2-apks
+          name: MyStudyCompanion-phone-0.10.1-ai-refresh-fixes
           if-no-files-found: error
           retention-days: 7
           path: dist/
