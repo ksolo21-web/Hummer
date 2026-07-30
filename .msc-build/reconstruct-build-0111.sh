@@ -28,11 +28,14 @@ python3 .msc-build/patch-0.11.0-gradle.py
 cat .msc-build/connectivity-0.11.1.part*.bin > /tmp/connectivity-0.11.1.tar.xz
 echo 'c4b745c11ce72eb7b6b37cc6ffab0bf97da7142cfb9edc51503365e2900c08e5  /tmp/connectivity-0.11.1.tar.xz' | sha256sum -c -
 tar -xJf /tmp/connectivity-0.11.1.tar.xz -C MyStudyCompanion
+python3 .msc-build/patch-0.11.1-jvm-links.py
 
 grep -q 'versionCode = 23' MyStudyCompanion/app/build.gradle.kts
 grep -q '0.11.1-private-alpha-verified-connectivity' MyStudyCompanion/app/build.gradle.kts
 grep -q '360110101' MyStudyCompanion/wear/build.gradle.kts
 grep -q 'srcid=jwlshare' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/JwLibraryLinkResolver.kt
+grep -q 'java.net.URI(cleanUrl)' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/JwLibraryLinkResolver.kt
+! grep -q 'android.text.Html' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepository.kt
 grep -q 'ScrollableTabRow' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
 grep -q 'LazyColumn' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MoreScreen.kt
 grep -q 'Restart at Day 1' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
