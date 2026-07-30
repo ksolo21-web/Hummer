@@ -27,13 +27,34 @@ if [[ -n "${GITHUB_PATH:-}" ]]; then
 fi
 command -v adb
 
-AVD_PATH="$HOME/.android/avd/${AVD_NAME}.avd"
-mkdir -p "$HOME/.android/avd"
-rm -rf "$AVD_PATH" "$HOME/.android/avd/${AVD_NAME}.ini"
-echo no | "$AVDMANAGER" create avd --force --name "$AVD_NAME" --path "$AVD_PATH" --package "$SYSTEM_IMAGE" --device pixel_6
+AVD_HOME="$HOME/.android/avd"
+AVD_PATH="$AVD_HOME/${AVD_NAME}.avd"
+AVD_INI="$AVD_HOME/${AVD_NAME}.ini"
+mkdir -p "$AVD_HOME"
+rm -rf "$AVD_PATH" "$AVD_INI"
+
+# Let avdmanager register the AVD in its default home. Some current command-line
+# tool builds create the .avd directory but omit the companion .ini when --path
+# is supplied, leaving the emulator unable to resolve the AVD by name.
+echo no | "$AVDMANAGER" create avd --force --name "$AVD_NAME" --package "$SYSTEM_IMAGE" --device pixel_6
+
+# Repair registration defensively if avdmanager omitted it.
+if [[ ! -f "$AVD_INI" ]]; then
+  cat > "$AVD_INI" <<EOF_INI
+avd.ini.encoding=UTF-8
+path=$AVD_PATH
+path.rel=avd/${AVD_NAME}.avd
+target=android-33
+EOF_INI
+fi
+
+test -d "$AVD_PATH"
+test -f "$AVD_INI"
+"$EMULATOR" -list-avds | tee "$EVIDENCE_DIR/registered-avds.txt" | grep -Fx "$AVD_NAME"
+
 CONFIG="$AVD_PATH/config.ini"
 test -f "$CONFIG"
-cat >> "$CONFIG" <<'EOF'
+cat >> "$CONFIG" <<'EOF_CONFIG'
 hw.ramSize=4096
 vm.heapSize=768
 disk.dataPartition.size=8G
@@ -41,18 +62,31 @@ hw.gpu.enabled=yes
 hw.gpu.mode=swiftshader_indirect
 hw.keyboard=yes
 showDeviceFrame=no
-EOF
+EOF_CONFIG
 
 adb kill-server >/dev/null 2>&1 || true
 nohup "$EMULATOR" -avd "$AVD_NAME" \
   -no-window -noaudio -no-boot-anim -camera-back none \
-  -gpu swiftshader_indirect -no-snapshot -no-snapshot-save -wipe-data \
+  -gpu swiftshader_indirect -no-snapshot -no-snapshot-save -wipe-data -no-metrics \
   > "$EVIDENCE_DIR/emulator.log" 2>&1 &
-echo $! > "$EVIDENCE_DIR/emulator.pid"
+EMULATOR_PID=$!
+echo "$EMULATOR_PID" > "$EVIDENCE_DIR/emulator.pid"
+sleep 4
+if ! kill -0 "$EMULATOR_PID" >/dev/null 2>&1; then
+  tail -n 300 "$EVIDENCE_DIR/emulator.log" > "$EVIDENCE_DIR/emulator-early-exit.txt" || true
+  echo 'Emulator process exited before Android boot began.' >&2
+  exit 1
+fi
 
 adb start-server >/dev/null
 ready_streak=0
 for attempt in $(seq 1 600); do
+  if ! kill -0 "$EMULATOR_PID" >/dev/null 2>&1; then
+    tail -n 300 "$EVIDENCE_DIR/emulator.log" > "$EVIDENCE_DIR/emulator-unexpected-exit.txt" || true
+    echo 'Emulator process exited before service readiness.' >&2
+    exit 1
+  fi
+
   state="$(adb get-state 2>/dev/null || true)"
   boot="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
   package_ready=false
@@ -82,7 +116,7 @@ for attempt in $(seq 1 600); do
       adb shell getprop > "$EVIDENCE_DIR/getprop-ready.txt"
       adb shell service list > "$EVIDENCE_DIR/services-ready.txt"
       adb shell cmd package list packages > "$EVIDENCE_DIR/packages-ready.txt"
-      printf '%s\n' 'PASS: emulator reported boot complete and input, settings, activity, and package services were responsive for three consecutive checks.' | tee "$EVIDENCE_DIR/RESULT.txt"
+      printf '%s\n' 'PASS: emulator registration was valid, boot completed, and input, settings, activity, and package services were responsive for three consecutive checks.' | tee "$EVIDENCE_DIR/RESULT.txt"
       exit 0
     fi
   else
