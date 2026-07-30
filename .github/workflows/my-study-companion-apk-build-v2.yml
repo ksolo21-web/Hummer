@@ -78,12 +78,19 @@ jobs:
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/preparation/PreparationReviewEngine.kt
           grep -q 'response.candidates.first().text' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/GeminiNanoStudyProvider.kt
 
-      - name: Apply Android source compatibility fixes
+      - name: Apply Android source and runtime fixes
         shell: bash
         run: |
           set -euo pipefail
           python3 .msc-build/patch_source.py
+          base64 --decode .msc-build/apply-ai-ui-fix2.py.xz.b64 > /tmp/apply-ai-ui-fix2.py.xz
+          echo "b5c4301ae9ca0b8424fb17ad638bf4185aa80a13a90ccfbbebecf3d1cde29a9e  /tmp/apply-ai-ui-fix2.py.xz" | sha256sum -c -
+          xz -d -c /tmp/apply-ai-ui-fix2.py.xz > /tmp/apply-ai-ui-fix2.py
+          python3 /tmp/apply-ai-ui-fix2.py
           python3 MyStudyCompanion/tools/validate_source.py
+          grep -q 'Active: Live guided' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
+          grep -q 'Automatic JW content refresh' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
+          grep -q 'fun themeBackdropContentColor' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/StudyTheme.kt
 
       - name: Verify backend contracts
         working-directory: MyStudyCompanion/backend
@@ -144,7 +151,7 @@ jobs:
       - name: Upload unified 0.10.0 APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-unified-0.10.0-local-ai-apks
+          name: MyStudyCompanion-unified-0.10.0-ai-ui-fix2-apks
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
           path: dist/
