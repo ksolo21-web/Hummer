@@ -30,27 +30,40 @@ command -v adb
 AVD_HOME="$HOME/.android/avd"
 AVD_PATH="$AVD_HOME/${AVD_NAME}.avd"
 AVD_INI="$AVD_HOME/${AVD_NAME}.ini"
+export ANDROID_AVD_HOME="$AVD_HOME"
+export ANDROID_SDK_HOME="$HOME"
 mkdir -p "$AVD_HOME"
 rm -rf "$AVD_PATH" "$AVD_INI"
+env | sort > "$EVIDENCE_DIR/emulator-environment.txt"
 
-# Let avdmanager register the AVD in its default home. Some current command-line
-# tool builds create the .avd directory but omit the companion .ini when --path
-# is supplied, leaving the emulator unable to resolve the AVD by name.
-echo no | "$AVDMANAGER" create avd --force --name "$AVD_NAME" --package "$SYSTEM_IMAGE" --device pixel_6
+# Pin both the AVD directory and registration file. Current command-line tool
+# builds can omit the .ini when --path is supplied, so write it ourselves after
+# a successful create instead of depending on implicit registration behavior.
+printf 'no\n' > "$EVIDENCE_DIR/avd-answer.txt"
+set +e
+"$AVDMANAGER" create avd --force --name "$AVD_NAME" --path "$AVD_PATH" \
+  --package "$SYSTEM_IMAGE" --device pixel_6 \
+  < "$EVIDENCE_DIR/avd-answer.txt" > "$EVIDENCE_DIR/avdmanager-create.txt" 2>&1
+AVD_CREATE_STATUS=$?
+set -e
+cat "$EVIDENCE_DIR/avdmanager-create.txt"
+if (( AVD_CREATE_STATUS != 0 )); then
+  printf 'avdmanager exited with status %d.\n' "$AVD_CREATE_STATUS" | tee "$EVIDENCE_DIR/avdmanager-failure.txt" >&2
+  exit "$AVD_CREATE_STATUS"
+fi
 
-# Repair registration defensively if avdmanager omitted it.
-if [[ ! -f "$AVD_INI" ]]; then
-  cat > "$AVD_INI" <<EOF_INI
+cat > "$AVD_INI" <<EOF_INI
 avd.ini.encoding=UTF-8
 path=$AVD_PATH
 path.rel=avd/${AVD_NAME}.avd
 target=android-33
 EOF_INI
-fi
 
-test -d "$AVD_PATH"
-test -f "$AVD_INI"
-"$EMULATOR" -list-avds | tee "$EVIDENCE_DIR/registered-avds.txt" | grep -Fx "$AVD_NAME"
+test -d "$AVD_PATH" || { echo "Missing AVD directory: $AVD_PATH" | tee "$EVIDENCE_DIR/avd-path-failure.txt" >&2; exit 1; }
+test -f "$AVD_INI" || { echo "Missing AVD registration: $AVD_INI" | tee "$EVIDENCE_DIR/avd-ini-failure.txt" >&2; exit 1; }
+"$EMULATOR" -list-avds > "$EVIDENCE_DIR/registered-avds.txt"
+cat "$EVIDENCE_DIR/registered-avds.txt"
+grep -Fx "$AVD_NAME" "$EVIDENCE_DIR/registered-avds.txt"
 
 CONFIG="$AVD_PATH/config.ini"
 test -f "$CONFIG"
