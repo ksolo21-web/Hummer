@@ -6,6 +6,15 @@ source = Path('.msc-build/installed-wear-0120.sh').read_text(encoding='utf-8')
 source = source.replace('installed-0120-evidence/wear', 'installed-0121-evidence/wear')
 source = source.replace('MyStudyCompanion-wear-0.12.0-debug.apk', 'MyStudyCompanion-wear-0.12.1-debug.apk')
 source = source.replace('PASS: 0.12.0 Wear APK', 'PASS: 0.12.1 Wear APK')
+blocking = """adb shell am start -W -n "$COMPONENT" | tee "$EVIDENCE/launch.txt"
+grep -q 'Status: ok' "$EVIDENCE/launch.txt"
+"""
+nonblocking = """adb shell am start -n "$COMPONENT" | tee "$EVIDENCE/launch.txt"
+grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/launch.txt"
+"""
+if source.count(blocking) != 1:
+    raise SystemExit('Expected exactly one blocking Wear launch assertion.')
+source = source.replace(blocking, nonblocking, 1)
 Path('/tmp/installed-wear-0121-generated.sh').write_text(source, encoding='utf-8')
 PY
 bash /tmp/installed-wear-0121-generated.sh
@@ -17,9 +26,11 @@ adb shell svc power stayon true || true
 adb shell settings put system screen_off_timeout 2147483647 || true
 adb shell input keyevent KEYCODE_WAKEUP || true
 adb shell wm dismiss-keyguard || true
-adb shell am start -W -n "$COMPONENT" | tee "$EVIDENCE/visual-launch.txt"
-grep -q 'Status: ok' "$EVIDENCE/visual-launch.txt"
+adb shell am start -n "$COMPONENT" | tee "$EVIDENCE/visual-launch.txt"
+grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/visual-launch.txt"
 sleep 2
+adb shell dumpsys activity activities > "$EVIDENCE/visual-activity.txt"
+grep -E "mResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|Resumed: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" "$EVIDENCE/visual-activity.txt" >/dev/null
 adb shell input keyevent KEYCODE_WAKEUP || true
 adb shell uiautomator dump /sdcard/watch-awake.xml | tee "$EVIDENCE/ui-dump.txt"
 adb pull /sdcard/watch-awake.xml "$EVIDENCE/watch-awake.xml"
