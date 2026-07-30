@@ -1,8 +1,6 @@
 name: My Study Companion 0.11.1 Wear Installed Retry
 
 on:
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
