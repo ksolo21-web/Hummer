@@ -98,9 +98,20 @@ jobs:
           set -euo pipefail
           URL='https://www.jw.org/en/library/jw-meeting-workbook/july-august-2026-mwb/Life-and-Ministry-Meeting-Schedule-for-July-27-August-2-2026/'
           curl --fail --location --retry 3 "$URL" -o current-week.html
-          grep -q '202026244' current-week.html
-          grep -Eqi 'Jeremiah 20.?21|JEREMIAH 20.?21' current-week.html
-          grep -Eqi 'Jeremiah 20:7.?18' current-week.html
+          python3 - <<'PY'
+          import html
+          import re
+          from pathlib import Path
+          raw = Path('current-week.html').read_text(encoding='utf-8', errors='replace')
+          text = html.unescape(re.sub(r'<[^>]+>', ' ', raw))
+          for dash in ('\u2010', '\u2011', '\u2012', '\u2013', '\u2014', '\u2212'):
+              text = text.replace(dash, '-')
+          text = ' '.join(text.replace('\u00a0', ' ').split())
+          assert '202026244' in raw
+          assert re.search(r'Jeremiah\s*20\s*-\s*21', text, re.I), text[:500]
+          assert re.search(r'Jer(?:emiah)?\s*20:7\s*-\s*18', text, re.I), text[:500]
+          print('Verified active week document 202026244, Jeremiah 20-21, and Jeremiah 20:7-18.')
+          PY
 
       - name: Run phone and Wear tests and build debug APKs
         working-directory: MyStudyCompanion
