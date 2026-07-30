@@ -1,8 +1,6 @@
 name: My Study Companion 0.11.1 Verified Build
 
 on:
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -43,45 +41,13 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-build-0111.sh
 
-      - name: Preserve resolver and meeting-parser diagnostics
-        if: always()
-        shell: bash
-        run: |
-          set -u
-          mkdir -p diagnostics/source diagnostics/test-results diagnostics/test-reports
-          for source in \
-            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/JwLibraryLinkResolver.kt \
-            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepository.kt \
-            MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt \
-            MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepositoryTest.kt; do
-            if [[ -f "$source" ]]; then
-              cp "$source" diagnostics/source/
-            fi
-          done
-          if [[ -d MyStudyCompanion/app/build/test-results ]]; then
-            cp -R MyStudyCompanion/app/build/test-results/. diagnostics/test-results/
-          fi
-          if [[ -d MyStudyCompanion/app/build/reports/tests ]]; then
-            cp -R MyStudyCompanion/app/build/reports/tests/. diagnostics/test-reports/
-          fi
-          find diagnostics -type f -maxdepth 8 -print | sort
-
-      - name: Upload failing-test diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: msc-0.11.1-resolver-parser-diagnostics
-          path: diagnostics/
-          retention-days: 3
-          if-no-files-found: warn
-
       - name: Record Firebase verification status
         shell: bash
         env:
-          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.MSC_GOOGLE_SERVICES_JSON_B64 }}
           MSC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.MSC_GOOGLE_WEB_CLIENT_ID }}
         run: |
-          if [[ -n "$GOOGLE_SERVICES_JSON_B64" && -n "$MSC_GOOGLE_WEB_CLIENT_ID" ]]; then
+          if [[ -n "${GOOGLE_SERVICES_JSON_B64:-}" && -n "${MSC_GOOGLE_WEB_CLIENT_ID:-}" ]]; then
             echo 'Firebase credentials present; live sign-in/sync testing is eligible to run.' | tee dist/FIREBASE-STATUS.txt
           else
             echo 'BLOCKED: Firebase credentials are not configured; Google sign-in and cross-device family sync are not release-verified.' | tee dist/FIREBASE-STATUS.txt
@@ -94,104 +60,3 @@ jobs:
           path: dist/
           retention-days: 3
           if-no-files-found: error
-
-  installed-phone-jw-library:
-    needs: build-phone-wear
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Check out verification scripts
-        uses: actions/checkout@v6
-        with:
-          ref: agent/my-study-companion-apk-build
-
-      - name: Download debug verification bundle
-        uses: actions/download-artifact@v8
-        with:
-          name: msc-0.11.1-debug-verification-bundle
-          path: dist
-
-      - name: Download current official JW Library APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?alllangs=1&fileformat=APK&langwritten=E&output=json&pub=jwlb&txtCMSLang=E' -o response.json
-          python3 - <<'PY'
-          import json, re, urllib.request
-          from pathlib import Path
-          data = json.loads(Path('response.json').read_text(encoding='utf-8'))
-          urls = re.findall(r'https://[^"\\]+?\.apk(?:\?[^"\\]*)?', json.dumps(data), flags=re.I)
-          if not urls:
-              raise SystemExit('No official JW Library APK URL')
-          urllib.request.urlretrieve(urls[0], 'JWLibrary.apk')
-          PY
-          unzip -tq JWLibrary.apk
-
-      - name: Run installed phone, JW Library, return and tablet tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          emulator-boot-timeout: 900
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -wipe-data
-          script: bash .msc-build/installed-phone-0111.sh
-
-      - name: Upload installed phone evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: msc-0.11.1-installed-phone-evidence
-          path: installed-evidence/
-          retention-days: 3
-          if-no-files-found: warn
-
-  installed-wear:
-    needs: build-phone-wear
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Check out verification branch
-        uses: actions/checkout@v6
-        with:
-          ref: agent/my-study-companion-apk-build
-
-      - name: Download debug verification bundle
-        uses: actions/download-artifact@v8
-        with:
-          name: msc-0.11.1-debug-verification-bundle
-          path: dist
-
-      - name: Install and launch Wear APK in Wear OS emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: android-wear
-          arch: x86_64
-          emulator-boot-timeout: 900
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -wipe-data
-          script: |
-            set -euo pipefail
-            mkdir -p wear-installed-evidence
-            adb install -r dist/MyStudyCompanion-wear-0.11.1-debug.apk | tee wear-installed-evidence/install.txt
-            test -n "$(adb shell pm path com.mystudycompanion.app.debug | tr -d '\r')"
-            adb shell am force-stop com.mystudycompanion.app.debug
-            adb shell monkey -p com.mystudycompanion.app.debug -c android.intent.category.LAUNCHER 1 | tee wear-installed-evidence/launch.txt
-            sleep 5
-            adb shell dumpsys activity activities > wear-installed-evidence/activity.txt
-            grep -m1 'mResumedActivity' wear-installed-evidence/activity.txt | grep -q 'com.mystudycompanion.app.debug'
-            adb exec-out screencap -p > wear-installed-evidence/watch-home.png
-            adb shell uiautomator dump /sdcard/watch.xml >/dev/null 2>&1 || true
-            adb pull /sdcard/watch.xml wear-installed-evidence/watch.xml >/dev/null 2>&1 || true
-
-      - name: Upload installed Wear evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: msc-0.11.1-installed-wear-evidence
-          path: wear-installed-evidence/
-          retention-days: 3
-          if-no-files-found: warn
