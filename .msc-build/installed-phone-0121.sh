@@ -29,6 +29,11 @@ source = Path('.msc-build/installed-phone-0120.sh').read_text(encoding='utf-8')
 source = source.replace('installed-0120-evidence/phone', 'installed-0121-evidence/phone')
 source = source.replace('MyStudyCompanion-phone-0.12.0-debug.apk', 'MyStudyCompanion-phone-0.12.1-debug.apk')
 source = source.replace('PASS: 0.12.0 phone APK', 'PASS: 0.12.1 phone APK upgraded from database version 6')
+bad_local = '  local apk="$1" package="$2" label="$3" log="$EVIDENCE/${label}-install.txt"\n'
+good_local = '  local apk="$1" package="$2" label="$3"\n  local log="$EVIDENCE/${label}-install.txt"\n'
+if source.count(bad_local) != 1:
+    raise SystemExit('Expected exactly one unsafe install_apk local declaration.')
+source = source.replace(bad_local, good_local, 1)
 anchor = "resolve_jw week_https 'https://www.jw.org/finder?srcid=jwlshare&wtlocale=E&prefer=lang&docid=202026244'\n"
 addition = anchor + "TODAY_UTC=\"$(date -u +%Y%m%d)\"\nresolve_jw daily \"jwlibrary:///finder?alias=daily-text&date=${TODAY_UTC}&wtlocale=E\"\nresolve_jw daily_https \"https://www.jw.org/finder?alias=daily-text&date=${TODAY_UTC}&wtlocale=E\"\n"
 if source.count(anchor) != 1:
