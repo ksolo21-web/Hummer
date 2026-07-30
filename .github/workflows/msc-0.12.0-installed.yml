@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - '.github/workflows/msc-0.12.0-installed.yml'
+      - '.msc-build/start-phone-emulator.sh'
       - '.msc-build/installed-phone-migration-0121.sh'
       - '.msc-build/installed-phone-jw-0121.sh'
       - '.msc-build/installed-wear-0121.sh'
@@ -73,21 +74,24 @@ jobs:
           unzip -q baseline-bundle.zip -d dist-baseline
           (cd dist-baseline && sha256sum -c SHA256SUMS.txt)
 
+      - name: Bootstrap a service-stable API 33 phone emulator
+        shell: bash
+        env:
+          MSC_AVD_NAME: msc-migration-api33
+        run: bash .msc-build/start-phone-emulator.sh installed-0121-evidence/migration/emulator
+
       - name: Verify real Room migration and adaptive AI layouts
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          cores: 4
-          ram-size: 4096M
-          heap-size: 768M
-          disk-size: 8192M
-          emulator-boot-timeout: 900
-          disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          script: bash .msc-build/installed-phone-migration-0121.sh
+        shell: bash
+        run: bash .msc-build/installed-phone-migration-0121.sh
+
+      - name: Stop migration emulator
+        if: always()
+        shell: bash
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          if [[ -f installed-0121-evidence/migration/emulator/emulator.pid ]]; then
+            kill "$(cat installed-0121-evidence/migration/emulator/emulator.pid)" >/dev/null 2>&1 || true
+          fi
 
       - name: Upload phone migration and layout evidence
         if: always()
@@ -161,21 +165,24 @@ jobs:
           PY
           unzip -tq JWLibrary.apk
 
+      - name: Bootstrap a service-stable API 33 phone emulator
+        shell: bash
+        env:
+          MSC_AVD_NAME: msc-jw-api33
+        run: bash .msc-build/start-phone-emulator.sh installed-0121-evidence/jw-library/emulator
+
       - name: Verify exact JW Library targets and Bible Journey return
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          cores: 4
-          ram-size: 4096M
-          heap-size: 768M
-          disk-size: 8192M
-          emulator-boot-timeout: 900
-          disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          script: bash .msc-build/installed-phone-jw-0121.sh
+        shell: bash
+        run: bash .msc-build/installed-phone-jw-0121.sh
+
+      - name: Stop JW Library emulator
+        if: always()
+        shell: bash
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          if [[ -f installed-0121-evidence/jw-library/emulator/emulator.pid ]]; then
+            kill "$(cat installed-0121-evidence/jw-library/emulator/emulator.pid)" >/dev/null 2>&1 || true
+          fi
 
       - name: Upload installed phone and JW Library evidence
         if: always()
