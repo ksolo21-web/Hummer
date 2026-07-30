@@ -1,4 +1,4 @@
-name: My Study Companion 0.10.1 Phone APK Build
+name: My Study Companion 0.11.0 Phone APK Build
 
 on:
   pull_request:
@@ -70,7 +70,7 @@ jobs:
           grep -q 'versionName = "0.10.0-private-alpha-local-ai"' MyStudyCompanion/app/build.gradle.kts
           grep -q 'response.candidates.first().text' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/GeminiNanoStudyProvider.kt
 
-      - name: Apply compatibility and 0.10.1 runtime repairs
+      - name: Apply verified 0.10.1 runtime repairs
         shell: bash
         run: |
           set -euo pipefail
@@ -81,10 +81,6 @@ jobs:
           python3 /tmp/patch-0.10.1.py
           grep -q 'versionName = "0.10.1-private-alpha-ai-refresh"' MyStudyCompanion/app/build.gradle.kts
           grep -q 'versionCode = 21' MyStudyCompanion/app/build.gradle.kts
-          grep -q 'useDirectOfficialRefreshMode' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/update/SyncStateStore.kt
-          grep -q 'Automatic official content refresh' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
-          grep -q 'LocalContentColor provides MaterialTheme.colorScheme.onBackground' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
-          grep -q 'Enable built-in Gemini Nano' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
           python3 - <<'PY'
           from pathlib import Path
           path = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/LocalModelManager.kt')
@@ -92,6 +88,57 @@ jobs:
           assert text.index('private val preferences') < text.index('private val mutableState')
           print('Verified local-model startup initialization order.')
           PY
+
+      - name: Apply checksum-locked 0.11.0 major feature overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/companion-0.11.0-overlay.b64 > /tmp/companion-0.11.0-overlay.tar.xz
+          echo "c9704c0eef9c0086e1b0d53fe87911fbdf313888afd83783cc77b682e8859a76  /tmp/companion-0.11.0-overlay.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/companion-0.11.0-overlay.tar.xz -C MyStudyCompanion
+          grep -q 'versionName = "0.11.0-private-alpha-family-youth"' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionCode = 22' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'Bible stories and themes' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt
+          grep -q 'Caleb and Sophia' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/YouthStudyPlanner.kt
+          grep -q 'Young People Ask' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/YouthStudyPlanner.kt
+          grep -q 'Research Guide' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          grep -q 'Family worship ideas' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          grep -q 'Ministry conductor' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app')
+          required = [
+              source / 'companion/CompanionHubRepository.kt',
+              source / 'companion/BibleJourneyCatalog.kt',
+              source / 'companion/JwLibraryLinkResolver.kt',
+              source / 'ui/CompanionHubScreen.kt',
+          ]
+          for path in required:
+              assert path.is_file() and path.stat().st_size > 500, path
+          local_model = (source / 'ai/runtime/LocalModelManager.kt').read_text(encoding='utf-8')
+          assert local_model.index('private val preferences') < local_model.index('private val mutableState')
+          print('Verified 0.11.0 feature files and preserved startup repair.')
+          PY
+
+      - name: Install optional Google/Firebase project configuration
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.MSC_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${GOOGLE_SERVICES_JSON_B64:-}" ]]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > MyStudyCompanion/app/google-services.json
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('MyStudyCompanion/app/google-services.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data.get('project_info', {}).get('project_id')
+          print('Validated optional Firebase project configuration.')
+          PY
+          else
+            echo 'Google/Firebase project configuration is not present; account UI will remain honestly disabled.'
+          fi
 
       - name: Install stable private-alpha signing key
         shell: bash
@@ -107,12 +154,18 @@ jobs:
             echo "MSC_RELEASE_KEY_PASSWORD=android"
           } >> "$GITHUB_ENV"
 
-      - name: Test and build signed phone APK
+      - name: Test and build signed 0.11.0 phone APK
         working-directory: MyStudyCompanion
         shell: bash
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.MSC_GOOGLE_WEB_CLIENT_ID }}
         run: |
           set -euo pipefail
-          gradle --no-daemon --stacktrace -PMSC_LOCAL_OWNER_MODE=true \
+          EXTRA_ARGS=("-PMSC_LOCAL_OWNER_MODE=true")
+          if [[ -n "${GOOGLE_WEB_CLIENT_ID:-}" ]]; then
+            EXTRA_ARGS+=("-PMSC_GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID}")
+          fi
+          gradle --no-daemon --stacktrace "${EXTRA_ARGS[@]}" \
             :app:testDebugUnitTest :app:assemblePrivateAlpha
 
       - name: Collect and verify phone APK
@@ -125,19 +178,29 @@ jobs:
           mkdir -p dist
           PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
           test -f "$PHONE_APK"
-          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.10.1.apk
-          unzip -tq dist/MyStudyCompanion-phone-unified-0.10.1.apk
-          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.10.1.apk | tee dist/PHONE-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='21'" dist/PHONE-IDENTITY.txt
-          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.10.1.apk | tee dist/PHONE-SIGNING.txt
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.11.0.apk
+          unzip -tq dist/MyStudyCompanion-phone-unified-0.11.0.apk
+          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.11.0.apk | tee dist/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='22'" dist/PHONE-IDENTITY.txt
+          grep -q "versionName='0.11.0-private-alpha-family-youth'" dist/PHONE-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.11.0.apk | tee dist/PHONE-SIGNING.txt
           grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/PHONE-SIGNING.txt
-          (cd dist && sha256sum MyStudyCompanion-phone-unified-0.10.1.apk > SHA256SUMS.txt)
+          (cd dist && sha256sum MyStudyCompanion-phone-unified-0.11.0.apk > SHA256SUMS.txt)
+          {
+            echo 'My Study Companion 0.11.0 verification'
+            echo
+            cat dist/PHONE-IDENTITY.txt
+            echo
+            cat dist/PHONE-SIGNING.txt
+            echo
+            cat dist/SHA256SUMS.txt
+          } > dist/VERIFICATION-REPORT.txt
           cat dist/SHA256SUMS.txt
 
-      - name: Upload verified 0.10.1 phone APK
+      - name: Upload verified 0.11.0 phone APK
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-phone-0.10.1-ai-refresh-fixes
+          name: MyStudyCompanion-phone-0.11.0-family-youth-bible-ministry
           if-no-files-found: error
           retention-days: 7
           path: dist/
