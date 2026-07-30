@@ -1,0 +1,132 @@
+name: My Study Companion 0.12.0 Installed Verification
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.0-installed.yml'
+      - '.msc-build/installed-phone-0120.sh'
+      - '.msc-build/installed-wear-0120.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  installed-phone-jw-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: Check out 0.12.0 installed verifier
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Download verified 0.12.0 APK bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8771893228/zip' \
+            -o debug-bundle.zip
+          mkdir -p dist
+          unzip -q debug-bundle.zip -d dist
+          echo 'a24f319747a7b163838100cd72de513e5f953f8f15afcdd98bb6e77bd0a10c3d  dist/MyStudyCompanion-phone-0.12.0-debug.apk' | sha256sum -c -
+
+      - name: Download current official JW Library APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?alllangs=1&fileformat=APK&langwritten=E&output=json&pub=jwlb&txtCMSLang=E' \
+            -o response.json
+          python3 - <<'PY'
+          import json, re, urllib.request
+          from pathlib import Path
+          data = json.loads(Path('response.json').read_text(encoding='utf-8'))
+          urls = re.findall(r'https://[^"\\]+?\.apk(?:\?[^"\\]*)?', json.dumps(data), flags=re.I)
+          if not urls:
+              raise SystemExit('No official JW Library APK URL was returned.')
+          urllib.request.urlretrieve(urls[0], 'JWLibrary.apk')
+          PY
+          unzip -tq JWLibrary.apk
+
+      - name: Install phone and verify AI layouts plus JW Library integration
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 768M
+          disk-size: 8192M
+          emulator-boot-timeout: 900
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: bash .msc-build/installed-phone-0120.sh
+
+      - name: Upload installed phone evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.0-installed-phone-jw-evidence
+          path: installed-0120-evidence/phone/
+          retention-days: 5
+          if-no-files-found: warn
+
+  installed-wear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out 0.12.0 Wear verifier
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Download verified 0.12.0 Wear APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8771893228/zip' \
+            -o debug-bundle.zip
+          mkdir -p dist
+          unzip -q debug-bundle.zip -d dist
+          echo '3d3c1fc88810807d99fc4691d516e65686cc473ca4d0381db52aff4159e1a756  dist/MyStudyCompanion-wear-0.12.0-debug.apk' | sha256sum -c -
+
+      - name: Install and launch Wear APK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: android-wear
+          arch: x86_64
+          cores: 4
+          ram-size: 3072M
+          heap-size: 512M
+          disk-size: 4096M
+          emulator-boot-timeout: 900
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: bash .msc-build/installed-wear-0120.sh
+
+      - name: Upload installed Wear evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.0-installed-wear-evidence
+          path: installed-0120-evidence/wear/
+          retention-days: 5
+          if-no-files-found: warn
