@@ -6,37 +6,6 @@ resolver = ROOT / 'app/src/main/java/com/mystudycompanion/app/companion/JwLibrar
 meeting = ROOT / 'app/src/main/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepository.kt'
 
 resolver_text = resolver.read_text(encoding='utf-8')
-old_resolver_block = '''    fun targetFromOfficialUrl(url: String, label: String = "official material"): Target {
-        val cleanUrl = url.trim()
-        if (cleanUrl.isBlank()) return Target(null, RESEARCH_GUIDE_URL, label)
-        val uri = runCatching { Uri.parse(cleanUrl) }.getOrNull()
-            ?: return Target(null, cleanUrl, label)
-
-        if (uri.scheme.equals("jwlibrary", ignoreCase = true)) {
-            val web = "https://www.jw.org${uri.path.orEmpty()}" +
-                uri.encodedQuery?.let { "?$it" }.orEmpty()
-            return Target(cleanUrl, web, label)
-        }
-
-        if (uri.host.equals("www.jw.org", ignoreCase = true) && uri.path == "/finder") {
-            return Target(
-                libraryUri = "jwlibrary:///finder" + uri.encodedQuery?.let { "?$it" }.orEmpty(),
-                webUrl = cleanUrl,
-                label = label,
-            )
-        }
-
-        val wolDocId = if (uri.host.equals("wol.jw.org", ignoreCase = true)) {
-            Regex("/wol/d/[^/]+/[^/]+/(\\d+)").find(uri.path.orEmpty())?.groupValues?.getOrNull(1)
-        } else null
-        if (!wolDocId.isNullOrBlank()) return documentTarget(wolDocId, cleanUrl, label)
-
-        val finderDocId = uri.getQueryParameter("docid")
-        if (!finderDocId.isNullOrBlank()) return documentTarget(finderDocId, cleanUrl, label)
-
-        return Target(libraryUri = null, webUrl = cleanUrl, label = label)
-    }
-'''
 new_resolver_block = '''    fun targetFromOfficialUrl(url: String, label: String = "official material"): Target {
         val cleanUrl = url.trim()
         if (cleanUrl.isBlank()) return Target(null, RESEARCH_GUIDE_URL, label)
@@ -78,20 +47,18 @@ new_resolver_block = '''    fun targetFromOfficialUrl(url: String, label: String
         return Target(libraryUri = null, webUrl = cleanUrl, label = label)
     }
 '''
-if old_resolver_block not in resolver_text:
-    if new_resolver_block not in resolver_text:
-        raise SystemExit('Expected targetFromOfficialUrl block was not found.')
-else:
-    resolver_text = resolver_text.replace(old_resolver_block, new_resolver_block)
+if 'java.net.URI(cleanUrl)' not in resolver_text:
+    start_marker = '    fun targetFromOfficialUrl(url: String, label: String = "official material"): Target {'
+    end_marker = '\n\n    /** Web form retained for official-source storage and citations. */'
+    start = resolver_text.find(start_marker)
+    end = resolver_text.find(end_marker, start)
+    if start < 0 or end < 0:
+        raise SystemExit('Could not locate targetFromOfficialUrl structural boundaries.')
+    resolver_text = resolver_text[:start] + new_resolver_block + resolver_text[end:]
 resolver.write_text(resolver_text, encoding='utf-8')
 
 meeting_text = meeting.read_text(encoding='utf-8')
 meeting_text = meeting_text.replace('import android.text.Html\n', '')
-old_decode = '''        private fun decode(value: String): String = Html.fromHtml(
-            value.replace(Regex("<[^>]+>"), " "),
-            Html.FROM_HTML_MODE_COMPACT,
-        ).toString().replace(Regex("\\s+"), " ").trim()
-'''
 new_decode = '''        private fun decode(value: String): String {
             val withoutTags = value.replace(Regex("<[^>]+>"), " ")
             val decoded = Regex("&(#x[0-9A-Fa-f]+|#\\d+|[A-Za-z][A-Za-z0-9]+);").replace(withoutTags) { match ->
@@ -125,11 +92,14 @@ new_decode = '''        private fun decode(value: String): String {
         private fun Int.toUnicodeString(): String? =
             takeIf(Character::isValidCodePoint)?.let { String(Character.toChars(it)) }
 '''
-if old_decode not in meeting_text:
-    if new_decode not in meeting_text:
-        raise SystemExit('Expected Android Html decode block was not found.')
-else:
-    meeting_text = meeting_text.replace(old_decode, new_decode)
+if 'private fun decodeHtmlEntity' not in meeting_text:
+    start_marker = '        private fun decode(value: String): String'
+    end_marker = '\n\n        private fun mondayFor(date: LocalDate): LocalDate'
+    start = meeting_text.find(start_marker)
+    end = meeting_text.find(end_marker, start)
+    if start < 0 or end < 0:
+        raise SystemExit('Could not locate meeting decode structural boundaries.')
+    meeting_text = meeting_text[:start] + new_decode + meeting_text[end:]
 meeting.write_text(meeting_text, encoding='utf-8')
 
 assert 'java.net.URI(cleanUrl)' in resolver.read_text(encoding='utf-8')
