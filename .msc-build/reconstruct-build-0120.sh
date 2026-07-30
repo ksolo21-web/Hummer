@@ -19,12 +19,10 @@ echo '817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.
 tar -xJf ai-fix1.tar.xz
 python3 .msc-build/patch_source.py
 
-# The inherited validator still hard-codes the temporary 0.10.0 version name.
-# Run every other source-integrity check at this stage, then verify the final
-# 0.12.0 source version and built APK identities explicitly below.
+# The inherited validator hard-codes the temporary 0.10.0 version name. Run every
+# other source-integrity check here; final 0.12.1 identities are checked below.
 python3 - <<'PY'
 from pathlib import Path
-
 source = Path("MyStudyCompanion/tools/validate_source.py")
 stage = source.with_name("validate_source_stage.py")
 text = source.read_text(encoding="utf-8")
@@ -32,11 +30,7 @@ obsolete = '    assert \'versionName = "0.10.0-private-alpha-local-ai"\' in buil
 if text.count(obsolete) != 1:
     raise RuntimeError("Expected exactly one obsolete 0.10.0 version assertion")
 stage.write_text(
-    text.replace(
-        obsolete,
-        "    # Final version and APK identity are validated after the 0.12.0 overlay.\n",
-        1,
-    ),
+    text.replace(obsolete, "    # Final version and APK identity are validated after the 0.12.1 overlay.\n", 1),
     encoding="utf-8",
 )
 PY
@@ -61,20 +55,32 @@ echo '917014cb37ac4878987805ac7e86d277ed13778a11bc0948e5f31495b1b8cba1  /tmp/sou
   patch -p1 --batch < /tmp/source-traceability-0.12.0.patch
 )
 
-grep -q 'versionCode = 24' MyStudyCompanion/app/build.gradle.kts
-grep -q '0.12.0-private-alpha-source-traceability' MyStudyCompanion/app/build.gradle.kts
-grep -q '360120001' MyStudyCompanion/wear/build.gradle.kts
-grep -q 'Every factual or explanatory paragraph' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilder.kt
-grep -q 'validateAndResolve' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt
+base64 --decode .msc-build/patch-0.12.1-hardening.py.xz.b64 | xz -dc > /tmp/patch-0.12.1-hardening.py
+echo '38fa8fcf9b475ebbfb9cf787da05dad73c9c2c25b2ca2f72230804bf923fc208  /tmp/patch-0.12.1-hardening.py' | sha256sum -c -
+python3 /tmp/patch-0.12.1-hardening.py
+
+grep -q 'versionCode = 25' MyStudyCompanion/app/build.gradle.kts
+grep -q '0.12.1-private-alpha-grounded-links' MyStudyCompanion/app/build.gradle.kts
+grep -q '360120101' MyStudyCompanion/wear/build.gradle.kts
+grep -q 'Every non-empty answer paragraph' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilder.kt
+grep -q 'paragraphEndingMarkers' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt
+grep -q 'citationUrl' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/local/StudyEntities.kt
+grep -q 'MIGRATION_6_7' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/local/StudyDatabase.kt
+grep -q 'alias=daily-text' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialDailyTextRepository.kt
+grep -q 'OfficialCitationTargetExtractor' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/knowledge/OfficialPageReader.kt
 grep -q 'usedPassageIndexes' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
-grep -q 'generateGuided' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/AiProviderRouter.kt
 grep -q 'JwLibraryLinkResolver.openOfficial' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
 ! grep -q 'Intent.ACTION_VIEW' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
-test -s MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/ai/runtime/GuidedOfflineStudyProviderTest.kt
+test -s MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/ai/knowledge/OfficialCitationTargetExtractorTest.kt
 
-URL='https://www.jw.org/en/library/jw-meeting-workbook/july-august-2026-mwb/Life-and-Ministry-Meeting-Schedule-for-July-27-August-2-2026/'
-curl --fail --location --retry 3 "$URL" -o current-week.html
+WEEK_URL='https://www.jw.org/en/library/jw-meeting-workbook/july-august-2026-mwb/Life-and-Ministry-Meeting-Schedule-for-July-27-August-2-2026/'
+curl --fail --location --retry 3 "$WEEK_URL" -o current-week.html
 python3 .msc-build/verify-current-week-0111.py current-week.html
+DAILY_DATE="$(date -u +%Y%m%d)"
+DAILY_URL="https://www.jw.org/finder?alias=daily-text&date=${DAILY_DATE}&wtlocale=E"
+curl --fail --location --retry 3 "$DAILY_URL" -o current-daily-text.html
+test -s current-daily-text.html
+printf '%s\n' "$DAILY_URL" > daily-text-finder-url.txt
 
 cd MyStudyCompanion
 gradle --no-daemon --stacktrace -PMSC_LOCAL_OWNER_MODE=true \
@@ -86,23 +92,26 @@ mkdir -p dist
 PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
 WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
 test -f "$PHONE_APK"; test -f "$WEAR_APK"
-cp "$PHONE_APK" dist/MyStudyCompanion-phone-0.12.0-debug.apk
-cp "$WEAR_APK" dist/MyStudyCompanion-wear-0.12.0-debug.apk
+cp "$PHONE_APK" dist/MyStudyCompanion-phone-0.12.1-debug.apk
+cp "$WEAR_APK" dist/MyStudyCompanion-wear-0.12.1-debug.apk
 AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
-"$AAPT" dump badging dist/MyStudyCompanion-phone-0.12.0-debug.apk > dist/PHONE-IDENTITY.txt
-"$AAPT" dump badging dist/MyStudyCompanion-wear-0.12.0-debug.apk > dist/WEAR-IDENTITY.txt
-grep -q "package: name='com.mystudycompanion.app.debug' versionCode='24'" dist/PHONE-IDENTITY.txt
-grep -q "versionName='0.12.0-private-alpha-source-traceability-debug'" dist/PHONE-IDENTITY.txt
-grep -q "package: name='com.mystudycompanion.app.debug' versionCode='360120001'" dist/WEAR-IDENTITY.txt
-grep -q "versionName='0.12.0-wear-private-alpha-source-traceability-debug'" dist/WEAR-IDENTITY.txt
+"$AAPT" dump badging dist/MyStudyCompanion-phone-0.12.1-debug.apk > dist/PHONE-IDENTITY.txt
+"$AAPT" dump badging dist/MyStudyCompanion-wear-0.12.1-debug.apk > dist/WEAR-IDENTITY.txt
+grep -q "package: name='com.mystudycompanion.app.debug' versionCode='25'" dist/PHONE-IDENTITY.txt
+grep -q "versionName='0.12.1-private-alpha-grounded-links-debug'" dist/PHONE-IDENTITY.txt
+grep -q "package: name='com.mystudycompanion.app.debug' versionCode='360120101'" dist/WEAR-IDENTITY.txt
+grep -q "versionName='0.12.1-wear-private-alpha-grounded-links-debug'" dist/WEAR-IDENTITY.txt
 (cd dist && sha256sum *.apk > SHA256SUMS.txt)
 cp -R MyStudyCompanion/app/build/reports/tests dist/phone-test-reports
 cp -R MyStudyCompanion/wear/build/reports/tests dist/wear-test-reports
-cat > dist/SOURCE-TRACEABILITY-VERIFICATION.txt <<'TXT'
-PASS: on-device AI prompt requires machine-readable source-use markers.
-PASS: validator rejects missing, invalid, out-of-range, and model-created citations.
-PASS: repository attaches only the verified passages the answer identified as used.
-PASS: invalid model source output falls back to deterministic verified-source guidance.
+cp daily-text-finder-url.txt dist/
+cat > dist/GROUNDED-LINKS-VERIFICATION.txt <<'TXT'
+PASS: every non-empty substantive AI answer paragraph must end with a verified source marker.
+PASS: a cited paragraph followed by an uncited paragraph is rejected.
+PASS: deterministic offline guidance emits no uncited framing paragraphs.
+PASS: original source URLs and exact JW Library citation targets are stored separately.
+PASS: Room migration 6-to-7 preserves existing source rows and initializes citation targets.
+PASS: the exact date-addressed Daily Text Finder alias is generated and fetched successfully.
+PASS: embedded official Finder/share links are extracted and canonical pages without direct targets fail closed.
 PASS: AI citation cards route through JwLibraryLinkResolver instead of a direct browser intent.
-PASS: current week and exact JW Library Finder targets remain present from 0.11.1.
 TXT
