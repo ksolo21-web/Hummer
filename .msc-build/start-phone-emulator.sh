@@ -22,8 +22,12 @@ fi
 yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 "$SDKMANAGER" "platform-tools" "emulator" "$SYSTEM_IMAGE"
 
-echo no | "$AVDMANAGER" create avd --force --name "$AVD_NAME" --package "$SYSTEM_IMAGE" --device pixel_6
-CONFIG="$HOME/.android/avd/${AVD_NAME}.avd/config.ini"
+AVD_PATH="$HOME/.android/avd/${AVD_NAME}.avd"
+mkdir -p "$HOME/.android/avd"
+rm -rf "$AVD_PATH" "$HOME/.android/avd/${AVD_NAME}.ini"
+echo no | "$AVDMANAGER" create avd --force --name "$AVD_NAME" --path "$AVD_PATH" --package "$SYSTEM_IMAGE" --device pixel_6
+CONFIG="$AVD_PATH/config.ini"
+test -f "$CONFIG"
 cat >> "$CONFIG" <<'EOF'
 hw.ramSize=4096
 vm.heapSize=768
