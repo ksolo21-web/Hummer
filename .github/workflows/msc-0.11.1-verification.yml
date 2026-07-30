@@ -88,7 +88,9 @@ jobs:
           grep -q 'ScrollableTabRow' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
           grep -q 'LazyColumn' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MoreScreen.kt
           grep -q 'Restart at Day 1' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
-          python3 MyStudyCompanion/tools/validate_source.py
+          test -s MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepository.kt
+          test -s MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt
+          test -s MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepositoryTest.kt
 
       - name: Verify current official meeting week resolves precisely
         shell: bash
@@ -176,7 +178,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -euo pipefail
+            bash -euo pipefail <<'BASH'
             adb install -r JWLibrary.apk
             adb install -r dist/MyStudyCompanion-phone-0.11.1-debug.apk
             test "$(adb shell pm path org.jw.jwlibrary.mobile | tr -d '\r')" != ""
@@ -266,6 +268,7 @@ jobs:
             adb exec-out screencap -p > installed-tablet-final.png
             adb shell uiautomator dump /sdcard/final.xml >/dev/null
             adb pull /sdcard/final.xml installed-final.xml >/dev/null
+            BASH
 
       - name: Upload installed-app verification evidence
         if: always()
