@@ -1,0 +1,64 @@
+name: My Study Companion 0.12.0 Source Traceability Build
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-phone-wear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out isolated build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct 0.12.0, test source traceability, and build phone and Wear APKs
+        shell: bash
+        run: bash .msc-build/reconstruct-build-0120.sh
+
+      - name: Record protected-service status
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.MSC_GOOGLE_SERVICES_JSON_B64 }}
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.MSC_GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          if [[ -n "${GOOGLE_SERVICES_JSON_B64:-}" && -n "${MSC_GOOGLE_WEB_CLIENT_ID:-}" ]]; then
+            echo 'Firebase credentials present; live sign-in/sync testing is eligible.' | tee dist/FIREBASE-STATUS.txt
+          else
+            echo 'BLOCKED: Firebase credentials are not configured; Google sign-in and cross-device family sync remain excluded from verified claims.' | tee dist/FIREBASE-STATUS.txt
+          fi
+
+      - name: Upload 0.12.0 verification bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.0-source-traceability-debug-bundle
+          path: dist/
+          retention-days: 5
+          if-no-files-found: error
