@@ -5,6 +5,10 @@ on:
     branches: [agent/my-study-companion-apk-build]
     paths:
       - .github/workflows/export-my-study-companion-source.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/export-my-study-companion-source.yml
   workflow_dispatch:
 
 permissions:
