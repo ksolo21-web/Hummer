@@ -5,7 +5,8 @@ on:
     branches: [ main ]
     paths:
       - '.github/workflows/msc-0.12.0-installed.yml'
-      - '.msc-build/installed-phone-0121.sh'
+      - '.msc-build/installed-phone-migration-0121.sh'
+      - '.msc-build/installed-phone-jw-0121.sh'
       - '.msc-build/installed-wear-0121.sh'
   workflow_dispatch:
 
@@ -18,11 +19,11 @@ permissions:
   actions: read
 
 jobs:
-  installed-phone-jw-library:
+  installed-phone-migration-layout:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 90
     steps:
-      - name: Check out 0.12.1 installed verifier
+      - name: Check out 0.12.1 migration verifier
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
@@ -72,6 +73,76 @@ jobs:
           unzip -q baseline-bundle.zip -d dist-baseline
           (cd dist-baseline && sha256sum -c SHA256SUMS.txt)
 
+      - name: Verify real Room migration and adaptive AI layouts
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 768M
+          disk-size: 8192M
+          emulator-boot-timeout: 900
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: bash .msc-build/installed-phone-migration-0121.sh
+
+      - name: Upload phone migration and layout evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.1-installed-phone-migration-layout-evidence
+          path: installed-0121-evidence/migration/
+          retention-days: 5
+          if-no-files-found: warn
+
+  installed-phone-jw-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out 0.12.1 JW Library verifier
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Download latest verified 0.12.1 bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ARTIFACT_ID=''
+          for attempt in $(seq 1 80); do
+            curl --fail --location --retry 3 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts?name=msc-0.12.1-grounded-links-debug-bundle&per_page=100' \
+              -o artifacts.json
+            ARTIFACT_ID="$(python3 - <<'PY'
+          import json
+          data = json.load(open('artifacts.json', encoding='utf-8'))
+          items = [a for a in data.get('artifacts', []) if not a.get('expired')]
+          print(sorted(items, key=lambda a: a['created_at'], reverse=True)[0]['id'] if items else '')
+          PY
+            )"
+            [[ -n "$ARTIFACT_ID" ]] && break
+            echo "Waiting for the verified 0.12.1 build artifact (attempt ${attempt}/80)."
+            sleep 15
+          done
+          test -n "$ARTIFACT_ID"
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/${ARTIFACT_ID}/zip" \
+            -o debug-bundle.zip
+          mkdir -p dist
+          unzip -q debug-bundle.zip -d dist
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+
       - name: Download current official JW Library APK
         shell: bash
         run: |
@@ -90,10 +161,10 @@ jobs:
           PY
           unzip -tq JWLibrary.apk
 
-      - name: Upgrade phone, verify migration, AI layouts, and exact JW Library targets
+      - name: Verify exact JW Library targets and Bible Journey return
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 33
           target: google_apis
           arch: x86_64
           profile: pixel_6
@@ -104,14 +175,14 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          script: bash .msc-build/installed-phone-0121.sh
+          script: bash .msc-build/installed-phone-jw-0121.sh
 
-      - name: Upload installed phone evidence
+      - name: Upload installed phone and JW Library evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: msc-0.12.1-installed-phone-jw-evidence
-          path: installed-0121-evidence/phone/
+          path: installed-0121-evidence/jw-library/
           retention-days: 5
           if-no-files-found: warn
 
