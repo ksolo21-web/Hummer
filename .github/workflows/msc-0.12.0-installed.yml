@@ -1,13 +1,17 @@
-name: My Study Companion 0.12.0 Installed Verification
+name: My Study Companion 0.12.1 Installed Verification
 
 on:
   pull_request:
     branches: [ main ]
     paths:
       - '.github/workflows/msc-0.12.0-installed.yml'
-      - '.msc-build/installed-phone-0120.sh'
-      - '.msc-build/installed-wear-0120.sh'
+      - '.msc-build/installed-phone-0121.sh'
+      - '.msc-build/installed-wear-0121.sh'
   workflow_dispatch:
+
+concurrency:
+  group: msc-0121-installed-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -16,28 +20,57 @@ permissions:
 jobs:
   installed-phone-jw-library:
     runs-on: ubuntu-latest
-    timeout-minutes: 65
+    timeout-minutes: 70
     steps:
-      - name: Check out 0.12.0 installed verifier
+      - name: Check out 0.12.1 installed verifier
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
 
-      - name: Download verified 0.12.0 APK bundle
+      - name: Download latest verified 0.12.1 bundle and 0.12.0 migration baseline
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          ARTIFACT_ID=''
+          for attempt in $(seq 1 80); do
+            curl --fail --location --retry 3 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts?name=msc-0.12.1-grounded-links-debug-bundle&per_page=100' \
+              -o artifacts.json
+            ARTIFACT_ID="$(python3 - <<'PY'
+          import json
+          data = json.load(open('artifacts.json', encoding='utf-8'))
+          items = [a for a in data.get('artifacts', []) if not a.get('expired')]
+          print(sorted(items, key=lambda a: a['created_at'], reverse=True)[0]['id'] if items else '')
+          PY
+            )"
+            [[ -n "$ARTIFACT_ID" ]] && break
+            echo "Waiting for the verified 0.12.1 build artifact (attempt ${attempt}/80)."
+            sleep 15
+          done
+          test -n "$ARTIFACT_ID"
           curl --fail --location --retry 3 \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8771893228/zip' \
+            "https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/${ARTIFACT_ID}/zip" \
             -o debug-bundle.zip
           mkdir -p dist
           unzip -q debug-bundle.zip -d dist
-          echo 'a24f319747a7b163838100cd72de513e5f953f8f15afcdd98bb6e77bd0a10c3d  dist/MyStudyCompanion-phone-0.12.0-debug.apk' | sha256sum -c -
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8772028739/zip' \
+            -o baseline-bundle.zip
+          mkdir -p dist-baseline
+          unzip -q baseline-bundle.zip -d dist-baseline
+          (cd dist-baseline && sha256sum -c SHA256SUMS.txt)
 
       - name: Download current official JW Library APK
         shell: bash
@@ -57,7 +90,7 @@ jobs:
           PY
           unzip -tq JWLibrary.apk
 
-      - name: Install phone and verify AI layouts plus JW Library integration
+      - name: Upgrade phone, verify migration, AI layouts, and exact JW Library targets
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -71,14 +104,14 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          script: bash .msc-build/installed-phone-0120.sh
+          script: bash .msc-build/installed-phone-0121.sh
 
       - name: Upload installed phone evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.0-installed-phone-jw-evidence
-          path: installed-0120-evidence/phone/
+          name: msc-0.12.1-installed-phone-jw-evidence
+          path: installed-0121-evidence/phone/
           retention-days: 5
           if-no-files-found: warn
 
@@ -86,28 +119,48 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Check out 0.12.0 Wear verifier
+      - name: Check out 0.12.1 Wear verifier
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
 
-      - name: Download verified 0.12.0 Wear APK
+      - name: Download latest verified 0.12.1 Wear APK
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          ARTIFACT_ID=''
+          for attempt in $(seq 1 80); do
+            curl --fail --location --retry 3 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts?name=msc-0.12.1-grounded-links-debug-bundle&per_page=100' \
+              -o artifacts.json
+            ARTIFACT_ID="$(python3 - <<'PY'
+          import json
+          data = json.load(open('artifacts.json', encoding='utf-8'))
+          items = [a for a in data.get('artifacts', []) if not a.get('expired')]
+          print(sorted(items, key=lambda a: a['created_at'], reverse=True)[0]['id'] if items else '')
+          PY
+            )"
+            [[ -n "$ARTIFACT_ID" ]] && break
+            echo "Waiting for the verified 0.12.1 build artifact (attempt ${attempt}/80)."
+            sleep 15
+          done
+          test -n "$ARTIFACT_ID"
           curl --fail --location --retry 3 \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8771893228/zip' \
+            "https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/${ARTIFACT_ID}/zip" \
             -o debug-bundle.zip
           mkdir -p dist
           unzip -q debug-bundle.zip -d dist
-          echo '3d3c1fc88810807d99fc4691d516e65686cc473ca4d0381db52aff4159e1a756  dist/MyStudyCompanion-wear-0.12.0-debug.apk' | sha256sum -c -
+          (cd dist && sha256sum -c SHA256SUMS.txt)
 
-      - name: Install and launch Wear APK
+      - name: Install and launch 0.12.1 Wear APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -120,13 +173,13 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          script: bash .msc-build/installed-wear-0120.sh
+          script: bash .msc-build/installed-wear-0121.sh
 
       - name: Upload installed Wear evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.0-installed-wear-evidence
-          path: installed-0120-evidence/wear/
+          name: msc-0.12.1-installed-wear-evidence
+          path: installed-0121-evidence/wear/
           retention-days: 5
           if-no-files-found: warn
