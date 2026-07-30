@@ -93,7 +93,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode .msc-build/companion-0.11.0-overlay.b64 > /tmp/companion-0.11.0-overlay.tar.xz
+          cat .msc-build/companion-0.11.0.part*.b64 | base64 --decode > /tmp/companion-0.11.0-overlay.tar.xz
           echo "c9704c0eef9c0086e1b0d53fe87911fbdf313888afd83783cc77b682e8859a76  /tmp/companion-0.11.0-overlay.tar.xz" | sha256sum -c -
           tar -xJf /tmp/companion-0.11.0-overlay.tar.xz -C MyStudyCompanion
           grep -q 'versionName = "0.11.0-private-alpha-family-youth"' MyStudyCompanion/app/build.gradle.kts
