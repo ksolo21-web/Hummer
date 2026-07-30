@@ -3,6 +3,10 @@ name: My Study Companion 0.12.0 Source Traceability Build
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.0-source-traceability.yml'
+      - '.msc-build/reconstruct-build-0120.sh'
+      - '.msc-build/source-traceability-0.12.0.patch.part*'
   workflow_dispatch:
 
 permissions:
