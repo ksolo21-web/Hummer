@@ -1,23 +1,110 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+EVIDENCE="installed-0121-evidence/phone"
+mkdir -p "$EVIDENCE"
 BASELINE_APK="dist-baseline/MyStudyCompanion-phone-0.12.0-debug.apk"
 NEW_APK="dist/MyStudyCompanion-phone-0.12.1-debug.apk"
 PACKAGE="com.mystudycompanion.app.debug"
 test -f "$BASELINE_APK"
 test -f "$NEW_APK"
 
+collect_failure_evidence() {
+  set +e
+  date -u +'%Y-%m-%dT%H:%M:%SZ' > "$EVIDENCE/failure-time.txt"
+  adb get-state > "$EVIDENCE/adb-state.txt" 2>&1
+  adb shell getprop > "$EVIDENCE/getprop.txt" 2>&1
+  adb shell service check package > "$EVIDENCE/package-service.txt" 2>&1
+  adb shell cmd package list packages > "$EVIDENCE/package-list.txt" 2>&1
+  adb shell dumpsys package "$PACKAGE" > "$EVIDENCE/baseline-package-dumpsys.txt" 2>&1
+  adb logcat -d > "$EVIDENCE/failure-logcat.txt" 2>&1
+}
+trap 'rc=$?; if (( rc != 0 )); then collect_failure_evidence; fi' EXIT
+
+wait_for_android() {
+  local attempt
+  adb start-server >/dev/null
+  adb wait-for-device
+  for attempt in $(seq 1 180); do
+    if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]] \
+      && adb shell service check package 2>/dev/null | grep -q found \
+      && adb shell cmd package list packages >/dev/null 2>&1; then
+      sleep 8
+      if adb shell service check package 2>/dev/null | grep -q found \
+        && adb shell cmd package list packages >/dev/null 2>&1; then
+        echo "Android package services stable after check ${attempt}." | tee -a "$EVIDENCE/android-ready.txt"
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  echo 'Android package manager did not become stable.' >&2
+  return 1
+}
+
+recover_adb() {
+  set +e
+  adb reconnect device >/dev/null 2>&1
+  sleep 4
+  adb kill-server >/dev/null 2>&1
+  adb start-server >/dev/null 2>&1
+  adb wait-for-device
+  set -e
+  wait_for_android
+}
+
+install_baseline() {
+  local method log remote
+  log="$EVIDENCE/baseline-install.txt"
+  remote="/data/local/tmp/msc-baseline-0120.apk"
+
+  for method in streaming no-streaming package-manager; do
+    wait_for_android
+    echo "Baseline install method: ${method}" | tee -a "$log"
+    case "$method" in
+      streaming)
+        if timeout 240s adb install --streaming -r -g "$BASELINE_APK" 2>&1 | tee -a "$log"; then
+          if adb shell pm path "$PACKAGE" | tee "$EVIDENCE/baseline-package-path.txt" | grep -q package:; then
+            return 0
+          fi
+        fi
+        ;;
+      no-streaming)
+        if timeout 240s adb install --no-streaming -r -g "$BASELINE_APK" 2>&1 | tee -a "$log"; then
+          if adb shell pm path "$PACKAGE" | tee "$EVIDENCE/baseline-package-path.txt" | grep -q package:; then
+            return 0
+          fi
+        fi
+        ;;
+      package-manager)
+        adb shell rm -f "$remote" >/dev/null 2>&1 || true
+        if timeout 180s adb push "$BASELINE_APK" "$remote" 2>&1 | tee -a "$log" \
+          && timeout 240s adb shell pm install -r -g "$remote" 2>&1 | tee -a "$log"; then
+          adb shell rm -f "$remote" >/dev/null 2>&1 || true
+          if adb shell pm path "$PACKAGE" | tee "$EVIDENCE/baseline-package-path.txt" | grep -q package:; then
+            return 0
+          fi
+        fi
+        adb shell rm -f "$remote" >/dev/null 2>&1 || true
+        ;;
+    esac
+    adb shell service check package 2>&1 | tee -a "$log" || true
+    adb shell cmd package list packages >/dev/null 2>>"$log" || true
+    recover_adb
+  done
+
+  echo 'All baseline APK installation methods failed.' | tee -a "$log" >&2
+  return 1
+}
+
 # Establish a real database-version-6 install, then upgrade it in place to version 7.
-adb start-server >/dev/null
-adb wait-for-device
-for attempt in $(seq 1 150); do
-  if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]] \
-    && adb shell service check package 2>/dev/null | grep -q found; then break; fi
-  [[ "$attempt" != 150 ]] || exit 1
-  sleep 2
-done
-adb install --no-streaming -r -g "$BASELINE_APK"
+wait_for_android
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
+install_baseline
 BASE_COMPONENT="$(adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$PACKAGE" | tr -d '\r' | tail -n 1)"
+echo "$BASE_COMPONENT" | tee "$EVIDENCE/baseline-component.txt" | grep -q "$PACKAGE"
 adb shell am start -n "$BASE_COMPONENT" | tee /tmp/baseline-launch.txt
 grep -Eq 'Starting: Intent|Warning: Activity not started' /tmp/baseline-launch.txt
 baseline_foreground=false
@@ -81,16 +168,16 @@ Path('/tmp/installed-phone-0121-generated.sh').write_text(source, encoding='utf-
 PY
 
 bash /tmp/installed-phone-0121-generated.sh
-adb shell dumpsys package "$PACKAGE" > installed-0121-evidence/phone/upgraded-package.txt
+adb shell dumpsys package "$PACKAGE" > "$EVIDENCE/upgraded-package.txt"
 adb shell am start -a android.intent.action.VIEW \
   -d "jwlibrary:///finder?alias=daily-text&date=$(date -u +%Y%m%d)&wtlocale=E" \
-  org.jw.jwlibrary.mobile | tee installed-0121-evidence/phone/daily-text-start.txt
-grep -Eq 'Starting: Intent|Warning: Activity not started' installed-0121-evidence/phone/daily-text-start.txt
+  org.jw.jwlibrary.mobile | tee "$EVIDENCE/daily-text-start.txt"
+grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/daily-text-start.txt"
 sleep 6
-adb shell dumpsys activity activities > installed-0121-evidence/phone/daily-text-activity.txt
+adb shell dumpsys activity activities > "$EVIDENCE/daily-text-activity.txt"
 grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
-  installed-0121-evidence/phone/daily-text-activity.txt >/dev/null
-adb exec-out screencap -p > installed-0121-evidence/phone/daily-text-open.png
-cp /tmp/baseline-database.txt installed-0121-evidence/phone/baseline-database.txt
+  "$EVIDENCE/daily-text-activity.txt" >/dev/null
+adb exec-out screencap -p > "$EVIDENCE/daily-text-open.png"
+cp /tmp/baseline-database.txt "$EVIDENCE/baseline-database.txt"
 printf '%s\n' 'PASS: real database version 6 existed before the in-place 0.12.1 upgrade; exact dated Daily Text Finder resolved and opened in official JW Library.' \
-  | tee -a installed-0121-evidence/phone/RESULT.txt
+  | tee -a "$EVIDENCE/RESULT.txt"
