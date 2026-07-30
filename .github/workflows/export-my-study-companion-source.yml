@@ -1,6 +1,11 @@
 name: Export My Study Companion Source
 
 on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/export-my-study-companion-source.yml'
+      - '.msc-build/**'
   workflow_dispatch:
 
 permissions:
@@ -9,42 +14,64 @@ permissions:
 jobs:
   export-source:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out build branch
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
 
-      - name: Reconstruct exact 0.10.0 source
+      - name: Reconstruct exact verified 0.11.1 source
         shell: bash
         run: |
           set -euo pipefail
-          cat .msc-build/source.part*.b64 | base64 --decode > base.tar.xz
-          echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  base.tar.xz" | sha256sum -c -
-          tar -xJf base.tar.xz
-          cat .msc-build/scene-0.9.3.part*.b64 | base64 --decode > scene.tar.xz
-          tar -xJf scene.tar.xz
-          cat .msc-build/semantic-0.9.4.part*.b64 | base64 --decode > semantic.tar.xz
-          tar -xJf semantic.tar.xz
-          cat .msc-build/watchtower-0.9.5.part*.b64 | base64 --decode > watchtower.tar.xz
-          tar -xJf watchtower.tar.xz
-          cat .msc-build/verified-preparation-0.9.6.part*.b64 | base64 --decode > preparation.tar.xz
-          tar -xJf preparation.tar.xz
-          cat .msc-build/ai-0.10.0.part*.b64 | base64 --decode > ai.tar.xz
-          tar -xJf ai.tar.xz
+
+          verify_extract() {
+            local pattern="$1" expected="$2" output="$3"
+            cat $pattern | base64 --decode > "$output"
+            echo "$expected  $output" | sha256sum -c -
+            tar -xJf "$output"
+          }
+
+          verify_extract '.msc-build/source.part*.b64' 'f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4' base.tar.xz
+          verify_extract '.msc-build/scene-0.9.3.part*.b64' '48b6aa28b630bdbf0ade5fcfadd77af7b4a259807df0b73c4318f17fede4eec4' scene.tar.xz
+          verify_extract '.msc-build/semantic-0.9.4.part*.b64' 'f693bcb607ad00a30c4338e8819250ed5f1d44f372e40093682a13c4beed6277' semantic.tar.xz
+          verify_extract '.msc-build/watchtower-0.9.5.part*.b64' 'a742f0c76ba81b87fff0fe97e93e3c03e3968f2dc6ef6ef5ed24dd039bcf5d6e' watchtower.tar.xz
+          verify_extract '.msc-build/verified-preparation-0.9.6.part*.b64' 'f320e0d36adcd21b2c8c1b1583620a37c38d3415f981cc34b35c77eafcd27278' preparation.tar.xz
+          verify_extract '.msc-build/ai-0.10.0.part*.b64' '7e7dde1ad7e8a26fdc797b7df154a416ebdc12c588915e79f00d497a45b70461' ai.tar.xz
+
           base64 --decode .msc-build/ai-0.10.0-fix1.b64 > ai-fix1.tar.xz
+          echo '817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.tar.xz' | sha256sum -c -
           tar -xJf ai-fix1.tar.xz
-          tar -czf my-study-companion-source.tgz \
-            MyStudyCompanion/app/src/main \
-            MyStudyCompanion/app/build.gradle.kts \
-            MyStudyCompanion/gradle/libs.versions.toml \
-            MyStudyCompanion/settings.gradle.kts
+
+          python3 .msc-build/patch_source.py
+          python3 MyStudyCompanion/tools/validate_source.py
+          base64 --decode .msc-build/patch-0.10.1.py.gz.b64 | gzip -dc > /tmp/patch-0.10.1.py
+          python3 /tmp/patch-0.10.1.py
+
+          cat .msc-build/companion-0.11.0.part*.b64 | base64 --decode > /tmp/companion-0.11.0-overlay.tar.xz
+          echo 'c9704c0eef9c0086e1b0d53fe87911fbdf313888afd83783cc77b682e8859a76  /tmp/companion-0.11.0-overlay.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/companion-0.11.0-overlay.tar.xz -C MyStudyCompanion
+          python3 .msc-build/patch-0.11.0-gradle.py
+
+          cat .msc-build/connectivity-0.11.1.part*.bin > /tmp/connectivity-0.11.1.tar.xz
+          echo 'c4b745c11ce72eb7b6b37cc6ffab0bf97da7142cfb9edc51503365e2900c08e5  /tmp/connectivity-0.11.1.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/connectivity-0.11.1.tar.xz -C MyStudyCompanion
+          python3 .msc-build/patch-0.11.1-jvm-links.py
+
+          grep -q 'versionCode = 23' MyStudyCompanion/app/build.gradle.kts
+          grep -q '0.11.1-private-alpha-verified-connectivity' MyStudyCompanion/app/build.gradle.kts
+          grep -q '360110101' MyStudyCompanion/wear/build.gradle.kts
+
+          tar --exclude='**/build' --exclude='.gradle' -czf my-study-companion-0.11.1-source.tgz MyStudyCompanion
+          sha256sum my-study-companion-0.11.1-source.tgz > SOURCE-SHA256.txt
 
       - name: Upload exact source
         uses: actions/upload-artifact@v7
         with:
-          name: MyStudyCompanion-exact-0.10.0-source
+          name: MyStudyCompanion-exact-0.11.1-source
           if-no-files-found: error
           retention-days: 3
-          path: my-study-companion-source.tgz
+          path: |
+            my-study-companion-0.11.1-source.tgz
+            SOURCE-SHA256.txt
