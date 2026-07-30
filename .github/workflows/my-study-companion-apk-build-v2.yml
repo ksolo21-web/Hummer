@@ -81,7 +81,7 @@ jobs:
           python3 /tmp/patch-0.10.1.py
           grep -q 'versionName = "0.10.1-private-alpha-ai-refresh"' MyStudyCompanion/app/build.gradle.kts
           grep -q 'versionCode = 21' MyStudyCompanion/app/build.gradle.kts
-          grep -q 'useDirectOfficialRefreshMode' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/sync/SyncStateStore.kt
+          grep -q 'useDirectOfficialRefreshMode' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/update/SyncStateStore.kt
           grep -q 'Automatic official content refresh' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
           grep -q 'LocalContentColor provides MaterialTheme.colorScheme.onBackground' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
           grep -q 'Enable built-in Gemini Nano' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
