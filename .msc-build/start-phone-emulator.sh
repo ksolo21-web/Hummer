@@ -21,6 +21,11 @@ fi
 
 yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 "$SDKMANAGER" "platform-tools" "emulator" "$SYSTEM_IMAGE"
+export PATH="$SDK_ROOT/platform-tools:$SDK_ROOT/emulator:$PATH"
+if [[ -n "${GITHUB_PATH:-}" ]]; then
+  printf '%s\n%s\n' "$SDK_ROOT/platform-tools" "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
+fi
+command -v adb
 
 AVD_PATH="$HOME/.android/avd/${AVD_NAME}.avd"
 mkdir -p "$HOME/.android/avd"
