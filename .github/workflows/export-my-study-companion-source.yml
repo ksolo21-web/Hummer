@@ -1,0 +1,54 @@
+name: Export My Study Companion Source
+
+on:
+  push:
+    branches: [agent/my-study-companion-apk-build]
+    paths:
+      - .github/workflows/export-my-study-companion-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Reconstruct exact 0.10.0 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/source.part*.b64 | base64 --decode > base.tar.xz
+          echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  base.tar.xz" | sha256sum -c -
+          tar -xJf base.tar.xz
+          cat .msc-build/scene-0.9.3.part*.b64 | base64 --decode > scene.tar.xz
+          tar -xJf scene.tar.xz
+          cat .msc-build/semantic-0.9.4.part*.b64 | base64 --decode > semantic.tar.xz
+          tar -xJf semantic.tar.xz
+          cat .msc-build/watchtower-0.9.5.part*.b64 | base64 --decode > watchtower.tar.xz
+          tar -xJf watchtower.tar.xz
+          cat .msc-build/verified-preparation-0.9.6.part*.b64 | base64 --decode > preparation.tar.xz
+          tar -xJf preparation.tar.xz
+          cat .msc-build/ai-0.10.0.part*.b64 | base64 --decode > ai.tar.xz
+          tar -xJf ai.tar.xz
+          base64 --decode .msc-build/ai-0.10.0-fix1.b64 > ai-fix1.tar.xz
+          tar -xJf ai-fix1.tar.xz
+          tar -czf my-study-companion-source.tgz \
+            MyStudyCompanion/app/src/main \
+            MyStudyCompanion/app/build.gradle.kts \
+            MyStudyCompanion/gradle/libs.versions.toml \
+            MyStudyCompanion/settings.gradle.kts
+
+      - name: Upload exact source
+        uses: actions/upload-artifact@v7
+        with:
+          name: MyStudyCompanion-exact-0.10.0-source
+          if-no-files-found: error
+          retention-days: 3
+          path: my-study-companion-source.tgz
