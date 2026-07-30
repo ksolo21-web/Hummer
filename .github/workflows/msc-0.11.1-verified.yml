@@ -43,6 +43,38 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-build-0111.sh
 
+      - name: Preserve resolver and meeting-parser diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          mkdir -p diagnostics/source diagnostics/test-results diagnostics/test-reports
+          for source in \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/JwLibraryLinkResolver.kt \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepository.kt \
+            MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt \
+            MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/data/official/OfficialWeeklyMeetingRepositoryTest.kt; do
+            if [[ -f "$source" ]]; then
+              cp "$source" diagnostics/source/
+            fi
+          done
+          if [[ -d MyStudyCompanion/app/build/test-results ]]; then
+            cp -R MyStudyCompanion/app/build/test-results/. diagnostics/test-results/
+          fi
+          if [[ -d MyStudyCompanion/app/build/reports/tests ]]; then
+            cp -R MyStudyCompanion/app/build/reports/tests/. diagnostics/test-reports/
+          fi
+          find diagnostics -type f -maxdepth 8 -print | sort
+
+      - name: Upload failing-test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.11.1-resolver-parser-diagnostics
+          path: diagnostics/
+          retention-days: 3
+          if-no-files-found: warn
+
       - name: Record Firebase verification status
         shell: bash
         env:
