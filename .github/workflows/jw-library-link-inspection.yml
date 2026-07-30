@@ -31,7 +31,7 @@ jobs:
           PY
           unzip -t JWLibrary.apk
 
-      - name: Record declared Android link handlers
+      - name: Record declared Android link handlers and finder strings
         shell: bash
         run: |
           set -euo pipefail
@@ -48,6 +48,11 @@ jobs:
             echo
             echo '=== MANIFEST URI HANDLERS ==='
             "$BUILD_TOOLS/aapt2" dump xmltree JWLibrary.apk --file AndroidManifest.xml
+            echo
+            echo '=== FINDER-RELATED DEX STRINGS ==='
+            for dex in $(zipinfo -1 JWLibrary.apk | grep -E '^classes[0-9]*\.dex$'); do
+              unzip -p JWLibrary.apk "$dex" | strings | grep -E -i 'jwlibrary:|finder|wtlocale|docid|bible=|pub=|issue=|track=' || true
+            done | sort -u | head -n 4000
           } > jw-library-link-report.txt
 
       - name: Upload report
