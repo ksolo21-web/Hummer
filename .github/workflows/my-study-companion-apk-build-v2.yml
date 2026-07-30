@@ -96,25 +96,7 @@ jobs:
           cat .msc-build/companion-0.11.0.part*.b64 | base64 --decode > /tmp/companion-0.11.0-overlay.tar.xz
           echo "c9704c0eef9c0086e1b0d53fe87911fbdf313888afd83783cc77b682e8859a76  /tmp/companion-0.11.0-overlay.tar.xz" | sha256sum -c -
           tar -xJf /tmp/companion-0.11.0-overlay.tar.xz -C MyStudyCompanion
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('MyStudyCompanion/app/build.gradle.kts')
-          text = path.read_text(encoding='utf-8')
-          old = '''    kotlinOptions {
-        jvmTarget = "17"
-    }
-'''
-          new = '''    kotlin {
-        compilerOptions {
-            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-        }
-    }
-'''
-          if old not in text:
-              raise SystemExit('Legacy kotlinOptions jvmTarget block was not found.')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
-          print('Migrated Kotlin JVM target to compilerOptions DSL.')
-          PY
+          python3 .msc-build/patch-0.11.0-gradle.py
           grep -q 'JvmTarget.JVM_17' MyStudyCompanion/app/build.gradle.kts
           grep -q 'versionName = "0.11.0-private-alpha-family-youth"' MyStudyCompanion/app/build.gradle.kts
           grep -q 'versionCode = 22' MyStudyCompanion/app/build.gradle.kts
