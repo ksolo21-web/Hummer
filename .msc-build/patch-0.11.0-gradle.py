@@ -42,4 +42,24 @@ if not source.startswith(opt_in):
     source = opt_in + source
 app_ui.write_text(source, encoding="utf-8")
 
-print("Applied Kotlin compiler-options and Compose compatibility repairs.")
+# Material3TileService in Tiles 1.6.1 requires the ProtoLayout Material 3 artifact.
+# Add it through the root project so the checksum-locked Wear build overlay can still
+# replace its version metadata without losing this compile dependency.
+root_build = Path("MyStudyCompanion/build.gradle.kts")
+root_text = root_build.read_text(encoding="utf-8")
+wear_material3_block = '''
+
+project(":wear") {
+    pluginManager.withPlugin("com.android.application") {
+        dependencies.add(
+            "implementation",
+            "androidx.wear.protolayout:protolayout-material3:1.4.1",
+        )
+    }
+}
+'''
+if "androidx.wear.protolayout:protolayout-material3:1.4.1" not in root_text:
+    root_text += wear_material3_block
+    root_build.write_text(root_text, encoding="utf-8")
+
+print("Applied Kotlin, Compose, and Wear ProtoLayout Material 3 compatibility repairs.")
