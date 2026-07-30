@@ -1,0 +1,54 @@
+name: Export MSC 0.10.0 Source for 0.10.1 Fixes
+
+on:
+  push:
+    branches: [agent/msc-0.10.1-ai-theme-fixes]
+    paths:
+      - .github/workflows/msc-0.10.1-export-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/msc-0.10.1-ai-theme-fixes
+
+      - name: Reconstruct exact installed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/source.part*.b64 | base64 --decode > base.tar.xz
+          echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  base.tar.xz" | sha256sum -c -
+          tar -xJf base.tar.xz
+          cat .msc-build/scene-0.9.3.part*.b64 | base64 --decode > scene.tar.xz
+          tar -xJf scene.tar.xz
+          cat .msc-build/semantic-0.9.4.part*.b64 | base64 --decode > semantic.tar.xz
+          tar -xJf semantic.tar.xz
+          cat .msc-build/watchtower-0.9.5.part*.b64 | base64 --decode > watchtower.tar.xz
+          tar -xJf watchtower.tar.xz
+          cat .msc-build/verified-preparation-0.9.6.part*.b64 | base64 --decode > preparation.tar.xz
+          tar -xJf preparation.tar.xz
+          cat .msc-build/ai-0.10.0.part*.b64 | base64 --decode > ai.tar.xz
+          echo "7e7dde1ad7e8a26fdc797b7df154a416ebdc12c588915e79f00d497a45b70461  ai.tar.xz" | sha256sum -c -
+          tar -xJf ai.tar.xz
+          base64 --decode .msc-build/ai-0.10.0-fix1.b64 > ai-fix1.tar.xz
+          echo "817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.tar.xz" | sha256sum -c -
+          tar -xJf ai-fix1.tar.xz
+          python3 .msc-build/patch_source.py
+          python3 MyStudyCompanion/tools/validate_source.py
+          tar -czf MyStudyCompanion-exact-0.10.0-source.tgz MyStudyCompanion
+
+      - name: Upload exact source
+        uses: actions/upload-artifact@v7
+        with:
+          name: MyStudyCompanion-exact-0.10.0-source-for-0.10.1
+          if-no-files-found: error
+          retention-days: 1
+          path: MyStudyCompanion-exact-0.10.0-source.tgz
