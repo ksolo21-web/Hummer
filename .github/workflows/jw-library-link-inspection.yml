@@ -1,0 +1,58 @@
+name: Verify JW Library Link Handlers
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Fetch official JW Library package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?alllangs=1&fileformat=APK&langwritten=E&output=json&pub=jwlb&txtCMSLang=E' -o response.json
+          python3 - <<'PY'
+          import json, re, urllib.request
+          from pathlib import Path
+          data = json.loads(Path('response.json').read_text(encoding='utf-8'))
+          matches = re.findall(r'https://[^"\\]+?\.apk(?:\?[^"\\]*)?', json.dumps(data), flags=re.I)
+          if not matches:
+              raise SystemExit('Official response did not contain an APK link')
+          url = matches[0]
+          Path('official-apk-url.txt').write_text(url, encoding='utf-8')
+          urllib.request.urlretrieve(url, 'JWLibrary.apk')
+          PY
+          unzip -t JWLibrary.apk
+
+      - name: Record declared Android link handlers
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          {
+            echo '=== OFFICIAL APK URL ==='
+            cat official-apk-url.txt
+            echo
+            echo '=== SHA-256 ==='
+            sha256sum JWLibrary.apk
+            echo
+            echo '=== PACKAGE BADGING ==='
+            "$BUILD_TOOLS/aapt2" dump badging JWLibrary.apk
+            echo
+            echo '=== MANIFEST URI HANDLERS ==='
+            "$BUILD_TOOLS/aapt2" dump xmltree JWLibrary.apk --file AndroidManifest.xml
+          } > jw-library-link-report.txt
+
+      - name: Upload report
+        uses: actions/upload-artifact@v7
+        with:
+          name: jw-library-link-handler-report
+          path: jw-library-link-report.txt
+          retention-days: 2
