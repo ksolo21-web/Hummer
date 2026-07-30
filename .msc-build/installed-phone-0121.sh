@@ -52,6 +52,11 @@ good_local = '  local apk="$1" package="$2" label="$3"\n  local log="$EVIDENCE/$
 if source.count(bad_local) != 1:
     raise SystemExit('Expected exactly one unsafe install_apk local declaration.')
 source = source.replace(bad_local, good_local, 1)
+old_order = 'install_apk "$JW_APK" "$JW_PACKAGE" jw-library\ninstall_apk "$PHONE_APK" "$PHONE_PACKAGE" phone\n'
+new_order = 'install_apk "$PHONE_APK" "$PHONE_PACKAGE" phone\ninstall_apk "$JW_APK" "$JW_PACKAGE" jw-library\n'
+if source.count(old_order) != 1:
+    raise SystemExit('Expected exactly one phone/JW Library install sequence.')
+source = source.replace(old_order, new_order, 1)
 source = source.replace(
     'adb shell am start -W -a android.intent.action.VIEW \\\n',
     'adb shell am start -a android.intent.action.VIEW \\\n',
