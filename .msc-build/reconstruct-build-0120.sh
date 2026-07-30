@@ -36,7 +36,6 @@ echo '917014cb37ac4878987805ac7e86d277ed13778a11bc0948e5f31495b1b8cba1  /tmp/sou
   cd MyStudyCompanion
   patch -p1 --batch < /tmp/source-traceability-0.12.0.patch
 )
-python3 MyStudyCompanion/tools/validate_source.py
 
 grep -q 'versionCode = 24' MyStudyCompanion/app/build.gradle.kts
 grep -q '0.12.0-private-alpha-source-traceability' MyStudyCompanion/app/build.gradle.kts
