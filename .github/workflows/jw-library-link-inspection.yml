@@ -1,4 +1,4 @@
-name: Verify JW Library Link Handlers
+name: Installed JW Library Link Verification
 
 on:
   pull_request:
@@ -9,15 +9,22 @@ permissions:
   contents: read
 
 jobs:
-  verify-links:
+  verify-installed-links:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
-      - name: Fetch official JW Library package metadata
+      - name: Check out verification branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Fetch official JW Library Android APK
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?alllangs=1&fileformat=APK&langwritten=E&output=json&pub=jwlb&txtCMSLang=E' -o response.json
+          curl --fail --location --retry 3 \
+            'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?alllangs=1&fileformat=APK&langwritten=E&output=json&pub=jwlb&txtCMSLang=E' \
+            -o response.json
           python3 - <<'PY'
           import json, re, urllib.request
           from pathlib import Path
@@ -29,35 +36,67 @@ jobs:
           Path('official-apk-url.txt').write_text(url, encoding='utf-8')
           urllib.request.urlretrieve(url, 'JWLibrary.apk')
           PY
-          unzip -t JWLibrary.apk
+          unzip -tq JWLibrary.apk
+          mkdir -p installed-link-report
+          sha256sum JWLibrary.apk > installed-link-report/JWLIBRARY-SHA256.txt
 
-      - name: Record declared Android link handlers and finder strings
-        shell: bash
-        run: |
-          set -euo pipefail
-          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-          {
-            echo '=== OFFICIAL APK URL ==='
-            cat official-apk-url.txt
-            echo
-            echo '=== SHA-256 ==='
-            sha256sum JWLibrary.apk
-            echo
-            echo '=== PACKAGE BADGING ==='
-            "$BUILD_TOOLS/aapt2" dump badging JWLibrary.apk
-            echo
-            echo '=== MANIFEST URI HANDLERS ==='
-            "$BUILD_TOOLS/aapt2" dump xmltree JWLibrary.apk --file AndroidManifest.xml
-            echo
-            echo '=== FINDER-RELATED DEX STRINGS ==='
-            for dex in $(zipinfo -1 JWLibrary.apk | grep -E '^classes[0-9]*\.dex$'); do
-              unzip -p JWLibrary.apk "$dex" | strings | grep -E -i 'jwlibrary:|finder|wtlocale|docid|bible=|pub=|issue=|track=' || true
-            done | sort -u | head -n 4000
-          } > jw-library-link-report.txt
+      - name: Run installed-app URI tests in Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            adb install -r JWLibrary.apk | tee installed-link-report/install.txt
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+            adb shell am force-stop org.jw.jwlibrary.mobile
 
-      - name: Upload report
+            cat > /tmp/targets.tsv <<'EOF'
+            genesis_1_1	jwlibrary:///finder?wtlocale=E&pub=nwtsty&bible=1001001&srcid=share
+            job_1	jwlibrary:///finder?wtlocale=E&pub=nwtsty&bible=18001000&srcid=share
+            job_2	jwlibrary:///finder?wtlocale=E&pub=nwtsty&bible=18002000&srcid=share
+            research_guide	jwlibrary:///finder?wtlocale=E&pub=rsg19&srcid=share
+            current_week	jwlibrary:///finder?wtlocale=E&docid=202026244&srcid=share
+            EOF
+
+            while IFS=$'\t' read -r name uri; do
+              adb shell am force-stop org.jw.jwlibrary.mobile
+              adb shell am start -W -a android.intent.action.VIEW -d "$uri" -p org.jw.jwlibrary.mobile \
+                > "installed-link-report/${name}-launch.txt" 2>&1
+              sleep 10
+              adb shell dumpsys activity activities \
+                > "installed-link-report/${name}-activities.txt"
+              adb shell dumpsys window windows \
+                > "installed-link-report/${name}-windows.txt"
+              adb shell uiautomator dump /sdcard/${name}.xml >/dev/null 2>&1 || true
+              adb pull /sdcard/${name}.xml "installed-link-report/${name}-ui.xml" >/dev/null 2>&1 || true
+              adb exec-out screencap -p > "installed-link-report/${name}.png"
+              grep -q 'org.jw.jwlibrary.mobile' "installed-link-report/${name}-activities.txt"
+            done < /tmp/targets.tsv
+
+            python3 - <<'PY'
+            from pathlib import Path
+            import re
+            out = []
+            for xml_path in sorted(Path('installed-link-report').glob('*-ui.xml')):
+                text = xml_path.read_text(encoding='utf-8', errors='replace')
+                visible = [v for v in re.findall(r'text="([^"]+)"', text) if v.strip()]
+                out.append(f"=== {xml_path.name} ===")
+                out.extend(visible[:120])
+                out.append('')
+            Path('installed-link-report/VISIBLE-TEXT.txt').write_text('\n'.join(out), encoding='utf-8')
+            PY
+
+      - name: Upload installed-app evidence
         uses: actions/upload-artifact@v7
         with:
-          name: jw-library-link-handler-report
-          path: jw-library-link-report.txt
-          retention-days: 2
+          name: jw-library-installed-link-evidence
+          path: installed-link-report/
+          retention-days: 3
+          if-no-files-found: error
