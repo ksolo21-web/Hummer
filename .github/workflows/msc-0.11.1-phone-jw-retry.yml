@@ -1,6 +1,8 @@
 name: My Study Companion 0.11.1 Phone and JW Library Retry
 
 on:
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
