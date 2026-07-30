@@ -140,18 +140,27 @@ jobs:
             echo 'Google/Firebase project configuration is not present; account UI will remain honestly disabled.'
           fi
 
-      - name: Install stable private-alpha signing key
+      - name: Install protected private-test signing key
         shell: bash
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.MSC_SIGNING_KEYSTORE_B64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.MSC_SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.MSC_SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.MSC_SIGNING_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/.android"
-          base64 --decode .msc-build/private-alpha-debug.keystore.b64 > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
+          test -n "${SIGNING_KEYSTORE_B64:-}"
+          test -n "${SIGNING_STORE_PASSWORD:-}"
+          test -n "${SIGNING_KEY_ALIAS:-}"
+          test -n "${SIGNING_KEY_PASSWORD:-}"
+          mkdir -p "$RUNNER_TEMP/msc-signing"
+          printf '%s' "$SIGNING_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/msc-signing/private-test-signing.jks"
+          chmod 600 "$RUNNER_TEMP/msc-signing/private-test-signing.jks"
           {
-            echo "MSC_RELEASE_STORE_FILE=$HOME/.android/debug.keystore"
-            echo "MSC_RELEASE_STORE_PASSWORD=android"
-            echo "MSC_RELEASE_KEY_ALIAS=androiddebugkey"
-            echo "MSC_RELEASE_KEY_PASSWORD=android"
+            echo "MSC_RELEASE_STORE_FILE=$RUNNER_TEMP/msc-signing/private-test-signing.jks"
+            echo "MSC_RELEASE_STORE_PASSWORD=$SIGNING_STORE_PASSWORD"
+            echo "MSC_RELEASE_KEY_ALIAS=$SIGNING_KEY_ALIAS"
+            echo "MSC_RELEASE_KEY_PASSWORD=$SIGNING_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
       - name: Test and build signed 0.11.0 phone APK
