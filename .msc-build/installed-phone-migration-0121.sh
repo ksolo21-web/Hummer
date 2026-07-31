@@ -4,8 +4,8 @@ set -euo pipefail
 # Generate from the last complete retry-safe verifier, then harden two pieces
 # of runtime verification:
 # - compact layouts use More while expanded layouts expose AI Study directly;
-# - a hosted-emulator Pixel Launcher ANR is recovered explicitly so its system
-#   dialog cannot cover an otherwise healthy My Study Companion onboarding UI.
+# - hosted-emulator Android system ANRs are recovered only when their exact
+#   system dialog is present, so they cannot cover a healthy app onboarding UI.
 PINNED_BASE='1761f2b654cbc3e96a5735dec752ef3032e8abdd'
 BASE_PATH='.msc-build/installed-phone-migration-0121.sh'
 GENERATED='/tmp/installed-phone-migration-0121-generated.sh'
@@ -21,8 +21,8 @@ source = Path('/tmp/installed-phone-migration-0121-base.sh').read_text(encoding=
 home_anchor = "ensure_home_navigation() {\n"
 if source.count(home_anchor) != 1:
     raise SystemExit('Expected one home-navigation function anchor.')
-recovery = r'''recover_pixel_launcher_anr_if_present() {
-  local dump_file="/tmp/msc-system-dialog.xml" coords x y
+recovery = r'''recover_host_system_anr_if_present() {
+  local dump_file="/tmp/msc-system-dialog.xml" selection kind x y
   adb shell rm -f /sdcard/msc-system-dialog.xml >/dev/null 2>&1 || true
   if ! timeout 45s adb shell uiautomator dump --compressed /sdcard/msc-system-dialog.xml \
       > "$EVIDENCE/system-dialog-dump.txt" 2>&1 \
@@ -30,45 +30,69 @@ recovery = r'''recover_pixel_launcher_anr_if_present() {
     return 0
   fi
 
-  if ! grep -q "Pixel Launcher isn't responding" "$dump_file"; then
-    return 0
-  fi
-
-  cp "$dump_file" "$EVIDENCE/pixel-launcher-anr.xml"
-  adb exec-out screencap -p > "$EVIDENCE/pixel-launcher-anr.png" || true
-  coords="$(python3 - <<'PY2'
+  selection="$(python3 - <<'PY2'
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 path = Path('/tmp/msc-system-dialog.xml')
 if path.exists():
-    for node in ET.parse(path).getroot().iter('node'):
-        if node.attrib.get('resource-id') != 'android:id/aerr_close':
-            continue
-        if node.attrib.get('clickable') != 'true' or node.attrib.get('enabled', 'true') != 'true':
-            continue
-        match = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
-        if not match:
-            continue
-        left, top, right, bottom = map(int, match.groups())
-        x, y = (left + right)//2, (top + bottom)//2
-        if right > left and bottom > top:
-            print(f'{x} {y}')
+    root = ET.parse(path).getroot()
+    title = ''
+    for node in root.iter('node'):
+        if node.attrib.get('resource-id') == 'android:id/alertTitle':
+            title = node.attrib.get('text', '')
             break
+    target = None
+    kind = None
+    if title == "Pixel Launcher isn't responding":
+        target = 'android:id/aerr_close'
+        kind = 'pixel-launcher-close'
+    elif title == "System UI isn't responding":
+        target = 'android:id/aerr_wait'
+        kind = 'system-ui-wait'
+    if target:
+        for node in root.iter('node'):
+            if node.attrib.get('resource-id') != target:
+                continue
+            if node.attrib.get('clickable') != 'true' or node.attrib.get('enabled', 'true') != 'true':
+                continue
+            match = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+            if not match:
+                continue
+            left, top, right, bottom = map(int, match.groups())
+            x, y = (left + right)//2, (top + bottom)//2
+            if right > left and bottom > top:
+                print(f'{kind} {x} {y}')
+                break
 PY2
   )"
-  if [[ -z "$coords" ]]; then
-    echo 'Pixel Launcher ANR was visible but its exact Close app control was unavailable.' >&2
+  if [[ -z "$selection" ]]; then
+    return 0
+  fi
+
+  read -r kind x y <<< "$selection"
+  cp "$dump_file" "$EVIDENCE/host-system-anr-${kind}.xml"
+  adb exec-out screencap -p > "$EVIDENCE/host-system-anr-${kind}.png" || true
+  adb shell input tap "$x" "$y"
+  sleep 4
+  if [[ "$kind" == 'pixel-launcher-close' ]]; then
+    adb shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
+    sleep 2
+  fi
+  launch_package
+  sleep 3
+
+  adb shell rm -f /sdcard/msc-system-dialog-after.xml >/dev/null 2>&1 || true
+  timeout 45s adb shell uiautomator dump --compressed /sdcard/msc-system-dialog-after.xml \
+    > "$EVIDENCE/system-dialog-after-${kind}.txt" 2>&1 || true
+  adb pull /sdcard/msc-system-dialog-after.xml /tmp/msc-system-dialog-after.xml >/dev/null 2>&1 || true
+  if [[ -f /tmp/msc-system-dialog-after.xml ]] \
+    && grep -Eq "Pixel Launcher isn't responding|System UI isn't responding" /tmp/msc-system-dialog-after.xml; then
+    echo "Exact hosted-emulator ANR dialog remained after recovery: ${kind}." >&2
     return 1
   fi
 
-  read -r x y <<< "$coords"
-  adb shell input tap "$x" "$y"
-  sleep 3
-  adb shell am force-stop com.google.android.apps.nexuslauncher >/dev/null 2>&1 || true
-  sleep 2
-  launch_package
-  printf 'PASS: dismissed exact Pixel Launcher ANR dialog and restored My Study Companion foreground.\n' \
+  printf 'PASS: recovered exact hosted-emulator Android ANR dialog (%s) and restored My Study Companion foreground.\n' "$kind" \
     | tee -a "$EVIDENCE/system-dialog-recovery.txt"
 }
 
@@ -80,7 +104,7 @@ old_home = """    if python3 /tmp/msc-ui.py exists 'More'; then
       return 0
     fi
 """
-new_home = """    recover_pixel_launcher_anr_if_present
+new_home = """    recover_host_system_anr_if_present
     if python3 /tmp/msc-ui.py exists 'More' || python3 /tmp/msc-ui.py exists 'AI Study'; then
       printf 'PASS: adaptive home navigation available after UI check %d.\\n' "$attempt" | tee -a "$EVIDENCE/home-navigation.txt"
       return 0
@@ -94,7 +118,7 @@ old_tap_loop = """  for attempt in $(seq 1 30); do
     # Find and tap from one hierarchy snapshot. A separate exists/tap pair is
 """
 new_tap_loop = """  for attempt in $(seq 1 30); do
-    recover_pixel_launcher_anr_if_present
+    recover_host_system_anr_if_present
     # Find and tap from one hierarchy snapshot. A separate exists/tap pair is
 """
 if source.count(old_tap_loop) != 1:
@@ -122,7 +146,7 @@ if source.count(old_tablet) != 1:
 source = source.replace(old_tablet, new_tablet, 1)
 
 old_result = "launched on phone and tablet geometry, displayed the hardened AI source-protection UI"
-new_result = "launched on phone and tablet geometry, recovered any exact Pixel Launcher ANR without masking app failures, used compact bottom navigation on phone and the expanded AI Study rail on tablet, displayed the hardened AI source-protection UI"
+new_result = "launched on phone and tablet geometry, recovered only exact hosted-emulator Pixel Launcher or System UI ANRs without masking app failures, used compact bottom navigation on phone and the expanded AI Study rail on tablet, displayed the hardened AI source-protection UI"
 if source.count(old_result) != 1:
     raise SystemExit('Expected migration result statement.')
 source = source.replace(old_result, new_result, 1)
