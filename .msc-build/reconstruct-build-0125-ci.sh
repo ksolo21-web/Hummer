@@ -13,17 +13,15 @@ if source.count(jw_gate) != 1:
 if "grep -q 'jw.org' MyStudyCompanion/firestore.rules\n" in source:
     raise SystemExit('Stale unescaped JW-domain verification gate is still present.')
 
-old_hash_gate = (
-    "test \"$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)\" "
-    "= 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'\n"
-)
-new_hash_gate = (
-    "test \"$(git hash-object .msc-build/patch-0.12.2-final-identities.py)\" "
-    "= 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'\n"
-)
-if source.count(old_hash_gate) != 1:
-    raise SystemExit('Expected exactly one legacy final-identities Git tree hash gate.')
-source = source.replace(old_hash_gate, new_hash_gate, 1)
+old_lookup = 'git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py'
+new_lookup = 'git hash-object .msc-build/patch-0.12.2-final-identities.py'
+if source.count(old_lookup) != 1:
+    raise SystemExit(
+        f'Expected exactly one legacy final-identities tree lookup; found {source.count(old_lookup)}.'
+    )
+source = source.replace(old_lookup, new_lookup, 1)
+if old_lookup in source or source.count(new_lookup) != 1:
+    raise SystemExit('Failed to replace the fragile final-identities tree lookup exactly once.')
 
 output = Path('/tmp/reconstruct-build-0125-ci-generated.sh')
 output.write_text(source, encoding='utf-8')
