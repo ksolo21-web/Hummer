@@ -9,7 +9,6 @@ on:
       - '.msc-build/firebase-family-0.12.4.part*.b64'
       - '.msc-build/firebase-integrity-0.12.5.part*.b64'
       - '.msc-build/reconstruct-build-0125.sh'
-      - '.msc-build/reconstruct-build-0125-ci.sh'
   workflow_dispatch:
 
 concurrency:
@@ -52,7 +51,7 @@ jobs:
 
       - name: Reconstruct, test, and compile Firebase integrity source
         shell: bash
-        run: bash .msc-build/reconstruct-build-0125-ci.sh
+        run: bash .msc-build/reconstruct-build-0125.sh
 
       - name: Verify Firestore-direct architecture and integrity controls
         shell: bash
