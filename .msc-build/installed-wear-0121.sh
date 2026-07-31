@@ -43,16 +43,20 @@ for attempt in $(seq 1 8); do
   adb shell am start -n "$COMPONENT" | tee "$EVIDENCE/visual-launch-${attempt}.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/visual-launch-${attempt}.txt"
 
-  # Wait for the real activity window, not the launch splash or setup wizard,
-  # to own both the resumed activity and window focus.
+  # Android 13 Wear reports mCurrentFocus/mFocusedApp in the activity dump,
+  # while the window dump proves the app owns a real surface. Require all three
+  # signals and reject the launch splash rather than searching the wrong file.
   focused=false
   for settle in $(seq 1 25); do
     adb shell dumpsys activity activities > "$EVIDENCE/visual-activity-${attempt}.txt" 2>&1 || true
     adb shell dumpsys window windows > "$EVIDENCE/visual-window-${attempt}.txt" 2>&1 || true
-    if grep -E "mResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|Resumed: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
+    if grep -E "mResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|topResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|ResumedActivity: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|Resumed: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
         "$EVIDENCE/visual-activity-${attempt}.txt" >/dev/null \
       && grep -E "mCurrentFocus=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|mFocusedApp=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
+        "$EVIDENCE/visual-activity-${attempt}.txt" >/dev/null \
+      && grep -E "Window.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|mSurface=Surface\(name=${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
         "$EVIDENCE/visual-window-${attempt}.txt" >/dev/null \
+      && ! grep -q "Splash Screen ${PACKAGE}" "$EVIDENCE/visual-activity-${attempt}.txt" \
       && ! grep -q "Splash Screen ${PACKAGE}" "$EVIDENCE/visual-window-${attempt}.txt"; then
       focused=true
       break
