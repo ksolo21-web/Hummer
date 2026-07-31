@@ -21,63 +21,90 @@ if source.count(anchor) != 1:
 
 acceptance = r'''
 accept_terms_if_present() {
-  local activity_file="$1" scroll coords x y after_file
+  local activity_file="$1" step action x y state_file
   if ! grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.TermsOfUseActivity' "$activity_file"; then
     return 0
   fi
 
-  echo 'JW Library Terms of Use is active; scrolling to the official ACCEPT control.' \
+  echo 'JW Library Terms of Use is active; using its official Scroll down control until ACCEPT is enabled.' \
     | tee -a "$EVIDENCE/terms-acceptance.txt"
-  for scroll in $(seq 1 40); do
+
+  for step in $(seq 1 45); do
     adb shell rm -f /sdcard/jw-terms.xml >/dev/null 2>&1 || true
+    action=''
     if timeout 45s adb shell uiautomator dump --compressed /sdcard/jw-terms.xml \
-        > "$EVIDENCE/terms-dump-${scroll}.txt" 2>&1 \
+        > "$EVIDENCE/terms-dump-${step}.txt" 2>&1 \
       && adb pull /sdcard/jw-terms.xml /tmp/jw-terms.xml >/dev/null 2>&1; then
-      coords="$(python3 - <<'PY2'
+      action="$(python3 - <<'PY2'
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 path = Path('/tmp/jw-terms.xml')
 if path.exists():
+    accept = None
+    scroll = None
     for node in ET.parse(path).getroot().iter('node'):
         text = (node.attrib.get('text') or node.attrib.get('content-desc') or '').strip()
-        if text.casefold() != 'accept':
-            continue
-        if node.attrib.get('enabled', 'true') != 'true':
-            continue
         match = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
-        if not match:
+        if not text or not match:
             continue
         left, top, right, bottom = map(int, match.groups())
         x, y = (left + right)//2, (top + bottom)//2
-        if right > left and bottom > top and 0 <= x <= 2000 and 0 <= y <= 3000:
-            print(f'{x} {y}')
-            break
+        if right <= left or bottom <= top or not (0 <= x <= 2000 and 0 <= y <= 3000):
+            continue
+        folded = text.casefold()
+        if folded == 'accept' and node.attrib.get('enabled', 'true') == 'true':
+            accept = ('accept', x, y)
+        elif folded == 'scroll down' and node.attrib.get('enabled', 'true') == 'true':
+            scroll = ('scroll', x, y)
+    selected = accept or scroll
+    if selected:
+        print(*selected)
 PY2
       )"
-      if [[ -n "$coords" ]]; then
-        read -r x y <<< "$coords"
-        adb shell input tap "$x" "$y"
-        printf 'Tapped official ACCEPT control at %s,%s after scroll %d.\n' "$x" "$y" "$scroll" \
-          | tee -a "$EVIDENCE/terms-acceptance.txt"
-        sleep 6
-        after_file="$EVIDENCE/terms-after-accept-${scroll}.txt"
-        adb shell dumpsys activity activities > "$after_file" 2>&1 || true
-        adb exec-out screencap -p > "$EVIDENCE/terms-after-accept.png" || true
-        if ! grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.TermsOfUseActivity' "$after_file" \
-          && grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
-            "$after_file" >/dev/null; then
-          echo 'PASS: official Terms of Use was accepted and TermsOfUseActivity closed.' \
-            | tee -a "$EVIDENCE/terms-acceptance.txt"
-          return 0
-        fi
-      fi
     fi
 
-    # The ACCEPT control remains disabled until the legal text has actually
-    # been scrolled to its end. Use a human-equivalent upward swipe.
-    adb shell input swipe 540 1950 540 350 180 >/dev/null 2>&1 || true
-    sleep 1
+    if [[ -n "$action" ]]; then
+      read -r action x y <<< "$action"
+      adb shell input tap "$x" "$y"
+      printf 'JW terms action %s at %s,%s on step %d.\n' "$action" "$x" "$y" "$step" \
+        | tee -a "$EVIDENCE/terms-acceptance.txt"
+      sleep 3
+    else
+      # Fallback stays inside the modal document pane rather than starting at
+      # the bottom navigation area, which can invoke Android home/app-drawer gestures.
+      adb shell input swipe 540 1450 540 700 220 >/dev/null 2>&1 || true
+      printf 'JW terms internal-pane swipe on step %d.\n' "$step" \
+        | tee -a "$EVIDENCE/terms-acceptance.txt"
+      sleep 2
+    fi
+
+    state_file="$EVIDENCE/terms-state-${step}.txt"
+    adb shell dumpsys activity activities > "$state_file" 2>&1 || true
+    adb logcat -d > "$EVIDENCE/terms-logcat-${step}.txt" 2>&1 || true
+    if grep -A120 'FATAL EXCEPTION' "$EVIDENCE/terms-logcat-${step}.txt" \
+        | grep -q 'Process: org.jw.jwlibrary.mobile'; then
+      echo 'Official JW Library crashed while its Terms of Use was being completed.' >&2
+      return 1
+    fi
+
+    if ! grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.TermsOfUseActivity' "$state_file" \
+      && grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
+        "$state_file" >/dev/null; then
+      adb exec-out screencap -p > "$EVIDENCE/terms-after-accept.png" || true
+      echo 'PASS: official Terms of Use was accepted and TermsOfUseActivity closed.' \
+        | tee -a "$EVIDENCE/terms-acceptance.txt"
+      return 0
+    fi
+
+    # If Android unexpectedly left JW Library, restore the exact first-run
+    # activity and continue. This is evidence-preserving recovery, not a pass.
+    if ! grep -q 'org\.jw\.jwlibrary\.mobile' "$state_file"; then
+      echo "JW Library lost foreground during terms step ${step}; relaunching first-run activity." \
+        | tee -a "$EVIDENCE/terms-acceptance.txt"
+      adb shell am start -n "$JW_COMPONENT" >/dev/null 2>&1 || true
+      sleep 4
+    fi
   done
 
   adb shell uiautomator dump /sdcard/jw-terms-final.xml \
