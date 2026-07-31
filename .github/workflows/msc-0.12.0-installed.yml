@@ -1,18 +1,28 @@
-name: My Study Companion 0.12.1 Installed Verification
+name: My Study Companion 0.12.2 Installed Complete-Link Verification
 
 on:
   pull_request:
     branches: [ main ]
     paths:
       - '.github/workflows/msc-0.12.0-installed.yml'
+      - '.github/workflows/msc-0.12.0-source-traceability.yml'
       - '.msc-build/start-phone-emulator.sh'
+      - '.msc-build/download-0122-exact-head-artifact.sh'
       - '.msc-build/installed-phone-migration-0121.sh'
-      - '.msc-build/installed-phone-jw-0121.sh'
+      - '.msc-build/installed-phone-migration-0122.sh'
+      - '.msc-build/installed-phone-jw-0121-core.sh'
+      - '.msc-build/run-installed-phone-jw-core-return.sh'
+      - '.msc-build/run-installed-phone-jw-safe-scroll.sh'
+      - '.msc-build/installed-phone-jw-0122.sh'
       - '.msc-build/installed-wear-0121.sh'
+      - '.msc-build/installed-wear-0122.sh'
+      - '.msc-build/reconstruct-build-0122.sh'
+      - '.msc-build/reconstruct-build-0122-signed-pair.sh'
+      - '.msc-build/patch-0.12.2-*'
   workflow_dispatch:
 
 concurrency:
-  group: msc-0121-installed-${{ github.event.pull_request.number || github.ref }}
+  group: msc-0122-installed-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -22,130 +32,63 @@ permissions:
 jobs:
   installed-phone-migration-layout:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
     steps:
-      - name: Check out 0.12.1 migration verifier
+      - name: Check out exact 0.12.2 verifier branch
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
 
-      - name: Download latest verified 0.12.1 bundle and 0.12.0 migration baseline
+      - name: Download exact-head 0.12.2 bundle
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          ARTIFACT_ID=''
-          for attempt in $(seq 1 80); do
-            curl --fail --location --retry 3 \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts?name=msc-0.12.1-grounded-links-debug-bundle&per_page=100' \
-              -o artifacts.json
-            ARTIFACT_ID="$(python3 - <<'PY'
-          import json
-          data = json.load(open('artifacts.json', encoding='utf-8'))
-          items = [a for a in data.get('artifacts', []) if not a.get('expired')]
-          print(sorted(items, key=lambda a: a['created_at'], reverse=True)[0]['id'] if items else '')
-          PY
-            )"
-            [[ -n "$ARTIFACT_ID" ]] && break
-            echo "Waiting for the verified 0.12.1 build artifact (attempt ${attempt}/80)."
-            sleep 15
-          done
-          test -n "$ARTIFACT_ID"
-          curl --fail --location --retry 3 \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/${ARTIFACT_ID}/zip" \
-            -o debug-bundle.zip
-          mkdir -p dist
-          unzip -q debug-bundle.zip -d dist
-          (cd dist && sha256sum -c SHA256SUMS.txt)
-          curl --fail --location --retry 3 \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8772028739/zip' \
-            -o baseline-bundle.zip
-          mkdir -p dist-baseline
-          unzip -q baseline-bundle.zip -d dist-baseline
-          (cd dist-baseline && sha256sum -c SHA256SUMS.txt)
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash .msc-build/download-0122-exact-head-artifact.sh
 
       - name: Bootstrap a service-stable API 33 phone emulator
         shell: bash
         env:
-          MSC_AVD_NAME: msc-migration-api33
-        run: bash .msc-build/start-phone-emulator.sh installed-0121-evidence/migration/emulator
+          MSC_AVD_NAME: msc-0122-migration-api33
+        run: bash .msc-build/start-phone-emulator.sh installed-0122-evidence/migration/emulator
 
-      - name: Verify real Room migration and adaptive AI layouts
+      - name: Verify real Room migration and adaptive phone/tablet layouts
         shell: bash
-        run: bash .msc-build/installed-phone-migration-0121.sh
+        run: bash .msc-build/installed-phone-migration-0122.sh
 
       - name: Stop migration emulator
         if: always()
         shell: bash
         run: |
           adb emu kill >/dev/null 2>&1 || true
-          if [[ -f installed-0121-evidence/migration/emulator/emulator.pid ]]; then
-            kill "$(cat installed-0121-evidence/migration/emulator/emulator.pid)" >/dev/null 2>&1 || true
+          if [[ -f installed-0122-evidence/migration/emulator/emulator.pid ]]; then
+            kill "$(cat installed-0122-evidence/migration/emulator/emulator.pid)" >/dev/null 2>&1 || true
           fi
 
-      - name: Upload phone migration and layout evidence
+      - name: Upload 0.12.2 migration and layout evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.1-installed-phone-migration-layout-evidence
-          path: installed-0121-evidence/migration/
+          name: msc-0.12.2-installed-phone-migration-layout-evidence
+          path: installed-0122-evidence/migration/
           retention-days: 5
           if-no-files-found: warn
 
   installed-phone-jw-library:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
-      - name: Check out 0.12.1 JW Library verifier
+      - name: Check out exact 0.12.2 JW Library verifier branch
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
 
-      - name: Download latest verified 0.12.1 bundle
+      - name: Download exact-head 0.12.2 bundle
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          ARTIFACT_ID=''
-          for attempt in $(seq 1 80); do
-            curl --fail --location --retry 3 \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts?name=msc-0.12.1-grounded-links-debug-bundle&per_page=100' \
-              -o artifacts.json
-            ARTIFACT_ID="$(python3 - <<'PY'
-          import json
-          data = json.load(open('artifacts.json', encoding='utf-8'))
-          items = [a for a in data.get('artifacts', []) if not a.get('expired')]
-          print(sorted(items, key=lambda a: a['created_at'], reverse=True)[0]['id'] if items else '')
-          PY
-            )"
-            [[ -n "$ARTIFACT_ID" ]] && break
-            echo "Waiting for the verified 0.12.1 build artifact (attempt ${attempt}/80)."
-            sleep 15
-          done
-          test -n "$ARTIFACT_ID"
-          curl --fail --location --retry 3 \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/${ARTIFACT_ID}/zip" \
-            -o debug-bundle.zip
-          mkdir -p dist
-          unzip -q debug-bundle.zip -d dist
-          (cd dist && sha256sum -c SHA256SUMS.txt)
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash .msc-build/download-0122-exact-head-artifact.sh
 
       - name: Download current official JW Library APK
         shell: bash
@@ -168,75 +111,46 @@ jobs:
       - name: Bootstrap a service-stable API 33 phone emulator
         shell: bash
         env:
-          MSC_AVD_NAME: msc-jw-api33
-        run: bash .msc-build/start-phone-emulator.sh installed-0121-evidence/jw-library/emulator
+          MSC_AVD_NAME: msc-0122-jw-api33
+        run: bash .msc-build/start-phone-emulator.sh installed-0122-evidence/jw-library/emulator
 
-      - name: Verify exact JW Library targets and Bible Journey return
+      - name: Verify app UI return behavior and every exact JW Library target class
         shell: bash
-        run: bash .msc-build/installed-phone-jw-0121.sh
+        run: bash .msc-build/installed-phone-jw-0122.sh
 
       - name: Stop JW Library emulator
         if: always()
         shell: bash
         run: |
           adb emu kill >/dev/null 2>&1 || true
-          if [[ -f installed-0121-evidence/jw-library/emulator/emulator.pid ]]; then
-            kill "$(cat installed-0121-evidence/jw-library/emulator/emulator.pid)" >/dev/null 2>&1 || true
+          if [[ -f installed-0122-evidence/jw-library/emulator/emulator.pid ]]; then
+            kill "$(cat installed-0122-evidence/jw-library/emulator/emulator.pid)" >/dev/null 2>&1 || true
           fi
 
-      - name: Upload installed phone and JW Library evidence
+      - name: Upload complete 0.12.2 JW Library evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.1-installed-phone-jw-evidence
-          path: installed-0121-evidence/jw-library/
+          name: msc-0.12.2-installed-phone-jw-complete-link-evidence
+          path: installed-0122-evidence/jw-library/
           retention-days: 5
           if-no-files-found: warn
 
   installed-wear:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
-      - name: Check out 0.12.1 Wear verifier
+      - name: Check out exact 0.12.2 Wear verifier branch
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-apk-build
 
-      - name: Download latest verified 0.12.1 Wear APK
+      - name: Download exact-head 0.12.2 bundle
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          ARTIFACT_ID=''
-          for attempt in $(seq 1 80); do
-            curl --fail --location --retry 3 \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H 'Accept: application/vnd.github+json' \
-              -H 'X-GitHub-Api-Version: 2022-11-28' \
-              'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts?name=msc-0.12.1-grounded-links-debug-bundle&per_page=100' \
-              -o artifacts.json
-            ARTIFACT_ID="$(python3 - <<'PY'
-          import json
-          data = json.load(open('artifacts.json', encoding='utf-8'))
-          items = [a for a in data.get('artifacts', []) if not a.get('expired')]
-          print(sorted(items, key=lambda a: a['created_at'], reverse=True)[0]['id'] if items else '')
-          PY
-            )"
-            [[ -n "$ARTIFACT_ID" ]] && break
-            echo "Waiting for the verified 0.12.1 build artifact (attempt ${attempt}/80)."
-            sleep 15
-          done
-          test -n "$ARTIFACT_ID"
-          curl --fail --location --retry 3 \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/${ARTIFACT_ID}/zip" \
-            -o debug-bundle.zip
-          mkdir -p dist
-          unzip -q debug-bundle.zip -d dist
-          (cd dist && sha256sum -c SHA256SUMS.txt)
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash .msc-build/download-0122-exact-head-artifact.sh
 
       - name: Enable KVM acceleration for Wear emulator
         shell: bash
@@ -249,7 +163,7 @@ jobs:
           test -w /dev/kvm
           ls -l /dev/kvm
 
-      - name: Install and launch 0.12.1 Wear APK
+      - name: Install and verify 0.12.2 Wear APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -262,13 +176,13 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-metrics
-          script: bash .msc-build/installed-wear-0121.sh
+          script: bash .msc-build/installed-wear-0122.sh
 
-      - name: Upload installed Wear evidence
+      - name: Upload 0.12.2 Wear evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.1-installed-wear-evidence
-          path: installed-0121-evidence/wear/
+          name: msc-0.12.2-installed-wear-evidence
+          path: installed-0122-evidence/wear/
           retention-days: 5
           if-no-files-found: warn
