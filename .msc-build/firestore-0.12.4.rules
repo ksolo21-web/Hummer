@@ -1,0 +1,262 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function householdExists(householdId) {
+      return exists(/databases/$(database)/documents/households/$(householdId));
+    }
+
+    function householdExistsAfter(householdId) {
+      return existsAfter(/databases/$(database)/documents/households/$(householdId));
+    }
+
+    function member(householdId) {
+      return signedIn() && householdExists(householdId) &&
+        exists(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid));
+    }
+
+    function memberAfter(householdId) {
+      return signedIn() && householdExistsAfter(householdId) &&
+        existsAfter(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid));
+    }
+
+    function role(householdId) {
+      return get(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid)).data.role;
+    }
+
+    function organizer(householdId) {
+      return member(householdId) && role(householdId) in ['owner', 'organizer'];
+    }
+
+    function householdOwner(householdId) {
+      return member(householdId) &&
+        get(/databases/$(database)/documents/households/$(householdId)).data.ownerUid == request.auth.uid;
+    }
+
+    function noOtherHousehold(uid, householdId) {
+      return !exists(/databases/$(database)/documents/users/$(uid)) ||
+        get(/databases/$(database)/documents/users/$(uid)).data.householdId == householdId;
+    }
+
+    function validOwnUserLink(uid) {
+      let householdId = request.resource.data.householdId;
+      return householdId is string && householdId.size() > 0 &&
+        memberAfter(householdId) &&
+        getAfter(/databases/$(database)/documents/households/$(householdId)/members/$(uid)).data.uid == uid &&
+        getAfter(/databases/$(database)/documents/households/$(householdId)/members/$(uid)).data.role == request.resource.data.role;
+    }
+
+    function validUserDocument(uid) {
+      return request.resource.data.keys().hasOnly([
+          'uid', 'displayName', 'householdId', 'role', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'uid', 'displayName', 'householdId', 'role', 'updatedAt'
+        ]) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() <= 80 &&
+        request.resource.data.householdId is string &&
+        request.resource.data.householdId.size() > 0 &&
+        request.resource.data.role in ['owner', 'organizer', 'member'] &&
+        request.resource.data.updatedAt == request.time &&
+        validOwnUserLink(uid);
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && validUserDocument(uid);
+      allow update: if signedIn() && request.auth.uid == uid &&
+        request.resource.data.householdId == resource.data.householdId &&
+        validUserDocument(uid);
+      allow delete: if false;
+    }
+
+    match /households/{householdId} {
+      allow create: if signedIn() &&
+        request.resource.data.keys().hasOnly([
+          'ownerUid', 'familyName', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'ownerUid', 'familyName', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.familyName is string &&
+        request.resource.data.familyName.size() > 0 &&
+        request.resource.data.familyName.size() <= 60 &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow read: if member(householdId);
+      allow update: if organizer(householdId) &&
+        request.resource.data.keys().hasOnly([
+          'ownerUid', 'familyName', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.familyName is string &&
+        request.resource.data.familyName.size() > 0 &&
+        request.resource.data.familyName.size() <= 60 &&
+        request.resource.data.updatedAt == request.time &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'familyName', 'updatedAt'
+        ]);
+      allow delete: if householdOwner(householdId);
+
+      match /members/{uid} {
+        allow read: if member(householdId);
+        allow create: if signedIn() &&
+          householdExistsAfter(householdId) &&
+          noOtherHousehold(uid, householdId) &&
+          request.resource.data.keys().hasOnly([
+            'uid', 'displayName', 'role', 'joinedAt', 'inviteCode'
+          ]) &&
+          request.resource.data.keys().hasAll([
+            'uid', 'displayName', 'role', 'joinedAt'
+          ]) &&
+          request.resource.data.uid == uid &&
+          request.resource.data.displayName is string &&
+          request.resource.data.displayName.size() <= 80 &&
+          request.resource.data.joinedAt == request.time &&
+          (
+            (
+              uid == request.auth.uid &&
+              request.resource.data.role == 'owner' &&
+              getAfter(/databases/$(database)/documents/households/$(householdId)).data.ownerUid == request.auth.uid
+            ) ||
+            (
+              uid == request.auth.uid &&
+              request.resource.data.role == 'member' &&
+              request.resource.data.inviteCode is string &&
+              getAfter(/databases/$(database)/documents/householdInvites/$(request.resource.data.inviteCode)).data.householdId == householdId &&
+              getAfter(/databases/$(database)/documents/householdInvites/$(request.resource.data.inviteCode)).data.status == 'used' &&
+              getAfter(/databases/$(database)/documents/householdInvites/$(request.resource.data.inviteCode)).data.usedBy == request.auth.uid
+            )
+          );
+        allow update: if householdOwner(householdId) &&
+          request.resource.data.keys().hasOnly([
+            'uid', 'displayName', 'role', 'joinedAt', 'inviteCode'
+          ]) &&
+          request.resource.data.uid == uid &&
+          request.resource.data.joinedAt == resource.data.joinedAt &&
+          request.resource.data.displayName is string &&
+          request.resource.data.displayName.size() <= 80 &&
+          (
+            (uid == resource.data.uid && uid == request.auth.uid && request.resource.data.role == 'owner') ||
+            (uid != request.auth.uid && request.resource.data.role in ['organizer', 'member'])
+          );
+        allow delete: if householdOwner(householdId) && uid != request.auth.uid;
+      }
+
+      match /shared/familyBoard {
+        allow read: if member(householdId);
+        allow create, update: if (member(householdId) || memberAfter(householdId)) &&
+          request.resource.data.keys().hasOnly([
+            'payloadJson', 'revision', 'updatedBy', 'updatedAt'
+          ]) &&
+          request.resource.data.keys().hasAll([
+            'payloadJson', 'revision', 'updatedBy', 'updatedAt'
+          ]) &&
+          request.resource.data.payloadJson is string &&
+          request.resource.data.payloadJson.size() <= 200000 &&
+          request.resource.data.revision is int &&
+          request.resource.data.updatedBy == request.auth.uid &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if organizer(householdId);
+      }
+
+      match /memberProgress/{uid} {
+        allow read: if member(householdId);
+        allow create, update: if signedIn() && request.auth.uid == uid &&
+          (member(householdId) || memberAfter(householdId)) &&
+          request.resource.data.keys().hasOnly([
+            'uid', 'payloadJson', 'revision', 'updatedAt'
+          ]) &&
+          request.resource.data.keys().hasAll([
+            'uid', 'payloadJson', 'revision', 'updatedAt'
+          ]) &&
+          request.resource.data.uid == uid &&
+          request.resource.data.payloadJson is string &&
+          request.resource.data.payloadJson.size() <= 200000 &&
+          request.resource.data.revision is int &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if signedIn() && (request.auth.uid == uid || householdOwner(householdId));
+      }
+
+      match /familyWorship/current {
+        allow read: if member(householdId);
+        allow create, update: if organizer(householdId) &&
+          request.resource.data.keys().hasOnly([
+            'payloadJson', 'revision', 'updatedBy', 'updatedAt'
+          ]) &&
+          request.resource.data.keys().hasAll([
+            'payloadJson', 'revision', 'updatedBy', 'updatedAt'
+          ]) &&
+          request.resource.data.payloadJson is string &&
+          request.resource.data.payloadJson.size() <= 300000 &&
+          request.resource.data.revision is int &&
+          request.resource.data.updatedBy == request.auth.uid &&
+          request.resource.data.updatedAt == request.time;
+        allow delete: if organizer(householdId);
+      }
+    }
+
+    match /householdInvites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() &&
+        request.resource.data.keys().hasOnly([
+          'householdId', 'createdBy', 'createdAt', 'expiresAtEpochSeconds',
+          'expiresAt', 'status', 'usedBy'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'householdId', 'createdBy', 'createdAt', 'expiresAtEpochSeconds',
+          'expiresAt', 'status', 'usedBy'
+        ]) &&
+        request.resource.data.householdId is string &&
+        organizer(request.resource.data.householdId) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.expiresAtEpochSeconds is int &&
+        request.resource.data.expiresAt is timestamp &&
+        request.time < request.resource.data.expiresAt &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.usedBy == '';
+      allow update: if signedIn() &&
+        request.resource.data.keys().hasOnly([
+          'householdId', 'createdBy', 'createdAt', 'expiresAtEpochSeconds',
+          'expiresAt', 'status', 'usedBy', 'usedAt'
+        ]) &&
+        request.resource.data.householdId == resource.data.householdId &&
+        request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.expiresAtEpochSeconds == resource.data.expiresAtEpochSeconds &&
+        request.resource.data.expiresAt == resource.data.expiresAt &&
+        (
+          (
+            organizer(resource.data.householdId) &&
+            resource.data.status == 'active' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+            request.resource.data.status == 'cancelled'
+          ) ||
+          (
+            resource.data.status == 'active' &&
+            request.time < resource.data.expiresAt &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'usedBy', 'usedAt'
+            ]) &&
+            request.resource.data.status == 'used' &&
+            request.resource.data.usedBy == request.auth.uid &&
+            request.resource.data.usedAt == request.time
+          )
+        );
+      allow delete: if organizer(resource.data.householdId);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
