@@ -16,7 +16,7 @@ from pathlib import Path
 path = Path('/tmp/installed-phone-jw-0121-core-return-wrapper.sh')
 source = path.read_text(encoding='utf-8')
 old = 'exec bash "$PREVIOUS" "$@"\n'
-new = r'''python3 - <<'PYINTERCEPT'
+new = r"""python3 - <<'PYINTERCEPT'
 from pathlib import Path
 path = Path('/tmp/installed-phone-jw-0121-core-previous-wrapper.sh')
 source = path.read_text(encoding='utf-8')
@@ -79,10 +79,11 @@ path.write_text(source.replace(old, new, 1), encoding='utf-8')
 PYRETURN
 
 exec bash /tmp/installed-phone-jw-0121-core-generated.sh "$@"
-'''
+"""
 if source.count(old) != 1:
     raise SystemExit('Expected one current-core execution point.')
 path.write_text(source.replace(old, new, 1), encoding='utf-8')
 PY
 
+bash -n "$WRAPPER"
 exec bash "$WRAPPER" "$@"
