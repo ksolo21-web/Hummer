@@ -33,4 +33,5 @@ source = source.replace(old_swipe, new_swipe, 1).replace(old_limit, new_limit, 1
 Path('/tmp/installed-phone-jw-0121-safe-scroll.sh').write_text(source, encoding='utf-8')
 PY
 bash -n "$PATCHED"
+bash .msc-build/run-installed-phone-jw-core-return.sh --preflight
 exec bash "$PATCHED" "$@"
