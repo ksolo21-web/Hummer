@@ -23,7 +23,7 @@ old_exec = 'exec bash "$GENERATED" "$@"\n'
 if wrapper.count(old_exec) != 1:
     raise SystemExit('Expected one final execution point in the pinned JW verifier wrapper.')
 
-postprocess = r'''python3 - <<'PYPOST'
+postprocess = r"""python3 - <<'PYPOST'
 from pathlib import Path
 
 path = Path('/tmp/installed-phone-jw-0121-core-generated.sh')
@@ -118,7 +118,7 @@ path.write_text(source, encoding='utf-8')
 PYPOST
 
 exec bash "$GENERATED" "$@"
-'''
+"""
 wrapper = wrapper.replace(old_exec, postprocess, 1)
 wrapper_path.write_text(wrapper, encoding='utf-8')
 PY
