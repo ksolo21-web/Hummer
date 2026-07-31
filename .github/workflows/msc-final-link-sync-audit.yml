@@ -51,12 +51,13 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-final-link-sync-audit.sh
 
-      - name: Upload diagnostic inventory
+      - name: Upload diagnostic inventory and reconstructed source
         uses: actions/upload-artifact@v7
         with:
           name: msc-final-link-sync-surface
           path: |
             dist/FINAL-LINK-SYNC-SURFACE.json
             dist/FINAL-LINK-SYNC-SURFACE.txt
+            dist/FINAL-RECONSTRUCTED-SOURCE.tar.xz
           retention-days: 5
           if-no-files-found: error
