@@ -62,7 +62,6 @@ source_roots = [
     ROOT / "app/src/main/java",
     ROOT / "app/src/test/java",
 ]
-modified = []
 for source_root in source_roots:
     for path in source_root.rglob("*.kt"):
         if path == policy:
@@ -81,17 +80,6 @@ for source_root in source_roots:
                     raise SystemExit(f"No import insertion point in {path}")
                 updated = updated[: package_end + 2] + import_line + updated[package_end + 2 :]
         path.write_text(updated, encoding="utf-8")
-        modified.append(str(path.relative_to(ROOT)))
-
-required = {
-    "app/src/main/java/com/mystudycompanion/app/network/ContentPayloadDecoder.kt",
-    "app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt",
-    "app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt",
-    "app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt",
-}
-missing = sorted(required.difference(modified))
-if missing:
-    raise SystemExit(f"Expected exact-link policy callers were not rewritten: {missing}")
 
 remaining = []
 for source_root in source_roots:
@@ -105,7 +93,25 @@ for source_root in source_roots:
 if remaining:
     raise SystemExit("Unresolved resolver helper calls remain: " + "; ".join(remaining))
 
-assert "fun splitBiblePassages" in policy.read_text(encoding="utf-8")
-assert "fun isDirectLibraryTarget" in policy.read_text(encoding="utf-8")
-assert "fun requireDirectLibraryTarget" in policy.read_text(encoding="utf-8")
+final_invariants = {
+    ROOT / "app/src/main/java/com/mystudycompanion/app/network/ContentPayloadDecoder.kt":
+        "ExactJwLinkPolicy.requireDirectLibraryTarget",
+    ROOT / "app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt":
+        "ExactJwLinkPolicy.splitBiblePassages",
+    ROOT / "app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt":
+        "ExactJwLinkPolicy.isDirectLibraryTarget",
+    ROOT / "app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt":
+        "ExactJwLinkPolicy.isDirectLibraryTarget",
+}
+for path, marker in final_invariants.items():
+    text = path.read_text(encoding="utf-8")
+    if marker not in text:
+        raise SystemExit(f"Final exact-link policy invariant missing from {path}: {marker}")
+    if path.parent.name != "companion" and "import com.mystudycompanion.app.companion.ExactJwLinkPolicy" not in text:
+        raise SystemExit(f"ExactJwLinkPolicy import missing from {path}")
+
+policy_text = policy.read_text(encoding="utf-8")
+assert "fun splitBiblePassages" in policy_text
+assert "fun isDirectLibraryTarget" in policy_text
+assert "fun requireDirectLibraryTarget" in policy_text
 print("Separated exact JW link policy into an independently compiled pure Kotlin object.")
