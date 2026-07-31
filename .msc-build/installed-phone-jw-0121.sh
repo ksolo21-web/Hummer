@@ -71,6 +71,33 @@ resolve_jw() {
   grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-resolve.txt"
 }
 
+resolve_jw_https() {
+  local name="$1" uri="$2" resolved
+  resolved="$(adb shell cmd package resolve-activity --brief -a android.intent.action.VIEW -d "$uri" | tr -d '\r')"
+  printf '%s -> %s\n' "$uri" "$resolved" | tee "$EVIDENCE/${name}-resolve.txt"
+  if grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-resolve.txt"; then
+    return 0
+  fi
+
+  # A fresh Android device may correctly ask which installed app should open an
+  # HTTPS Finder link. In that case require JW Library to be one of the chooser
+  # candidates, then explicitly scope the same URI to JW Library and prove it
+  # accepts and foregrounds the exact target.
+  grep -q 'ResolverActivity' "$EVIDENCE/${name}-resolve.txt"
+  adb shell cmd package query-activities --brief \
+    -a android.intent.action.VIEW -d "$uri" \
+    | tr -d '\r' | tee "$EVIDENCE/${name}-candidates.txt"
+  grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-candidates.txt"
+  adb shell am start -a android.intent.action.VIEW -d "$uri" "$JW_PACKAGE" \
+    | tee "$EVIDENCE/${name}-scoped-start.txt"
+  grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-scoped-start.txt"
+  sleep 6
+  adb shell dumpsys activity activities > "$EVIDENCE/${name}-scoped-activity.txt"
+  grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
+    "$EVIDENCE/${name}-scoped-activity.txt" >/dev/null
+  adb exec-out screencap -p > "$EVIDENCE/${name}-scoped-open.png"
+}
+
 start_jw() {
   local name="$1" uri="$2"
   adb shell am start -a android.intent.action.VIEW -d "$uri" "$JW_PACKAGE" | tee "$EVIDENCE/${name}-start.txt"
@@ -160,9 +187,9 @@ resolve_jw job1 "$JOB1"
 resolve_jw jeremiah "$JEREMIAH"
 resolve_jw week "$WEEK"
 resolve_jw research "$RESEARCH"
-resolve_jw week-https "$WEEK_HTTPS"
+resolve_jw_https week-https "$WEEK_HTTPS"
 resolve_jw daily "$DAILY"
-resolve_jw daily-https "$DAILY_HTTPS"
+resolve_jw_https daily-https "$DAILY_HTTPS"
 start_jw job1-open "$JOB1"
 start_jw jeremiah-open "$JEREMIAH"
 start_jw week-open "$WEEK"
@@ -214,4 +241,4 @@ for index, line in enumerate(lines):
         if f'Process: {package}' in block:
             raise SystemExit('Phone app produced a package-specific fatal Android exception.')
 PY
-printf '%s\n' 'PASS: actual 0.12.1 phone APK and the current official JW Library APK installed on a fresh phone emulator; all exact Finder targets resolved to JW Library; Job 1, Jeremiah 20:7-18, the active week, and the dated Daily Text were launched in JW Library; Bible Journey Day 1 opened JW Library and returned without losing state; no package-specific fatal exception occurred.' | tee "$EVIDENCE/RESULT.txt"
+printf '%s\n' 'PASS: actual 0.12.1 phone APK and the current official JW Library APK installed on a fresh phone emulator; direct jwlibrary Finder targets resolved to JW Library; HTTPS Finder fallbacks either resolved directly or exposed JW Library in Android chooser candidates and opened when explicitly selected; Job 1, Jeremiah 20:7-18, the active week, and the dated Daily Text launched in JW Library; Bible Journey Day 1 opened JW Library and returned without losing state; no package-specific fatal exception occurred.' | tee "$EVIDENCE/RESULT.txt"
