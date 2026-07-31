@@ -27,17 +27,19 @@ if source.count(old_overlay_checks) != 1:
     raise SystemExit('Expected one 0.12.3 overlay verification block.')
 source = source.replace(old_overlay_checks, new_overlay_checks, 1)
 
+# After replacing the overlay verification block, each value below appears once
+# as the 0.12.3 destination inside the nested 0.12.2 reconstruction rewrite.
 replacements = {
-    '"grep -q \'versionCode = 25\'": "grep -q \'versionCode = 27\'"':
-        '"grep -q \'versionCode = 25\'": "grep -q \'versionCode = 28\'"',
-    '"grep -q \'0.12.1-private-alpha-grounded-links\'": "grep -q \'0.12.3-private-alpha-firebase-family\'"':
-        '"grep -q \'0.12.1-private-alpha-grounded-links\'": "grep -q \'0.12.4-private-alpha-firebase-rules-hardened\'"',
-    '"versionCode=\'25\'": "versionCode=\'27\'"':
-        '"versionCode=\'25\'": "versionCode=\'28\'"',
-    '"versionName=\'0.12.1-private-alpha-grounded-links-debug\'": "versionName=\'0.12.3-private-alpha-firebase-family-debug\'"':
-        '"versionName=\'0.12.1-private-alpha-grounded-links-debug\'": "versionName=\'0.12.4-private-alpha-firebase-rules-hardened-debug\'"',
-    '"MyStudyCompanion-phone-0.12.1-debug.apk": "MyStudyCompanion-phone-0.12.3-debug.apk"':
-        '"MyStudyCompanion-phone-0.12.1-debug.apk": "MyStudyCompanion-phone-0.12.4-debug.apk"',
+    '"grep -q \'versionCode = 27\'"':
+        '"grep -q \'versionCode = 28\'"',
+    '"grep -q \'0.12.3-private-alpha-firebase-family\'"':
+        '"grep -q \'0.12.4-private-alpha-firebase-rules-hardened\'"',
+    '"versionCode=\'27\'"':
+        '"versionCode=\'28\'"',
+    '"versionName=\'0.12.3-private-alpha-firebase-family-debug\'"':
+        '"versionName=\'0.12.4-private-alpha-firebase-rules-hardened-debug\'"',
+    '"MyStudyCompanion-phone-0.12.3-debug.apk"':
+        '"MyStudyCompanion-phone-0.12.4-debug.apk"',
     "Path('/tmp/reconstruct-build-0123-driver.py').write_text(source, encoding='utf-8')":
         "Path('/tmp/reconstruct-build-0124-driver.py').write_text(source, encoding='utf-8')",
     'exec bash /tmp/reconstruct-build-0123-driver.py':
