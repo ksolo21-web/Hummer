@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep the existing verifier and its assertions unchanged. Only move the
-# Terms-of-Use scroll gesture into the WebView's empty right gutter so the
-# gesture cannot activate linked paragraph text.
-SOURCE='.msc-build/installed-phone-jw-0121.sh'
+# Reuse the complete verifier from the last tested commit. Only move its
+# Terms-of-Use scroll gesture into the WebView's empty right gutter so linked
+# paragraph text cannot launch Android's chooser or Chrome.
+PINNED_VERIFIER='dd6521ce39d56f620b3804cd9f24b95d8be69aa7'
+SOURCE_PATH='.msc-build/installed-phone-jw-0121.sh'
+SOURCE='/tmp/installed-phone-jw-0121-source.sh'
 PATCHED='/tmp/installed-phone-jw-0121-safe-scroll.sh'
+
+git fetch --no-tags --depth=1 origin "$PINNED_VERIFIER" >/dev/null 2>&1
+git show "${PINNED_VERIFIER}:${SOURCE_PATH}" > "$SOURCE"
 python3 - <<'PY'
 from pathlib import Path
-source = Path('.msc-build/installed-phone-jw-0121.sh').read_text(encoding='utf-8')
+source = Path('/tmp/installed-phone-jw-0121-source.sh').read_text(encoding='utf-8')
 old = """        if (( swipe % 2 == 1 )); then
           adb shell input swipe 350 1440 350 820 220 >/dev/null 2>&1 || true
         else
