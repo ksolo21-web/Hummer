@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+EXPECTED_FINAL_IDENTITIES_BLOB='d24c65668c3747bc99d6d2553cb4c4c4d4dc975b'
+ACTUAL_FINAL_IDENTITIES_BLOB="$(git hash-object .msc-build/patch-0.12.2-final-identities.py)"
+test "$ACTUAL_FINAL_IDENTITIES_BLOB" = "$EXPECTED_FINAL_IDENTITIES_BLOB"
+
 python3 - <<'PY'
 from pathlib import Path
 
@@ -13,20 +17,29 @@ if source.count(jw_gate) != 1:
 if "grep -q 'jw.org' MyStudyCompanion/firestore.rules\n" in source:
     raise SystemExit('Stale unescaped JW-domain verification gate is still present.')
 
-old_lookup = 'git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py'
-new_lookup = 'git hash-object .msc-build/patch-0.12.2-final-identities.py'
-if source.count(old_lookup) != 1:
-    raise SystemExit(
-        f'Expected exactly one legacy final-identities tree lookup; found {source.count(old_lookup)}.'
-    )
-source = source.replace(old_lookup, new_lookup, 1)
-if old_lookup in source or source.count(new_lookup) != 1:
-    raise SystemExit('Failed to replace the fragile final-identities tree lookup exactly once.')
+lines = source.splitlines(keepends=True)
+replaced = 0
+for index, line in enumerate(lines):
+    if (
+        'patch-0.12.2-final-identities.py' in line
+        and line.lstrip().startswith('test ')
+    ):
+        lines[index] = (
+            "test \"$(git hash-object .msc-build/patch-0.12.2-final-identities.py)\" "
+            "= 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'\n"
+        )
+        replaced += 1
+
+if replaced > 1:
+    raise SystemExit(f'Unexpected duplicate final-identities hash gates: {replaced}.')
 
 output = Path('/tmp/reconstruct-build-0125-ci-generated.sh')
-output.write_text(source, encoding='utf-8')
+output.write_text(''.join(lines), encoding='utf-8')
 output.chmod(0o700)
-print('Verified JW-domain gate and replaced the fragile tree lookup with a direct blob hash check.')
+print(
+    'Verified the legacy identity patch directly and normalized '
+    f'{replaced} generated tree-hash gate(s).'
+)
 PY
 
 exec bash /tmp/reconstruct-build-0125-ci-generated.sh
