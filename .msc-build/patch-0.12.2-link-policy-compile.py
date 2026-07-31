@@ -53,6 +53,7 @@ object ExactJwLinkPolicy {
 
 replacements = {
     "JwLibraryLinkResolver.splitBiblePassages": "ExactJwLinkPolicy.splitBiblePassages",
+    "JwLibraryLinkResolver.requireDirectLibraryTarget": "ExactJwLinkPolicy.requireDirectLibraryTarget",
     "JwLibraryLinkResolver.isDirectLibraryTarget": "ExactJwLinkPolicy.isDirectLibraryTarget",
     "JwLibraryLinkResolver::isDirectLibraryTarget": "ExactJwLinkPolicy::isDirectLibraryTarget",
 }
@@ -83,6 +84,7 @@ for source_root in source_roots:
         modified.append(str(path.relative_to(ROOT)))
 
 required = {
+    "app/src/main/java/com/mystudycompanion/app/network/ContentPayloadDecoder.kt",
     "app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt",
     "app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt",
     "app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt",
@@ -105,4 +107,5 @@ if remaining:
 
 assert "fun splitBiblePassages" in policy.read_text(encoding="utf-8")
 assert "fun isDirectLibraryTarget" in policy.read_text(encoding="utf-8")
+assert "fun requireDirectLibraryTarget" in policy.read_text(encoding="utf-8")
 print("Separated exact JW link policy into an independently compiled pure Kotlin object.")
