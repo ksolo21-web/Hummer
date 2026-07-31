@@ -10,6 +10,7 @@ on:
       - '.msc-build/patch-0.12.2-exact-link-tests.py'
       - '.msc-build/patch-0.12.2-link-cloud-followup.py'
       - '.msc-build/patch-0.12.2-final-link-gate.py'
+      - '.msc-build/patch-0.12.2-cloud-family-client.py'
   workflow_dispatch:
 
 concurrency:
