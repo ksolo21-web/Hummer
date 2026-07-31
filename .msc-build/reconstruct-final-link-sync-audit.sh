@@ -23,7 +23,7 @@ echo '7fbbcd2af666d519a7580b5c6287d63601b0a539489e00840518af3293c72bfe  /tmp/pat
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-exact-link-tests.py)" = 'd99c94f07cded5a3d91ed0ae89281ba1a131c145'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-link-gate-v2.py)" = '2312026e660380dfb4c79a619ee54b9839c1a0a0'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-link-gate-v4.py)" = '9a54f4a367c809faaf816812cf0c1f885b4c91ed'
-test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-link-policy-compile.py)" = 'ca3bb66f377abb9003f2b91635a19caea2b55f0f'
+test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-link-policy-compile.py)" = '9f750a52b17e2872093858c01bb4ec98172479b9'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-cloud-family-client.py)" = 'ab1fafb30fe06e82919f5d20e0ec012cb9895db7'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)" = 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-test-imports.py)" = '877f7a74f0ce329d4e8e99ac9d87abb65780e33e'
