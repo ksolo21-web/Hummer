@@ -21,15 +21,15 @@ if source.count(anchor) != 1:
 
 acceptance = r'''
 accept_terms_if_present() {
-  local activity_file="$1" step action x y state_file
+  local activity_file="$1" step action x y state_file signature last_signature='' stale_count=0 swipe_count
   if ! grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.TermsOfUseActivity' "$activity_file"; then
     return 0
   fi
 
-  echo 'JW Library Terms of Use is active; using its official Scroll down control until ACCEPT is enabled.' \
+  echo 'JW Library Terms of Use is active; scrolling the legal WebView itself until ACCEPT is enabled.' \
     | tee -a "$EVIDENCE/terms-acceptance.txt"
 
-  for step in $(seq 1 45); do
+  for step in $(seq 1 50); do
     adb shell rm -f /sdcard/jw-terms.xml >/dev/null 2>&1 || true
     action=''
     if timeout 45s adb shell uiautomator dump --compressed /sdcard/jw-terms.xml \
@@ -41,42 +41,69 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 path = Path('/tmp/jw-terms.xml')
 if path.exists():
+    root = ET.parse(path).getroot()
     accept = None
-    scroll = None
-    for node in ET.parse(path).getroot().iter('node'):
+    visible_ids = []
+    for node in root.iter('node'):
         text = (node.attrib.get('text') or node.attrib.get('content-desc') or '').strip()
         match = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
-        if not text or not match:
+        if not match:
             continue
         left, top, right, bottom = map(int, match.groups())
         x, y = (left + right)//2, (top + bottom)//2
-        if right <= left or bottom <= top or not (0 <= x <= 2000 and 0 <= y <= 3000):
-            continue
         folded = text.casefold()
-        if folded == 'accept' and node.attrib.get('enabled', 'true') == 'true':
+        if folded == 'accept' and node.attrib.get('enabled', 'true') == 'true' \
+                and node.attrib.get('clickable') == 'true' and right > left and bottom > top:
             accept = ('accept', x, y)
-        elif folded == 'scroll down' and node.attrib.get('enabled', 'true') == 'true':
-            scroll = ('scroll', x, y)
-    selected = accept or scroll
-    if selected:
-        print(*selected)
+        resource_id = node.attrib.get('resource-id', '')
+        if resource_id.startswith('p') and resource_id[1:].isdigit() \
+                and right > 173 and left < 907 and bottom > 757 and top < 1611:
+            visible_ids.append(resource_id)
+    if accept:
+        print(*accept)
+    else:
+        ordered = []
+        for item in visible_ids:
+            if item not in ordered:
+                ordered.append(item)
+        print('scroll', ','.join(ordered) if ordered else 'unknown')
 PY2
       )"
     fi
 
-    if [[ -n "$action" ]]; then
+    if [[ "$action" == accept\ * ]]; then
       read -r action x y <<< "$action"
       adb shell input tap "$x" "$y"
-      printf 'JW terms action %s at %s,%s on step %d.\n' "$action" "$x" "$y" "$step" \
+      printf 'JW terms action accept at %s,%s on step %d.\n' "$x" "$y" "$step" \
         | tee -a "$EVIDENCE/terms-acceptance.txt"
       sleep 3
     else
-      # Fallback stays inside the modal document pane rather than starting at
-      # the bottom navigation area, which can invoke Android home/app-drawer gestures.
-      adb shell input swipe 540 1450 540 700 220 >/dev/null 2>&1 || true
-      printf 'JW terms internal-pane swipe on step %d.\n' "$step" \
+      signature="${action#scroll }"
+      if [[ -z "$signature" || "$signature" == "$action" ]]; then
+        signature='dump-unavailable'
+      fi
+      if [[ "$signature" == "$last_signature" ]]; then
+        stale_count=$((stale_count + 1))
+      else
+        stale_count=0
+      fi
+      last_signature="$signature"
+      swipe_count=2
+      if (( stale_count >= 2 )); then
+        swipe_count=4
+      fi
+      for swipe in $(seq 1 "$swipe_count"); do
+        if (( swipe % 2 == 1 )); then
+          adb shell input swipe 350 1440 350 820 220 >/dev/null 2>&1 || true
+        else
+          adb shell input swipe 730 1440 730 820 220 >/dev/null 2>&1 || true
+        fi
+        sleep 0.5
+      done
+      printf 'JW terms WebView swipes=%d step=%d visible=%s stale=%d.\n' \
+        "$swipe_count" "$step" "$signature" "$stale_count" \
         | tee -a "$EVIDENCE/terms-acceptance.txt"
-      sleep 2
+      sleep 1
     fi
 
     state_file="$EVIDENCE/terms-state-${step}.txt"
