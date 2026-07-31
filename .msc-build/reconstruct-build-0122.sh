@@ -17,7 +17,7 @@ python3 .msc-build/patch-0.12.2-link-cloud-followup.py
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-link-gate-v2.py)" = '2312026e660380dfb4c79a619ee54b9839c1a0a0'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-link-gate-v4.py)" = '9a54f4a367c809faaf816812cf0c1f885b4c91ed'
 python3 .msc-build/patch-0.12.2-final-link-gate-v4.py
-test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-link-policy-compile.py)" = 'ca3bb66f377abb9003f2b91635a19caea2b55f0f'
+test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-link-policy-compile.py)" = '9f750a52b17e2872093858c01bb4ec98172479b9'
 python3 .msc-build/patch-0.12.2-link-policy-compile.py
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-cloud-family-client.py)" = 'ab1fafb30fe06e82919f5d20e0ec012cb9895db7'
 python3 .msc-build/patch-0.12.2-cloud-family-client.py
@@ -55,7 +55,7 @@ source = source.replace(
     'PASS: generic workbook, meetings, youth-category, and WOL-search pages are not exposed as spiritual material links.\n'
     'PASS: signed daily, weekly, meeting-part, family, and family-section URLs must resolve to exact JW Library targets.\n'
     'PASS: incomplete Finder targets and stale family-section links fail closed instead of opening generic material.\n'
-    'PASS: exact-target classification and multi-passage expansion compile through an independent pure Kotlin policy object.\n'
+    'PASS: exact-target classification, signed-content enforcement, and multi-passage expansion compile through one pure Kotlin policy object.\n'
     'PASS: authenticated household invitation creation and join-by-code client flows are compiled and contract-tested.\n'
     'STATUS: protected Firebase, OAuth, and HTTPS backend deployment still require live integration verification.\n',
     1,
