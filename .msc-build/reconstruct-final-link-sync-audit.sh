@@ -26,6 +26,7 @@ test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-link-gate-v4.py)" = '9a
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-link-policy-compile.py)" = 'ca3bb66f377abb9003f2b91635a19caea2b55f0f'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-cloud-family-client.py)" = 'ab1fafb30fe06e82919f5d20e0ec012cb9895db7'
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)" = 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'
+test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-test-imports.py)" = '877f7a74f0ce329d4e8e99ac9d87abb65780e33e'
 
 python3 /tmp/patch-0.12.2-complete-jw-links.py
 python3 .msc-build/patch-0.12.2-exact-link-tests.py
@@ -34,6 +35,7 @@ python3 .msc-build/patch-0.12.2-final-link-gate-v4.py
 python3 .msc-build/patch-0.12.2-link-policy-compile.py
 python3 .msc-build/patch-0.12.2-cloud-family-client.py
 python3 .msc-build/patch-0.12.2-final-identities.py
+python3 .msc-build/patch-0.12.2-final-test-imports.py
 
 mkdir -p dist
 python3 .msc-build/audit-final-link-sync-surface.py \
