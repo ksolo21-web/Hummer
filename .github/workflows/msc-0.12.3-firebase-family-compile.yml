@@ -64,8 +64,23 @@ jobs:
           cat > dist/FIREBASE-FAMILY-STATUS.txt <<'TXT'
           PASS: Firebase Authentication and Cloud Firestore direct household implementation compiled.
           PASS: household creation, one-time invitation join, shared family board, member progress, and Family Worship synchronization are implemented without a private HTTPS backend.
-          PENDING LIVE TEST: add the canonical Android Firebase app, supply its google-services.json at build time, publish the supplied Firestore rules, then run installed Google sign-in and two-device synchronization tests.
+          PENDING LIVE TEST: supply the canonical google-services.json at build time, publish the audited Firestore rules, then run installed Google sign-in and two-device synchronization tests.
           TXT
+
+      - name: Export source for rules and data-flow audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf dist/MyStudyCompanion-0.12.3-firebase-source-audit.tgz \
+            MyStudyCompanion/firestore.rules \
+            MyStudyCompanion/app/build.gradle.kts \
+            MyStudyCompanion/build.gradle.kts \
+            MyStudyCompanion/settings.gradle.kts \
+            MyStudyCompanion/gradle/libs.versions.toml \
+            MyStudyCompanion/app/src/main/java \
+            MyStudyCompanion/app/src/test
+          sha256sum dist/MyStudyCompanion-0.12.3-firebase-source-audit.tgz \
+            > dist/SOURCE-AUDIT-SHA256.txt
 
       - name: Upload compile evidence
         if: always()
