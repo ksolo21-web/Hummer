@@ -2,12 +2,14 @@
 set -euo pipefail
 
 # Generate the complete strict verifier from the last full source, then apply
-# two evidence-backed harness corrections:
+# evidence-backed harness corrections:
 # 1. Split strict-shell local declarations so nounset does not expand an
 #    evidence-derived path before its source variable is assigned.
 # 2. Treat JW Library's delayed Privacy Settings activity as first-run setup,
 #    choose the privacy-minimizing DECLINE option, prove the modal closed, and
 #    require the actual requested content to regain focus before testing Back.
+# 3. Address the exact clickable Android dialog button (android:id/button2)
+#    instead of matching the word "decline" inside the explanatory paragraph.
 PINNED_BASE='ffa565c8242ca868233b647da68b8f23315ed743'
 BASE_PATH='.msc-build/installed-phone-jw-0121-core.sh'
 GENERATED='/tmp/installed-phone-jw-0121-core-generated.sh'
@@ -35,7 +37,7 @@ foreground_anchor = 'wait_for_jw_foreground() {\n'
 if source.count(foreground_anchor) != 1:
     raise SystemExit('Expected one JW foreground function anchor.')
 privacy_helper = r'''dismiss_jw_privacy_if_present() {
-  local evidence_file="$1" label="$2" attempt
+  local evidence_file="$1" label="$2" attempt coords x y
   local state_file="${evidence_file%.txt}-privacy-state.txt"
   local window_file="${evidence_file%.txt}-privacy-window.txt"
 
@@ -47,9 +49,40 @@ privacy_helper = r'''dismiss_jw_privacy_if_present() {
   printf 'JW Library Privacy Settings appeared during %s; choosing DECLINE for optional diagnostics.\n' "$label" \
     | tee -a "$EVIDENCE/privacy-acceptance.txt"
   for attempt in $(seq 1 20); do
-    if python3 /tmp/msc-ui.py exists 'Decline'; then
-      python3 /tmp/msc-ui.py tap 'Decline'
-      printf 'Tapped official DECLINE control during %s on attempt %d.\n' "$label" "$attempt" \
+    coords=''
+    adb shell rm -f /sdcard/jw-privacy.xml >/dev/null 2>&1 || true
+    if timeout 45s adb shell uiautomator dump --compressed /sdcard/jw-privacy.xml \
+        > "$EVIDENCE/privacy-dump-${attempt}.txt" 2>&1 \
+      && adb pull /sdcard/jw-privacy.xml /tmp/jw-privacy.xml >/dev/null 2>&1; then
+      coords="$(python3 - <<'PY2'
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+path = Path('/tmp/jw-privacy.xml')
+if path.exists():
+    for node in ET.parse(path).getroot().iter('node'):
+        text = (node.attrib.get('text') or node.attrib.get('content-desc') or '').strip()
+        resource = node.attrib.get('resource-id', '')
+        if resource != 'android:id/button2' and text.casefold() != 'decline':
+            continue
+        if node.attrib.get('clickable') != 'true' or node.attrib.get('enabled', 'true') != 'true':
+            continue
+        match = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if not match:
+            continue
+        left, top, right, bottom = map(int, match.groups())
+        x, y = (left + right)//2, (top + bottom)//2
+        if right > left and bottom > top and 0 <= x <= 2000 and 0 <= y <= 3000:
+            print(f'{x} {y}')
+            break
+PY2
+      )"
+    fi
+
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      adb shell input tap "$x" "$y"
+      printf 'Tapped exact clickable DECLINE button at %s,%s during %s on attempt %d.\n' "$x" "$y" "$label" "$attempt" \
         | tee -a "$EVIDENCE/privacy-acceptance.txt"
       sleep 4
     fi
@@ -130,7 +163,7 @@ if source.count(old_return) != 1:
 source = source.replace(old_return, new_return, 1)
 
 old_result = 'Bible Journey Day 1 opened JW Library and returned without losing state; My Study Companion produced no package-specific fatal exception.'
-new_result = 'Bible Journey Day 1 opened actual JW content, the delayed official Privacy Settings prompt was declined and dismissed when present, and Back returned to My Study Companion without losing state; My Study Companion produced no package-specific fatal exception.'
+new_result = 'Bible Journey Day 1 opened actual JW content, the delayed official Privacy Settings prompt was declined through its exact clickable dialog button and dismissed when present, and Back returned to My Study Companion without losing state; My Study Companion produced no package-specific fatal exception.'
 if source.count(old_result) != 1:
     raise SystemExit('Expected one JW result statement.')
 source = source.replace(old_result, new_result, 1)
