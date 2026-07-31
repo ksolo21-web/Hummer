@@ -70,7 +70,7 @@ for return_attempt in 1 2 3 4; do
 done
 if [[ "$return_ready" != true ]]; then
   echo 'Back did not return from JW Library to the paused My Study Companion task within four bounded attempts.' >&2
-  return 1
+  exit 1
 fi
 '''
 if source.count(old) != 1:
