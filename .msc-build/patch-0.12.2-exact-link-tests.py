@@ -4,9 +4,10 @@ path = Path('MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/update/
 text = path.read_text(encoding='utf-8')
 weekly = 'https://www.jw.org/finder?wtlocale=E&docid=202026244&srcid=share'
 family = 'https://www.jw.org/finder?wtlocale=E&pub=nwtsty&bible=51003012-51003013&srcid=share'
+family_section = 'https://www.jw.org/finder?wtlocale=E&pub=nwtsty&bible=51003014&srcid=share'
 text = text.replace('https://www.jw.org/en/library/jw-meeting-workbook/', weekly)
 text = text.replace('https://www.jw.org/en/bible-teachings/family/', family)
-text = text.replace('https://wol.jw.org/en/wol/h/r1/lp-e', family)
+text = text.replace('https://wol.jw.org/en/wol/h/r1/lp-e', family_section)
 anchor = '''    private fun signedShape(
 '''
 extra = '''    @Test
