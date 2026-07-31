@@ -29,6 +29,8 @@ replacements = {
     "versionName='0.12.1-private-alpha-grounded-links-debug'": "versionName='0.12.2-private-alpha-complete-jw-links-debug'",
     "versionCode='360120101'": "versionCode='360120201'",
     "versionName='0.12.1-wear-private-alpha-grounded-links-debug'": "versionName='0.12.2-wear-private-alpha-complete-jw-links-debug'",
+    "MyStudyCompanion-phone-0.12.1-debug.apk": "MyStudyCompanion-phone-0.12.2-debug.apk",
+    "MyStudyCompanion-wear-0.12.1-debug.apk": "MyStudyCompanion-wear-0.12.2-debug.apk",
 }
 for old, new in replacements.items():
     if old not in source:
