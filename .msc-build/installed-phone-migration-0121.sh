@@ -3,7 +3,7 @@ set -euo pipefail
 
 EVIDENCE="installed-0121-evidence/migration"
 mkdir -p "$EVIDENCE"
-BASELINE_APK="dist-baseline/MyStudyCompanion-phone-0.12.0-debug.apk"
+BASELINE_APK="dist/MyStudyCompanion-phone-0.12.0-migration-baseline-debug.apk"
 NEW_APK="dist/MyStudyCompanion-phone-0.12.1-debug.apk"
 PACKAGE="com.mystudycompanion.app.debug"
 test -f "$BASELINE_APK"
@@ -32,7 +32,7 @@ wait_for_android() {
 
 install_apk() {
   local apk="$1" package="$2" label="$3"
-  local log="$EVIDENCE/${label}-install.txt" remote="/data/local/tmp/${label}.apk" attempt output
+  local log="$EVIDENCE/${label}-install.txt" remote="/data/local/tmp/${label}.apk" attempt output status
   for attempt in 1 2 3 4; do
     echo "Install attempt ${attempt}: ${apk}" | tee -a "$log"
     wait_for_android
@@ -220,4 +220,4 @@ for index, line in enumerate(lines):
         if f'Process: {package}' in block:
             raise SystemExit('Phone app produced a package-specific fatal Android exception.')
 PY
-printf '%s\n' 'PASS: actual 0.12.0 APK created a Room v6 database; actual 0.12.1 APK upgraded it in place to v7, launched on phone and tablet geometry, displayed the hardened AI source-protection UI, and produced no package-specific fatal exception.' | tee "$EVIDENCE/RESULT.txt"
+printf '%s\n' 'PASS: paired 0.12.0 source-stage APK created a Room v6 database; paired 0.12.1 APK upgraded it in place to v7, launched on phone and tablet geometry, displayed the hardened AI source-protection UI, and produced no package-specific fatal exception.' | tee "$EVIDENCE/RESULT.txt"
