@@ -78,6 +78,11 @@ if source.count(old) != 1:
 path.write_text(source.replace(old, new, 1), encoding='utf-8')
 PYRETURN
 
+bash -n /tmp/installed-phone-jw-0121-core-generated.sh
+if [[ "${1:-}" == '--preflight' ]]; then
+  echo 'PASS: bounded JW return verifier generated and passed shell syntax validation.'
+  exit 0
+fi
 exec bash /tmp/installed-phone-jw-0121-core-generated.sh "$@"
 """
 if source.count(old) != 1:
