@@ -9,8 +9,9 @@ on:
       - '.msc-build/patch-0.12.2-complete-jw-links.py.xz.b64'
       - '.msc-build/patch-0.12.2-exact-link-tests.py'
       - '.msc-build/patch-0.12.2-link-cloud-followup.py'
-      - '.msc-build/patch-0.12.2-final-link-gate.py'
+      - '.msc-build/patch-0.12.2-final-link-gate-v4.py'
       - '.msc-build/patch-0.12.2-cloud-family-client.py'
+      - '.msc-build/patch-0.12.2-final-identities.py'
   workflow_dispatch:
 
 concurrency:
@@ -54,6 +55,10 @@ jobs:
           name: msc-0.12.2-fast-compile-diagnostics
           path: |
             dist/GROUNDED-LINKS-VERIFICATION.txt
+            MyStudyCompanion/build.gradle.kts
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/JwLibraryLinkResolver.kt
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt
             MyStudyCompanion/app/build/reports/tests/
             MyStudyCompanion/wear/build/reports/tests/
           retention-days: 5
