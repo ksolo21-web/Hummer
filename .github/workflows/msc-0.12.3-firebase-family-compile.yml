@@ -1,4 +1,4 @@
-name: My Study Companion 0.12.5 Firebase Integrity Compile
+name: My Study Companion 0.12.5 Final Firebase Compile
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0125-firebase-integrity-${{ github.event.pull_request.number || github.ref }}
+  group: msc-0125-final-compile-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 110
     steps:
-      - name: Check out isolated app build branch
+      - name: Check out frozen final verification branch
         uses: actions/checkout@v6
         with:
-          ref: agent/my-study-companion-apk-build
+          ref: agent/msc-0.12.5-final-verification
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -96,7 +96,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.5-firebase-integrity-compile-evidence
+          name: msc-0.12.5-final-firebase-compile-evidence
           path: dist/
           retention-days: 5
           if-no-files-found: warn
