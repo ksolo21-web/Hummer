@@ -1,0 +1,77 @@
+name: My Study Companion 0.12.3 Firebase Family Compile
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.3-firebase-family-compile.yml'
+      - '.msc-build/firebase-family-0.12.3.part*.b64'
+      - '.msc-build/reconstruct-build-0123.sh'
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0123-firebase-family-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compile-phone-wear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: Check out isolated app build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct, test, and compile Firebase-direct family sync
+        shell: bash
+        run: bash .msc-build/reconstruct-build-0123.sh
+
+      - name: Verify Firestore-direct architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s MyStudyCompanion/firestore.rules
+          grep -q 'FirebaseFirestore' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+          grep -q 'firebase-firestore' MyStudyCompanion/gradle/libs.versions.toml
+          ! grep -q 'BackendApi' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+          grep -q 'versionCode = 27' MyStudyCompanion/app/build.gradle.kts
+          grep -q '0.12.3-private-alpha-firebase-family' MyStudyCompanion/app/build.gradle.kts
+          cat > dist/FIREBASE-FAMILY-STATUS.txt <<'TXT'
+          PASS: Firebase Authentication and Cloud Firestore direct household implementation compiled.
+          PASS: household creation, one-time invitation join, shared family board, member progress, and Family Worship synchronization are implemented without a private HTTPS backend.
+          PENDING LIVE TEST: add the canonical Android Firebase app, supply its google-services.json at build time, publish the supplied Firestore rules, then run installed Google sign-in and two-device synchronization tests.
+          TXT
+
+      - name: Upload compile evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.3-firebase-family-compile-evidence
+          path: dist/
+          retention-days: 5
+          if-no-files-found: warn
