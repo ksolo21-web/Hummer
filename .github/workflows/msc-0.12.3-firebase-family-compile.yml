@@ -9,6 +9,7 @@ on:
       - '.msc-build/firebase-family-0.12.4.part*.b64'
       - '.msc-build/firebase-integrity-0.12.5.part*.b64'
       - '.msc-build/reconstruct-build-0125.sh'
+      - '.msc-build/reconstruct-build-0125-ci.sh'
   workflow_dispatch:
 
 concurrency:
@@ -51,7 +52,7 @@ jobs:
 
       - name: Reconstruct, test, and compile Firebase integrity source
         shell: bash
-        run: bash .msc-build/reconstruct-build-0125.sh
+        run: bash .msc-build/reconstruct-build-0125-ci.sh
 
       - name: Verify Firestore-direct architecture and integrity controls
         shell: bash
@@ -65,7 +66,7 @@ jobs:
           grep -q '0.12.5-private-alpha-firebase-integrity' MyStudyCompanion/app/build.gradle.kts
           grep -q 'function noOtherHousehold' MyStudyCompanion/firestore.rules
           grep -q "voteId == 'vote-'" MyStudyCompanion/firestore.rules
-          grep -q 'jw\\.org' MyStudyCompanion/firestore.rules
+          grep -Fq 'jw\\.org' MyStudyCompanion/firestore.rules
           grep -q 'allow delete: if false' MyStudyCompanion/firestore.rules
           test "$(grep -c '^  test(' .msc-build/firebase-rules-tests/rules.test.cjs)" -eq 20
           cat > dist/FIREBASE-FAMILY-STATUS.txt <<'TXT'
