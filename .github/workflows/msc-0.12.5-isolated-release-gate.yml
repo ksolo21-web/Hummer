@@ -1,0 +1,243 @@
+name: My Study Companion 0.12.5 Isolated Release Gate
+
+on:
+  push:
+    branches:
+      - agent/my-study-companion-firebase-0125-release
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0125-isolated-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  android-canonical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out immutable release branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-firebase-0125-release
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct and test checksum-locked 0.12.5 source
+        shell: bash
+        run: bash .msc-build/reconstruct-build-0125-ci.sh
+
+      - name: Install and validate Firebase configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text(encoding='utf-8'))
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android_clients) == 1
+          assert android_clients[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web_clients) == 1
+          Path('/tmp/msc-web-client-id').write_text(web_clients[0]['client_id'], encoding='utf-8')
+          print('Validated canonical Firebase package, OAuth client, and permanent signing certificate binding.')
+          PY
+          printf 'MSC_GOOGLE_WEB_CLIENT_ID=%s\n' "$(cat /tmp/msc-web-client-id)" >> "$GITHUB_ENV"
+
+      - name: Create disposable CI signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/msc-temporary-signing"
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/msc-temporary-signing/temporary.jks" \
+            -storepass temporary-build-only \
+            -alias temporary-build-only \
+            -keypass temporary-build-only \
+            -dname 'CN=Temporary CI Build,O=My Study Companion,C=US' \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 30
+          {
+            echo "MSC_RELEASE_STORE_FILE=$RUNNER_TEMP/msc-temporary-signing/temporary.jks"
+            echo 'MSC_RELEASE_STORE_PASSWORD=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_ALIAS=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_PASSWORD=temporary-build-only'
+          } >> "$GITHUB_ENV"
+
+      - name: Build canonical Firebase-enabled APK
+        working-directory: MyStudyCompanion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            :app:assemblePrivateAlpha
+
+      - name: Verify canonical identity and collect signing package
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          mkdir -p release-dist/apksigner/lib
+
+          APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
+          test -f "$APK"
+          cp "$APK" release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk
+          unzip -tq release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk
+
+          "$AAPT" dump badging release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            | tee release-dist/CANONICAL-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='29'" release-dist/CANONICAL-IDENTITY.txt
+          grep -q "versionName='0.12.5-private-alpha-firebase-integrity'" release-dist/CANONICAL-IDENTITY.txt
+          ! grep -q "package: name='com.mystudycompanion.app.debug'" release-dist/CANONICAL-IDENTITY.txt
+
+          "$AAPT" dump resources release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            > release-dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'google_app_id' release-dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'default_web_client_id' release-dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'project_id' release-dist/FIREBASE-RESOURCE-AUDIT.txt
+
+          "$APKSIGNER" verify --verbose --print-certs \
+            release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            > release-dist/TEMPORARY-SIGNATURE.txt
+          "$ZIPALIGN" -c -P 16 -v 4 \
+            release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            > release-dist/ZIPALIGN-VERIFICATION.txt
+
+          cp "$APKSIGNER" release-dist/apksigner/apksigner
+          cp "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar" release-dist/apksigner/lib/apksigner.jar
+          cp "$ZIPALIGN" release-dist/apksigner/zipalign
+          cp MyStudyCompanion/firestore.rules release-dist/firestore.rules
+          cp .msc-build/firebase-rules-tests/rules.test.cjs release-dist/firestore-rules-tests.cjs
+          cp MyStudyCompanion/app/google-services.json release-dist/google-services.json
+
+          cat > release-dist/RELEASE-STATUS.txt <<TXT
+          PASS: checksum-locked 0.12.5 source reconstructed and Android tests completed.
+          PASS: canonical package com.mystudycompanion.app, versionCode 29, and Firebase resources verified.
+          PASS: Firebase OAuth certificate binding matches permanent SHA-1 1997d421d177215a44f9651ce53dbaec152fbc49.
+          PENDING LOCAL STEP: replace the disposable CI signature with the preserved permanent signing key.
+          EXACT RELEASE COMMIT: ${GITHUB_SHA}
+          TXT
+
+          sha256sum release-dist/* 2>/dev/null \
+            | sort > release-dist/SHA256SUMS-TEMPORARY.txt
+
+      - name: Upload canonical APK for permanent local signing
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.5-isolated-canonical-apk
+          path: release-dist/
+          retention-days: 5
+          if-no-files-found: error
+
+  firestore-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out immutable release branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-firebase-0125-release
+
+      - name: Set up Java 21 for Firestore emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Reconstruct checksum-locked rules and 20-test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/firebase-integrity-0.12.5.part*.b64 | base64 --decode \
+            > /tmp/firebase-integrity-0.12.5-overlay.tar.xz
+          echo '8915fcd1e78a698c8528d4ccf0c06cace33251ee35e85b4a523a9c0af60db37f  /tmp/firebase-integrity-0.12.5-overlay.tar.xz' \
+            | sha256sum -c -
+          tar -xJf /tmp/firebase-integrity-0.12.5-overlay.tar.xz -C .
+          echo '0f834b748e561bf9a563a0714e90ccbb684e3dfbb0b0c47868e0cc24bbd12675  .msc-build/firestore-0.12.5.rules' \
+            | sha256sum -c -
+          echo 'b587ba8c2fe3fa0c93fa3e7d7935c1b65e78b83c6cae76bbf12fc564ad6df4e7  .msc-build/firebase-rules-tests/rules.test.cjs' \
+            | sha256sum -c -
+          cp .msc-build/firestore-0.12.5.rules .msc-build/firebase-rules-tests/firestore.rules
+          test "$(grep -c '^  test(' .msc-build/firebase-rules-tests/rules.test.cjs)" -eq 20
+          node --check .msc-build/firebase-rules-tests/rules.test.cjs
+
+      - name: Install Firebase emulator test dependencies
+        working-directory: .msc-build/firebase-rules-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund \
+            firebase@latest \
+            @firebase/rules-unit-testing@latest \
+            firebase-tools@latest
+
+      - name: Run authorization, integrity, and abuse tests
+        working-directory: .msc-build/firebase-rules-tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npx firebase emulators:exec \
+            --only firestore \
+            --project demo-my-study-companion \
+            'node rules.test.cjs' \
+            | tee FIRESTORE-RULES-TEST-RESULTS.txt
+          grep -q 'PASS: 20 Firestore authorization, integrity, and abuse tests completed.' \
+            FIRESTORE-RULES-TEST-RESULTS.txt
+
+      - name: Upload Firestore integrity evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.5-isolated-firestore-integrity
+          path: |
+            .msc-build/firebase-rules-tests/FIRESTORE-RULES-TEST-RESULTS.txt
+            .msc-build/firebase-rules-tests/firestore.rules
+            .msc-build/firebase-rules-tests/rules.test.cjs
+            .msc-build/firebase-rules-tests/package.json
+            .msc-build/firebase-rules-tests/package-lock.json
+          retention-days: 5
+          if-no-files-found: warn
