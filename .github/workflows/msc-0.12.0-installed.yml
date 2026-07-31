@@ -238,19 +238,30 @@ jobs:
           unzip -q debug-bundle.zip -d dist
           (cd dist && sha256sum -c SHA256SUMS.txt)
 
+      - name: Enable KVM acceleration for Wear emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -e /dev/kvm
+          sudo chown root:kvm /dev/kvm >/dev/null 2>&1 || true
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          ls -l /dev/kvm
+
       - name: Install and launch 0.12.1 Wear APK
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: android-wear
           arch: x86_64
-          cores: 4
-          ram-size: 3072M
+          cores: 2
+          ram-size: 2048M
           heap-size: 512M
           disk-size: 4096M
           emulator-boot-timeout: 900
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-metrics
           script: bash .msc-build/installed-wear-0121.sh
 
       - name: Upload installed Wear evidence
