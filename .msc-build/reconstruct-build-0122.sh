@@ -37,6 +37,11 @@ for old, new in replacements.items():
         raise SystemExit(f'Missing 0.12.2 build replacement anchor: {old}')
     source = source.replace(old, new)
 source = source.replace(
+    'set -euo pipefail\n',
+    'set -euo pipefail\ntrap \'rc=$?; printf "FAILED line %s: %s\\n" "$LINENO" "$BASH_COMMAND" >&2; exit "$rc"\' ERR\n',
+    1,
+)
+source = source.replace(
     'PASS: AI citation cards route through JwLibraryLinkResolver instead of a direct browser intent.\n',
     'PASS: AI citation cards route through JwLibraryLinkResolver instead of a direct browser intent.\n'
     'PASS: Daily Text home and widget actions use the exact dated JW Library Finder alias.\n'
