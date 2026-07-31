@@ -1,13 +1,12 @@
 name: My Study Companion 0.12.5 Isolated Release Gate
 
 on:
-  push:
-    branches:
-      - agent/my-study-companion-firebase-0125-release
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 concurrency:
-  group: msc-0125-isolated-release
+  group: msc-0125-isolated-release-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -156,8 +155,10 @@ jobs:
           EXACT RELEASE COMMIT: ${GITHUB_SHA}
           TXT
 
-          sha256sum release-dist/* 2>/dev/null \
-            | sort > release-dist/SHA256SUMS-TEMPORARY.txt
+          find release-dist -maxdepth 1 -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > release-dist/SHA256SUMS-TEMPORARY.txt
 
       - name: Upload canonical APK for permanent local signing
         uses: actions/upload-artifact@v7
