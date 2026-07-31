@@ -1,0 +1,58 @@
+name: My Study Companion 0.12.2 Fast Compile
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.2-fast-compile.yml'
+      - '.msc-build/reconstruct-build-0122.sh'
+      - '.msc-build/patch-0.12.2-complete-jw-links.py.xz.b64'
+      - '.msc-build/patch-0.12.2-exact-link-tests.py'
+      - '.msc-build/patch-0.12.2-link-cloud-followup.py'
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0122-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compile-test-phone-wear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      - name: Reconstruct, unit test, and compile 0.12.2 once
+        shell: bash
+        run: bash .msc-build/reconstruct-build-0122.sh
+      - name: Upload compile diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.2-fast-compile-diagnostics
+          path: |
+            dist/GROUNDED-LINKS-VERIFICATION.txt
+            MyStudyCompanion/app/build/reports/tests/
+            MyStudyCompanion/wear/build/reports/tests/
+          retention-days: 5
+          if-no-files-found: warn
