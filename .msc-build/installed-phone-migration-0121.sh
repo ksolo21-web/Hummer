@@ -3,7 +3,7 @@ set -euo pipefail
 
 EVIDENCE="installed-0121-evidence/migration"
 mkdir -p "$EVIDENCE"
-BASELINE_APK="dist/MyStudyCompanion-phone-0.12.0-migration-baseline-debug.apk"
+BASELINE_APK="dist-baseline/MyStudyCompanion-phone-0.12.0-debug.apk"
 NEW_APK="dist/MyStudyCompanion-phone-0.12.1-debug.apk"
 PACKAGE="com.mystudycompanion.app.debug"
 test -f "$BASELINE_APK"
@@ -220,4 +220,4 @@ for index, line in enumerate(lines):
         if f'Process: {package}' in block:
             raise SystemExit('Phone app produced a package-specific fatal Android exception.')
 PY
-printf '%s\n' 'PASS: paired 0.12.0 source-stage APK created a Room v6 database; paired 0.12.1 APK upgraded it in place to v7, launched on phone and tablet geometry, displayed the hardened AI source-protection UI, and produced no package-specific fatal exception.' | tee "$EVIDENCE/RESULT.txt"
+printf '%s\n' 'PASS: downloaded signed 0.12.0 APK created a Room v6 database; signed 0.12.1 APK upgraded it in place to v7, launched on phone and tablet geometry, displayed the hardened AI source-protection UI, and produced no package-specific fatal exception.' | tee "$EVIDENCE/RESULT.txt"
