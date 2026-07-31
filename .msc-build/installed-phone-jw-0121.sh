@@ -66,14 +66,14 @@ install_apk() {
 
 resolve_jw() {
   local name="$1" uri="$2" resolved
-  resolved="$(adb shell cmd package resolve-activity --brief -a android.intent.action.VIEW -d "$uri" | tr -d '\r')"
+  resolved="$(adb shell "cmd package resolve-activity --brief -a android.intent.action.VIEW -d '$uri'" | tr -d '\r')"
   printf '%s -> %s\n' "$uri" "$resolved" | tee "$EVIDENCE/${name}-resolve.txt"
   grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-resolve.txt"
 }
 
 resolve_jw_https() {
   local name="$1" uri="$2" resolved
-  resolved="$(adb shell cmd package resolve-activity --brief -a android.intent.action.VIEW -d "$uri" | tr -d '\r')"
+  resolved="$(adb shell "cmd package resolve-activity --brief -a android.intent.action.VIEW -d '$uri'" | tr -d '\r')"
   printf '%s -> %s\n' "$uri" "$resolved" | tee "$EVIDENCE/${name}-resolve.txt"
   if grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-resolve.txt"; then
     return 0
@@ -84,11 +84,10 @@ resolve_jw_https() {
   # candidates, then explicitly scope the same URI to JW Library and prove it
   # accepts and foregrounds the exact target.
   grep -q 'ResolverActivity' "$EVIDENCE/${name}-resolve.txt"
-  adb shell cmd package query-activities --brief \
-    -a android.intent.action.VIEW -d "$uri" \
+  adb shell "cmd package query-activities --brief -a android.intent.action.VIEW -d '$uri'" \
     | tr -d '\r' | tee "$EVIDENCE/${name}-candidates.txt"
   grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-candidates.txt"
-  adb shell am start -a android.intent.action.VIEW -d "$uri" "$JW_PACKAGE" \
+  adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" \
     | tee "$EVIDENCE/${name}-scoped-start.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-scoped-start.txt"
   sleep 6
@@ -100,7 +99,7 @@ resolve_jw_https() {
 
 start_jw() {
   local name="$1" uri="$2"
-  adb shell am start -a android.intent.action.VIEW -d "$uri" "$JW_PACKAGE" | tee "$EVIDENCE/${name}-start.txt"
+  adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" | tee "$EVIDENCE/${name}-start.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-start.txt"
   sleep 8
   adb shell dumpsys activity activities > "$EVIDENCE/${name}-activity.txt"
