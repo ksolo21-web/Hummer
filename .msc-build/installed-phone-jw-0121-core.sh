@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Extend the exact-button/privacy-aware strict verifier from a7c56c8c. The
-# official app crash on the third target was caused by repeatedly force-killing
-# JW Library and cold-starting its internal SiloContainer before JW Library's
-# own services were registered. Each target remains isolated, but now runs in a
-# freshly initialized MainActivity session before the exact Finder intent is
-# delivered—the realistic state when My Study Companion opens JW Library.
+# Extend the exact-button/privacy-aware strict verifier from a7c56c8c. Each
+# target runs in a freshly initialized MainActivity session before the exact
+# Finder intent is delivered. Activity gates use only resumed/focused state;
+# paused historical first-run activities are evidence, not active blockers.
 PINNED_WRAPPER='a7c56c8c0d1c85c0c02330f7f67a43951066351d'
 BASE_PATH='.msc-build/installed-phone-jw-0121-core.sh'
 PREVIOUS='/tmp/installed-phone-jw-0121-core-previous-wrapper.sh'
@@ -97,9 +95,9 @@ new = r'''start_jw_isolated() {
       echo "Official JW Library process exited while ${name} was under verification." >&2
       return 1
     fi
-    if grep -Eq 'Application Error: org\.jw\.jwlibrary\.mobile|mCurrentFocus=.*Application Error|TermsOfUseActivity|PrivacyAcceptanceActivity' \
+    if grep -Eq 'Application Error: org\.jw\.jwlibrary\.mobile|mCurrentFocus=.*Application Error|topResumedActivity=.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|ResumedActivity: ActivityRecord.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|Resumed: ActivityRecord.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|mCurrentFocus=.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|mFocusedApp=.*(TermsOfUseActivity|PrivacyAcceptanceActivity)' \
         "$EVIDENCE/${name}-stability-${check}.txt"; then
-      echo "Official JW Library showed a crash or first-run modal while ${name} was open." >&2
+      echo "Official JW Library showed a crash or active first-run modal while ${name} was open." >&2
       return 1
     fi
   done
@@ -114,6 +112,51 @@ new = r'''start_jw_isolated() {
 if source.count(old) != 1:
     raise SystemExit('Expected one cold-start JW target isolation function.')
 source = source.replace(old, new, 1)
+
+active_privacy = r'topResumedActivity=.*PrivacyAcceptanceActivity|ResumedActivity: ActivityRecord.*PrivacyAcceptanceActivity|Resumed: ActivityRecord.*PrivacyAcceptanceActivity|mCurrentFocus=.*PrivacyAcceptanceActivity|mFocusedApp=.*PrivacyAcceptanceActivity'
+
+old_initial = r'''  if ! grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.PrivacyAcceptanceActivity' "$evidence_file"; then
+    return 0
+  fi
+'''
+new_initial = rf'''  if ! grep -E '{active_privacy}' "$evidence_file" >/dev/null; then
+    return 0
+  fi
+'''
+if source.count(old_initial) != 1:
+    raise SystemExit('Expected one initial PrivacyAcceptanceActivity gate.')
+source = source.replace(old_initial, new_initial, 1)
+
+old_closed = r'''    if ! grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.PrivacyAcceptanceActivity' "$state_file" \
+      && grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
+'''
+new_closed = rf'''    if ! grep -E '{active_privacy}' "$state_file" >/dev/null \
+      && grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
+'''
+if source.count(old_closed) != 1:
+    raise SystemExit('Expected one privacy-closure activity-history gate.')
+source = source.replace(old_closed, new_closed, 1)
+
+old_loop = r'''    if grep -q 'org\.jw\.jwlibrary\.mobile/.activity\.PrivacyAcceptanceActivity' "$evidence_file"; then
+      dismiss_jw_privacy_if_present "$evidence_file" "$label"
+'''
+new_loop = rf'''    if grep -E '{active_privacy}' "$evidence_file" >/dev/null; then
+      dismiss_jw_privacy_if_present "$evidence_file" "$label"
+'''
+if source.count(old_loop) != 1:
+    raise SystemExit('Expected one active privacy loop gate.')
+source = source.replace(old_loop, new_loop, 1)
+
+old_guard = r'''      && ! grep -Eq 'Application Error: org\.jw\.jwlibrary\.mobile|mCurrentFocus=.*Application Error|TermsOfUseActivity|PrivacyAcceptanceActivity' \
+        "$evidence_file" "$window_file"; then
+'''
+new_guard = r'''      && ! grep -Eq 'Application Error: org\.jw\.jwlibrary\.mobile|mCurrentFocus=.*Application Error|topResumedActivity=.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|ResumedActivity: ActivityRecord.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|Resumed: ActivityRecord.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|mCurrentFocus=.*(TermsOfUseActivity|PrivacyAcceptanceActivity)|mFocusedApp=.*(TermsOfUseActivity|PrivacyAcceptanceActivity)' \
+        "$evidence_file" "$window_file"; then
+'''
+if source.count(old_guard) != 1:
+    raise SystemExit('Expected one broad first-run history guard.')
+source = source.replace(old_guard, new_guard, 1)
+
 path.write_text(source, encoding='utf-8')
 PYPOST
 
