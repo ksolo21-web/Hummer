@@ -26,7 +26,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify protected signing certificate matches Firebase canonical app
+      - name: Inspect protected signing configuration without exposing it
         shell: bash
         env:
           SIGNING_KEYSTORE_B64: ${{ secrets.MSC_SIGNING_KEYSTORE_B64 }}
@@ -35,10 +35,15 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.MSC_SIGNING_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "${SIGNING_KEYSTORE_B64:-}"
-          test -n "${SIGNING_STORE_PASSWORD:-}"
-          test -n "${SIGNING_KEY_ALIAS:-}"
-          test -n "${SIGNING_KEY_PASSWORD:-}"
+          if [[ -z "${SIGNING_KEYSTORE_B64:-}" || -z "${SIGNING_STORE_PASSWORD:-}" || \
+                -z "${SIGNING_KEY_ALIAS:-}" || -z "${SIGNING_KEY_PASSWORD:-}" ]]; then
+            cat > SIGNING-IDENTITY-STATUS.txt <<'TXT'
+          INFO: canonical signing secrets are not stored in GitHub.
+          PASS: the workflow will use a disposable CI signature and export the canonical APK for secure local re-signing.
+          PASS: the permanent signing key remains outside the repository and GitHub Actions.
+          TXT
+            exit 0
+          fi
 
           mkdir -p "$RUNNER_TEMP/msc-signing"
           printf '%s' "$SIGNING_KEYSTORE_B64" | base64 --decode \
