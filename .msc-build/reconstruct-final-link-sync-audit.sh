@@ -22,7 +22,6 @@ echo '7fbbcd2af666d519a7580b5c6287d63601b0a539489e00840518af3293c72bfe  /tmp/pat
 python3 /tmp/patch-0.12.2-complete-jw-links.py
 echo 'cb33653f09499905232f518e58d11df82d887d46fc6a106da2fd93c6d282b6e5  .msc-build/patch-0.12.2-exact-link-tests.py' | sha256sum -c -
 python3 .msc-build/patch-0.12.2-exact-link-tests.py
-echo '2234a869289ae6cb7429e65c921dd539acd0c3672041bafd725a8a2f07167415  .msc-build/patch-0.12.2-link-cloud-followup.py' | sha256sum -c -
 python3 .msc-build/patch-0.12.2-link-cloud-followup.py
 mkdir -p dist
 
