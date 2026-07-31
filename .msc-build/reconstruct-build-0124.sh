@@ -1,59 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-python3 - <<'PY'
-from pathlib import Path
+# Reconstruct and verify the complete 0.12.3 baseline first.
+bash .msc-build/reconstruct-build-0123.sh
 
-source = Path('.msc-build/reconstruct-build-0122.sh').read_text(encoding='utf-8')
-anchor = "python3 .msc-build/patch-0.12.2-final-test-imports.py\n"
-if source.count(anchor) != 1:
-    raise SystemExit('Expected one 0.12.2 final-test-imports anchor.')
-addition = r'''python3 .msc-build/patch-0.12.2-final-test-imports.py
-cat .msc-build/firebase-family-0.12.3.part*.b64 | base64 --decode > /tmp/firebase-family-0.12.3-overlay.tar.xz
-echo 'fc5d7909d3f739e6eb33d95f56c17e14013f0ffb6f685f7b78a9cea59a3cc8a2  /tmp/firebase-family-0.12.3-overlay.tar.xz' | sha256sum -c -
-tar -xJf /tmp/firebase-family-0.12.3-overlay.tar.xz -C MyStudyCompanion
-grep -q 'versionCode = 27' MyStudyCompanion/app/build.gradle.kts
-grep -q '0.12.3-private-alpha-firebase-family' MyStudyCompanion/app/build.gradle.kts
-grep -q 'firebase-firestore' MyStudyCompanion/gradle/libs.versions.toml
-grep -q 'FirebaseFirestore' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
-! grep -q 'BackendApi' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
-test -s MyStudyCompanion/firestore.rules
-python3 .msc-build/patch-0.12.4-firestore-hardening.py
+# Apply the checksum-locked security and data-integrity hardening overlay.
+cat .msc-build/firebase-family-0.12.4.part*.b64 | base64 --decode > /tmp/firebase-family-0.12.4-overlay.tar.xz
+echo '787dce372ae4ea6179b0310bd4831e427d9dc182d0d625b76747e8eb6e2f944a  /tmp/firebase-family-0.12.4-overlay.tar.xz' | sha256sum -c -
+tar -xJf /tmp/firebase-family-0.12.4-overlay.tar.xz -C MyStudyCompanion
+
+# Static hardening gates before Gradle is allowed to build.
 grep -q 'versionCode = 28' MyStudyCompanion/app/build.gradle.kts
-grep -q '0.12.4-private-alpha-firebase-rules-hardened' MyStudyCompanion/app/build.gradle.kts
-grep -q 'request.resource.data.householdId == resource.data.householdId' MyStudyCompanion/firestore.rules
-grep -q 'request.resource.data.usedAt == request.time' MyStudyCompanion/firestore.rules
-'''
-source = source.replace(anchor, addition, 1)
+grep -q '0.12.4-private-alpha-firebase-family-hardened' MyStudyCompanion/app/build.gradle.kts
+grep -q 'match /ideas/{ideaId}' MyStudyCompanion/firestore.rules
+grep -q 'match /ideaVotes/{voteId}' MyStudyCompanion/firestore.rules
+grep -q 'createdByUid' MyStudyCompanion/firestore.rules
+grep -q 'Do not read the protected household document before membership exists' \
+  MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+! grep -q 'transaction.get(householdRef)' \
+  MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+grep -q 'CloudFamilyBoardConfig' \
+  MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+grep -q 'FirebaseFamilyHardeningTest' \
+  MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/family/FirebaseFamilyHardeningTest.kt
 
-replacements = {
-    '"grep -q \'versionCode = 25\'": "grep -q \'versionCode = 26\'"':
-        '"grep -q \'versionCode = 25\'": "grep -q \'versionCode = 28\'"',
-    '"grep -q \'0.12.1-private-alpha-grounded-links\'": "grep -q \'0.12.2-private-alpha-complete-jw-links\'"':
-        '"grep -q \'0.12.1-private-alpha-grounded-links\'": "grep -q \'0.12.4-private-alpha-firebase-rules-hardened\'"',
-    '"versionCode=\'25\'": "versionCode=\'26\'"':
-        '"versionCode=\'25\'": "versionCode=\'28\'"',
-    '"versionName=\'0.12.1-private-alpha-grounded-links-debug\'": "versionName=\'0.12.2-private-alpha-complete-jw-links-debug\'"':
-        '"versionName=\'0.12.1-private-alpha-grounded-links-debug\'": "versionName=\'0.12.4-private-alpha-firebase-rules-hardened-debug\'"',
-    '"MyStudyCompanion-phone-0.12.1-debug.apk": "MyStudyCompanion-phone-0.12.2-debug.apk"':
-        '"MyStudyCompanion-phone-0.12.1-debug.apk": "MyStudyCompanion-phone-0.12.4-debug.apk"',
-}
-for old, new in replacements.items():
-    if source.count(old) != 1:
-        raise SystemExit(f'Missing one direct 0.12.4 replacement anchor: {old}')
-    source = source.replace(old, new, 1)
+# Re-run the phone test and assembly gates after the hardening overlay.
+pushd MyStudyCompanion >/dev/null
+gradle --no-daemon --stacktrace -PMSC_LOCAL_OWNER_MODE=true \
+  :app:testDebugUnitTest :app:assembleDebug
+popd >/dev/null
 
-source = source.replace(
-    "Path('/tmp/reconstruct-build-0122-generated.sh').write_text(source, encoding='utf-8')",
-    "Path('/tmp/reconstruct-build-0124-generated.sh').write_text(source, encoding='utf-8')",
-    1,
+AAPT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?}}/build-tools/36.0.0/aapt"
+test -x "$AAPT"
+PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+test -f "$PHONE_APK"
+rm -f dist/MyStudyCompanion-phone-0.12.3-debug.apk
+cp "$PHONE_APK" dist/MyStudyCompanion-phone-0.12.4-debug.apk
+"$AAPT" dump badging dist/MyStudyCompanion-phone-0.12.4-debug.apk > dist/PHONE-IDENTITY.txt
+grep -q "package: name='com.mystudycompanion.app.debug' versionCode='28'" dist/PHONE-IDENTITY.txt
+grep -q "versionName='0.12.4-private-alpha-firebase-family-hardened-debug'" dist/PHONE-IDENTITY.txt
+
+rm -rf dist/phone-test-reports
+cp -a MyStudyCompanion/app/build/reports/tests dist/phone-test-reports
+cp MyStudyCompanion/firestore.rules dist/firestore.rules
+cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt \
+  dist/FamilyWorshipOrganizerRepository.kt
+
+cat > dist/FIREBASE-FAMILY-STATUS.txt <<'TXT'
+PASS: Firebase Authentication and direct Cloud Firestore household code compiled after the security audit.
+PASS: invitation joining no longer attempts a protected household read before membership exists.
+PASS: organizer-only scheduling state is separated from member-created ideas and votes.
+PASS: household members, ideas, votes, member progress, and Family Worship use separate rule-governed records.
+PASS: offline local ideas and votes are merged before upload instead of being discarded by the first cloud snapshot.
+PENDING: Firestore emulator rule tests, canonical signing, installed Google sign-in, and live two-account synchronization.
+TXT
+
+cat >> dist/GROUNDED-LINKS-VERIFICATION.txt <<'TXT'
+PASS: 0.12.4 preserves the complete 0.12.2 JW Library exact-link policy while hardening Firebase family synchronization.
+TXT
+
+(
+  cd dist
+  sha256sum *.apk > SHA256SUMS.txt
 )
-source = source.replace(
-    'exec bash /tmp/reconstruct-build-0122-generated.sh',
-    'exec bash /tmp/reconstruct-build-0124-generated.sh',
-    1,
-)
-Path('/tmp/reconstruct-build-0124-driver.sh').write_text(source, encoding='utf-8')
-PY
-
-exec bash /tmp/reconstruct-build-0124-driver.sh
