@@ -146,8 +146,6 @@ ensure_home_navigation() {
       printf 'PASS: home navigation available after UI check %d.\n' "$attempt" | tee -a "$EVIDENCE/home-navigation.txt"
       return 0
     fi
-    # Tap directly from a single hierarchy dump. This avoids the previous race
-    # where an exists check saw onboarding and a second dump lost it before tap.
     if python3 /tmp/msc-ui.py tap 'Enter owner-only private alpha'; then
       sleep 4
       continue
@@ -158,6 +156,29 @@ ensure_home_navigation() {
   adb pull /sdcard/migration-home.xml "$EVIDENCE/home.xml" >/dev/null 2>&1 || true
   adb exec-out screencap -p > "$EVIDENCE/home-failure.png" || true
   echo 'Home navigation never became available after onboarding.' >&2
+  return 1
+}
+
+tap_with_retry() {
+  local text="$1" label="$2" attempt safe_label
+  safe_label="$(printf '%s' "$label" | tr '[:upper:] ' '[:lower:]-' | tr -cd '[:alnum:]-')"
+  for attempt in $(seq 1 30); do
+    # Find and tap from one hierarchy snapshot. A separate exists/tap pair is
+    # racy when Compose recomposes after phone-to-tablet geometry changes.
+    if python3 /tmp/msc-ui.py tap "$text"; then
+      printf 'PASS: tapped %s after UI attempt %d.\n' "$label" "$attempt" | tee -a "$EVIDENCE/${safe_label}-tap.txt"
+      return 0
+    fi
+    if python3 /tmp/msc-ui.py tap 'Enter owner-only private alpha'; then
+      sleep 4
+      continue
+    fi
+    sleep 2
+  done
+  adb shell uiautomator dump "/sdcard/${safe_label}-failure.xml" > "$EVIDENCE/${safe_label}-dump.txt" 2>&1 || true
+  adb pull "/sdcard/${safe_label}-failure.xml" "$EVIDENCE/${safe_label}-failure.xml" >/dev/null 2>&1 || true
+  adb exec-out screencap -p > "$EVIDENCE/${safe_label}-failure.png" || true
+  echo "Could not tap ${label} after retrying through Compose recomposition." >&2
   return 1
 }
 
@@ -192,9 +213,9 @@ grep -q 'versionCode=25' "$EVIDENCE/upgraded-package.txt"
 grep -q 'versionName=0.12.1-private-alpha-grounded-links-debug' "$EVIDENCE/upgraded-package.txt"
 launch_package
 ensure_home_navigation
-python3 /tmp/msc-ui.py tap 'More'
+tap_with_retry 'More' 'phone More navigation'
 python3 /tmp/msc-ui.py assert 'AI Study Assistant'
-python3 /tmp/msc-ui.py tap 'AI Study Assistant'
+tap_with_retry 'AI Study Assistant' 'phone AI Study Assistant'
 python3 /tmp/msc-ui.py assert 'Study Assistant'
 python3 /tmp/msc-ui.py assert 'Offline Study AI'
 adb exec-out screencap -p > "$EVIDENCE/phone-ai-screen.png"
@@ -203,8 +224,8 @@ adb shell wm size 1600x2560
 adb shell wm density 320
 launch_package
 ensure_home_navigation
-python3 /tmp/msc-ui.py tap 'More'
-python3 /tmp/msc-ui.py tap 'AI Study Assistant'
+tap_with_retry 'More' 'tablet More navigation'
+tap_with_retry 'AI Study Assistant' 'tablet AI Study Assistant'
 python3 /tmp/msc-ui.py assert 'Source protection'
 python3 /tmp/msc-ui.py assert 'only the verified sources the answer actually used'
 adb exec-out screencap -p > "$EVIDENCE/tablet-ai-source-protection.png"
