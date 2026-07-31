@@ -22,7 +22,7 @@ test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-link-policy-compile.py)" = 'f
 python3 .msc-build/patch-0.12.2-link-policy-compile.py
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-cloud-family-client.py)" = 'ab1fafb30fe06e82919f5d20e0ec012cb9895db7'
 python3 .msc-build/patch-0.12.2-cloud-family-client.py
-test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)" = 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'
+test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)" = 'd24c65668c3747bc99d6d2553cb4c4d4dc975b'
 python3 .msc-build/patch-0.12.2-final-identities.py
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-test-imports.py)" = '877f7a74f0ce329d4e8e99ac9d87abb65780e33e'
 python3 .msc-build/patch-0.12.2-final-test-imports.py
@@ -46,7 +46,7 @@ grep -q 'FirebaseFirestore' MyStudyCompanion/app/src/main/java/com/mystudycompan
 ! grep -q 'BackendApi' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
 grep -q 'noOtherHousehold' MyStudyCompanion/firestore.rules
 grep -q 'vote-' MyStudyCompanion/firestore.rules
-grep -q 'jw.org' MyStudyCompanion/firestore.rules
+grep -Fq 'jw\\.org' MyStudyCompanion/firestore.rules
 grep -q 'allow delete: if false' MyStudyCompanion/firestore.rules
 test -s .msc-build/firebase-rules-tests/rules.test.cjs
 '''
