@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Reconstruct the exact post-overlay 0.12.1 source without spending this
+# Reconstruct the exact post-overlay 0.12.2 source without spending this
 # diagnostic job on APK compilation. The normal build and installed workflows
 # remain the authoritative compilation and device gates.
 python3 - <<'PY'
@@ -17,6 +17,9 @@ Path('/tmp/reconstruct-final-source-only.sh').write_text(
 )
 PY
 bash /tmp/reconstruct-final-source-only.sh
+base64 --decode .msc-build/patch-0.12.2-complete-jw-links.py.xz.b64 | xz -dc > /tmp/patch-0.12.2-complete-jw-links.py
+echo '7fbbcd2af666d519a7580b5c6287d63601b0a539489e00840518af3293c72bfe  /tmp/patch-0.12.2-complete-jw-links.py' | sha256sum -c -
+python3 /tmp/patch-0.12.2-complete-jw-links.py
 mkdir -p dist
 
 python3 .msc-build/audit-final-link-sync-surface.py \
@@ -26,9 +29,6 @@ python3 .msc-build/audit-final-link-sync-surface.py \
 test -s dist/FINAL-LINK-SYNC-SURFACE.json
 test -s dist/FINAL-LINK-SYNC-SURFACE.txt
 
-# Preserve the actual post-overlay source used for the APK so every visible link,
-# widget action, authentication path, and family synchronization path can be
-# reviewed and patched against exact source rather than archive-level guesses.
 tar -cJf dist/FINAL-RECONSTRUCTED-SOURCE.tar.xz \
   -C MyStudyCompanion \
   app/src/main \
