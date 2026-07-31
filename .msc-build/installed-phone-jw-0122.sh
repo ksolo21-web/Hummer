@@ -63,6 +63,7 @@ EVIDENCE='installed-0122-evidence/jw-library/complete-link-matrix'
 JW_PACKAGE='org.jw.jwlibrary.mobile'
 APP_PACKAGE='com.mystudycompanion.app.debug'
 mkdir -p "$EVIDENCE"
+: > "$EVIDENCE/RESULT.txt"
 
 wait_for_jw_target() {
   local name="$1" attempt activity window
@@ -102,10 +103,12 @@ PY
 
 run_exact_target() {
   local name="$1" uri="$2" check
-  adb shell am force-stop "$JW_PACKAGE" >/dev/null 2>&1 || true
+  adb shell am force-stop "$JW_PACKAGE" </dev/null >/dev/null 2>&1 || true
   sleep 2
   adb logcat -c
-  adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" \
+  # Never let adb inherit the matrix heredoc. Without this redirection, adb can
+  # consume the remaining target rows and make a one-target run look complete.
+  adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" </dev/null \
     | tee "$EVIDENCE/${name}-start.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-start.txt"
   wait_for_jw_target "$name"
@@ -144,8 +147,24 @@ research-guide-document|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lan
 dated-daily-text|jwlibrary:///finder?alias=daily-text&date=${DAILY_DATE}&wtlocale=E
 EOF
 
-adb shell am force-stop "$JW_PACKAGE" >/dev/null 2>&1 || true
-adb shell monkey -p "$APP_PACKAGE" -c android.intent.category.LAUNCHER 1 \
+EXPECTED_TARGETS=11
+ACTUAL_TARGETS="$(grep -c '^PASS: .* opened as a stable, package-scoped JW Library target\.$' "$EVIDENCE/RESULT.txt" || true)"
+if [[ "$ACTUAL_TARGETS" != "$EXPECTED_TARGETS" ]]; then
+  echo "Exact-target matrix was incomplete: expected ${EXPECTED_TARGETS} PASS records, found ${ACTUAL_TARGETS}." >&2
+  exit 1
+fi
+for required in \
+  bible-single-verse bible-chapter bible-verse-range bible-cross-chapter bible-cross-book \
+  semicolon-first-passage semicolon-second-passage active-week-document \
+  research-guide-publication research-guide-document dated-daily-text; do
+  grep -q "^PASS: ${required} opened as a stable, package-scoped JW Library target\.$" \
+    "$EVIDENCE/RESULT.txt"
+done
+printf 'PASS: all %s required exact JW Library target classes completed independently.\n' "$EXPECTED_TARGETS" \
+  | tee -a "$EVIDENCE/RESULT.txt"
+
+adb shell am force-stop "$JW_PACKAGE" </dev/null >/dev/null 2>&1 || true
+adb shell monkey -p "$APP_PACKAGE" -c android.intent.category.LAUNCHER 1 </dev/null \
   > "$EVIDENCE/phone-return-launch.txt" 2>&1 || true
-printf '%s\n' 'PASS: the installed 0.12.2 app and current official JW Library completed the original UI return tests plus the full exact-target class matrix without a silent browser escape or package-specific fatal exception.' \
+printf '%s\n' 'PASS: the installed 0.12.2 app and current official JW Library completed the original UI return tests plus all 11 exact-target classes without a silent browser escape or package-specific fatal exception.' \
   | tee -a "$EVIDENCE/RESULT.txt"
