@@ -23,6 +23,8 @@ test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-cloud-family-client.py)" = 'a
 python3 .msc-build/patch-0.12.2-cloud-family-client.py
 test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)" = 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'
 python3 .msc-build/patch-0.12.2-final-identities.py
+test "$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-test-imports.py)" = '877f7a74f0ce329d4e8e99ac9d87abb65780e33e'
+python3 .msc-build/patch-0.12.2-final-test-imports.py
 '''
 source = source.replace(anchor, overlay, 1)
 replacements = {
