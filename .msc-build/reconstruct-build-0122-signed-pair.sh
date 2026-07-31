@@ -11,6 +11,8 @@ if source.count(old) != 1:
 source = source.replace(old, new, 1)
 source = source.replace('0.12.1 phone APK', '0.12.2 phone APK')
 source = source.replace('0.12.1 phone and Wear packages', '0.12.2 phone and Wear packages')
+source = source.replace('MyStudyCompanion-phone-0.12.1-debug.apk', 'MyStudyCompanion-phone-0.12.2-debug.apk')
+source = source.replace('MyStudyCompanion-wear-0.12.1-debug.apk', 'MyStudyCompanion-wear-0.12.2-debug.apk')
 Path('/tmp/reconstruct-build-0122-signed-pair-generated.sh').write_text(source, encoding='utf-8')
 PY
 
