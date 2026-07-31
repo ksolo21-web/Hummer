@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Reconstruct the exact signed 0.12.1 source/build stage first. The final Kotlin
-# tree exists only after all archived stages and overlays have been applied.
-bash .msc-build/reconstruct-build-0121-signed-pair.sh
+# Reconstruct the exact post-overlay 0.12.1 source without spending this
+# diagnostic job on APK compilation. The normal build and installed workflows
+# remain the authoritative compilation and device gates.
+python3 - <<'PY'
+from pathlib import Path
+
+source = Path('.msc-build/reconstruct-build-0120.sh').read_text(encoding='utf-8')
+marker = "\nWEEK_URL="
+if source.count(marker) != 1:
+    raise SystemExit('Expected exactly one final online/build boundary.')
+Path('/tmp/reconstruct-final-source-only.sh').write_text(
+    source.split(marker, 1)[0] + "\n",
+    encoding='utf-8',
+)
+PY
+bash /tmp/reconstruct-final-source-only.sh
 
 python3 .msc-build/audit-final-link-sync-surface.py \
   MyStudyCompanion \
@@ -25,7 +38,3 @@ tar -cJf dist/FINAL-RECONSTRUCTED-SOURCE.tar.xz \
   gradle/libs.versions.toml
 
 test -s dist/FINAL-RECONSTRUCTED-SOURCE.tar.xz
-
-cat >> dist/GROUNDED-LINKS-VERIFICATION.txt <<'TXT'
-DIAGNOSTIC: the fully reconstructed source link, direct ACTION_VIEW, authentication, family, and synchronization surfaces were inventoried for the complete-link hardening pass. This inventory is not itself a release pass.
-TXT
