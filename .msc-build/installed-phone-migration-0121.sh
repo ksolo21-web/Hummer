@@ -139,15 +139,35 @@ else:
     raise SystemExit(f'Unknown command: {command}')
 PY
 
+ensure_home_navigation() {
+  local attempt
+  for attempt in $(seq 1 30); do
+    if python3 /tmp/msc-ui.py exists 'More'; then
+      printf 'PASS: home navigation available after UI check %d.\n' "$attempt" | tee -a "$EVIDENCE/home-navigation.txt"
+      return 0
+    fi
+    # Tap directly from a single hierarchy dump. This avoids the previous race
+    # where an exists check saw onboarding and a second dump lost it before tap.
+    if python3 /tmp/msc-ui.py tap 'Enter owner-only private alpha'; then
+      sleep 4
+      continue
+    fi
+    sleep 2
+  done
+  adb shell uiautomator dump /sdcard/migration-home.xml > "$EVIDENCE/home-dump.txt" 2>&1 || true
+  adb pull /sdcard/migration-home.xml "$EVIDENCE/home.xml" >/dev/null 2>&1 || true
+  adb exec-out screencap -p > "$EVIDENCE/home-failure.png" || true
+  echo 'Home navigation never became available after onboarding.' >&2
+  return 1
+}
+
 wait_for_android
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
 install_apk "$BASELINE_APK" "$PACKAGE" baseline-0120
 launch_package
-if python3 /tmp/msc-ui.py exists 'Enter owner-only private alpha'; then
-  python3 /tmp/msc-ui.py tap 'Enter owner-only private alpha'
-fi
+ensure_home_navigation
 for attempt in $(seq 1 45); do
   if adb shell run-as "$PACKAGE" test -f databases/my-study-companion.db >/dev/null 2>&1; then break; fi
   [[ "$attempt" != 45 ]] || { echo 'Baseline Room database was not created.' >&2; exit 1; }
@@ -171,9 +191,7 @@ adb shell dumpsys package "$PACKAGE" > "$EVIDENCE/upgraded-package.txt"
 grep -q 'versionCode=25' "$EVIDENCE/upgraded-package.txt"
 grep -q 'versionName=0.12.1-private-alpha-grounded-links-debug' "$EVIDENCE/upgraded-package.txt"
 launch_package
-if python3 /tmp/msc-ui.py exists 'Enter owner-only private alpha'; then
-  python3 /tmp/msc-ui.py tap 'Enter owner-only private alpha'
-fi
+ensure_home_navigation
 python3 /tmp/msc-ui.py tap 'More'
 python3 /tmp/msc-ui.py assert 'AI Study Assistant'
 python3 /tmp/msc-ui.py tap 'AI Study Assistant'
@@ -184,6 +202,7 @@ adb exec-out screencap -p > "$EVIDENCE/phone-ai-screen.png"
 adb shell wm size 1600x2560
 adb shell wm density 320
 launch_package
+ensure_home_navigation
 python3 /tmp/msc-ui.py tap 'More'
 python3 /tmp/msc-ui.py tap 'AI Study Assistant'
 python3 /tmp/msc-ui.py assert 'Source protection'
