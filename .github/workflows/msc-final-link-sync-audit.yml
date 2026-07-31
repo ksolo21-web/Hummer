@@ -1,0 +1,62 @@
+name: My Study Companion Final Link and Sync Audit
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-final-link-sync-audit.yml'
+      - '.msc-build/audit-final-link-sync-surface.py'
+      - '.msc-build/reconstruct-final-link-sync-audit.sh'
+  workflow_dispatch:
+
+concurrency:
+  group: msc-final-link-sync-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-final-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out isolated application branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct final source and inventory every link and sync surface
+        shell: bash
+        run: bash .msc-build/reconstruct-final-link-sync-audit.sh
+
+      - name: Upload diagnostic inventory
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-final-link-sync-surface
+          path: |
+            dist/FINAL-LINK-SYNC-SURFACE.json
+            dist/FINAL-LINK-SYNC-SURFACE.txt
+          retention-days: 5
+          if-no-files-found: error
