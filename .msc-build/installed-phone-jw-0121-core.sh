@@ -73,16 +73,69 @@ install_apk() {
   return 1
 }
 
+assert_no_package_fatal() {
+  local package="$1" log_file="$2" label="$3"
+  python3 - "$package" "$log_file" "$label" <<'PY'
+from pathlib import Path
+import sys
+package, log_file, label = sys.argv[1:]
+lines = Path(log_file).read_text(errors='replace').splitlines()
+for index, line in enumerate(lines):
+    if 'FATAL EXCEPTION' not in line:
+        continue
+    block = '\n'.join(lines[index:index + 120])
+    if f'Process: {package}' in block:
+        raise SystemExit(f'{label} produced a package-specific fatal Android exception.\n{block[:5000]}')
+PY
+}
+
 wait_for_jw_foreground() {
-  local evidence_file="$1" attempt
-  for attempt in $(seq 1 45); do
+  local evidence_file="$1" label="$2" attempt stable=0 window_file="${evidence_file%.txt}-window.txt"
+  for attempt in $(seq 1 60); do
     adb shell dumpsys activity activities > "$evidence_file"
+    adb shell dumpsys window windows > "$window_file"
     if grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
-      "$evidence_file" >/dev/null; then
-      return 0
+        "$evidence_file" >/dev/null \
+      && grep -E 'mCurrentFocus=.*org\.jw\.jwlibrary\.mobile|mFocusedApp=.*org\.jw\.jwlibrary\.mobile' \
+        "$evidence_file" >/dev/null \
+      && ! grep -Eq 'Application Error: org\.jw\.jwlibrary\.mobile|mCurrentFocus=.*Application Error' \
+        "$evidence_file" "$window_file"; then
+      stable=$((stable + 1))
+      if (( stable >= 3 )); then
+        printf 'PASS: %s held direct JW Library focus for three checks after attempt %d.\n' "$label" "$attempt" \
+          | tee -a "$EVIDENCE/jw-focus-proof.txt"
+        return 0
+      fi
+    else
+      stable=0
     fi
     sleep 2
   done
+  echo "$label never obtained stable direct JW Library focus." >&2
+  return 1
+}
+
+wait_for_phone_foreground() {
+  local evidence_file="$1" label="$2" attempt stable=0 window_file="${evidence_file%.txt}-window.txt"
+  for attempt in $(seq 1 60); do
+    adb shell dumpsys activity activities > "$evidence_file"
+    adb shell dumpsys window windows > "$window_file"
+    if grep -E 'mResumedActivity=.*com\.mystudycompanion\.app\.debug|topResumedActivity=.*com\.mystudycompanion\.app\.debug|ResumedActivity: ActivityRecord.*com\.mystudycompanion\.app\.debug|Resumed: ActivityRecord.*com\.mystudycompanion\.app\.debug' \
+        "$evidence_file" >/dev/null \
+      && grep -E 'mCurrentFocus=.*com\.mystudycompanion\.app\.debug|mFocusedApp=.*com\.mystudycompanion\.app\.debug' \
+        "$evidence_file" >/dev/null; then
+      stable=$((stable + 1))
+      if (( stable >= 3 )); then
+        printf 'PASS: %s held direct My Study Companion focus for three checks after attempt %d.\n' "$label" "$attempt" \
+          | tee -a "$EVIDENCE/phone-focus-proof.txt"
+        return 0
+      fi
+    else
+      stable=0
+    fi
+    sleep 2
+  done
+  echo "$label never obtained stable My Study Companion focus." >&2
   return 1
 }
 
@@ -101,30 +154,61 @@ resolve_jw_https() {
     return 0
   fi
 
-  # A fresh Android device may correctly ask which installed app should open an
-  # HTTPS Finder fallback. Require JW Library to be a real chooser candidate and
-  # require Android to accept the same exact URI when explicitly scoped to it.
-  # The direct jwlibrary:///finder tests below separately prove that exact
-  # content actually remains foreground in JW Library.
   grep -q 'ResolverActivity' "$EVIDENCE/${name}-resolve.txt"
   adb shell "cmd package query-activities --brief -a android.intent.action.VIEW -d '$uri'" \
     | tr -d '\r' | tee "$EVIDENCE/${name}-candidates.txt"
   grep -q "$JW_PACKAGE" "$EVIDENCE/${name}-candidates.txt"
+
+  # Prove Android accepts the complete fallback URI when JW Library is selected,
+  # then terminate that isolated process before testing the next target. Rapidly
+  # stacking unrelated Finder intents is not a real user flow and previously
+  # provoked a delayed dialog callback in the official app after it was backgrounded.
+  adb shell am force-stop "$JW_PACKAGE" >/dev/null 2>&1 || true
+  adb logcat -c
   adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" \
     | tee "$EVIDENCE/${name}-scoped-start.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-scoped-start.txt"
-  sleep 3
+  sleep 5
   adb shell dumpsys activity activities > "$EVIDENCE/${name}-scoped-activity.txt"
   adb exec-out screencap -p > "$EVIDENCE/${name}-scoped-open.png" || true
+  adb logcat -d > "$EVIDENCE/${name}-scoped-logcat.txt"
+  assert_no_package_fatal "$JW_PACKAGE" "$EVIDENCE/${name}-scoped-logcat.txt" "HTTPS Finder fallback ${name}"
+  adb shell am force-stop "$JW_PACKAGE"
+  sleep 2
 }
 
-start_jw() {
-  local name="$1" uri="$2"
+start_jw_isolated() {
+  local name="$1" uri="$2" check
+  adb shell am force-stop "$JW_PACKAGE" >/dev/null 2>&1 || true
+  sleep 2
+  adb logcat -c
   adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" | tee "$EVIDENCE/${name}-start.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-start.txt"
-  wait_for_jw_foreground "$EVIDENCE/${name}-activity.txt"
-  sleep 3
+  wait_for_jw_foreground "$EVIDENCE/${name}-activity.txt" "exact JW Library target ${name}"
   adb exec-out screencap -p > "$EVIDENCE/${name}.png"
+
+  # Hold each target independently long enough to detect immediate or delayed
+  # failures while its own activity is still valid. Then force-stop it before
+  # launching a different target, matching one-link-at-a-time real usage.
+  for check in $(seq 1 8); do
+    sleep 2
+    adb shell dumpsys activity activities > "$EVIDENCE/${name}-stability-${check}.txt"
+    if ! adb shell pidof "$JW_PACKAGE" >/dev/null 2>&1; then
+      echo "Official JW Library process exited while ${name} was under verification." >&2
+      return 1
+    fi
+    if grep -Eq 'Application Error: org\.jw\.jwlibrary\.mobile|mCurrentFocus=.*Application Error' \
+        "$EVIDENCE/${name}-stability-${check}.txt"; then
+      echo "Official JW Library showed an Android crash dialog while ${name} was open." >&2
+      return 1
+    fi
+  done
+  adb logcat -d > "$EVIDENCE/${name}-logcat.txt"
+  assert_no_package_fatal "$JW_PACKAGE" "$EVIDENCE/${name}-logcat.txt" "Exact JW Library target ${name}"
+  adb shell am force-stop "$JW_PACKAGE"
+  sleep 3
+  printf 'PASS: exact target %s completed an isolated stable JW Library session with no package fatal.\n' "$name" \
+    | tee -a "$EVIDENCE/isolated-target-proof.txt"
 }
 
 cat > /tmp/msc-ui.py <<'PY'
@@ -208,18 +292,22 @@ resolve_jw research "$RESEARCH"
 resolve_jw_https week-https "$WEEK_HTTPS"
 resolve_jw daily "$DAILY"
 resolve_jw_https daily-https "$DAILY_HTTPS"
-start_jw job1-open "$JOB1"
-start_jw jeremiah-open "$JEREMIAH"
-start_jw week-open "$WEEK"
-start_jw daily-text-open "$DAILY"
+start_jw_isolated job1-open "$JOB1"
+start_jw_isolated jeremiah-open "$JEREMIAH"
+start_jw_isolated week-open "$WEEK"
+start_jw_isolated daily-text-open "$DAILY"
 
+# Ensure no delayed callback from a prior target can interfere with the actual
+# My Study Companion → JW Library → return flow.
+adb shell am force-stop "$JW_PACKAGE" >/dev/null 2>&1 || true
+adb logcat -c
 PHONE_COMPONENT="$(adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$PHONE_PACKAGE" | tr -d '\r' | tail -n 1)"
 printf '%s\n' "$PHONE_COMPONENT" | tee "$EVIDENCE/phone-component.txt"
 echo "$PHONE_COMPONENT" | grep -q "$PHONE_PACKAGE"
 adb shell am force-stop "$PHONE_PACKAGE"
 adb shell am start -n "$PHONE_COMPONENT" | tee "$EVIDENCE/phone-launch.txt"
 grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/phone-launch.txt"
-sleep 6
+wait_for_phone_foreground "$EVIDENCE/phone-home-activity.txt" 'My Study Companion home'
 if python3 /tmp/msc-ui.py exists 'Enter owner-only private alpha'; then
   python3 /tmp/msc-ui.py tap 'Enter owner-only private alpha'
   sleep 3
@@ -235,26 +323,18 @@ fi
 python3 /tmp/msc-ui.py assert 'Day 1 of'
 python3 /tmp/msc-ui.py assert 'Read now in JW Library'
 adb exec-out screencap -p > "$EVIDENCE/journey-day1.png"
+adb logcat -c
 python3 /tmp/msc-ui.py tap 'Read now in JW Library'
-wait_for_jw_foreground "$EVIDENCE/journey-jw-activity.txt"
-sleep 3
+wait_for_jw_foreground "$EVIDENCE/journey-jw-activity.txt" 'Bible Journey Day 1 in official JW Library'
 adb exec-out screencap -p > "$EVIDENCE/journey-jw-open.png"
+sleep 12
+adb logcat -d > "$EVIDENCE/journey-jw-logcat.txt"
+assert_no_package_fatal "$JW_PACKAGE" "$EVIDENCE/journey-jw-logcat.txt" 'Bible Journey Day 1 in official JW Library'
 adb shell input keyevent 4
-sleep 5
-adb shell dumpsys activity activities > "$EVIDENCE/journey-return-activity.txt"
-grep -E 'mResumedActivity=.*com\.mystudycompanion\.app\.debug|topResumedActivity=.*com\.mystudycompanion\.app\.debug|ResumedActivity: ActivityRecord.*com\.mystudycompanion\.app\.debug|Resumed: ActivityRecord.*com\.mystudycompanion\.app\.debug' \
-  "$EVIDENCE/journey-return-activity.txt" >/dev/null
+wait_for_phone_foreground "$EVIDENCE/journey-return-activity.txt" 'My Study Companion after returning from JW Library'
+adb shell am force-stop "$JW_PACKAGE" >/dev/null 2>&1 || true
 python3 /tmp/msc-ui.py assert 'Day 1 of'
 
 adb logcat -d > "$EVIDENCE/logcat.txt"
-python3 - <<'PY'
-from pathlib import Path
-lines = Path('installed-0121-evidence/jw-library/logcat.txt').read_text(errors='replace').splitlines()
-package = 'com.mystudycompanion.app.debug'
-for index, line in enumerate(lines):
-    if 'FATAL EXCEPTION' in line:
-        block = '\n'.join(lines[index:index + 100])
-        if f'Process: {package}' in block:
-            raise SystemExit('Phone app produced a package-specific fatal Android exception.')
-PY
-printf '%s\n' 'PASS: actual 0.12.1 phone APK and the current official JW Library APK installed on a fresh phone emulator; direct jwlibrary Finder targets resolved to and remained foreground in JW Library; HTTPS Finder fallbacks either resolved directly or exposed JW Library as an Android chooser candidate and were accepted when explicitly scoped; Job 1, Jeremiah 20:7-18, the active week, and the dated Daily Text launched in JW Library; Bible Journey Day 1 opened JW Library and returned without losing state; no package-specific fatal exception occurred.' | tee "$EVIDENCE/RESULT.txt"
+assert_no_package_fatal "$PHONE_PACKAGE" "$EVIDENCE/logcat.txt" 'My Study Companion'
+printf '%s\n' 'PASS: actual 0.12.1 phone APK and the current official JW Library APK installed on a fresh phone emulator; each exact Finder target ran in an isolated stable JW Library process with no package fatal; HTTPS Finder fallbacks exposed JW Library as an Android chooser candidate and were accepted when explicitly scoped; Job 1, Jeremiah 20:7-18, the active week, and the dated Daily Text launched; Bible Journey Day 1 opened JW Library and returned without losing state; My Study Companion produced no package-specific fatal exception.' | tee "$EVIDENCE/RESULT.txt"
