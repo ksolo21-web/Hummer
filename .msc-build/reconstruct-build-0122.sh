@@ -12,6 +12,8 @@ overlay = r'''python3 /tmp/patch-0.12.1-hardening.py
 base64 --decode .msc-build/patch-0.12.2-complete-jw-links.py.xz.b64 | xz -dc > /tmp/patch-0.12.2-complete-jw-links.py
 echo '7fbbcd2af666d519a7580b5c6287d63601b0a539489e00840518af3293c72bfe  /tmp/patch-0.12.2-complete-jw-links.py' | sha256sum -c -
 python3 /tmp/patch-0.12.2-complete-jw-links.py
+echo 'cb33653f09499905232f518e58d11df82d887d46fc6a106da2fd93c6d282b6e5  .msc-build/patch-0.12.2-exact-link-tests.py' | sha256sum -c -
+python3 .msc-build/patch-0.12.2-exact-link-tests.py
 '''
 source = source.replace(anchor, overlay, 1)
 replacements = {
@@ -27,11 +29,6 @@ for old, new in replacements.items():
     if old not in source:
         raise SystemExit(f'Missing 0.12.2 build replacement anchor: {old}')
     source = source.replace(old, new)
-source = source.replace(
-    "cat > dist/GROUNDED-LINKS-VERIFICATION.txt <<'TXT'",
-    "cat > dist/GROUNDED-LINKS-VERIFICATION.txt <<'TXT'",
-    1,
-)
 source = source.replace(
     'PASS: AI citation cards route through JwLibraryLinkResolver instead of a direct browser intent.\n',
     'PASS: AI citation cards route through JwLibraryLinkResolver instead of a direct browser intent.\n'
