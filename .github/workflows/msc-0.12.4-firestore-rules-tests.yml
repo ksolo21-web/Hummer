@@ -1,0 +1,77 @@
+name: My Study Companion 0.12.4 Firestore Rules Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.4-firestore-rules-tests.yml'
+      - '.msc-build/firestore-0.12.4.rules'
+      - '.msc-build/firebase-rules-tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out isolated app build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up Java 21 for Firestore emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: .msc-build/firebase-rules-tests/package-lock.json
+        continue-on-error: true
+
+      - name: Install Firebase rules test dependencies
+        working-directory: .msc-build/firebase-rules-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp ../firestore-0.12.4.rules firestore.rules
+          if [[ ! -f package.json ]]; then
+            npm init -y >/dev/null
+          fi
+          npm install --no-audit --no-fund \
+            firebase@latest \
+            @firebase/rules-unit-testing@latest \
+            firebase-tools@latest
+
+      - name: Run Firestore emulator authorization and abuse tests
+        working-directory: .msc-build/firebase-rules-tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npx firebase emulators:exec \
+            --only firestore \
+            --project demo-my-study-companion \
+            'node rules.test.cjs' \
+            | tee FIRESTORE-RULES-TEST-RESULTS.txt
+          grep -q 'PASS: 11 Firestore authorization and abuse tests completed.' \
+            FIRESTORE-RULES-TEST-RESULTS.txt
+
+      - name: Upload Firestore rules evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.4-firestore-rules-test-evidence
+          path: |
+            .msc-build/firebase-rules-tests/FIRESTORE-RULES-TEST-RESULTS.txt
+            .msc-build/firebase-rules-tests/firestore.rules
+            .msc-build/firebase-rules-tests/package.json
+            .msc-build/firebase-rules-tests/package-lock.json
+          retention-days: 5
+          if-no-files-found: warn
