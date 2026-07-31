@@ -85,12 +85,23 @@ for source_root in source_roots:
 required = {
     "app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt",
     "app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt",
-    "app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt",
     "app/src/test/java/com/mystudycompanion/app/companion/JwLibraryLinkResolverTest.kt",
 }
 missing = sorted(required.difference(modified))
 if missing:
     raise SystemExit(f"Expected exact-link policy callers were not rewritten: {missing}")
+
+remaining = []
+for source_root in source_roots:
+    for path in source_root.rglob("*.kt"):
+        if path == policy:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for legacy in replacements:
+            if legacy in text:
+                remaining.append(f"{path.relative_to(ROOT)}: {legacy}")
+if remaining:
+    raise SystemExit("Unresolved resolver helper calls remain: " + "; ".join(remaining))
 
 assert "fun splitBiblePassages" in policy.read_text(encoding="utf-8")
 assert "fun isDirectLibraryTarget" in policy.read_text(encoding="utf-8")
