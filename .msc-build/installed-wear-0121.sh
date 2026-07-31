@@ -43,30 +43,38 @@ for attempt in $(seq 1 8); do
   adb shell am start -n "$COMPONENT" | tee "$EVIDENCE/visual-launch-${attempt}.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/visual-launch-${attempt}.txt"
 
-  # Android 13 Wear reports mCurrentFocus/mFocusedApp in the activity dump,
-  # while the window dump proves the app owns a real surface. Require all three
-  # signals and reject the launch splash rather than searching the wrong file.
+  # A resumed app can still sit underneath Wear OS's TrayInitializationOverlay.
+  # Require the app's own MainActivity window—not merely mFocusedApp—to hold
+  # mCurrentFocus, require a real surface, and reject all launch/tray overlays.
   focused=false
-  for settle in $(seq 1 25); do
+  for settle in $(seq 1 60); do
     adb shell dumpsys activity activities > "$EVIDENCE/visual-activity-${attempt}.txt" 2>&1 || true
     adb shell dumpsys window windows > "$EVIDENCE/visual-window-${attempt}.txt" 2>&1 || true
     if grep -E "mResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|topResumedActivity=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|ResumedActivity: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|Resumed: ActivityRecord.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
         "$EVIDENCE/visual-activity-${attempt}.txt" >/dev/null \
-      && grep -E "mCurrentFocus=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|mFocusedApp=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
+      && grep -E "mCurrentFocus=.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
         "$EVIDENCE/visual-activity-${attempt}.txt" >/dev/null \
       && grep -E "Window.*${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity|mSurface=Surface\(name=${PACKAGE}/com\.mystudycompanion\.app\.wear\.MainActivity" \
         "$EVIDENCE/visual-window-${attempt}.txt" >/dev/null \
-      && ! grep -q "Splash Screen ${PACKAGE}" "$EVIDENCE/visual-activity-${attempt}.txt" \
-      && ! grep -q "Splash Screen ${PACKAGE}" "$EVIDENCE/visual-window-${attempt}.txt"; then
+      && ! grep -Eq "Splash Screen ${PACKAGE}|TrayInitializationOverlay|starting_screen|Starting…|Starting\.\.\." \
+        "$EVIDENCE/visual-activity-${attempt}.txt" \
+      && ! grep -Eq "Splash Screen ${PACKAGE}|TrayInitializationOverlay|starting_screen|Starting…|Starting\.\.\." \
+        "$EVIDENCE/visual-window-${attempt}.txt"; then
       focused=true
+      printf 'PASS: app window obtained direct focus after %d settle checks on attempt %d.\n' "$settle" "$attempt" \
+        | tee -a "$EVIDENCE/visual-retry.txt"
       break
+    fi
+    if (( settle % 10 == 0 )); then
+      printf 'Waiting for Wear OS tray/start overlay to clear: settle %d/60 on attempt %d.\n' "$settle" "$attempt" \
+        | tee -a "$EVIDENCE/visual-retry.txt"
     fi
     sleep 2
   done
   if [[ "$focused" != true ]]; then
-    echo "Attempt ${attempt}: real Wear activity window did not settle." | tee -a "$EVIDENCE/visual-retry.txt"
+    echo "Attempt ${attempt}: app window never obtained direct focus after the Wear OS start overlay." | tee -a "$EVIDENCE/visual-retry.txt"
     adb shell input keyevent 3 >/dev/null 2>&1 || true
-    sleep 2
+    sleep 3
     continue
   fi
 
@@ -75,16 +83,13 @@ for attempt in $(seq 1 8); do
     cp "$ATTEMPT_PNG" "$FINAL_PNG"
     cp "$EVIDENCE/visual-activity-${attempt}.txt" "$EVIDENCE/visual-activity.txt"
     cp "$EVIDENCE/visual-window-${attempt}.txt" "$EVIDENCE/visual-window.txt"
-    visual_ok=true
   else
     echo "Attempt ${attempt}: focused Wear window did not produce a screenshot." | tee -a "$EVIDENCE/visual-retry.txt"
     continue
   fi
 
-  # UiAutomator can return a null root on headless Wear images even when the
-  # app is demonstrably foreground and rendered. Preserve hierarchy evidence
-  # when available, but do not misclassify that platform limitation as an app
-  # launch failure.
+  # UiAutomator can return a null root on headless Wear images. Preserve its
+  # output when available, but explicitly reject Wear OS's own Starting screen.
   adb shell rm -f "$REMOTE_XML" >/dev/null 2>&1 || true
   rm -f "$LOCAL_XML"
   dump_ok=false
@@ -97,14 +102,26 @@ for attempt in $(seq 1 8); do
   fi
   if [[ "$dump_ok" == true ]] \
     && adb shell test -s "$REMOTE_XML" \
-    && adb pull "$REMOTE_XML" "$LOCAL_XML" > "$EVIDENCE/ui-pull-${attempt}.txt" 2>&1 \
-    && grep -Eqi 'My Study Companion|TODAY.?S TEXT|BIBLE JOURNEY|FAMILY WORSHIP' "$LOCAL_XML"; then
-    hierarchy_ok=true
-    printf 'PASS: Wear hierarchy exposed app content on attempt %d.\n' "$attempt" | tee -a "$EVIDENCE/visual-retry.txt"
+    && adb pull "$REMOTE_XML" "$LOCAL_XML" > "$EVIDENCE/ui-pull-${attempt}.txt" 2>&1; then
+    if grep -Eqi 'com\.google\.android\.wearable\.sysui:id/starting_screen|text="Starting(…|\.\.\.)"|TrayInitializationOverlay' "$LOCAL_XML"; then
+      printf 'Attempt %d: hierarchy still belongs to Wear OS Starting overlay; retrying.\n' "$attempt" \
+        | tee -a "$EVIDENCE/visual-retry.txt"
+      rm -f "$FINAL_PNG"
+      sleep 4
+      continue
+    fi
+    if grep -Eqi 'My Study Companion|TODAY.?S TEXT|BIBLE JOURNEY|FAMILY WORSHIP' "$LOCAL_XML"; then
+      hierarchy_ok=true
+      printf 'PASS: Wear hierarchy exposed app content on attempt %d.\n' "$attempt" | tee -a "$EVIDENCE/visual-retry.txt"
+    else
+      printf 'INFO: Wear hierarchy did not expose Compose text on attempt %d; direct-focus, surface, and pixel evidence retained.\n' "$attempt" \
+        | tee -a "$EVIDENCE/visual-retry.txt"
+    fi
   else
-    printf 'INFO: Wear UiAutomator hierarchy unavailable on attempt %d; foreground-window and pixel evidence retained.\n' "$attempt" \
+    printf 'INFO: Wear UiAutomator hierarchy unavailable on attempt %d; direct-focus, surface, and pixel evidence retained.\n' "$attempt" \
       | tee -a "$EVIDENCE/visual-retry.txt"
   fi
+  visual_ok=true
   break
 done
 
@@ -112,7 +129,7 @@ if [[ "$visual_ok" != true ]]; then
   adb shell dumpsys activity activities > "$EVIDENCE/visual-activity-final.txt" 2>&1 || true
   adb shell dumpsys window windows > "$EVIDENCE/visual-window-final.txt" 2>&1 || true
   adb logcat -d > "$EVIDENCE/visual-failure-logcat.txt" 2>&1 || true
-  echo 'Wear app did not produce a settled foreground screenshot after eight retries.' >&2
+  echo 'Wear app did not obtain direct focus and produce an app-owned screenshot after the system Starting overlay cleared.' >&2
   exit 1
 fi
 
@@ -184,12 +201,19 @@ nonzero = sum(v != 0 for v in rgb_values)
 mean = sum(rgb_values) / max(1, len(rgb_values))
 luma_mean = sum(luma) / max(1, len(luma))
 luma_sd = math.sqrt(sum((v-luma_mean)**2 for v in luma) / max(1, len(luma)))
-if nonzero < len(rgb_values) * 0.005 or mean < 1.0 or luma_sd < 1.0:
+bright = sum(v >= 32.0 for v in luma)
+mid_or_bright = sum(v >= 8.0 for v in luma)
+minimum_bright = max(100, int(len(luma) * 0.0005))
+minimum_visible = max(300, int(len(luma) * 0.0015))
+if luma_sd < 2.0 or bright < minimum_bright or mid_or_bright < minimum_visible:
     raise SystemExit(
-        f'Wear screenshot is blank or effectively uniform: nonzero={nonzero}, mean={mean:.3f}, luma_sd={luma_sd:.3f}'
+        'Wear screenshot lacks sufficient rendered contrast/content: '
+        f'nonzero_rgb={nonzero}, mean={mean:.3f}, luma_sd={luma_sd:.3f}, '
+        f'bright={bright}/{minimum_bright}, visible={mid_or_bright}/{minimum_visible}'
     )
 Path('installed-0121-evidence/wear/visual-check.txt').write_text(
-    f'PASS: {w}x{h} screenshot is visibly rendered; nonzero_rgb={nonzero}; mean_rgb={mean:.3f}; luma_sd={luma_sd:.3f}.\n',
+    f'PASS: {w}x{h} app-owned screenshot is rendered; nonzero_rgb={nonzero}; mean_rgb={mean:.3f}; '
+    f'luma_sd={luma_sd:.3f}; bright_pixels={bright}; visible_pixels={mid_or_bright}.\n',
     encoding='utf-8',
 )
 PY
@@ -197,7 +221,7 @@ PY
 if [[ "$hierarchy_ok" == true ]]; then
   hierarchy_summary='UiAutomator also exposed My Study Companion text.'
 else
-  hierarchy_summary='UiAutomator returned no usable root on the headless Wear image; this is recorded as platform evidence, not hidden.'
+  hierarchy_summary='UiAutomator exposed no usable Compose text on the headless Wear image; this platform limitation is recorded rather than hidden.'
 fi
-printf 'PASS: Wear APK installed and launched without a package fatal exception; the app owned the settled foreground window and produced a visibly rendered, non-uniform screenshot. %s\n' "$hierarchy_summary" \
+printf 'PASS: Wear APK installed and launched without a package fatal exception; after the Wear OS Starting overlay cleared, the app owned direct window focus and a real surface and produced a rendered, non-uniform screenshot. %s\n' "$hierarchy_summary" \
   | tee -a "$EVIDENCE/RESULT.txt"
