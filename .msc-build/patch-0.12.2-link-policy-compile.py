@@ -81,6 +81,57 @@ for source_root in source_roots:
                 updated = updated[: package_end + 2] + import_line + updated[package_end + 2 :]
         path.write_text(updated, encoding="utf-8")
 
+# Some reconstructed source variants contain only the broad spiritual-domain
+# checks in the signed-content decoder. Insert the exact JW Library requirement
+# structurally so the policy does not depend on a prior overlay having added a
+# resolver call that can be replaced.
+decoder = ROOT / "app/src/main/java/com/mystudycompanion/app/network/ContentPayloadDecoder.kt"
+decoder_text = decoder.read_text(encoding="utf-8")
+policy_import = "import com.mystudycompanion.app.companion.ExactJwLinkPolicy\n"
+if policy_import not in decoder_text:
+    package_end = decoder_text.find("\n\n")
+    if package_end < 0:
+        raise SystemExit("No import insertion point in ContentPayloadDecoder.kt")
+    decoder_text = decoder_text[: package_end + 2] + policy_import + decoder_text[package_end + 2 :]
+
+lines = decoder_text.splitlines()
+rules = {
+    "SpiritualSourcePolicy.requireAllowed(study.officialUrl)":
+        'ExactJwLinkPolicy.requireDirectLibraryTarget(study.officialUrl, "signed spiritual source")',
+    "SpiritualSourcePolicy.requireAllowed(part.officialUrl)":
+        'ExactJwLinkPolicy.requireDirectLibraryTarget(part.officialUrl, "meeting-part source")',
+    "SpiritualSourcePolicy.requireAllowed(section.officialUrl)":
+        'ExactJwLinkPolicy.requireDirectLibraryTarget(section.officialUrl, "family worship section source")',
+}
+rebuilt = []
+for index, line in enumerate(lines):
+    rebuilt.append(line)
+    stripped = line.strip()
+    target = rules.get(stripped)
+    if target is None:
+        continue
+    following = "\n".join(candidate.strip() for candidate in lines[index + 1 : index + 5])
+    if target in following:
+        continue
+    indent = line[: len(line) - len(line.lstrip())]
+    rebuilt.append(indent + target)
+
+decoder_text = "\n".join(rebuilt) + ("\n" if decoder_text.endswith("\n") else "")
+decoder.write_text(decoder_text, encoding="utf-8")
+
+final_decoder = decoder.read_text(encoding="utf-8")
+expected_decoder_calls = {
+    'ExactJwLinkPolicy.requireDirectLibraryTarget(study.officialUrl, "signed spiritual source")': 3,
+    'ExactJwLinkPolicy.requireDirectLibraryTarget(part.officialUrl, "meeting-part source")': 1,
+    'ExactJwLinkPolicy.requireDirectLibraryTarget(section.officialUrl, "family worship section source")': 1,
+}
+for call, expected_count in expected_decoder_calls.items():
+    actual_count = final_decoder.count(call)
+    if actual_count != expected_count:
+        raise SystemExit(
+            f"Expected {expected_count} signed-content exact-target call(s), found {actual_count}: {call}"
+        )
+
 remaining = []
 for source_root in source_roots:
     for path in source_root.rglob("*.kt"):
@@ -94,8 +145,7 @@ if remaining:
     raise SystemExit("Unresolved resolver helper calls remain: " + "; ".join(remaining))
 
 final_invariants = {
-    ROOT / "app/src/main/java/com/mystudycompanion/app/network/ContentPayloadDecoder.kt":
-        "ExactJwLinkPolicy.requireDirectLibraryTarget",
+    decoder: "ExactJwLinkPolicy.requireDirectLibraryTarget",
     ROOT / "app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt":
         "ExactJwLinkPolicy.splitBiblePassages",
     ROOT / "app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt":
@@ -107,11 +157,11 @@ for path, marker in final_invariants.items():
     text = path.read_text(encoding="utf-8")
     if marker not in text:
         raise SystemExit(f"Final exact-link policy invariant missing from {path}: {marker}")
-    if path.parent.name != "companion" and "import com.mystudycompanion.app.companion.ExactJwLinkPolicy" not in text:
+    if path.parent.name != "companion" and policy_import.strip() not in text:
         raise SystemExit(f"ExactJwLinkPolicy import missing from {path}")
 
 policy_text = policy.read_text(encoding="utf-8")
 assert "fun splitBiblePassages" in policy_text
 assert "fun isDirectLibraryTarget" in policy_text
 assert "fun requireDirectLibraryTarget" in policy_text
-print("Separated exact JW link policy into an independently compiled pure Kotlin object.")
+print("Separated exact JW link policy and enforced it across every signed spiritual content surface.")
