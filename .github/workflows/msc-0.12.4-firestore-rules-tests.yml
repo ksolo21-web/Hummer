@@ -1,4 +1,4 @@
-name: My Study Companion 0.12.5 Firestore Integrity Tests
+name: My Study Companion 0.12.5 Final Firestore Integrity Tests
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0125-firestore-rules-${{ github.event.pull_request.number || github.ref }}
+  group: msc-0125-final-firestore-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - name: Check out isolated app build branch
+      - name: Check out frozen final verification branch
         uses: actions/checkout@v6
         with:
-          ref: agent/my-study-companion-apk-build
+          ref: agent/msc-0.12.5-final-verification
 
       - name: Set up Java 21 for Firestore emulator
         uses: actions/setup-java@v5
@@ -85,7 +85,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.5-firestore-integrity-test-evidence
+          name: msc-0.12.5-final-firestore-integrity-evidence
           path: |
             .msc-build/firebase-rules-tests/FIRESTORE-RULES-TEST-RESULTS.txt
             .msc-build/firebase-rules-tests/firestore.rules
