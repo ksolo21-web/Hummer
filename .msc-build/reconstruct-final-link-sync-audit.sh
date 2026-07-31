@@ -17,6 +17,7 @@ Path('/tmp/reconstruct-final-source-only.sh').write_text(
 )
 PY
 bash /tmp/reconstruct-final-source-only.sh
+mkdir -p dist
 
 python3 .msc-build/audit-final-link-sync-surface.py \
   MyStudyCompanion \
