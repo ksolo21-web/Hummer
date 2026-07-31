@@ -15,6 +15,7 @@ on:
       - '.msc-build/patch-0.12.2-exact-link-tests.py'
       - '.msc-build/patch-0.12.2-link-cloud-followup.py'
       - '.msc-build/patch-0.12.2-final-link-gate.py'
+      - '.msc-build/patch-0.12.2-cloud-family-client.py'
   workflow_dispatch:
 
 concurrency:
@@ -81,13 +82,17 @@ jobs:
           check 'Firebase Android google-services configuration' "${GOOGLE_SERVICES_JSON_B64:-}"
           check 'Google OAuth web client ID' "${MSC_GOOGLE_WEB_CLIENT_ID:-}"
           check 'Deployed HTTPS My Study Companion backend base URL' "${MSC_BACKEND_BASE_URL:-}"
+          cat >> dist/CLOUD-READINESS.txt <<'TXT'
+          IMPLEMENTED IN CLIENT: Google Credential Manager sign-in, Firebase Authentication token exchange, authenticated backend headers, organizer invitation creation, member join-by-code, household capability refresh, and post-join content synchronization.
+          REQUIRED BACKEND ENDPOINTS: POST /v1/household/invitations and POST /v1/household/join, plus the existing authenticated capability/content endpoints.
+          TXT
           if [[ "$missing" -eq 0 ]]; then
             cat >> dist/CLOUD-READINESS.txt <<'TXT'
-          ELIGIBLE FOR LIVE TESTING ONLY: configuration values are present. Google sign-in, App Check, backend authentication, household invitation/join, and cross-device family synchronization still require live integration tests before release approval.
+          ELIGIBLE FOR LIVE TESTING ONLY: configuration values are present. Google sign-in, App Check, backend identity validation, invitation expiry/single-use enforcement, join authorization, and cross-device delivery still require live integration tests before release approval.
           TXT
           else
             cat >> dist/CLOUD-READINESS.txt <<'TXT'
-          NOT RELEASE READY: Google sign-in and family synchronization are not enabled. Firebase configuration alone is insufficient; the OAuth web client and deployed HTTPS backend are also required. Household invitation/join is not yet implemented in the current client and remains a separate product blocker.
+          NOT LIVE-VERIFIABLE: Google sign-in and family synchronization cannot be enabled in this artifact until the protected Firebase/OAuth configuration and deployed HTTPS backend are supplied. The client flow is present, but service-side behavior is not claimed as verified.
           TXT
           fi
           cp dist/CLOUD-READINESS.txt dist/FIREBASE-STATUS.txt
