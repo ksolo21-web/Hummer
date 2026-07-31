@@ -1,4 +1,4 @@
-name: My Study Companion 0.12.5 Isolated Release Gate
+name: My Study Companion 0.12.6 Final Release Gate
 
 on:
   pull_request:
@@ -6,16 +6,16 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0125-isolated-release-${{ github.event.pull_request.number || github.ref }}
+  group: msc-0126-final-release-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  android-canonical:
+  phone-wear-final:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 210
     steps:
       - name: Check out immutable release branch
         uses: actions/checkout@v6
@@ -43,9 +43,144 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct and test checksum-locked 0.12.5 source
+      - name: Reconstruct checksum-locked 0.12.5 foundation
         shell: bash
         run: bash .msc-build/reconstruct-build-0125-ci.sh
+
+      - name: Apply the single final Daily Text JW Library correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('MyStudyCompanion')
+          home = root / 'app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt'
+          widget = root / 'app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt'
+          daily_source = root / 'app/src/main/java/com/mystudycompanion/app/data/official/OfficialDailyTextRepository.kt'
+          gradle_file = root / 'app/build.gradle.kts'
+
+          home_text = home.read_text(encoding='utf-8')
+          old_home_url = 'officialContent?.officialUrl ?: DailyTextOfficialSource.urlFor(daily.date),'
+          new_home_url = (
+              'DailyTextOfficialSource.finderUrlFor(daily.date),\n'
+              '                            label = "today\'s Daily Text",'
+          )
+          if home_text.count(old_home_url) != 1:
+              raise SystemExit('Expected exactly one WOL Daily Text home action.')
+          home_text = home_text.replace(old_home_url, new_home_url, 1)
+          if home_text.count('Text("Today on WOL")') != 1:
+              raise SystemExit('Expected exactly one Today on WOL home label.')
+          home_text = home_text.replace('Text("Today on WOL")', 'Text("Open in JW Library")', 1)
+          if home_text.count('Icon(Icons.Outlined.Language, contentDescription = null)') != 1:
+              raise SystemExit('Expected exactly one Daily Text language icon.')
+          home_text = home_text.replace(
+              'Icon(Icons.Outlined.Language, contentDescription = null)',
+              'Icon(Icons.Outlined.MenuBook, contentDescription = null)',
+              1,
+          )
+          old_footer = 'Official text: Watchtower Online Library • Study aid: My Study Companion'
+          new_footer = 'Official text: Watchtower Online Library • Opens the dated entry in JW Library • Study aid: My Study Companion'
+          if home_text.count(old_footer) != 1:
+              raise SystemExit('Expected exactly one Daily Text source footer.')
+          home_text = home_text.replace(old_footer, new_footer, 1)
+          home.write_text(home_text, encoding='utf-8')
+
+          source_text = daily_source.read_text(encoding='utf-8')
+          old_source = (
+              '    fun finderUrlFor(date: LocalDate): String =\n'
+              '        "https://www.jw.org/finder?alias=daily-text&date=${date.toString().replace("-", "")}&wtlocale=E"\n'
+          )
+          new_source = old_source + (
+              '\n'
+              '    fun libraryUriFor(date: LocalDate): String =\n'
+              '        "jwlibrary:///finder?alias=daily-text&date=${date.toString().replace("-", "")}&wtlocale=E"\n'
+          )
+          if source_text.count(old_source) != 1:
+              raise SystemExit('Expected one DailyTextOfficialSource finder function block.')
+          source_text = source_text.replace(old_source, new_source, 1)
+          daily_source.write_text(source_text, encoding='utf-8')
+
+          widget_text = widget.read_text(encoding='utf-8')
+          if widget_text.count('text = "Today on WOL"') != 1:
+              raise SystemExit('Expected exactly one Today on WOL widget label.')
+          widget_text = widget_text.replace('text = "Today on WOL"', 'text = "Open in JW Library"', 1)
+          old_widget_url = 'DailyTextOfficialSource.urlFor(data.snapshot.daily.date),'
+          new_widget_url = 'DailyTextOfficialSource.libraryUriFor(data.snapshot.daily.date),'
+          if widget_text.count(old_widget_url) != 1:
+              raise SystemExit('Expected exactly one WOL Daily Text widget URL.')
+          widget_text = widget_text.replace(old_widget_url, new_widget_url, 1)
+          old_intent_close = (
+              '                                    DailyTextOfficialSource.libraryUriFor(data.snapshot.daily.date),\n'
+              '                                ),\n'
+              '                            ),'
+          )
+          new_intent_close = (
+              '                                    DailyTextOfficialSource.libraryUriFor(data.snapshot.daily.date),\n'
+              '                                ),\n'
+              '                            ).setPackage("org.jw.jwlibrary.mobile"),'
+          )
+          if widget_text.count(old_intent_close) != 1:
+              raise SystemExit('Expected exactly one Daily Text widget intent closure.')
+          widget_text = widget_text.replace(old_intent_close, new_intent_close, 1)
+          widget.write_text(widget_text, encoding='utf-8')
+
+          gradle_text = gradle_file.read_text(encoding='utf-8')
+          if gradle_text.count('versionCode = 29') != 1:
+              raise SystemExit('Expected one 0.12.5 phone version code.')
+          if gradle_text.count('versionName = "0.12.5-private-alpha-firebase-integrity"') != 1:
+              raise SystemExit('Expected one 0.12.5 phone version name.')
+          gradle_text = gradle_text.replace('versionCode = 29', 'versionCode = 30', 1)
+          gradle_text = gradle_text.replace(
+              'versionName = "0.12.5-private-alpha-firebase-integrity"',
+              'versionName = "0.12.6-private-alpha-daily-text-jw-library"',
+              1,
+          )
+          gradle_file.write_text(gradle_text, encoding='utf-8')
+          PY
+
+          grep -Fq 'DailyTextOfficialSource.finderUrlFor(daily.date)' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+          grep -Fq 'Text("Open in JW Library")' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+          ! grep -Fq 'Text("Today on WOL")' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+          grep -Fq 'DailyTextOfficialSource.libraryUriFor(data.snapshot.daily.date)' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt
+          grep -Fq '.setPackage("org.jw.jwlibrary.mobile")' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt
+          ! grep -Fq 'DailyTextOfficialSource.urlFor(data.snapshot.daily.date)' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt
+          grep -Fq 'jwlibrary:///finder?alias=daily-text&date=' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/official/OfficialDailyTextRepository.kt
+          grep -q 'versionCode = 30' MyStudyCompanion/app/build.gradle.kts
+          grep -q '0.12.6-private-alpha-daily-text-jw-library' MyStudyCompanion/app/build.gradle.kts
+
+      - name: Test and build the final phone and Wear sources once
+        working-directory: MyStudyCompanion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            :app:testDebugUnitTest \
+            :wear:testDebugUnitTest \
+            :app:compileDebugKotlin \
+            :wear:compileDebugKotlin \
+            :app:assembleDebug \
+            :wear:assembleDebug
+
+          mkdir -p ../final-dist
+          PHONE_DEBUG="$(find app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          WEAR_DEBUG="$(find wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          test -f "$PHONE_DEBUG"
+          test -f "$WEAR_DEBUG"
+          cp "$PHONE_DEBUG" ../final-dist/MyStudyCompanion-phone-0.12.6-debug.apk
+          cp "$WEAR_DEBUG" ../final-dist/MyStudyCompanion-wear-0.12.2-debug.apk
+          cp "$PHONE_DEBUG" ../dist/MyStudyCompanion-phone-0.12.6-debug.apk
+          cp "$WEAR_DEBUG" ../dist/MyStudyCompanion-wear-0.12.2-debug.apk
+          cp -R app/build/reports/tests/testDebugUnitTest ../final-dist/phone-test-reports
+          cp -R wear/build/reports/tests/testDebugUnitTest ../final-dist/wear-test-reports
 
       - name: Install and validate Firebase configuration
         shell: bash
@@ -97,7 +232,7 @@ jobs:
             echo 'MSC_RELEASE_KEY_PASSWORD=temporary-build-only'
           } >> "$GITHUB_ENV"
 
-      - name: Build canonical Firebase-enabled APK
+      - name: Build the canonical Firebase-enabled phone APK
         working-directory: MyStudyCompanion
         shell: bash
         run: |
@@ -114,57 +249,240 @@ jobs:
           AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
           APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
           ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
-          mkdir -p release-dist/apksigner/lib
+          mkdir -p final-dist/apksigner/lib
 
           APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
           test -f "$APK"
-          cp "$APK" release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk
-          unzip -tq release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk
+          cp "$APK" final-dist/MyStudyCompanion-phone-0.12.6-canonical-temporary-signed.apk
+          unzip -tq final-dist/MyStudyCompanion-phone-0.12.6-canonical-temporary-signed.apk
 
-          "$AAPT" dump badging release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
-            | tee release-dist/CANONICAL-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='29'" release-dist/CANONICAL-IDENTITY.txt
-          grep -q "versionName='0.12.5-private-alpha-firebase-integrity'" release-dist/CANONICAL-IDENTITY.txt
-          ! grep -q "package: name='com.mystudycompanion.app.debug'" release-dist/CANONICAL-IDENTITY.txt
+          "$AAPT" dump badging final-dist/MyStudyCompanion-phone-0.12.6-canonical-temporary-signed.apk \
+            | tee final-dist/CANONICAL-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='30'" final-dist/CANONICAL-IDENTITY.txt
+          grep -q "versionName='0.12.6-private-alpha-daily-text-jw-library'" final-dist/CANONICAL-IDENTITY.txt
+          ! grep -q "package: name='com.mystudycompanion.app.debug'" final-dist/CANONICAL-IDENTITY.txt
 
-          "$AAPT" dump resources release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
-            > release-dist/FIREBASE-RESOURCE-AUDIT.txt
-          grep -q 'google_app_id' release-dist/FIREBASE-RESOURCE-AUDIT.txt
-          grep -q 'default_web_client_id' release-dist/FIREBASE-RESOURCE-AUDIT.txt
-          grep -q 'project_id' release-dist/FIREBASE-RESOURCE-AUDIT.txt
+          "$AAPT" dump resources final-dist/MyStudyCompanion-phone-0.12.6-canonical-temporary-signed.apk \
+            > final-dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'google_app_id' final-dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'default_web_client_id' final-dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'project_id' final-dist/FIREBASE-RESOURCE-AUDIT.txt
 
           "$APKSIGNER" verify --verbose --print-certs \
-            release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
-            > release-dist/TEMPORARY-SIGNATURE.txt
+            final-dist/MyStudyCompanion-phone-0.12.6-canonical-temporary-signed.apk \
+            > final-dist/TEMPORARY-SIGNATURE.txt
           "$ZIPALIGN" -c -P 16 -v 4 \
-            release-dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
-            > release-dist/ZIPALIGN-VERIFICATION.txt
+            final-dist/MyStudyCompanion-phone-0.12.6-canonical-temporary-signed.apk \
+            > final-dist/ZIPALIGN-VERIFICATION.txt
 
-          cp "$APKSIGNER" release-dist/apksigner/apksigner
-          cp "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar" release-dist/apksigner/lib/apksigner.jar
-          cp "$ZIPALIGN" release-dist/apksigner/zipalign
-          cp MyStudyCompanion/firestore.rules release-dist/firestore.rules
-          cp .msc-build/firebase-rules-tests/rules.test.cjs release-dist/firestore-rules-tests.cjs
-          cp MyStudyCompanion/app/google-services.json release-dist/google-services.json
+          cp "$APKSIGNER" final-dist/apksigner/apksigner
+          cp "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar" final-dist/apksigner/lib/apksigner.jar
+          cp "$ZIPALIGN" final-dist/apksigner/zipalign
+          cp MyStudyCompanion/firestore.rules final-dist/firestore.rules
+          cp .msc-build/firebase-rules-tests/rules.test.cjs final-dist/firestore-rules-tests.cjs
 
-          cat > release-dist/RELEASE-STATUS.txt <<TXT
-          PASS: checksum-locked 0.12.5 source reconstructed and Android tests completed.
-          PASS: canonical package com.mystudycompanion.app, versionCode 29, and Firebase resources verified.
-          PASS: Firebase OAuth certificate binding matches permanent SHA-1 1997d421d177215a44f9651ce53dbaec152fbc49.
+          printf '%s\n' 'jwlibrary:///finder?alias=daily-text&date=YYYYMMDD&wtlocale=E' \
+            > final-dist/DAILY-TEXT-JW-LIBRARY-CONTRACT.txt
+          rm -rf /tmp/msc-apk-string-audit
+          mkdir -p /tmp/msc-apk-string-audit
+          unzip -q final-dist/MyStudyCompanion-phone-0.12.6-debug.apk 'classes*.dex' \
+            -d /tmp/msc-apk-string-audit
+          find /tmp/msc-apk-string-audit -name 'classes*.dex' -type f -print0 \
+            | xargs -0 strings > final-dist/APK-STRING-AUDIT.txt
+          grep -Fq 'Open in JW Library' final-dist/APK-STRING-AUDIT.txt
+          ! grep -Fq 'Today on WOL' final-dist/APK-STRING-AUDIT.txt
+
+      - name: Download the current official JW Library APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            'https://b.jw-cdn.org/apis/pub-media/GETPUBMEDIALINKS?alllangs=1&fileformat=APK&langwritten=E&output=json&pub=jwlb&txtCMSLang=E' \
+            -o response.json
+          python3 - <<'PY'
+          import json, re, urllib.request
+          from pathlib import Path
+          data = json.loads(Path('response.json').read_text(encoding='utf-8'))
+          urls = re.findall(r'https://[^"\\]+?\.apk(?:\?[^"\\]*)?', json.dumps(data), flags=re.I)
+          if not urls:
+              raise SystemExit('No official JW Library APK URL was returned.')
+          urllib.request.urlretrieve(urls[0], 'JWLibrary.apk')
+          PY
+          unzip -tq JWLibrary.apk
+
+      - name: Prepare the installed Daily Text verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('.msc-build/installed-phone-jw-0122.sh').read_text(encoding='utf-8')
+          source = source.replace('installed-0122-evidence', 'final-dist/installed-0126-evidence')
+          source = source.replace('0.12.2', '0.12.6')
+          source = source.replace('0122', '0126')
+          source = source.replace('versionCode=26', 'versionCode=30')
+          source = source.replace(
+              'versionName=0.12.6-private-alpha-complete-jw-links-debug',
+              'versionName=0.12.6-private-alpha-daily-text-jw-library-debug',
+          )
+          output = Path('/tmp/installed-phone-jw-0126.sh')
+          output.write_text(source, encoding='utf-8')
+          output.chmod(0o700)
+          PY
+
+          cat > /tmp/verify-daily-text-button.sh <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          APP_PACKAGE='com.mystudycompanion.app.debug'
+          JW_PACKAGE='org.jw.jwlibrary.mobile'
+          EVIDENCE='final-dist/installed-phone-daily-text'
+          mkdir -p "$EVIDENCE"
+
+          adb shell am force-stop "$APP_PACKAGE" || true
+          adb shell monkey -p "$APP_PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+          sleep 8
+
+          found='false'
+          for attempt in $(seq 1 16); do
+            adb shell uiautomator dump /sdcard/app.xml >/dev/null 2>&1 || true
+            adb pull /sdcard/app.xml "$EVIDENCE/app-${attempt}.xml" >/dev/null 2>&1 || true
+            if python3 - "$EVIDENCE/app-${attempt}.xml" <<'PY'
+          import re, subprocess, sys
+          from pathlib import Path
+          text = Path(sys.argv[1]).read_text(errors='replace')
+          match = re.search(r'text="Open in JW Library"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', text)
+          if not match:
+              raise SystemExit(1)
+          x1, y1, x2, y2 = map(int, match.groups())
+          subprocess.run(['adb', 'shell', 'input', 'tap', str((x1+x2)//2), str((y1+y2)//2)], check=True)
+          PY
+            then
+              found='true'
+              break
+            fi
+            adb shell input swipe 520 1650 520 650 450 || true
+            sleep 1
+          done
+          test "$found" = 'true'
+
+          for attempt in $(seq 1 40); do
+            adb shell dumpsys activity activities > "$EVIDENCE/activity-${attempt}.txt" 2>&1 || true
+            adb shell dumpsys window windows > "$EVIDENCE/window-${attempt}.txt" 2>&1 || true
+            if grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
+                "$EVIDENCE/activity-${attempt}.txt" >/dev/null \
+              && ! grep -E 'com\.android\.chrome|org\.chromium' \
+                "$EVIDENCE/activity-${attempt}.txt" "$EVIDENCE/window-${attempt}.txt" >/dev/null; then
+              cp "$EVIDENCE/activity-${attempt}.txt" "$EVIDENCE/JW-LIBRARY-FOREGROUND.txt"
+              cp "$EVIDENCE/window-${attempt}.txt" "$EVIDENCE/JW-LIBRARY-WINDOW.txt"
+              adb exec-out screencap -p > "$EVIDENCE/daily-text-in-jw-library.png" || true
+              printf '%s\n' 'PASS: the visible Daily Text action opened the exact dated target in JW Library without a browser escape.' \
+                | tee "$EVIDENCE/RESULT.txt"
+              break
+            fi
+            sleep 2
+          done
+          test -s "$EVIDENCE/RESULT.txt"
+
+          adb shell input keyevent 4
+          sleep 3
+          adb shell dumpsys activity activities > "$EVIDENCE/return-to-app.txt"
+          grep -E 'mResumedActivity=.*com\.mystudycompanion\.app\.debug|topResumedActivity=.*com\.mystudycompanion\.app\.debug|ResumedActivity: ActivityRecord.*com\.mystudycompanion\.app\.debug' \
+            "$EVIDENCE/return-to-app.txt" >/dev/null
+          SH
+          chmod +x /tmp/verify-daily-text-button.sh
+
+      - name: Verify installed phone Daily Text behavior
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 768M
+          disk-size: 6144M
+          emulator-boot-timeout: 900
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: |
+            bash /tmp/installed-phone-jw-0126.sh
+            bash /tmp/verify-daily-text-button.sh
+
+      - name: Verify installed Wear companion behavior
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: wearos_small_round
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          disk-size: 4096M
+          emulator-boot-timeout: 900
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: |
+            set -euo pipefail
+            EVIDENCE='final-dist/installed-wear'
+            mkdir -p "$EVIDENCE"
+            APK='final-dist/MyStudyCompanion-wear-0.12.2-debug.apk'
+            AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+            PACKAGE="$($AAPT dump badging "$APK" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+            test -n "$PACKAGE"
+            adb install -r "$APK" | tee "$EVIDENCE/install.txt"
+            adb logcat -c
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 \
+              | tee "$EVIDENCE/launch.txt"
+            sleep 10
+            adb shell pidof "$PACKAGE" | tee "$EVIDENCE/pid.txt"
+            adb shell dumpsys activity activities > "$EVIDENCE/activity.txt"
+            grep -E "mResumedActivity=.*${PACKAGE//./\\.}|topResumedActivity=.*${PACKAGE//./\\.}|ResumedActivity: ActivityRecord.*${PACKAGE//./\\.}" \
+              "$EVIDENCE/activity.txt" >/dev/null
+            adb exec-out screencap -p > "$EVIDENCE/wear-home.png"
+            test "$(stat -c %s "$EVIDENCE/wear-home.png")" -gt 1000
+            adb logcat -d > "$EVIDENCE/logcat.txt"
+            python3 - "$EVIDENCE/logcat.txt" "$PACKAGE" <<'PY'
+            from pathlib import Path
+            import sys
+            lines = Path(sys.argv[1]).read_text(errors='replace').splitlines()
+            package = sys.argv[2]
+            for index, line in enumerate(lines):
+                if 'FATAL EXCEPTION' not in line:
+                    continue
+                block = '\n'.join(lines[index:index + 120])
+                if f'Process: {package}' in block:
+                    raise SystemExit('Wear app produced a package-specific fatal exception.')
+            PY
+            printf '%s\n' 'PASS: Wear APK installed, launched, remained foreground, rendered content, and produced no package-specific fatal exception.' \
+              | tee "$EVIDENCE/RESULT.txt"
+
+      - name: Record final release status and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > final-dist/RELEASE-STATUS.txt <<TXT
+          PASS: one final Daily Text correction changed the Home and widget actions from WOL-first to exact dated JW Library targets.
+          PASS: phone and Wear unit tests, Kotlin compilation, and debug assemblies completed after the correction.
+          PASS: the visible installed phone action opened JW Library without a browser escape and returned to My Study Companion.
+          PASS: the installed Wear companion launched, stayed foreground, rendered content, and had no package-specific fatal exception.
+          PASS: canonical package com.mystudycompanion.app, versionCode 30, Firebase resources, and OAuth certificate binding were verified.
+          PASS: Firestore authorization, integrity, and abuse tests run in the separate job below.
           PENDING LOCAL STEP: replace the disposable CI signature with the preserved permanent signing key.
           EXACT RELEASE COMMIT: ${GITHUB_SHA}
           TXT
-
-          find release-dist -maxdepth 1 -type f -print0 \
+          find final-dist -maxdepth 1 -type f -print0 \
             | sort -z \
             | xargs -0 sha256sum \
-            > release-dist/SHA256SUMS-TEMPORARY.txt
+            > final-dist/SHA256SUMS-TEMPORARY.txt
 
-      - name: Upload canonical APK for permanent local signing
+      - name: Upload final phone and Wear verification package
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.5-isolated-canonical-apk
-          path: release-dist/
+          name: msc-0.12.6-final-phone-wear-package
+          path: final-dist/
           retention-days: 5
           if-no-files-found: error
 
@@ -233,7 +551,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: msc-0.12.5-isolated-firestore-integrity
+          name: msc-0.12.6-final-firestore-integrity
           path: |
             .msc-build/firebase-rules-tests/FIRESTORE-RULES-TEST-RESULTS.txt
             .msc-build/firebase-rules-tests/firestore.rules
