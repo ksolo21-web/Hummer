@@ -70,8 +70,8 @@ wait_for_jw_target() {
   for attempt in $(seq 1 45); do
     activity="$EVIDENCE/${name}-activity-${attempt}.txt"
     window="$EVIDENCE/${name}-window-${attempt}.txt"
-    adb shell dumpsys activity activities > "$activity" 2>&1 || true
-    adb shell dumpsys window windows > "$window" 2>&1 || true
+    adb shell dumpsys activity activities </dev/null > "$activity" 2>&1 || true
+    adb shell dumpsys window windows </dev/null > "$window" 2>&1 || true
     if grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' "$activity" >/dev/null \
       && grep -E 'mCurrentFocus=.*org\.jw\.jwlibrary\.mobile|mFocusedApp=.*org\.jw\.jwlibrary\.mobile' "$activity" "$window" >/dev/null \
       && ! grep -E 'TermsOfUseActivity|PrivacyAcceptanceActivity|Application Error|keeps stopping' "$activity" "$window" >/dev/null; then
@@ -87,7 +87,7 @@ wait_for_jw_target() {
 
 assert_no_jw_fatal() {
   local name="$1" log="$EVIDENCE/${name}-logcat.txt"
-  adb logcat -d > "$log"
+  adb logcat -d </dev/null > "$log"
   python3 - "$log" <<'PY'
 from pathlib import Path
 import sys
@@ -105,18 +105,16 @@ run_exact_target() {
   local name="$1" uri="$2" check
   adb shell am force-stop "$JW_PACKAGE" </dev/null >/dev/null 2>&1 || true
   sleep 2
-  adb logcat -c
-  # Never let adb inherit the matrix heredoc. Without this redirection, adb can
-  # consume the remaining target rows and make a one-target run look complete.
+  adb logcat -c </dev/null
   adb shell "am start -a android.intent.action.VIEW -d '$uri' -p '$JW_PACKAGE'" </dev/null \
     | tee "$EVIDENCE/${name}-start.txt"
   grep -Eq 'Starting: Intent|Warning: Activity not started' "$EVIDENCE/${name}-start.txt"
   wait_for_jw_target "$name"
-  adb exec-out screencap -p > "$EVIDENCE/${name}.png" || true
+  adb exec-out screencap -p </dev/null > "$EVIDENCE/${name}.png" || true
   for check in 1 2 3 4; do
     sleep 2
-    adb shell dumpsys activity activities > "$EVIDENCE/${name}-hold-${check}.txt"
-    adb shell pidof "$JW_PACKAGE" >/dev/null
+    adb shell dumpsys activity activities </dev/null > "$EVIDENCE/${name}-hold-${check}.txt"
+    adb shell pidof "$JW_PACKAGE" </dev/null >/dev/null
     grep -E 'mResumedActivity=.*org\.jw\.jwlibrary\.mobile|topResumedActivity=.*org\.jw\.jwlibrary\.mobile|ResumedActivity: ActivityRecord.*org\.jw\.jwlibrary\.mobile|Resumed: ActivityRecord.*org\.jw\.jwlibrary\.mobile' \
       "$EVIDENCE/${name}-hold-${check}.txt" >/dev/null
     if grep -E 'com\.android\.chrome|org\.chromium|Application Error|keeps stopping' "$EVIDENCE/${name}-hold-${check}.txt" >/dev/null; then
@@ -130,22 +128,28 @@ run_exact_target() {
 }
 
 DAILY_DATE="$(date -u +%Y%m%d)"
-while IFS='|' read -r name uri; do
-  [[ -n "$name" ]] || continue
-  run_exact_target "$name" "$uri"
-done <<EOF
-bible-single-verse|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=01001001
-bible-chapter|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=18001000
-bible-verse-range|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=24020007-24020018
-bible-cross-chapter|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=21011009-21012014
-bible-cross-book|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=01049000-02001000
-semicolon-first-passage|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=09018001-09018016
-semicolon-second-passage|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=09020000
-active-week-document|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&docid=202026244
-research-guide-publication|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=rsg19
-research-guide-document|jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&docid=1204360
-dated-daily-text|jwlibrary:///finder?alias=daily-text&date=${DAILY_DATE}&wtlocale=E
-EOF
+run_exact_target bible-single-verse \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=01001001'
+run_exact_target bible-chapter \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=18001000'
+run_exact_target bible-verse-range \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=24020007-24020018'
+run_exact_target bible-cross-chapter \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=21011009-21012014'
+run_exact_target bible-cross-book \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=01049000-02001000'
+run_exact_target semicolon-first-passage \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=09018001-09018016'
+run_exact_target semicolon-second-passage \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=nwtsty&bible=09020000'
+run_exact_target active-week-document \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&docid=202026244'
+run_exact_target research-guide-publication \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&pub=rsg19'
+run_exact_target research-guide-document \
+  'jwlibrary:///finder?srcid=jwlshare&wtlocale=E&prefer=lang&docid=1204360'
+run_exact_target dated-daily-text \
+  "jwlibrary:///finder?alias=daily-text&date=${DAILY_DATE}&wtlocale=E"
 
 EXPECTED_TARGETS=11
 ACTUAL_TARGETS="$(grep -c '^PASS: .* opened as a stable, package-scoped JW Library target\.$' "$EVIDENCE/RESULT.txt" || true)"
