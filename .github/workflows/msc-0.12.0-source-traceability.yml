@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/msc-0.12.0-source-traceability.yml'
       - '.msc-build/reconstruct-build-0120.sh'
+      - '.msc-build/reconstruct-build-0121-signed-pair.sh'
       - '.msc-build/source-traceability-0.12.0.patch.part*'
       - '.msc-build/patch-0.12.1-hardening.py.xz.b64'
   workflow_dispatch:
@@ -48,9 +49,9 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct 0.12.1, test grounded links, and build phone and Wear APKs
+      - name: Reconstruct signed 0.12.0 migration baseline and hardened 0.12.1 phone and Wear APKs
         shell: bash
-        run: bash .msc-build/reconstruct-build-0120.sh
+        run: bash .msc-build/reconstruct-build-0121-signed-pair.sh
 
       - name: Record protected-service status
         shell: bash
