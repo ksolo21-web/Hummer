@@ -15,6 +15,8 @@ python3 /tmp/patch-0.12.2-complete-jw-links.py
 echo 'e4883e2da45bd9de6a45df3f338b9c4cfe757f774d14dc5c6187e1a7f73b36e3  .msc-build/patch-0.12.2-exact-link-tests.py' | sha256sum -c -
 python3 .msc-build/patch-0.12.2-exact-link-tests.py
 python3 .msc-build/patch-0.12.2-link-cloud-followup.py
+echo 'bd1050960b4ac0d920046bdc6bfd35b8a382fb0a240abe8c40446ee22d83f7a7  .msc-build/patch-0.12.2-final-link-gate.py' | sha256sum -c -
+python3 .msc-build/patch-0.12.2-final-link-gate.py
 '''
 source = source.replace(anchor, overlay, 1)
 replacements = {
@@ -37,6 +39,7 @@ source = source.replace(
     'PASS: Bible Journey semicolon shorthand, weekly multi-passage plans, and cross-book ranges resolve to exact NWT Study Edition targets.\n'
     'PASS: generic workbook, meetings, youth-category, and WOL-search pages are not exposed as spiritual material links.\n'
     'PASS: signed daily, weekly, meeting-part, family, and family-section URLs must resolve to exact JW Library targets.\n'
+    'PASS: incomplete Finder targets and stale family-section links fail closed instead of opening generic material.\n'
     'STATUS: cloud readiness is reported separately and cannot be inferred from Firebase configuration alone.\n',
     1,
 )
