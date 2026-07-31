@@ -42,4 +42,26 @@ print(
 )
 PY
 
-exec bash /tmp/reconstruct-build-0125-ci-generated.sh
+bash /tmp/reconstruct-build-0125-ci-generated.sh
+
+python3 - <<'PY'
+from pathlib import Path
+
+build_file = Path('MyStudyCompanion/build.gradle.kts')
+source = build_file.read_text(encoding='utf-8')
+anchor = '            "HomeScreen.kt",\n'
+if source.count(anchor) != 1:
+    raise SystemExit('Expected exactly one HomeScreen compatibility-list anchor.')
+for filename in ('DailyFieldServicePointerCard.kt', 'EventNotebooksSection.kt'):
+    if f'            "{filename}",\n' in source:
+        raise SystemExit(f'{filename} is already present in the compatibility list.')
+source = source.replace(
+    anchor,
+    '            "DailyFieldServicePointerCard.kt",\n'
+    '            "EventNotebooksSection.kt",\n'
+    + anchor,
+    1,
+)
+build_file.write_text(source, encoding='utf-8')
+print('Added the two new Compose screens to the existing import-compatibility task.')
+PY
