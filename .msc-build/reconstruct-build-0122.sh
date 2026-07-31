@@ -17,6 +17,8 @@ python3 .msc-build/patch-0.12.2-exact-link-tests.py
 python3 .msc-build/patch-0.12.2-link-cloud-followup.py
 echo 'bd1050960b4ac0d920046bdc6bfd35b8a382fb0a240abe8c40446ee22d83f7a7  .msc-build/patch-0.12.2-final-link-gate.py' | sha256sum -c -
 python3 .msc-build/patch-0.12.2-final-link-gate.py
+echo '0d65d076ba860c8055b57cd8839ae0fdfbc821c7fb3fa08c4c385e9efceb73f3  .msc-build/patch-0.12.2-cloud-family-client.py' | sha256sum -c -
+python3 .msc-build/patch-0.12.2-cloud-family-client.py
 '''
 source = source.replace(anchor, overlay, 1)
 replacements = {
@@ -40,7 +42,8 @@ source = source.replace(
     'PASS: generic workbook, meetings, youth-category, and WOL-search pages are not exposed as spiritual material links.\n'
     'PASS: signed daily, weekly, meeting-part, family, and family-section URLs must resolve to exact JW Library targets.\n'
     'PASS: incomplete Finder targets and stale family-section links fail closed instead of opening generic material.\n'
-    'STATUS: cloud readiness is reported separately and cannot be inferred from Firebase configuration alone.\n',
+    'PASS: authenticated household invitation creation and join-by-code client flows are compiled and contract-tested.\n'
+    'STATUS: protected Firebase, OAuth, and HTTPS backend deployment still require live integration verification.\n',
     1,
 )
 Path('/tmp/reconstruct-build-0122-generated.sh').write_text(source, encoding='utf-8')
