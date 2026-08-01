@@ -44,7 +44,7 @@ jobs:
         with:
           lfs: false
 
-      - name: Verify and unpack checksum-locked HAVENLINE source
+      - name: Verify, patch, and unpack checksum-locked HAVENLINE source
         shell: bash
         run: |
           set -euo pipefail
@@ -59,7 +59,6 @@ jobs:
             and (.part_mismatches | length) == 0
           ' HAVENLINE/source-v3-verification.json >/dev/null
           test "$(find HAVENLINE/source.v3.parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "24"
-          git hash-object --stdin </dev/null >/dev/null
           while read -r expected file; do
             test -f "$file"
             test "$(git hash-object "$file")" = "$expected"
@@ -67,11 +66,16 @@ jobs:
           cat HAVENLINE/source.v3.parts/part-*.b64 | base64 --decode > /tmp/Havenline-production-source-v0.2.0.tar.xz
           echo "$SOURCE_SHA256  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
           test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
+          echo "71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py" | sha256sum --check --strict
+          echo "52c4dd08d2b7104adf1f38b9dcb61e3cb00cf84f638d85de2aa329bc51b51cc8  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
           mv .havenline-src/Havenline havenline
           mkdir -p havenline/build
+          cp HAVENLINE/overrides/final_composites.py havenline/tools/final_composites.py
+          python3 HAVENLINE/overrides/patch_fetch_assets.py havenline/tools/fetch_assets.py
+          python3 -m py_compile havenline/tools/fetch_assets.py havenline/tools/final_composites.py
           cd havenline
           python3 tools/preflight.py | tee build/source-preflight.log
 
