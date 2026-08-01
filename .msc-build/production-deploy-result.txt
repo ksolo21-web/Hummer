@@ -1,0 +1,6 @@
+release=0.14.1
+source_commit=0a8ba644b28b45b22bdfcee1be3765de80b358d9
+trigger_commit=377e3f0285855684d174c59a4a5adc277d14d9f0
+workflow_run_id=30713940591
+result=failure
+recorded_at=2026-08-01T19:04:01Z
