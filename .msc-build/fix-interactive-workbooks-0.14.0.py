@@ -9,6 +9,10 @@ EDITOR = Path(
     "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/"
     "InteractiveWorkbookEditor.kt"
 )
+GENERATOR_TEST = Path(
+    "MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/"
+    "InteractiveWorkbookGeneratorTest.kt"
+)
 
 model = MODEL.read_text(encoding="utf-8")
 old_model_declaration = "        val fun = when ((index + audience.ordinal) % 4) {"
@@ -45,10 +49,29 @@ if annotated_anchor not in editor:
 
 EDITOR.write_text(editor, encoding="utf-8")
 
+generator_test = GENERATOR_TEST.read_text(encoding="utf-8")
+test_import_replacements = {
+    "import kotlin.test.Test\n": "import org.junit.Test\n",
+    "import kotlin.test.assertEquals\n": "import org.junit.Assert.assertEquals\n",
+    "import kotlin.test.assertTrue\n": "import org.junit.Assert.assertTrue\n",
+}
+for old_import, new_import in test_import_replacements.items():
+    if old_import in generator_test:
+        generator_test = generator_test.replace(old_import, new_import, 1)
+    elif new_import not in generator_test:
+        raise SystemExit(f"Interactive workbook test import was not found: {old_import.strip()}")
+
+GENERATOR_TEST.write_text(generator_test, encoding="utf-8")
+
 fixed_model = MODEL.read_text(encoding="utf-8")
 fixed_editor = EDITOR.read_text(encoding="utf-8")
+fixed_test = GENERATOR_TEST.read_text(encoding="utf-8")
 assert "val familyActivity = when" in fixed_model
 assert "listOf(listen, familyActivity," in fixed_model
 assert "val fun = when" not in fixed_model
 assert "@OptIn(ExperimentalMaterial3Api::class)" in fixed_editor
-print("Applied compile-safe interactive workbook source fixes.")
+assert "import org.junit.Test" in fixed_test
+assert "import org.junit.Assert.assertEquals" in fixed_test
+assert "import org.junit.Assert.assertTrue" in fixed_test
+assert "import kotlin.test" not in fixed_test
+print("Applied compile-safe interactive workbook source and unit-test fixes.")
