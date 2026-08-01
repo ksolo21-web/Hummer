@@ -2,10 +2,11 @@ HAVENLINE production build authorization
 Source version: 0.2.0
 Verified source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Source verification workflow run: 30697295578
-Android workflow revision: 88cf66de1ddcd1be76b407474887a2f3237f1d76
+Android workflow revision: f520e2ed1151d1b8eb802522f677bbe8e2b2ef52
 Final composition generator SHA-256: 71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5
-Pinned asset patch SHA-256: 20163924e5964b4a477cda93f191b7bb396bf33dc6f07a64c8425794b18c7d39
+Pinned asset patch SHA-256: f45c8ac946fdad9845b4a54dcd7b3995f4fce764f6671cb5b8c48c94b3bcd8ba
+Strict validator patch SHA-256: d3f006bbd1f1cef23eb019ebbf28940415a82b16553960c1e63436a9c416dff1
 Pinned wolf Git blob: 40254606da4f22c30c037c7fd195c6cbfa1ac834
 Authorized: 2026-08-01
 Run policy: one checksum-locked final-asset, Godot import, runtime scene, validation-frame, and ARM64 APK gate
-Retry: pinned animated wolf resolution fix validated; production build authorized
+Retry: quoted resource paths and character-wrapper validation repaired without weakening final-art requirements
