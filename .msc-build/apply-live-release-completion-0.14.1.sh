@@ -36,6 +36,35 @@ requirements = (backend / 'requirements.txt').read_text()
 assert 'google-auth' in requirements
 assert (backend / 'tests/test_scheduler_oidc.py').is_file()
 
+# Add the live-generation and scheduler contracts to the final application gate
+# after the theme installer has already upgraded the cache/theme checks.
+gate = root / '.msc-build/fix-unified-study-reader-ci-gate-0.14.1.py'
+gate_source = gate.read_text(encoding='utf-8')
+needle = "  grep -Fq 'my-study-companion-private' MyStudyCompanionWeb/firebase.json\n"
+extra = '''  local family_organizer=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+  local family_publication_test=MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/family/FamilyWorshipPublicationValidatorTest.kt
+  local scheduler_oidc=MyStudyCompanion/backend/app/security/scheduler_oidc.py
+  local scheduler_test=MyStudyCompanion/backend/tests/test_scheduler_oidc.py
+  test -s "$family_publication_test"
+  test -s "$scheduler_oidc"
+  test -s "$scheduler_test"
+  grep -Fq 'backendApi.generateFamilyWorship' "$family_organizer"
+  grep -Fq 'contentSyncEngine.sync("family_worship_generated")' "$family_organizer"
+  grep -Fq 'FamilyWorshipPublicationValidator.requirePublishable' "$family_organizer"
+  ! grep -Fq 'Family Worship plan selected by the household organizer.' "$family_organizer"
+  grep -Fq 'scheduler_oidc_verifier.verify' MyStudyCompanion/backend/app/security/dependencies.py
+  grep -Fq 'scheduler_service_account_email' MyStudyCompanion/backend/app/config.py
+'''
+if extra not in gate_source:
+    if needle not in gate_source:
+        raise SystemExit('Could not locate the live-release final-gate insertion point.')
+    gate_source = gate_source.replace(needle, needle + extra, 1)
+gate_source = gate_source.replace(
+    '    "ColorWheelDialog",\n',
+    '    "ColorWheelDialog",\n    "backendApi.generateFamilyWorship",\n    "family_worship_generated",\n    "FamilyWorshipPublicationValidator",\n    "scheduler_oidc_verifier",\n    "scheduler_service_account_email",\n',
+)
+gate.write_text(gate_source, encoding='utf-8')
+
 print('PASS: Family Worship uses authenticated backend generation, signed synchronization, exact-plan validation, and Cloud Scheduler OIDC support.')
 PY
 
