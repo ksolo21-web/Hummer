@@ -1,0 +1,5 @@
+HAVENLINE production source v0.2.0 is ready for branch publication.
+
+The complete validated source archive is preserved in ChatGPT Library and the conversation artifact while the branch payload is being finalized. This marker does not trigger an Android build.
+
+Source SHA-256: ae728c685f5d2e89405cd4259d3918d5ef40acfc24f126c7526d7531d27b20fc
