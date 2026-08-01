@@ -10,5 +10,5 @@ Required camera: orthographic size 14.8, physical offset Vector3(0.0, 7.0, 7.0),
 Required gameplay: correct screen-relative movement, bounded terrain, fall recovery, automatic gathering/carry/deposit, dynamic furnace heat, survivor helper automation, barricade defense, animated player and wolf, compact HUD.
 Acceptance: source and asset checks, exact repository camera-patch identity, Godot import, projection-aware runtime gameplay gates, visually settled validation frame, ARM64 APK, APK SHA-256.
 Correction: pin the exact normalized camera patch by Git blob to avoid cross-platform text-byte checksum drift.
-Trigger: final-reference-orthographic-4
+Trigger: final-reference-orthographic-5-stable
 Authorized: 2026-08-01
