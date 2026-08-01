@@ -12,17 +12,23 @@ on:
       - main
     paths:
       - HAVENLINE/RUN_REFERENCE_FINAL_MAIN
+  pull_request:
+    branches:
+      - main
+    paths:
+      - HAVENLINE/**
+      - .github/workflows/havenline-reference-final-stable.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: havenline-reference-final-stable
+  group: havenline-reference-final-stable-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    if: github.event_name == 'push' || github.event.inputs.confirm_stable_final == 'FINAL'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event.inputs.confirm_stable_final == 'FINAL'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
