@@ -1,7 +1,7 @@
 HAVENLINE compact reference-slice Android build authorization
 Version: 0.3.0-reference-slice
 Branch: agent/havenline-android-build
-Workflow revision: dc14f64cf4626a9d163b2df5afa4f2d6361308b4
+Workflow revision: 60690246c457124ff87d6e789d25753caada5fb9
 Verified base source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Reference patch SHA-256: 236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3
 Reference payload SHA-256: 2934dd6fbf7fe16d72cb092a190995887764900fb30fa0af30a2f033cfd4bb00
@@ -9,5 +9,6 @@ Reference decoder SHA-256: 2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d2
 Rejected build: v0.2.0 open-plane camp demo
 Required replacement: compact close-isometric frozen outpost with screen-relative controls, physical perimeter, fall recovery, automatic gathering/carrying/depositing, furnace fuel and expanding heat, survivor helper automation, barricade defense, mobile-safe HUD, imported characters, and full wolf animation.
 Runtime gates: camera distance, forward/right controls, forced fall recovery, bounded terrain, gathering density, furnace system, automatic helper, compact HUD, player animation, full wolf animation, validation frame, ARM64 APK checksum.
-Trigger: reference-slice-v0.3.0-1
+Compatibility correction: retain the new compact HUD while exposing legacy preflight hierarchy markers without restoring the rejected oversized interface.
+Trigger: reference-slice-v0.3.0-2
 Authorized: 2026-08-01
