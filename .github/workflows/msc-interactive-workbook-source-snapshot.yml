@@ -47,6 +47,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
       - name: Install Android SDK components
         shell: bash
         run: |
