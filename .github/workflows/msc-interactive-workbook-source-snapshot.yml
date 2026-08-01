@@ -1,4 +1,4 @@
-name: My Study Companion 0.14.0 Interactive Workbooks
+name: My Study Companion 0.14.1 Unified Study Reader
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0140-interactive-workbooks
+  group: msc-0141-unified-study-reader
   cancel-in-progress: true
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - name: Check out workbook source
+      - name: Check out application source
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-interactive-workbooks-0140
@@ -53,7 +53,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct verified source and apply combined workbook overlay
+      - name: Reconstruct verified source and apply last-major-build overlays
         shell: bash
         run: |
           set -euo pipefail
@@ -68,6 +68,7 @@ jobs:
           xz -t /tmp/msc-0140-overlay.tar.xz
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
           python3 .msc-build/fix-interactive-workbooks-0.14.0.py
+          python3 .msc-build/apply-unified-study-reader-0.14.1.py
 
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
@@ -75,7 +76,7 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.0-interactive-workbooks-phone-wear-web
+          name: msc-0.14.1-unified-study-reader-phone-wear-web
           path: final-dist
           retention-days: 5
           if-no-files-found: error
@@ -84,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Check out workbook source
+      - name: Check out application source
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-interactive-workbooks-0140
@@ -105,7 +106,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Reconstruct and apply workbook security rules
+      - name: Reconstruct and apply workbook and study-reader security rules
         shell: bash
         run: |
           set -euo pipefail
@@ -119,6 +120,7 @@ jobs:
           xz -t /tmp/msc-0140-overlay.tar.xz
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
           python3 .msc-build/fix-interactive-workbooks-0.14.0.py
+          python3 .msc-build/apply-unified-study-reader-0.14.1.py
 
       - name: Generate missing Firebase test lockfile
         shell: bash
@@ -129,13 +131,13 @@ jobs:
             npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           fi
 
-      - name: Run 23 Firestore security tests
+      - name: Run 26 Firestore security tests
         shell: bash
         run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh firestore
 
       - uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.0-firestore-workbook-integrity
+          name: msc-0.14.1-firestore-workbook-and-study-reader-integrity
           path: |
             MyStudyCompanion/firestore.rules
             .msc-build/firebase-rules-tests/rules.test.cjs
