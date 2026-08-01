@@ -36,6 +36,7 @@ jobs:
       GODOT_BIN: ${{ github.workspace }}/havenline/.tools/godot
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       ANDROID_HOME: /usr/local/lib/android/sdk
+      SOURCE_SHA256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 
     steps:
       - name: Check out isolated HAVENLINE branch
@@ -48,15 +49,31 @@ jobs:
         run: |
           set -euo pipefail
           test "${{ github.ref_name }}" = "agent/havenline-android-build"
-          test "$(find HAVENLINE/source.parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l)" -eq 6
-          cat HAVENLINE/source.parts/part-*.b64 | base64 --decode > /tmp/Havenline-production-source-v0.2.0.tar.xz
-          echo "1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
+          jq -e --arg sha "$SOURCE_SHA256" '
+            .status == "verified"
+            and .failure_stage == ""
+            and .actual_sha256 == $sha
+            and .expected_sha256 == $sha
+            and .actual_bytes == 35460
+            and .part_count == 24
+            and (.part_mismatches | length) == 0
+          ' HAVENLINE/source-v3-verification.json >/dev/null
+          test "$(find HAVENLINE/source.v3.parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "24"
+          git hash-object --stdin </dev/null >/dev/null
+          while read -r expected file; do
+            test -f "$file"
+            test "$(git hash-object "$file")" = "$expected"
+          done < HAVENLINE/source-v3-git-hashes.txt
+          cat HAVENLINE/source.v3.parts/part-*.b64 | base64 --decode > /tmp/Havenline-production-source-v0.2.0.tar.xz
+          echo "$SOURCE_SHA256  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
+          test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
           mv .havenline-src/Havenline havenline
+          mkdir -p havenline/build
           cd havenline
-          python3 tools/preflight.py
+          python3 tools/preflight.py | tee build/source-preflight.log
 
       - name: Install Java 17
         uses: actions/setup-java@v4
@@ -78,8 +95,8 @@ jobs:
         working-directory: havenline
         run: |
           set -euo pipefail
-          python3 tools/fetch_assets.py --clean-cache
-          python3 tools/preflight.py --strict
+          python3 tools/fetch_assets.py --clean-cache 2>&1 | tee build/asset-fetch.log
+          python3 tools/preflight.py --strict 2>&1 | tee build/asset-preflight.log
 
       - name: Install official Godot 4.7.1 editor and export templates
         shell: bash
@@ -110,18 +127,18 @@ jobs:
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.1"
-          echo "JAVA_HOME=$JAVA_HOME"
-          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "JAVA_HOME=$JAVA_HOME" | tee build/android-sdk.log
+          echo "ANDROID_HOME=$ANDROID_HOME" | tee -a build/android-sdk.log
+          sdkmanager --list_installed | tee -a build/android-sdk.log
 
       - name: Import production meshes, textures, and animations
         shell: bash
         working-directory: havenline
         run: |
           set -euo pipefail
-          mkdir -p build
           timeout 25m "$GODOT_BIN" --headless --editor --path . --import 2>&1 | tee build/import.log
           test -d .godot/imported
-          python3 tools/preflight.py --strict
+          python3 tools/preflight.py --strict 2>&1 | tee build/post-import-preflight.log
 
       - name: Boot and capture the assembled production scene
         shell: bash
@@ -141,18 +158,24 @@ jobs:
           sha256sum build/Havenline-production.apk > build/Havenline-production.apk.sha256
           cp assets/ASSET_BUILD_REPORT.json build/ASSET_BUILD_REPORT.json
 
-      - name: Upload final APK and evidence
+      - name: Upload final APK and build evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: HAVENLINE-production-android-${{ github.run_number }}
           retention-days: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.artifact_retention_days) || 30 }}
-          if-no-files-found: error
+          if-no-files-found: warn
           path: |
             havenline/build/Havenline-production.apk
             havenline/build/Havenline-production.apk.sha256
             havenline/build/validation-frame.png
             havenline/build/ASSET_BUILD_REPORT.json
+            havenline/build/source-preflight.log
+            havenline/build/asset-fetch.log
+            havenline/build/asset-preflight.log
+            havenline/build/android-sdk.log
             havenline/build/import.log
+            havenline/build/post-import-preflight.log
             havenline/build/runtime-smoke.log
             havenline/build/export.log
             havenline/build-godot-version.txt
