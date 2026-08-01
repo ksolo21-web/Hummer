@@ -61,12 +61,81 @@ if gameplay.count(old_direction) != 1:
     raise SystemExit("HAVENLINE Godot 4.7 direction-typing patch expected exactly one source marker")
 gameplay_path.write_text(gameplay.replace(old_direction, new_direction, 1), encoding="utf-8")
 
+# Use a fully typed runtime harness. This boots and measures the actual project,
+# rather than validating source strings or a mock scene.
+runtime_gate = '''extends SceneTree
+
+func _initialize() -> void:
+    call_deferred("_run")
+
+func _fail(message: String) -> void:
+    push_error(message)
+    quit(1)
+
+func _run() -> void:
+    var packed_scene: PackedScene = load("res://main.tscn") as PackedScene
+    if packed_scene == null:
+        _fail("Production scene failed to load")
+        return
+    var scene: Node = packed_scene.instantiate()
+    root.add_child(scene)
+    for _frame in range(12):
+        await process_frame
+    var player: HavenPlayer = scene.get("player") as HavenPlayer
+    var camera: Camera3D = scene.get("camera") as Camera3D
+    var camera_rig: Node3D = scene.get("camera_rig") as Node3D
+    var gameplay: HavenGameplay = scene.get("gameplay") as HavenGameplay
+    var heat_ring: Node3D = scene.get("heat_ring") as Node3D
+    if player == null or camera == null or camera_rig == null or gameplay == null:
+        _fail("Missing production systems")
+        return
+    if camera.projection != Camera3D.PROJECTION_ORTHOGONAL or camera.size > 15.2:
+        _fail("Camera gate failed")
+        return
+    var screen_forward: Vector3 = -camera_rig.global_transform.basis.z
+    screen_forward.y = 0.0
+    screen_forward = screen_forward.normalized()
+    player.set_joystick(Vector2(0.0, -1.0))
+    var before: Vector3 = player.global_position
+    for _frame in range(20):
+        await physics_frame
+    var moved: Vector3 = player.global_position - before
+    moved.y = 0.0
+    if moved.length() < 0.1 or moved.normalized().dot(screen_forward) < 0.92:
+        _fail("Joystick up does not move screen-forward")
+        return
+    player.set_joystick(Vector2.ZERO)
+    player.global_position.y = -8.0
+    for _frame in range(4):
+        await physics_frame
+    if player.global_position.y < 0.0:
+        _fail("Fall recovery failed")
+        return
+    if gameplay.resources.size() < 10:
+        _fail("Resource density failed")
+        return
+    if heat_ring == null or heat_ring.name != "DynamicHeatZone":
+        _fail("Heat system missing")
+        return
+    for _frame in range(90):
+        await process_frame
+    DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://build"))
+    var image: Image = root.get_texture().get_image()
+    var capture_error: Error = image.save_png(ProjectSettings.globalize_path("res://build/validation-frame.png"))
+    if capture_error != OK:
+        _fail("Validation-frame capture failed")
+        return
+    print("HAVENLINE production gate passed: compact camera, controls, recovery, resources, furnace, helper and defense systems present")
+    quit(0)
+'''
+(project / "tests" / "runtime_gate.gd").write_text(runtime_gate, encoding="utf-8")
+
 required = {
     "project.godot": ["run/max_fps=120", 'renderer/rendering_method="mobile"'],
     "scripts/main.gd": ["PROJECTION_ORTHOGONAL", "BoundedSnowTerrain", "DynamicHeatZone"],
     "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe"],
     "scripts/gameplay.gd": ["_auto_interaction", "_helper_work", "_spawn_wolf_wave", "var dir: Vector3"],
-    "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png"],
+    "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png", "var scene: Node"],
 }
 for relative, markers in required.items():
     source = (project / relative).read_text(encoding="utf-8")
@@ -78,5 +147,5 @@ print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
 )
-print("HAVENLINE Godot 4.7 compatibility patch applied: explicit wolf direction Vector3")
+print("HAVENLINE Godot 4.7 compatibility patches applied: gameplay direction and typed runtime gate")
 print(project)
