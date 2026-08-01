@@ -68,7 +68,7 @@ jobs:
           test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
           echo "71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py" | sha256sum --check --strict
           echo "f45c8ac946fdad9845b4a54dcd7b3995f4fce764f6671cb5b8c48c94b3bcd8ba  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
-          echo "d3f006bbd1f1cef23eb019ebbf28940415a82b16553960c1e63436a9c416dff1  HAVENLINE/overrides/patch_preflight.py" | sha256sum --check --strict
+          echo "28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc  HAVENLINE/overrides/patch_preflight.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
