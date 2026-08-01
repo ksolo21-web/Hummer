@@ -40,5 +40,6 @@ python3 .msc-build/apply-unified-study-reader-0.14.1.py
 python3 .msc-build/fix-unified-study-reader-compile-0.14.1.py
 bash .msc-build/apply-unified-reader-controls-0.14.1.sh
 bash .msc-build/apply-complete-last-major-build-0.14.1.sh
+bash .msc-build/apply-theme-gallery-0.14.1.sh
 
-echo 'Reconstructed the exact My Study Companion 0.14.1 last-major-build source with connected reading, conflict-safe notes, reminders, official-page backend, runtime Firebase support, and wearable controls.'
+echo 'Reconstructed the exact My Study Companion 0.14.1 last-major-build source with connected reading, live-stack foundations, Family Hub, workbooks, 23 permanent themes, 13 new illustrated scenes, Android/Web color wheels, Wear scenery, widgets, and PWA appearance controls.'
