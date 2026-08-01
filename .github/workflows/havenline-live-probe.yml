@@ -18,10 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Record current production run
+      - name: Record current workflow run
         env:
           GH_TOKEN: ${{ github.token }}
-          PRODUCTION_SHA: c4bf0e728d5fe81d3e49cccee099a028b9d1664c
+          TARGET_SHA: 9cb76436a4b20934b82f118db402ccab78d5280c
+          TARGET_NAME: HAVENLINE Verified Source Export
         shell: bash
         run: |
           set -euo pipefail
@@ -30,15 +31,15 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs?branch=agent%2Fhavenline-android-build&event=push&per_page=50")"
-          found="$(jq -c --arg sha "$PRODUCTION_SHA" '
+          found="$(jq -c --arg sha "$TARGET_SHA" --arg name "$TARGET_NAME" '
             [.workflow_runs[]
-              | select(.name == "HAVENLINE Final Android Build" and .head_sha == $sha)
+              | select(.name == $name and .head_sha == $sha)
               | {id, name, status, conclusion, run_number, run_attempt, event, head_sha, created_at, updated_at, html_url, jobs_url, artifacts_url}]
-            | first // {error:"production run not found", head_sha:$sha}
+            | first // {error:"target workflow run not found", head_sha:$sha, name:$name}
           ' <<<"$payload")"
           printf '%s\n' "$found" | jq . > HAVENLINE/build-live.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add HAVENLINE/build-live.json
-          git commit -m "Record HAVENLINE live build status"
+          git commit -m "Record HAVENLINE live workflow status"
           git push
