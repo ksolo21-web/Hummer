@@ -1,0 +1,11 @@
+ActiveAnimStackNameS
+AnimationStack
+AnimationStackL
+AnimStackS
+FbxAnimStackp.
+PostRotationS
+WolfArmature|Idle
+WolfArmature|Idle(
+WolfArmature|Idle.takP
+WolfArmature|Walking
+WolfArmature|Walking.tak
