@@ -12,6 +12,11 @@ on:
         required: false
         default: "30"
         type: string
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/RUN_FINAL_BUILD
 
 permissions:
   contents: read
@@ -22,7 +27,7 @@ concurrency:
 
 jobs:
   android-production:
-    if: github.event.inputs.confirm_final_build == 'FINAL'
+    if: github.event_name == 'push' || github.event.inputs.confirm_final_build == 'FINAL'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -140,7 +145,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HAVENLINE-production-android-${{ github.run_number }}
-          retention-days: ${{ fromJSON(github.event.inputs.artifact_retention_days) }}
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && fromJSON(github.event.inputs.artifact_retention_days) || 30 }}
           if-no-files-found: error
           path: |
             havenline/build/Havenline-production.apk
