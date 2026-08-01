@@ -1,4 +1,4 @@
-name: My Study Companion 0.14.1 Configured Unsigned Build
+name: My Study Companion 0.14.1 Configured Staging Build
 
 on:
   pull_request:
@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-configured-unsigned-${{ github.event.pull_request.head.sha || github.sha }}
+  group: msc-0141-configured-staging-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  configured-unsigned:
+  configured-staging:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
@@ -93,9 +93,29 @@ jobs:
           echo "web_client_id=${VALUES[0]}" >> "$GITHUB_OUTPUT"
           echo 'backend_base_url=https://my-study-companion-abc01.web.app/' >> "$GITHUB_OUTPUT"
 
-      - name: Build configured unsigned phone and Wear APKs
+      - name: Create disposable CI packaging signer
+        id: staging_signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-disposable-staging-signing"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/staging.jks" \
+            -storepass 'msc-disposable-staging-only' \
+            -keypass 'msc-disposable-staging-only' \
+            -alias 'msc-disposable-staging' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=Disposable CI Staging, OU=Not For Installation, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/staging.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Build configured staging phone and Wear APKs
         shell: bash
         env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.staging_signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-disposable-staging-only
+          MSC_RELEASE_KEY_ALIAS: msc-disposable-staging
+          MSC_RELEASE_KEY_PASSWORD: msc-disposable-staging-only
           MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
           MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
         run: |
@@ -109,45 +129,41 @@ jobs:
           grep -R -Fq "$MSC_BACKEND_BASE_URL" app/build/generated
           grep -R -Fq "$MSC_GOOGLE_WEB_CLIENT_ID" app/build/generated
 
-      - name: Verify and package unsigned outputs
+      - name: Verify and package staging outputs
         shell: bash
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
           APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
-          mkdir -p configured-unsigned
+          mkdir -p configured-staging
           PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           test -f "$PHONE_APK"; test -f "$WEAR_APK"
-          cp "$PHONE_APK" configured-unsigned/MyStudyCompanion-phone-0.14.1-configured-unsigned.apk
-          cp "$WEAR_APK" configured-unsigned/MyStudyCompanion-wear-0.14.1-configured-unsigned.apk
-          "$AAPT" dump badging configured-unsigned/MyStudyCompanion-phone-0.14.1-configured-unsigned.apk > configured-unsigned/PHONE-IDENTITY.txt
-          "$AAPT" dump badging configured-unsigned/MyStudyCompanion-wear-0.14.1-configured-unsigned.apk > configured-unsigned/WEAR-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" configured-unsigned/PHONE-IDENTITY.txt
-          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" configured-unsigned/PHONE-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" configured-unsigned/WEAR-IDENTITY.txt
-          grep -q "versionName='0.14.1-wear-private-alpha-unified-study-reader'" configured-unsigned/WEAR-IDENTITY.txt
-          if "$APKSIGNER" verify configured-unsigned/MyStudyCompanion-phone-0.14.1-configured-unsigned.apk; then
-            echo '::error::Phone staging APK was unexpectedly signed.'
-            exit 1
-          fi
-          if "$APKSIGNER" verify configured-unsigned/MyStudyCompanion-wear-0.14.1-configured-unsigned.apk; then
-            echo '::error::Wear staging APK was unexpectedly signed.'
-            exit 1
-          fi
-          sha256sum configured-unsigned/*.apk > configured-unsigned/SHA256SUMS.txt
-          cat > configured-unsigned/STATUS.txt <<'TXT'
+          cp "$PHONE_APK" configured-staging/MyStudyCompanion-phone-0.14.1-configured-staging.apk
+          cp "$WEAR_APK" configured-staging/MyStudyCompanion-wear-0.14.1-configured-staging.apk
+          "$AAPT" dump badging configured-staging/MyStudyCompanion-phone-0.14.1-configured-staging.apk > configured-staging/PHONE-IDENTITY.txt
+          "$AAPT" dump badging configured-staging/MyStudyCompanion-wear-0.14.1-configured-staging.apk > configured-staging/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" configured-staging/PHONE-IDENTITY.txt
+          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" configured-staging/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" configured-staging/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.1-wear-private-alpha-unified-study-reader'" configured-staging/WEAR-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-phone-0.14.1-configured-staging.apk > configured-staging/PHONE-STAGING-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-wear-0.14.1-configured-staging.apk > configured-staging/WEAR-STAGING-SIGNATURE.txt
+          grep -Fq 'Disposable CI Staging' configured-staging/PHONE-STAGING-SIGNATURE.txt
+          grep -Fq 'Disposable CI Staging' configured-staging/WEAR-STAGING-SIGNATURE.txt
+          sha256sum configured-staging/*.apk > configured-staging/SHA256SUMS.txt
+          cat > configured-staging/STATUS.txt <<'TXT'
           PASS: exact repaired source built with the verified Firebase Android configuration.
           PASS: Google web client ID and live backend URL are compiled into the phone package.
           PASS: phone and Wear outputs retain the canonical package and repaired 0.14.1 versions.
-          EXPECTED: these staging APKs are unsigned and must receive the recovered Firebase-registered production signer before installation.
+          EXPECTED: these staging APKs use a disposable CI packaging signer and must be re-signed with the recovered Firebase-registered signer before installation.
           TXT
 
-      - name: Upload configured unsigned APKs
+      - name: Upload configured staging APKs
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-configured-unsigned-phone-wear
-          path: configured-unsigned
+          name: msc-0.14.1-configured-staging-phone-wear
+          path: configured-staging
           retention-days: 5
           if-no-files-found: error
