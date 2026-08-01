@@ -2,6 +2,7 @@
 """Apply HAVENLINE's release-only final asset fixes to the pinned fetcher."""
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -69,3 +70,7 @@ if needle not in source:
     raise SystemExit("HAVENLINE environment fetch layout changed; refusing an unsafe patch")
 source = source.replace(needle, replacement, 1)
 path.write_text(source, encoding="utf-8")
+
+preflight_patch = Path(__file__).with_name("patch_preflight.py")
+preflight_path = path.with_name("preflight.py")
+subprocess.run([sys.executable, str(preflight_patch), str(preflight_path)], check=True)
