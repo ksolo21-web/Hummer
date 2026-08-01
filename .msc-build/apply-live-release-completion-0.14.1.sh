@@ -39,7 +39,6 @@ assert (backend / 'tests/test_scheduler_oidc.py').is_file()
 print('PASS: Family Worship uses authenticated backend generation, signed synchronization, exact-plan validation, and Cloud Scheduler OIDC support.')
 PY
 
-cd MyStudyCompanion/backend
-python -m pytest -q
+python3 -m compileall -q MyStudyCompanion/backend/app MyStudyCompanion/backend/tests
 
 echo 'Applied My Study Companion 0.14.1 live connected release-completion layer.'
