@@ -1,4 +1,4 @@
-name: My Study Companion 0.14.1 Exact Source Snapshot
+name: My Study Companion 0.14.1 Exact Unified Source Snapshot
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-exact-source-snapshot
+  group: msc-0141-exact-unified-source-snapshot
   cancel-in-progress: true
 
 permissions:
@@ -16,7 +16,7 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out application branch
         uses: actions/checkout@v6
@@ -30,7 +30,7 @@ jobs:
           path: workbook-payload
           persist-credentials: false
 
-      - name: Reconstruct exact current source without compiling legacy stages
+      - name: Reconstruct exact unified 0.14.1 source without compiling legacy stages
         shell: bash
         run: |
           set -euo pipefail
@@ -61,8 +61,9 @@ jobs:
           echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
           python3 .msc-build/fix-interactive-workbooks-0.14.0.py
+          python3 .msc-build/apply-unified-study-reader-0.14.1.py
 
-      - name: Package exact application source
+      - name: Package exact unified application source
         shell: bash
         run: |
           set -euo pipefail
@@ -70,7 +71,7 @@ jobs:
           [[ -d MyStudyCompanionWeb ]] && paths+=(MyStudyCompanionWeb)
           [[ -d web ]] && paths+=(web)
           [[ -f firebase.json ]] && paths+=(firebase.json)
-          printf 'Packaging source roots:\n'
+          printf 'Packaging unified source roots:\n'
           printf '  %s\n' "${paths[@]}"
           tar \
             --exclude='**/build' \
@@ -78,16 +79,16 @@ jobs:
             --exclude='node_modules' \
             --exclude='dist' \
             --exclude='final-dist' \
-            -czf msc-0.14.1-exact-source.tgz \
+            -czf msc-0.14.1-exact-unified-source.tgz \
             "${paths[@]}"
-          sha256sum msc-0.14.1-exact-source.tgz > EXACT-SOURCE-SHA256.txt
+          sha256sum msc-0.14.1-exact-unified-source.tgz > EXACT-UNIFIED-SOURCE-SHA256.txt
 
-      - name: Upload exact source
+      - name: Upload exact unified source
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-exact-source
+          name: msc-0.14.1-exact-unified-source
           path: |
-            msc-0.14.1-exact-source.tgz
-            EXACT-SOURCE-SHA256.txt
+            msc-0.14.1-exact-unified-source.tgz
+            EXACT-UNIFIED-SOURCE-SHA256.txt
           retention-days: 2
           if-no-files-found: error
