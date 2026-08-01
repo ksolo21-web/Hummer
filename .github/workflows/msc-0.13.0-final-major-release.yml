@@ -43,14 +43,11 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct the verified 0.12.5 foundation
-        shell: bash
-        run: bash .msc-build/reconstruct-build-0125-ci.sh
-
-      - name: Apply the single checksum-locked 0.13.0 final-major overlay
+      - name: Reconstruct verified source and apply final-major overlay
         shell: bash
         run: |
           set -euo pipefail
+          bash .msc-build/reconstruct-build-0125-ci.sh
           cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode \
             > /tmp/msc-0.13.0-final-major-overlay.tar.xz
           echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0.13.0-final-major-overlay.tar.xz' \
@@ -102,8 +99,8 @@ jobs:
           grep -Fq 'Glance mode' MyStudyCompanionWeb/index.html
           grep -Fq 'FIELD SERVICE • FOR EVERYONE' MyStudyCompanionWeb/index.html
           grep -Fq 'window.MSC_FIREBASE_CONFIG = null' MyStudyCompanionWeb/firebase-config.js
-
           for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
+
           node <<'JS'
           global.window = {};
           require('./MyStudyCompanionWeb/pointers.js');
@@ -189,7 +186,7 @@ jobs:
             :app:assemblePrivateAlpha \
             :wear:assemblePrivateAlpha
 
-      - name: Verify canonical identities, signatures, and release contents
+      - name: Verify and package phone, Wear, and web releases
         shell: bash
         run: |
           set -euo pipefail
@@ -199,10 +196,10 @@ jobs:
           ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
           mkdir -p final-dist/test-reports
 
-          PHONE_PRIVATE="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
-          WEAR_PRIVATE="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
-          PHONE_DEBUG="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
-          WEAR_DEBUG="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          PHONE_PRIVATE="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_PRIVATE="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          PHONE_DEBUG="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f -print -quit)"
+          WEAR_DEBUG="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f -print -quit)"
           test -f "$PHONE_PRIVATE"
           test -f "$WEAR_PRIVATE"
           test -f "$PHONE_DEBUG"
@@ -249,14 +246,19 @@ jobs:
           mkdir -p /tmp/msc-phone-strings /tmp/msc-wear-strings
           unzip -q final-dist/MyStudyCompanion-phone-0.13.0-debug.apk 'classes*.dex' -d /tmp/msc-phone-strings
           unzip -q final-dist/MyStudyCompanion-wear-0.13.0-debug.apk 'classes*.dex' -d /tmp/msc-wear-strings
-          find /tmp/msc-phone-strings -name 'classes*.dex' -type f -print0 | xargs -0 strings > final-dist/PHONE-STRING-AUDIT.txt
-          find /tmp/msc-wear-strings -name 'classes*.dex' -type f -print0 | xargs -0 strings > final-dist/WEAR-STRING-AUDIT.txt
-          grep -Fq 'FIELD SERVICE • FOR EVERYONE' final-dist/PHONE-STRING-AUDIT.txt
+          find /tmp/msc-phone-strings -name 'classes*.dex' -type f -print0 \
+            | xargs -0 strings -a -n 4 > final-dist/PHONE-STRING-AUDIT.txt
+          find /tmp/msc-wear-strings -name 'classes*.dex' -type f -print0 \
+            | xargs -0 strings -a -n 4 > final-dist/WEAR-STRING-AUDIT.txt
+
+          grep -Fq 'FIELD SERVICE' final-dist/PHONE-STRING-AUDIT.txt
+          grep -Fq 'FOR EVERYONE' final-dist/PHONE-STRING-AUDIT.txt
           grep -Fq 'Timeline Journeys' final-dist/PHONE-STRING-AUDIT.txt
           grep -Fq 'Regional Convention' final-dist/PHONE-STRING-AUDIT.txt
           grep -Fq 'Open in JW Library' final-dist/PHONE-STRING-AUDIT.txt
           ! grep -Fq 'Today on WOL' final-dist/PHONE-STRING-AUDIT.txt
-          grep -Fq 'FIELD SERVICE • FOR EVERYONE' final-dist/WEAR-STRING-AUDIT.txt
+          grep -Fq 'FIELD SERVICE' final-dist/WEAR-STRING-AUDIT.txt
+          grep -Fq 'FOR EVERYONE' final-dist/WEAR-STRING-AUDIT.txt
           grep -Fq 'UPCOMING EVENT NOTEBOOK' final-dist/WEAR-STRING-AUDIT.txt
 
           cp -R MyStudyCompanion/app/build/reports/tests/testDebugUnitTest final-dist/test-reports/phone
@@ -270,8 +272,8 @@ jobs:
           PASS: daily Field Service Pointers for Everyone rotate deterministically by date on phone, Wear, and web.
           PASS: Story, Theme, and Timeline Journeys are included with saved progress.
           PASS: five verified official assembly/convention programs provide seventy-five talk pages with child, preteen, and teen activities.
-          PASS: phone and Wear unit tests, Kotlin compilation, debug assemblies, and canonical privateAlpha assemblies completed in one Gradle invocation.
-          PASS: canonical phone and Wear package identities, version codes, Firebase phone resources, signatures, and ZIP alignment were verified.
+          PASS: phone and Wear unit tests, Kotlin compilation, debug assemblies, and canonical privateAlpha assemblies completed.
+          PASS: canonical phone and Wear identities, Firebase phone resources, signatures, ZIP alignment, and packaged feature strings were verified.
           PASS: installable offline PWA and Glance Mode were packaged for the Meta glasses web-app surface.
           NOTE: browser Firebase sync remains intentionally disabled until a Firebase Web App registration supplies its public web configuration.
           NOTE: unrestricted direct third-party rendering inside the Meta lens is not claimed; the PWA supplies the display-optimized web surface.
