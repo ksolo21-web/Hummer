@@ -43,7 +43,7 @@ jobs:
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
-      - name: Reconstruct verified source and apply workbook overlays
+      - name: Reconstruct verified source and apply combined workbook overlay
         shell: bash
         run: |
           set -euo pipefail
@@ -51,10 +51,8 @@ jobs:
           cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode > /tmp/msc-0130.tar.xz
           echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0130.tar.xz' | sha256sum -c -
           tar -xJf /tmp/msc-0130.tar.xz -C .
-          echo '454f6376981118b62e25790fe9a226d6cd05bcd0453dae55dfd604b89993715b  .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz' | sha256sum -c -
+          echo '33df394deacb2a61c3d6d1884c1dd20c60ba760dc9fedfd05fcb6b20fd6ecdfe  .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz' | sha256sum -c -
           tar -xJf .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz -C .
-          echo '7061fd41666e3b4035b779fe753879e1f64be2a7fdda95e9ac13a8313be9edc5  .msc-build/interactive-workbooks-0.14.0-sync-overlay.tar.xz' | sha256sum -c -
-          tar -xJf .msc-build/interactive-workbooks-0.14.0-sync-overlay.tar.xz -C .
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
         run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
@@ -86,10 +84,8 @@ jobs:
           cat .msc-build/firebase-integrity-0.12.5.part*.b64 | base64 --decode > /tmp/firebase-integrity.tar.xz
           echo '8915fcd1e78a698c8528d4ccf0c06cace33251ee35e85b4a523a9c0af60db37f  /tmp/firebase-integrity.tar.xz' | sha256sum -c -
           tar -xJf /tmp/firebase-integrity.tar.xz -C .
-          echo '454f6376981118b62e25790fe9a226d6cd05bcd0453dae55dfd604b89993715b  .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz' | sha256sum -c -
+          echo '33df394deacb2a61c3d6d1884c1dd20c60ba760dc9fedfd05fcb6b20fd6ecdfe  .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz' | sha256sum -c -
           tar -xJf .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz -C .
-          echo '7061fd41666e3b4035b779fe753879e1f64be2a7fdda95e9ac13a8313be9edc5  .msc-build/interactive-workbooks-0.14.0-sync-overlay.tar.xz' | sha256sum -c -
-          tar -xJf .msc-build/interactive-workbooks-0.14.0-sync-overlay.tar.xz -C .
       - name: Run 23 Firestore security tests
         shell: bash
         run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh firestore
