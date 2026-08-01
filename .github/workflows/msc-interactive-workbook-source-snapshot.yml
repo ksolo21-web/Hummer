@@ -53,26 +53,13 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct verified source and apply last-major-build overlays
+      - name: Reconstruct exact post-overlay source once
         shell: bash
-        run: |
-          set -euo pipefail
-          bash .msc-build/reconstruct-build-0125-ci.sh
-          cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode > /tmp/msc-0130.tar.xz
-          echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0130.tar.xz' | sha256sum -c -
-          tar -xJf /tmp/msc-0130.tar.xz -C .
-          for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
-            grep -v '^#' "$file"
-          done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
-          echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
-          xz -t /tmp/msc-0140-overlay.tar.xz
-          tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
-          python3 .msc-build/fix-interactive-workbooks-0.14.0.py
-          python3 .msc-build/apply-unified-study-reader-0.14.1.py
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
 
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
-        run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
+        run: bash -x .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
 
       - uses: actions/upload-artifact@v6
         with:
