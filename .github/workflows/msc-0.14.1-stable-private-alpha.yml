@@ -72,13 +72,13 @@ jobs:
           base64 --decode \
             private-alpha-signing/.msc-build/private-alpha-debug.keystore.b64 \
             > "$SIGNING_DIR/private-alpha-debug.keystore"
-          echo '4747bb3169459c3e7c523e4d6ff441323f8a1aa08df4acd1749c40f1e4b8e8cb  '"$SIGNING_DIR/private-alpha-debug.keystore" \
+          echo '8b6b00f0d97afa77c3b342a1de47279629dfd2f63400dae6d787e2d25b24af27  '"$SIGNING_DIR/private-alpha-debug.keystore" \
             | sha256sum -c -
           keytool -list -v \
             -keystore "$SIGNING_DIR/private-alpha-debug.keystore" \
             -storepass android -alias androiddebugkey \
             > "$SIGNING_DIR/KEY-IDENTITY.txt"
-          grep -Fq 'SHA256: 28:0F:9C:9A:D4:BE:BA:33:A6:59:11:D4:EC:66:71:AF:54:9A:95:18:74:C9:E4:5C:C3:D9:46:02:95:50:9A:8F' \
+          grep -Fq 'SHA256: 28:0F:9C:9A:D4:BE:BA:33:72:1A:BD:09:A5:B8:04:60:7A:AE:7C:9D:07:91:8D:67:44:6A:F7:AD:55:6D:EC:44' \
             "$SIGNING_DIR/KEY-IDENTITY.txt"
           echo "store_file=$SIGNING_DIR/private-alpha-debug.keystore" >> "$GITHUB_OUTPUT"
           echo 'PASS: established private-alpha signer restored without exporting the key.'
@@ -160,9 +160,9 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs \
             stable-private-alpha/MyStudyCompanion-wear-0.14.1-stable-private-alpha.apk \
             > stable-private-alpha/WEAR-SIGNATURE.txt
-          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33a65911d4ec6671af549a951874c9e45cc3d9460295509a8f' \
+          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
             stable-private-alpha/PHONE-SIGNATURE.txt
-          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33a65911d4ec6671af549a951874c9e45cc3d9460295509a8f' \
+          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
             stable-private-alpha/WEAR-SIGNATURE.txt
           "$ZIPALIGN" -c -P 16 -v 4 \
             stable-private-alpha/MyStudyCompanion-phone-0.14.1-stable-private-alpha.apk \
