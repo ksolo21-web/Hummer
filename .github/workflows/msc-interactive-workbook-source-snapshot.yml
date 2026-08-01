@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/my-study-companion-interactive-workbooks-0140
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
   workflow_dispatch:
 
 concurrency:
