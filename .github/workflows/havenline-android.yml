@@ -19,7 +19,7 @@ on:
       - HAVENLINE/RUN_FINAL_BUILD
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: havenline-final-android-${{ github.ref }}
@@ -215,6 +215,7 @@ jobs:
           cp assets/ASSET_BUILD_REPORT.json build/ASSET_BUILD_REPORT.json
 
       - name: Upload final APK and build evidence
+        id: upload_artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -235,3 +236,27 @@ jobs:
             havenline/build/runtime-smoke.log
             havenline/build/export.log
             havenline/build-godot-version.txt
+
+      - name: Record successful build locator
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_name="HAVENLINE-production-android-${{ github.run_number }}"
+          mkdir -p HAVENLINE
+          jq -n \
+            --arg status "success" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg run_number "${{ github.run_number }}" \
+            --arg head_sha "${{ github.sha }}" \
+            --arg artifact_id "${{ steps.upload_artifact.outputs.artifact-id }}" \
+            --arg artifact_name "$artifact_name" \
+            --arg apk_sha256 "$(cut -d' ' -f1 havenline/build/Havenline-production.apk.sha256)" \
+            --arg controls_patch_sha256 "bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd" \
+            '{status:$status,run_id:($run_id|tonumber),run_number:($run_number|tonumber),head_sha:$head_sha,artifact_id:($artifact_id|tonumber),artifact_name:$artifact_name,apk_sha256:$apk_sha256,controls_patch_sha256:$controls_patch_sha256}' \
+            > HAVENLINE/latest-android-build.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/latest-android-build.json
+          git commit -m "Record HAVENLINE Android build ${{ github.run_number }}"
+          git push origin HEAD:agent/havenline-android-build
