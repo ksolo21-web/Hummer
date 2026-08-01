@@ -55,8 +55,18 @@ jobs:
           fi
           cat MSC-SIGNING-KEY-AUDIT.txt
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: msc-0.14.1-signing-key-audit
           path: MSC-SIGNING-KEY-AUDIT.txt
           retention-days: 7
           if-no-files-found: error
+      - name: Block APK release when Firebase signer is unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Fq 'firebase_registered_signer_preserved=true' MSC-SIGNING-KEY-AUDIT.txt; then
+            echo '::error::No preserved keystore matches the SHA-1 registered for com.mystudycompanion.app in Firebase. Google sign-in cannot be certified for this APK.'
+            echo '::error::Supply the original Firebase-registered keystore through protected GitHub Actions secrets before publishing another phone build.'
+            exit 1
+          fi
