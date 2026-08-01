@@ -29,19 +29,18 @@ for line in (
 
 constant_needle = 'FURNACE_URL = "https://raw.githubusercontent.com/ToxSam/cc0-models-Polygonal-Mind/main/projects/christmas/Fireplace.glb"\n'
 constant_replacement = constant_needle + (
-    'WOLF_URL = "https://raw.githubusercontent.com/DakotaRo/godotDemos/'
-    '854fcf198867644b2f9854cf00bf40459bad892f/First3D/Animals_Pack/GLTF/Wolf.glb"\n'
-    'WOLF_GIT_BLOB = "40254606da4f22c30c037c7fd195c6cbfa1ac834"\n'
+    'WOLF_WHEEL_URL = "https://files.pythonhosted.org/packages/16/a0/'
+    '3a0a2b8ee12d27e64a898a6a5f08820029d12afa36b794e663cc53537c32/'
+    'animasim-0.2.1-py3-none-any.whl"\n'
+    'WOLF_WHEEL_SHA256 = "d111ffc9782f09872846b09ac7868d41e126ef72e3153d9d0173d401be3277a3"\n'
+    'WOLF_WHEEL_BYTES = 13917433\n'
+    'WOLF_ARCHIVE_PATH = "animasim/_assets/glb/wolf.glb"\n'
+    'WOLF_SHA256 = "aa06297d0e66568711885178d1d35e2ca1e392dceb05f988df0497de0274a705"\n'
+    'WOLF_BYTES = 1984192\n'
 )
 if constant_needle not in source:
     raise SystemExit("HAVENLINE furnace URL layout changed; refusing an unsafe patch")
 source = source.replace(constant_needle, constant_replacement, 1)
-
-helper_needle = 'def download(url: str, destination: Path, retries: int = 4) -> Path:\n'
-helper = '''def git_blob_sha1(path: Path) -> str:\n    payload = path.read_bytes()\n    digest = hashlib.sha1()  # Git object identity, not a security checksum.\n    digest.update(f"blob {len(payload)}\\0".encode("ascii"))\n    digest.update(payload)\n    return digest.hexdigest()\n\n\n'''
-if helper_needle not in source:
-    raise SystemExit("HAVENLINE download helper layout changed; refusing an unsafe patch")
-source = source.replace(helper_needle, helper + helper_needle, 1)
 
 needle = "    copy_selected_pack_assets(extracted, selected, manifest)\n\n    furnace = "
 replacement = (
@@ -52,17 +51,39 @@ replacement = (
     "        \"source\": \"Generated from the pinned CC0 survival pack assets\",\n"
     "        \"license\": \"CC0 1.0 source assets; HAVENLINE scene assembly\",\n"
     "    })\n\n"
-    "    wolf = download(WOLF_URL, FINAL / \"animals\" / \"wolf.glb\")\n"
-    "    actual_wolf_blob = git_blob_sha1(wolf)\n"
-    "    if actual_wolf_blob != WOLF_GIT_BLOB:\n"
-    "        raise AssetError(f\"Pinned wolf Git blob mismatch: expected {WOLF_GIT_BLOB}, got {actual_wolf_blob}\")\n"
+    "    wolf_wheel = download(WOLF_WHEEL_URL, CACHE / \"animasim-0.2.1-py3-none-any.whl\")\n"
+    "    actual_wheel_sha = sha256(wolf_wheel)\n"
+    "    if wolf_wheel.stat().st_size != WOLF_WHEEL_BYTES or actual_wheel_sha != WOLF_WHEEL_SHA256:\n"
+    "        raise AssetError(\n"
+    "            f\"Pinned AnimaSim wheel mismatch: expected {WOLF_WHEEL_BYTES} bytes/{WOLF_WHEEL_SHA256}, \"\n"
+    "            f\"got {wolf_wheel.stat().st_size} bytes/{actual_wheel_sha}\"\n"
+    "        )\n"
+    "    wolf = FINAL / \"animals\" / \"wolf.glb\"\n"
+    "    wolf.parent.mkdir(parents=True, exist_ok=True)\n"
+    "    with zipfile.ZipFile(wolf_wheel) as archive:\n"
+    "        try:\n"
+    "            info = archive.getinfo(WOLF_ARCHIVE_PATH)\n"
+    "        except KeyError as exc:\n"
+    "            raise AssetError(f\"Pinned wolf path missing from AnimaSim wheel: {WOLF_ARCHIVE_PATH}\") from exc\n"
+    "        if info.file_size != WOLF_BYTES:\n"
+    "            raise AssetError(f\"Pinned wolf size mismatch in wheel: expected {WOLF_BYTES}, got {info.file_size}\")\n"
+    "        with archive.open(info) as source_handle, wolf.open(\"wb\") as output_handle:\n"
+    "            shutil.copyfileobj(source_handle, output_handle)\n"
+    "    actual_wolf_sha = sha256(wolf)\n"
+    "    if wolf.stat().st_size != WOLF_BYTES or actual_wolf_sha != WOLF_SHA256:\n"
+    "        raise AssetError(\n"
+    "            f\"Pinned Ultimate Animated Animals wolf mismatch: expected {WOLF_BYTES} bytes/{WOLF_SHA256}, \"\n"
+    "            f\"got {wolf.stat().st_size} bytes/{actual_wolf_sha}\"\n"
+    "        )\n"
     "    manifest[\"wolf\"] = \"res://assets/final/animals/wolf.glb\"\n"
     "    report[\"sources\"].append({\n"
     "        \"name\": \"Quaternius Ultimate Animated Animal Pack - Wolf\",\n"
-    "        \"source\": WOLF_URL,\n"
-    "        \"mirror_commit\": \"854fcf198867644b2f9854cf00bf40459bad892f\",\n"
-    "        \"git_blob\": actual_wolf_blob,\n"
-    "        \"license\": \"CC0 1.0\",\n"
+    "        \"source\": WOLF_WHEEL_URL,\n"
+    "        \"package\": \"animasim==0.2.1\",\n"
+    "        \"wheel_sha256\": actual_wheel_sha,\n"
+    "        \"model_sha256\": actual_wolf_sha,\n"
+    "        \"animation_clips\": 12,\n"
+    "        \"license\": \"CC0 1.0 model; redistributed by AnimaSim\",\n"
     "    })\n\n"
     "    furnace = "
 )
