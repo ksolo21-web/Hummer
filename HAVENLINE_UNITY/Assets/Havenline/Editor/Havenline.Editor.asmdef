@@ -4,6 +4,7 @@
   "references": [
     "Havenline.Runtime",
     "Unity.AI.Navigation",
+    "Unity.InputSystem",
     "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [
