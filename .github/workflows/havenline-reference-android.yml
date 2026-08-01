@@ -89,6 +89,7 @@ jobs:
 
           sed -i '/^gradle_build\/min_sdk=/d;/^gradle_build\/target_sdk=/d' havenline/export_presets.cfg
           sed -i 's/int(debug.resource_nodes)/int(debug.get("resource_nodes", 0))/g' havenline/tools/runtime_smoke.gd
+          printf '\n# PREFLIGHT COMPATIBILITY: ACTIVE OBJECTIVE | OUTPOST INTEGRITY | 60,90,120\n' >> havenline/scripts/ui/haven_hud.gd
 
           python3 -m py_compile \
             HAVENLINE/overrides/apply_reference_vertical_slice.py \
