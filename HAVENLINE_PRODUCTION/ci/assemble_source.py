@@ -86,6 +86,16 @@ for module_name, (expected_sha, function_name) in payloads.items():
     spec.loader.exec_module(module)
     getattr(module, function_name)(project)
 
+# Keep the generated production script observable in CI until the imported
+# character/animation integration compiles cleanly. This is source output from
+# the exact checksum-verified build, not a substitute implementation.
+character_script = project / "scripts" / "production_character.gd"
+if character_script.is_file():
+    character_lines = character_script.read_text(encoding="utf-8").splitlines()
+    print("HAVENLINE generated production_character.gd lines 60-175:")
+    for line_number in range(60, min(175, len(character_lines)) + 1):
+        print(f"{line_number:04d}: {character_lines[line_number - 1]}")
+
 print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
