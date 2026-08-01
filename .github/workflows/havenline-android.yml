@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_final_build:
-        description: Type FINAL to run the asset, runtime, and APK gates
+        description: Type FINAL to run the asset, runtime, controls, recovery, and APK gates
         required: true
         type: string
       artifact_retention_days:
@@ -74,6 +74,7 @@ jobs:
           echo "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a  HAVENLINE/overrides/patch_wolf_animation.py" | sha256sum --check --strict
           echo "9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083  HAVENLINE/overrides/patch_android_export.py" | sha256sum --check --strict
           echo "e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
+          echo "bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd  HAVENLINE/overrides/patch_controls_recovery.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
@@ -86,11 +87,13 @@ jobs:
           python3 HAVENLINE/overrides/patch_wolf_animation.py havenline
           python3 HAVENLINE/overrides/patch_android_export.py havenline
           python3 HAVENLINE/overrides/patch_opening_composition.py havenline
+          python3 HAVENLINE/overrides/patch_controls_recovery.py havenline
           python3 -m py_compile \
             HAVENLINE/overrides/patch_runtime_47.py \
             HAVENLINE/overrides/patch_wolf_animation.py \
             HAVENLINE/overrides/patch_android_export.py \
             HAVENLINE/overrides/patch_opening_composition.py \
+            HAVENLINE/overrides/patch_controls_recovery.py \
             havenline/tools/fetch_assets.py \
             havenline/tools/final_composites.py \
             havenline/tools/preflight.py
@@ -99,6 +102,11 @@ jobs:
           ! grep -q '^gradle_build/min_sdk=' export_presets.cfg
           ! grep -q '^gradle_build/target_sdk=' export_presets.cfg
           grep -q '^architectures/arm64-v8a=true$' export_presets.cfg
+          grep -q 'return Basis(right, Vector3.UP, -forward)' scripts/core/camera_rig.gd
+          grep -q 'FALL_RECOVERY_Y := -2.5' scripts/actors/player_controller.gd
+          grep -q '_add_boundary_wall' scripts/world/environment_assembler.gd
+          grep -q 'Runtime gate detected inverted forward controls' tools/runtime_smoke.gd
+          grep -q 'Runtime gate detected failed out-of-bounds recovery' tools/runtime_smoke.gd
           python3 tools/preflight.py | tee build/source-preflight.log
 
       - name: Install Java 17
@@ -177,15 +185,15 @@ jobs:
           fi
           python3 tools/preflight.py --strict 2>&1 | tee build/post-import-preflight.log
 
-      - name: Boot and capture the assembled production scene
+      - name: Boot and validate controls, recovery, and assembled production scene
         shell: bash
         working-directory: havenline
         run: |
           set -euo pipefail
           timeout 15m xvfb-run -a "$GODOT_BIN" --path . --rendering-method mobile res://tools/runtime_smoke.tscn 2>&1 | tee build/runtime-smoke.log
-          if grep -qE 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script|No wolf animation matched' build/runtime-smoke.log; then
-            echo "HAVENLINE runtime contained script, shader, or wolf-animation errors." >&2
-            grep -E 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script|No wolf animation matched' build/runtime-smoke.log >&2
+          if grep -qE 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script|No wolf animation matched|inverted forward controls|failed out-of-bounds recovery' build/runtime-smoke.log; then
+            echo "HAVENLINE runtime contained a script, shader, animation, control-direction, or recovery error." >&2
+            grep -E 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script|No wolf animation matched|inverted forward controls|failed out-of-bounds recovery' build/runtime-smoke.log >&2
             exit 1
           fi
           grep -q 'HAVENLINE runtime gate passed:' build/runtime-smoke.log
