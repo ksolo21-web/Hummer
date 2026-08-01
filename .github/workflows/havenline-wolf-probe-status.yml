@@ -1,0 +1,54 @@
+name: HAVENLINE Wolf Probe Status
+
+on:
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/PROBE_WOLF_STATUS
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  record-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate and record animated wolf probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBE_SHA: b4057c58e3da5036152ff14c5c8b5b51545fb0d3
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=""
+          for attempt in $(seq 1 100); do
+            payload="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs?branch=agent%2Fhavenline-android-build&event=push&per_page=50")"
+            found="$(jq -c --arg sha "$PROBE_SHA" '
+              [.workflow_runs[]
+                | select(.name == "HAVENLINE Animated Wolf Probe" and .head_sha == $sha)
+                | {id, name, status, conclusion, run_number, run_attempt, head_sha, created_at, updated_at, html_url}]
+              | first // empty
+            ' <<<"$payload")"
+            if [[ -n "$found" && "$(jq -r '.status' <<<"$found")" == "completed" ]]; then
+              break
+            fi
+            sleep 5
+          done
+          if [[ -z "$found" ]]; then
+            found="$(jq -n --arg sha "$PROBE_SHA" '{error:"wolf probe not found", head_sha:$sha}')"
+          fi
+          printf '%s\n' "$found" | jq . > HAVENLINE/animated-wolf-run.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/animated-wolf-run.json
+          git commit -m "Record HAVENLINE animated wolf probe run" || exit 0
+          git push
