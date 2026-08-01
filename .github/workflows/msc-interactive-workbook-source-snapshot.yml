@@ -120,7 +120,7 @@ jobs:
           xz -t /tmp/msc-0140-overlay.tar.xz
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
           python3 .msc-build/fix-interactive-workbooks-0.14.0.py
-          python3 .msc-build/apply-unified-study-reader-0.14.1.py
+          python3 .msc-build/apply-unified-study-reader-firestore-0.14.1.py
 
       - name: Generate missing Firebase test lockfile
         shell: bash
