@@ -21,8 +21,8 @@ jobs:
       - name: Record current workflow run
         env:
           GH_TOKEN: ${{ github.token }}
-          TARGET_SHA: 9cb76436a4b20934b82f118db402ccab78d5280c
-          TARGET_NAME: HAVENLINE Verified Source Export
+          TARGET_SHA: f9046fef3c523012d6ef1f6edcd5adad5a1807fa
+          TARGET_NAME: HAVENLINE Build Status Probe
         shell: bash
         run: |
           set -euo pipefail
