@@ -67,6 +67,7 @@ jobs:
           echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
           xz -t /tmp/msc-0140-overlay.tar.xz
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+          python3 .msc-build/fix-interactive-workbooks-0.14.0.py
 
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
@@ -117,6 +118,7 @@ jobs:
           echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
           xz -t /tmp/msc-0140-overlay.tar.xz
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+          python3 .msc-build/fix-interactive-workbooks-0.14.0.py
 
       - name: Generate missing Firebase test lockfile
         shell: bash
