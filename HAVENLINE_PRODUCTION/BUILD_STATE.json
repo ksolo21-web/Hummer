@@ -1,5 +1,14 @@
 {
-  "state": "awaiting_exact_render_validation",
+  "state": "rendering_imported_stylized_asset_pass_1",
   "prototype_reuse": false,
-  "apk_allowed_before_visual_gate": false
+  "procedural_placeholder_frame_rejected": true,
+  "apk_allowed_before_visual_gate": false,
+  "visual_asset_stack": [
+    "Quaternius Universal Base Characters",
+    "Quaternius Universal Animation Libraries 1 and 2",
+    "Quaternius Survival Pack",
+    "Quaternius Stylized Nature MegaKit",
+    "Quaternius animated wolf",
+    "Polygonal Mind furnace"
+  ]
 }
