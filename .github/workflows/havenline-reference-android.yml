@@ -60,16 +60,20 @@ jobs:
           echo "$SOURCE_SHA256  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
           test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
 
-          echo "71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py" | sha256sum --check --strict
-          echo "fdf8ba113899c5769aeaab2696f76e4378eb3645781ecc35d872bd3d5b09775f  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
-          echo "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5  HAVENLINE/overrides/patch_gdscript_47.py" | sha256sum --check --strict
-          echo "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0  HAVENLINE/overrides/patch_runtime_47.py" | sha256sum --check --strict
-          echo "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a  HAVENLINE/overrides/patch_wolf_animation.py" | sha256sum --check --strict
-          echo "9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083  HAVENLINE/overrides/patch_android_export.py" | sha256sum --check --strict
-          echo "e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
-          echo "bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd  HAVENLINE/overrides/patch_controls_recovery.py" | sha256sum --check --strict
-          echo "2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d22d49a5bbd4f  HAVENLINE/overrides/apply_reference_vertical_slice.py" | sha256sum --check --strict
-          echo "ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b  HAVENLINE/overrides/patch_reference_visual_polish.py" | sha256sum --check --strict
+          cat > /tmp/override-hashes.txt <<'HASHES'
+          71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py
+          fdf8ba113899c5769aeaab2696f76e4378eb3645781ecc35d872bd3d5b09775f  HAVENLINE/overrides/patch_fetch_assets.py
+          74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5  HAVENLINE/overrides/patch_gdscript_47.py
+          765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0  HAVENLINE/overrides/patch_runtime_47.py
+          5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a  HAVENLINE/overrides/patch_wolf_animation.py
+          9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083  HAVENLINE/overrides/patch_android_export.py
+          e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432  HAVENLINE/overrides/patch_opening_composition.py
+          bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd  HAVENLINE/overrides/patch_controls_recovery.py
+          2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d22d49a5bbd4f  HAVENLINE/overrides/apply_reference_vertical_slice.py
+          ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b  HAVENLINE/overrides/patch_reference_visual_polish.py
+          51523dc1141a9e2e34b174c0cc8526f2f20ee7395eefac600adc078f7bc8bb50  HAVENLINE/overrides/patch_reference_camera_close.py
+          HASHES
+          sha256sum --check --strict /tmp/override-hashes.txt
           test "$(find HAVENLINE/overrides/reference_slice_parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "5"
           test "$(cat HAVENLINE/overrides/reference_slice_parts/part-*.b64 | sha256sum | cut -d' ' -f1)" = "$REFERENCE_PAYLOAD_SHA256"
 
@@ -88,6 +92,7 @@ jobs:
           python3 HAVENLINE/overrides/patch_controls_recovery.py havenline
           python3 HAVENLINE/overrides/apply_reference_vertical_slice.py havenline
           python3 HAVENLINE/overrides/patch_reference_visual_polish.py havenline
+          python3 HAVENLINE/overrides/patch_reference_camera_close.py havenline
 
           sed -i '/^gradle_build\/min_sdk=/d;/^gradle_build\/target_sdk=/d' havenline/export_presets.cfg
           sed -i 's/int(debug.resource_nodes)/int(debug.get("resource_nodes", 0))/g' havenline/tools/runtime_smoke.gd
@@ -96,6 +101,7 @@ jobs:
           python3 -m py_compile \
             HAVENLINE/overrides/apply_reference_vertical_slice.py \
             HAVENLINE/overrides/patch_reference_visual_polish.py \
+            HAVENLINE/overrides/patch_reference_camera_close.py \
             HAVENLINE/overrides/patch_runtime_47.py \
             HAVENLINE/overrides/patch_wolf_animation.py \
             HAVENLINE/overrides/patch_android_export.py \
@@ -111,9 +117,9 @@ jobs:
           grep -q '^architectures/arm64-v8a=true$' export_presets.cfg
           ! grep -q '^gradle_build/min_sdk=' export_presets.cfg
           ! grep -q '^gradle_build/target_sdk=' export_presets.cfg
-          grep -q 'CAMERA_OFFSET := Vector3(0.0, 10.2, 10.2)' scripts/core/camera_rig.gd
+          grep -q 'CAMERA_OFFSET := Vector3(0.0, 8.4, 8.4)' scripts/core/camera_rig.gd
           grep -q 'PROJECTION_ORTHOGONAL' scripts/core/camera_rig.gd
-          grep -q 'camera.size = 14.8' scripts/core/camera_rig.gd
+          grep -q 'camera.size = 13.6' scripts/core/camera_rig.gd
           grep -q 'movement_direction' scripts/core/camera_rig.gd
           grep -q 'BoundedSnowTerrain' scripts/world/environment_assembler.gd
           grep -q 'DynamicHeatZone' scripts/world/environment_assembler.gd
