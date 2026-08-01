@@ -1,11 +1,10 @@
 name: My Study Companion 0.14.1 Signing Key Audit
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/my-study-companion-0141-auth-theme-repair
-    paths:
-      - .msc-build/run-signing-key-audit.trigger
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,10 +12,11 @@ permissions:
 jobs:
   audit-preserved-signers:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
@@ -32,25 +32,31 @@ jobs:
             branch="${ref#refs/remotes/origin/}"
             while IFS= read -r path; do
               [[ -n "$path" ]] || continue
-              temp="$(mktemp)"
+              encoded="$(mktemp)"
               decoded="$(mktemp)"
-              git show "$ref:$path" > "$temp"
-              if base64 --decode "$temp" > "$decoded" 2>/dev/null; then
-                echo "branch=$branch" >> MSC-SIGNING-KEY-AUDIT.txt
-                echo "path=$path" >> MSC-SIGNING-KEY-AUDIT.txt
-                keytool -list -v -keystore "$decoded" -storepass android -alias androiddebugkey 2>/dev/null \
-                  | grep -E 'Owner:|SHA1:|SHA256:' >> MSC-SIGNING-KEY-AUDIT.txt || true
-                echo >> MSC-SIGNING-KEY-AUDIT.txt
+              git show "$ref:$path" > "$encoded"
+              if base64 --decode "$encoded" > "$decoded" 2>/dev/null; then
+                identity="$(keytool -list -v -keystore "$decoded" -storepass android -alias androiddebugkey 2>/dev/null \
+                  | grep -E 'Owner:|SHA1:|SHA256:' || true)"
+                if [[ -n "$identity" ]]; then
+                  echo "branch=$branch" >> MSC-SIGNING-KEY-AUDIT.txt
+                  echo "path=$path" >> MSC-SIGNING-KEY-AUDIT.txt
+                  printf '%s\n\n' "$identity" >> MSC-SIGNING-KEY-AUDIT.txt
+                fi
               fi
-              rm -f "$temp" "$decoded"
+              rm -f "$encoded" "$decoded"
             done < <(git ls-tree -r --name-only "$ref" | grep -E '(keystore|jks).*\.b64$' || true)
           done < <(git for-each-ref --format='%(refname)' refs/remotes/origin | sort)
+
+          if grep -Fq '19:97:D4:21:D1:77:21:5A:44:F9:65:1C:E5:3D:BA:EC:15:2F:BC:49' MSC-SIGNING-KEY-AUDIT.txt; then
+            echo 'firebase_registered_signer_preserved=true' >> MSC-SIGNING-KEY-AUDIT.txt
+          else
+            echo 'firebase_registered_signer_preserved=false' >> MSC-SIGNING-KEY-AUDIT.txt
+          fi
           cat MSC-SIGNING-KEY-AUDIT.txt
-          grep -Fq '19:97:D4:21:D1:77:21:5A:44:F9:65:1C:E5:3D:BA:EC:15:2F:BC:49' MSC-SIGNING-KEY-AUDIT.txt \
-            && echo 'MATCHING_FIREBASE_SIGNER_FOUND=true' \
-            || echo 'MATCHING_FIREBASE_SIGNER_FOUND=false'
       - uses: actions/upload-artifact@v6
         with:
           name: msc-0.14.1-signing-key-audit
           path: MSC-SIGNING-KEY-AUDIT.txt
           retention-days: 7
+          if-no-files-found: error
