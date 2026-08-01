@@ -77,7 +77,7 @@ require_text(
 )
 require_text(
     "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt",
-    "Family Hub",
+    "fun FamilyHubScreen(",
 )
 require_text(
     "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt",
@@ -93,7 +93,7 @@ require_text("MyStudyCompanionWeb/firebase-sync.js", "memberStudyMaterials")
 require_text("MyStudyCompanion/firestore.rules", "memberStudyMaterials")
 require_text(
     ".msc-build/firebase-rules-tests/rules.test.cjs",
-    "PASS: 26 Firestore authorization, integrity, and abuse tests completed.",
+    "study material notes are private to the owning account",
 )
 
 print("Applied and validated My Study Companion 0.14.1 unified Study Reader overlay.")
