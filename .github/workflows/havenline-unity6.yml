@@ -1,0 +1,127 @@
+name: HAVENLINE Unity 6 URP Review Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - HAVENLINE_UNITY/**
+      - .github/workflows/havenline-unity6.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: havenline-unity6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
+    steps:
+      - name: Check out exact Unity branch head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          lfs: false
+
+      - name: Prove this is the fresh Unity foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt
+          grep -q '^m_EditorVersion: 6000.3.18f1$' HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt
+          grep -q 'com.unity.render-pipelines.universal' HAVENLINE_UNITY/Packages/manifest.json
+          grep -q 'com.unity.ai.navigation' HAVENLINE_UNITY/Packages/manifest.json
+          test ! -e HAVENLINE_UNITY/project.godot
+          test ! -d HAVENLINE_UNITY/scripts
+          if grep -RIl --include='*.cs' 'using Godot\|extends Node\|project.godot' HAVENLINE_UNITY/Assets; then
+            echo 'Godot runtime references are forbidden inside the fresh Unity project.' >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('HAVENLINE_UNITY/Assets/Havenline')
+          required = [
+              root/'Runtime/Player/HavenlinePlayerMotor.cs',
+              root/'Runtime/Gameplay/HavenlineResourceNode.cs',
+              root/'Runtime/Gameplay/HavenlineFurnace.cs',
+              root/'Runtime/Gameplay/HavenlineSurvivorHelper.cs',
+              root/'Runtime/Defense/HavenlineBarricade.cs',
+              root/'Runtime/Defense/HavenlineWolf.cs',
+              root/'Runtime/UI/HavenlineHudController.cs',
+              root/'Editor/HavenlineProductionPipeline.cs',
+              root/'Editor/HavenlineBuildGate.cs',
+          ]
+          missing = [str(path) for path in required if not path.is_file()]
+          if missing:
+              raise SystemExit('Missing Unity production files:\n' + '\n'.join(missing))
+          print(f'HAVENLINE Unity source gate passed: {len(required)} critical files present')
+          PY
+
+      - name: Fetch and inventory CC0 production models
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x HAVENLINE_UNITY/ci/fetch_cc0_assets.sh
+          HAVENLINE_UNITY/ci/fetch_cc0_assets.sh "$GITHUB_WORKSPACE/HAVENLINE_UNITY" | tee "$GITHUB_WORKSPACE/asset-fetch.log"
+
+      - name: Check Unity license availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${UNITY_LICENSE:-}" ] && { [ -z "${UNITY_EMAIL:-}" ] || [ -z "${UNITY_PASSWORD:-}" ]; }; then
+            echo 'A Unity license is required to compile and export the Android review build.' >&2
+            echo 'Configure UNITY_LICENSE, or UNITY_EMAIL and UNITY_PASSWORD, as repository Actions secrets.' >&2
+            exit 1
+          fi
+
+      - name: Build exact Unity scene, review frames, and ARM64 APK
+        uses: game-ci/unity-builder@v4
+        with:
+          projectPath: HAVENLINE_UNITY
+          unityVersion: 6000.3.18f1
+          targetPlatform: Android
+          buildMethod: Havenline.Editor.HavenlineProductionPipeline.BuildReviewCandidate
+          androidExportType: androidPackage
+          customParameters: -nographics
+
+      - name: Verify review outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="HAVENLINE_UNITY/Builds/Android/HAVENLINE-Unity6-review-candidate-arm64.apk"
+          frame="HAVENLINE_UNITY/Builds/Review/HAVENLINE-unity-frozen-outpost.png"
+          close_frame="HAVENLINE_UNITY/Builds/Review/HAVENLINE-unity-close-camera.png"
+          test -s "$apk"
+          test -s "$frame"
+          test -s "$close_frame"
+          unzip -tq "$apk"
+          sha256sum "$apk" > "$apk.sha256"
+          file "$frame" "$close_frame" | tee HAVENLINE_UNITY/Builds/Review/FRAME_REPORT.txt
+
+      - name: Upload Unity review build and exact rendered proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Unity6-review-${{ github.run_number }}
+          retention-days: 30
+          if-no-files-found: warn
+          include-hidden-files: false
+          path: |
+            HAVENLINE_UNITY/Builds/Android/HAVENLINE-Unity6-review-candidate-arm64.apk
+            HAVENLINE_UNITY/Builds/Android/HAVENLINE-Unity6-review-candidate-arm64.apk.sha256
+            HAVENLINE_UNITY/Builds/Review/HAVENLINE-unity-frozen-outpost.png
+            HAVENLINE_UNITY/Builds/Review/HAVENLINE-unity-close-camera.png
+            HAVENLINE_UNITY/Builds/Review/FRAME_REPORT.txt
+            HAVENLINE_UNITY/Assets/Havenline/ThirdParty/CC0-ASSET-SOURCES.md
+            HAVENLINE_UNITY/Assets/Havenline/ThirdParty/ASSET_SHA256SUMS.txt
+            asset-fetch.log
