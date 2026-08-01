@@ -38,5 +38,6 @@ tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
 python3 .msc-build/fix-interactive-workbooks-0.14.0.py
 python3 .msc-build/apply-unified-study-reader-0.14.1.py
 python3 .msc-build/fix-unified-study-reader-compile-0.14.1.py
+bash .msc-build/apply-unified-reader-controls-0.14.1.sh
 
-echo 'Reconstructed the exact My Study Companion 0.14.1 unified source without an inherited duplicate build.'
+echo 'Reconstructed the exact My Study Companion 0.14.1 unified source with connected bookmarks, dictation, playback, and glasses controls.'
