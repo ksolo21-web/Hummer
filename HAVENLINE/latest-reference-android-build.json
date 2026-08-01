@@ -1,0 +1,10 @@
+{
+  "status": "failure",
+  "run_id": "30707683732",
+  "run_number": "1",
+  "head_sha": "1041d9171588da41462c957821bddf2b3c1e9239",
+  "artifact_id": "8820832371",
+  "artifact_name": "HAVENLINE-reference-android-1",
+  "apk_sha256": "",
+  "reference_patch_sha256": "236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3"
+}
