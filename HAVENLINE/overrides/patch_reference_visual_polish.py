@@ -23,12 +23,12 @@ def replace_exact(relative: str, old: str, new: str, expected: int = 1) -> None:
 replace_exact(
     "scripts/core/camera_rig.gd",
     "const CAMERA_OFFSET := Vector3(0.0, 10.6, 11.2)\n",
-    "const CAMERA_OFFSET := Vector3(0.0, 11.0, 11.0)\n",
+    "const CAMERA_OFFSET := Vector3(0.0, 10.2, 10.2)\n",
 )
 replace_exact(
     "scripts/core/camera_rig.gd",
     "    camera.projection = Camera3D.PROJECTION_PERSPECTIVE\n    camera.fov = 38.0\n",
-    "    camera.projection = Camera3D.PROJECTION_ORTHOGONAL\n    camera.size = 15.5\n",
+    "    camera.projection = Camera3D.PROJECTION_ORTHOGONAL\n    camera.size = 14.8\n",
 )
 
 replace_exact(
@@ -101,7 +101,7 @@ replace_exact(
 )
 
 for relative, markers in {
-    "scripts/core/camera_rig.gd": ["PROJECTION_ORTHOGONAL", "camera.size = 15.5"],
+    "scripts/core/camera_rig.gd": ["PROJECTION_ORTHOGONAL", "camera.size = 14.8"],
     "scripts/ui/haven_hud.gd": ["Vector2(minf(330.0", "max_lines_visible = 2"],
     "scripts/world/environment_assembler.gd": ["Vector3(-6.6, 0.0, -3.8)", "0.55"],
     "tools/runtime_smoke.gd": ["for _capture_frame in 150"],
