@@ -1,0 +1,8 @@
+HAVENLINE isolated final build trigger
+Workflow revision on main: 5ee8cb8d58b5601f5b10cc9d403df5a35a8ca7a0
+Source branch: agent/havenline-android-build
+Stable build script revision: a1be8ff2339cd4ed5d7ba83fdd620ea3192dee09
+Game source remains isolated from main.
+Acceptance: orthographic camera, correct controls, bounded terrain, fall recovery, gathering/carry/deposit, furnace heat, helper automation, defense, compact HUD, player and wolf animation, visual frame, ARM64 APK, checksum.
+Trigger: main-launch-1
+Authorized: 2026-08-01
