@@ -1,0 +1,88 @@
+name: My Study Companion 0.14.1 Targeted Source Snapshot
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0141-targeted-source-snapshot
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out application branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-interactive-workbooks-0140
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Reconstruct exact current source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-build-0125-ci.sh
+          cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode > /tmp/msc-0130.tar.xz
+          echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0130.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/msc-0130.tar.xz -C .
+          for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
+            grep -v '^#' "$file"
+          done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
+          echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+          python3 .msc-build/fix-interactive-workbooks-0.14.0.py
+
+      - name: Package targeted UI and web source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p targeted-source
+          copy_file() {
+            local source="$1"
+            if [[ -f "$source" ]]; then
+              mkdir -p "targeted-source/$(dirname "$source")"
+              cp "$source" "targeted-source/$source"
+            fi
+          }
+
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MainActivity.kt
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt
+          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+          copy_file MyStudyCompanion/app/src/main/AndroidManifest.xml
+          copy_file MyStudyCompanion/app/src/main/res/values/themes.xml
+          copy_file MyStudyCompanion/app/src/main/res/values/styles.xml
+          copy_file MyStudyCompanion/web/index.html
+          copy_file MyStudyCompanion/web/app.js
+          copy_file MyStudyCompanion/web/styles.css
+          copy_file MyStudyCompanion/web/firebase-config.js
+          copy_file MyStudyCompanion/web/manifest.webmanifest
+          find targeted-source -type f -print | sort | tee targeted-source/FILES.txt
+          tar -czf msc-0.14.1-targeted-source.tgz targeted-source
+          sha256sum msc-0.14.1-targeted-source.tgz > TARGETED-SOURCE-SHA256.txt
+
+      - name: Upload targeted source
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-targeted-source
+          path: |
+            msc-0.14.1-targeted-source.tgz
+            TARGETED-SOURCE-SHA256.txt
+          retention-days: 2
+          if-no-files-found: error
