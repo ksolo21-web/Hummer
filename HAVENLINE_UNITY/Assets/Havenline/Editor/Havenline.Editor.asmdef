@@ -2,7 +2,9 @@
   "name": "Havenline.Editor",
   "rootNamespace": "Havenline.Editor",
   "references": [
-    "Havenline.Runtime"
+    "Havenline.Runtime",
+    "Unity.AI.Navigation",
+    "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [
     "Editor"
