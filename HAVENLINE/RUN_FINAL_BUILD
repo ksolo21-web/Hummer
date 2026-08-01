@@ -2,13 +2,16 @@ HAVENLINE production build authorization
 Source version: 0.2.0
 Verified source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Source verification workflow run: 30697295578
-Android workflow revision: b64d95d42408f77fb1e2524f8f92a39c8ab7cc49
+Android workflow revision: 6308351294c3ff78cd326dd4d347569248c79760
 Final composition generator SHA-256: 71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5
-Pinned asset patch SHA-256: f45c8ac946fdad9845b4a54dcd7b3995f4fce764f6671cb5b8c48c94b3bcd8ba
+Pinned asset patch SHA-256: fdf8ba113899c5769aeaab2696f76e4378eb3645781ecc35d872bd3d5b09775f
 Strict validator patch SHA-256: 28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc
 Godot 4.7 compatibility patch SHA-256: 74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5
 Runtime boot and shader patch SHA-256: 765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0
-Pinned wolf Git blob: 40254606da4f22c30c037c7fd195c6cbfa1ac834
+Wolf state and quality-gate patch SHA-256: 5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a
+Ultimate wolf wheel SHA-256: d111ffc9782f09872846b09ac7868d41e126ef72e3153d9d0173d401be3277a3
+Ultimate wolf model SHA-256: aa06297d0e66568711885178d1d35e2ca1e392dceb05f988df0497de0274a705
+Ultimate wolf clips: 12 (Attack, Death, Eating, Gallop, Gallop_Jump, Idle variants, hit reactions, Jump_ToIdle, Walk)
 Authorized: 2026-08-01
-Run policy: one checksum-locked final-asset, strict script import, real scene runtime boot, validation-frame, and ARM64 APK gate
-Retry: autoload-aware smoke scene, node setup order, and Godot 4.7 snow shader repaired
+Run policy: checksum-locked final art, strict Godot import, 10+ clip wolf combat validation, real scene capture, and ARM64 APK export
+Retry: replace static wolf with full Quaternius Ultimate Animated Animals model and production animation state machine
