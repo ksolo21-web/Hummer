@@ -5,6 +5,8 @@
   "patch_gdscript_47_sha256": "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5",
   "patch_runtime_47_sha256": "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0",
   "patch_wolf_animation_sha256": "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a",
-  "head_sha": "03ef432eb61936856e8c3d88f2328c42194da74c",
-  "recorded_at": "2026-08-01T13:07:52Z"
+  "patch_android_export_sha256": "9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083",
+  "patch_opening_composition_sha256": "7f3d73698bb425b73975777e6cb69926b7b51deae78c42f30b4674d54df69f44",
+  "head_sha": "2ee8163c71abe839c02382d6eda64c1e49028055",
+  "recorded_at": "2026-08-01T13:25:11Z"
 }
