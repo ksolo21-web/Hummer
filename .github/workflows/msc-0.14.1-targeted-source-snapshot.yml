@@ -1,4 +1,4 @@
-name: My Study Companion 0.14.1 Targeted Source Snapshot
+name: My Study Companion 0.14.1 Exact Source Snapshot
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-targeted-source-snapshot
+  group: msc-0141-exact-source-snapshot
   cancel-in-progress: true
 
 permissions:
@@ -16,7 +16,7 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - name: Check out application branch
         uses: actions/checkout@v6
@@ -30,23 +30,74 @@ jobs:
           path: workbook-payload
           persist-credentials: false
 
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: '8.13'
-
-      - name: Reconstruct exact current source
+      - name: Reconstruct exact current source without compiling the legacy stages
         shell: bash
         run: |
           set -euo pipefail
-          bash .msc-build/reconstruct-build-0125-ci.sh
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('.msc-build/reconstruct-build-0125.sh')
+          source = source_path.read_text(encoding='utf-8')
+
+          old_identity_gate = (
+              "test \"$(git rev-parse HEAD:.msc-build/patch-0.12.2-final-identities.py)\" "
+              "= 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'\n"
+          )
+          new_identity_gate = (
+              "test \"$(git hash-object .msc-build/patch-0.12.2-final-identities.py)\" "
+              "= 'd24c65668c3747bc99d6d2553cb4c4c4d4dc975b'\n"
+          )
+          if old_identity_gate in source:
+              source = source.replace(old_identity_gate, new_identity_gate, 1)
+          elif new_identity_gate not in source:
+              raise SystemExit('Final identity verification gate was not found.')
+
+          final_exec = 'exec bash /tmp/reconstruct-build-0125-generated.sh\n'
+          replacement = r'''python3 - <<'PY_SOURCE_ONLY'
+          from pathlib import Path
+          generated = Path('/tmp/reconstruct-build-0125-generated.sh')
+          text = generated.read_text(encoding='utf-8')
+          marker = '\ncd MyStudyCompanion\ngradle --no-daemon'
+          if marker not in text:
+              raise SystemExit('Legacy Gradle build marker was not found.')
+          source_only = text.split(marker, 1)[0] + '\n'
+          output = Path('/tmp/reconstruct-build-0125-source-only.sh')
+          output.write_text(source_only, encoding='utf-8')
+          output.chmod(0o700)
+          PY_SOURCE_ONLY
+          bash /tmp/reconstruct-build-0125-source-only.sh
+          '''
+          if source.count(final_exec) != 1:
+              raise SystemExit('Expected exactly one final reconstruction exec.')
+          source = source.replace(final_exec, replacement, 1)
+
+          driver = Path('/tmp/reconstruct-build-0125-source-driver.sh')
+          driver.write_text(source, encoding='utf-8')
+          driver.chmod(0o700)
+          PY
+
+          bash /tmp/reconstruct-build-0125-source-driver.sh
+
+          python3 - <<'PY'
+          from pathlib import Path
+          build_file = Path('MyStudyCompanion/build.gradle.kts')
+          source = build_file.read_text(encoding='utf-8')
+          anchor = '            "HomeScreen.kt",\n'
+          if source.count(anchor) != 1:
+              raise SystemExit('Expected one HomeScreen compatibility-list anchor.')
+          for filename in ('DailyFieldServicePointerCard.kt', 'EventNotebooksSection.kt'):
+              entry = f'            "{filename}",\n'
+              if entry not in source:
+                  source = source.replace(anchor, entry + anchor, 1)
+          build_file.write_text(source, encoding='utf-8')
+          PY
+
           cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode > /tmp/msc-0130.tar.xz
           echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0130.tar.xz' | sha256sum -c -
           tar -xJf /tmp/msc-0130.tar.xz -C .
+
           for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
             grep -v '^#' "$file"
           done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
@@ -54,44 +105,34 @@ jobs:
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
           python3 .msc-build/fix-interactive-workbooks-0.14.0.py
 
-      - name: Package targeted UI and web source
+      - name: Package exact application source
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p targeted-source
-          copy_file() {
-            local source="$1"
-            if [[ -f "$source" ]]; then
-              mkdir -p "targeted-source/$(dirname "$source")"
-              cp "$source" "targeted-source/$source"
-            fi
-          }
+          tar \
+            --exclude='**/build' \
+            --exclude='.gradle' \
+            --exclude='node_modules' \
+            -czf msc-0.14.1-exact-source.tgz \
+            MyStudyCompanion/app/src \
+            MyStudyCompanion/wear/src \
+            MyStudyCompanion/web \
+            MyStudyCompanion/app/build.gradle.kts \
+            MyStudyCompanion/wear/build.gradle.kts \
+            MyStudyCompanion/build.gradle.kts \
+            MyStudyCompanion/settings.gradle.kts \
+            MyStudyCompanion/gradle.properties \
+            MyStudyCompanion/gradle/libs.versions.toml \
+            MyStudyCompanion/firestore.rules \
+            MyStudyCompanion/firebase.json
+          sha256sum msc-0.14.1-exact-source.tgz > EXACT-SOURCE-SHA256.txt
 
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MainActivity.kt
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt
-          copy_file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
-          copy_file MyStudyCompanion/app/src/main/AndroidManifest.xml
-          copy_file MyStudyCompanion/app/src/main/res/values/themes.xml
-          copy_file MyStudyCompanion/app/src/main/res/values/styles.xml
-          copy_file MyStudyCompanion/web/index.html
-          copy_file MyStudyCompanion/web/app.js
-          copy_file MyStudyCompanion/web/styles.css
-          copy_file MyStudyCompanion/web/firebase-config.js
-          copy_file MyStudyCompanion/web/manifest.webmanifest
-          find targeted-source -type f -print | sort | tee targeted-source/FILES.txt
-          tar -czf msc-0.14.1-targeted-source.tgz targeted-source
-          sha256sum msc-0.14.1-targeted-source.tgz > TARGETED-SOURCE-SHA256.txt
-
-      - name: Upload targeted source
+      - name: Upload exact source
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-targeted-source
+          name: msc-0.14.1-exact-source
           path: |
-            msc-0.14.1-targeted-source.tgz
-            TARGETED-SOURCE-SHA256.txt
+            msc-0.14.1-exact-source.tgz
+            EXACT-SOURCE-SHA256.txt
           retention-days: 2
           if-no-files-found: error
