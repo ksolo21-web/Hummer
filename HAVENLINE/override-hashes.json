@@ -3,6 +3,7 @@
   "patch_fetch_assets_sha256": "f45c8ac946fdad9845b4a54dcd7b3995f4fce764f6671cb5b8c48c94b3bcd8ba",
   "patch_preflight_sha256": "28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc",
   "patch_gdscript_47_sha256": "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5",
-  "head_sha": "c620eccafb064ec81071a7f99d7e34c8433cae58",
-  "recorded_at": "2026-08-01T12:26:59Z"
+  "patch_runtime_47_sha256": "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0",
+  "head_sha": "2633df8a717adc56f8a1517dcc2f7ade143650d4",
+  "recorded_at": "2026-08-01T12:40:03Z"
 }
