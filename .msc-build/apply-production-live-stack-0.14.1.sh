@@ -10,6 +10,14 @@ xz -dc /tmp/msc-production-live-stack-0.14.1.patch.xz \
   > /tmp/msc-production-live-stack-0.14.1.patch
 patch --batch --forward -p1 < /tmp/msc-production-live-stack-0.14.1.patch
 
+# Patch tools may leave backup or reject files after cleanly handled overlays.
+# They are never part of the installable PWA and must not be packaged.
+find MyStudyCompanionWeb -type f \( -name '*.orig' -o -name '*.rej' \) -delete
+if [[ -n "$(find MyStudyCompanionWeb -type f \( -name '*.orig' -o -name '*.rej' \) -print -quit)" ]]; then
+  echo 'Generated patch backup/reject files remain in the PWA tree.' >&2
+  exit 1
+fi
+
 python3 -m compileall -q MyStudyCompanion/backend/app MyStudyCompanion/backend/tests
 for file in MyStudyCompanionWeb/*.js; do
   node --check "$file"
@@ -52,6 +60,7 @@ extra = '''  local firestore_repositories=MyStudyCompanion/backend/app/repositor
   grep -Fq 'MSC_BACKEND_BASE_URL' .github/workflows/msc-0.14.1-stable-private-alpha.yml
   grep -Fq 'MSC_PERSISTENCE_BACKEND=firestore' .github/workflows/msc-0.14.1-deploy-production-live-stack.yml
   grep -Fq 'msc-weekly-meeting-watchtower-refresh' .github/workflows/msc-0.14.1-deploy-production-live-stack.yml
+  test -z "$(find MyStudyCompanionWeb -type f \\( -name '*.orig' -o -name '*.rej' \\) -print -quit)"
 '''
 if extra not in source:
     if needle not in source:
@@ -75,4 +84,4 @@ if '    "FirestoreContentRepository",\n' not in source:
 gate.write_text(source, encoding='utf-8')
 PY
 
-echo 'Applied persistent Firestore production storage, scheduled Family Worship generation, stable /v1 backend routing, and production release gates.'
+echo 'Applied persistent Firestore production storage, scheduled Family Worship generation, clean PWA packaging, stable /v1 backend routing, and production release gates.'
