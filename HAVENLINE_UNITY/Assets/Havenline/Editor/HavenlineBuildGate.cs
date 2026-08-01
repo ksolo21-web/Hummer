@@ -17,41 +17,42 @@ namespace Havenline.Editor
         private const string ApprovalPath = "Assets/Havenline/Production/VisualApproval.json";
         private static readonly HashSet<string> PrimitiveMeshNames = new(StringComparer.OrdinalIgnoreCase)
         {
-            "Cube",
-            "Sphere",
-            "Capsule",
-            "Cylinder",
-            "Plane",
-            "Quad"
+            "Cube", "Sphere", "Capsule", "Cylinder", "Plane", "Quad"
         };
 
         public int callbackOrder => -10000;
 
         public void OnPreprocessBuild(BuildReport report)
         {
-            ValidateProductionOrThrow(requireVisualApproval: true);
+            var output = report.summary.outputPath ?? string.Empty;
+            var reviewCandidate = output.Contains("review-candidate", StringComparison.OrdinalIgnoreCase);
+            if (reviewCandidate && (report.summary.options & BuildOptions.Development) == 0)
+            {
+                throw new BuildFailedException("HAVENLINE review candidates must be Development builds.");
+            }
+
+            ValidateProductionOrThrow(requireVisualApproval: !reviewCandidate);
 
             if (report.summary.platform != BuildTarget.Android)
             {
-                throw new BuildFailedException(
-                    $"HAVENLINE production output is Android-first. Unexpected build target: {report.summary.platform}.");
+                throw new BuildFailedException("HAVENLINE production output is Android-first.");
             }
 
-            if (PlayerSettings.GetScriptingBackend(BuildTargetGroup.Android) != ScriptingImplementation.IL2CPP)
+            if (PlayerSettings.GetScriptingBackend(NamedBuildTarget.Android) != ScriptingImplementation.IL2CPP)
             {
-                throw new BuildFailedException("HAVENLINE Android production requires the IL2CPP scripting backend.");
+                throw new BuildFailedException("HAVENLINE Android requires IL2CPP.");
             }
 
             if ((PlayerSettings.Android.targetArchitectures & AndroidArchitecture.ARM64) == 0)
             {
-                throw new BuildFailedException("HAVENLINE Android production requires ARM64.");
+                throw new BuildFailedException("HAVENLINE Android requires ARM64.");
             }
         }
 
         [MenuItem("HAVENLINE/Validate Production Fidelity")]
         public static void ValidateFromMenu()
         {
-            ValidateProductionOrThrow(requireVisualApproval: false);
+            ValidateProductionOrThrow(false);
             Debug.Log("HAVENLINE Unity production fidelity validation passed.");
         }
 
@@ -59,36 +60,32 @@ namespace Havenline.Editor
         {
             var failures = new List<string>();
             ValidateConfig(failures);
-            ValidateBuildScenes(failures);
-            ValidatePlayerSettings(failures);
-
+            ValidateScene(failures);
+            ValidateSettings(failures);
             if (requireVisualApproval)
             {
-                ValidateApprovalMarker(failures);
+                ValidateApproval(failures);
             }
 
             if (failures.Count > 0)
             {
-                throw new BuildFailedException(
-                    "HAVENLINE production validation failed:\n- " + string.Join("\n- ", failures));
+                throw new BuildFailedException("HAVENLINE production validation failed:\n- " + string.Join("\n- ", failures));
             }
         }
 
         private static void ValidateConfig(ICollection<string> failures)
         {
-            var configGuids = AssetDatabase.FindAssets("t:HavenlineProductionConfig");
-            if (configGuids.Length != 1)
+            var guids = AssetDatabase.FindAssets("t:HavenlineProductionConfig");
+            if (guids.Length != 1)
             {
-                failures.Add(
-                    $"Exactly one HavenlineProductionConfig asset is required; found {configGuids.Length}.");
+                failures.Add($"Exactly one production config is required; found {guids.Length}.");
                 return;
             }
 
-            var configPath = AssetDatabase.GUIDToAssetPath(configGuids[0]);
-            var config = AssetDatabase.LoadAssetAtPath<HavenlineProductionConfig>(configPath);
+            var config = AssetDatabase.LoadAssetAtPath<HavenlineProductionConfig>(AssetDatabase.GUIDToAssetPath(guids[0]));
             if (config == null)
             {
-                failures.Add($"Could not load production config at {configPath}.");
+                failures.Add("The production config could not be loaded.");
                 return;
             }
 
@@ -101,171 +98,125 @@ namespace Havenline.Editor
                 failures.Add(exception.Message);
             }
 
-            ValidateProductionPrefab(config.PlayerPrefab, "player", failures);
-            ValidateProductionPrefab(config.SurvivorPrefab, "survivor", failures);
-            ValidateProductionPrefab(config.WolfPrefab, "wolf", failures);
-            ValidateProductionPrefab(config.FurnacePrefab, "furnace", failures);
-            ValidateProductionPrefab(config.BarricadePrefab, "barricade", failures);
-            ValidateProductionPrefab(config.TentPrefab, "tent", failures);
-
-            foreach (var resource in config.ResourcePrefabs ?? Array.Empty<GameObject>())
+            ValidatePrefab(config.PlayerPrefab, "player", true, failures);
+            ValidatePrefab(config.SurvivorPrefab, "survivor", true, failures);
+            ValidatePrefab(config.WolfPrefab, "wolf", true, failures);
+            ValidatePrefab(config.FurnacePrefab, "furnace", false, failures);
+            ValidatePrefab(config.BarricadePrefab, "barricade", false, failures);
+            ValidatePrefab(config.TentPrefab, "tent", false, failures);
+            foreach (var prefab in config.ResourcePrefabs ?? Array.Empty<GameObject>())
             {
-                ValidateProductionPrefab(resource, "resource", failures);
+                ValidatePrefab(prefab, "resource", false, failures);
             }
         }
 
-        private static void ValidateProductionPrefab(
-            GameObject prefab,
-            string role,
-            ICollection<string> failures)
+        private static void ValidatePrefab(GameObject prefab, string role, bool needsAnimator, ICollection<string> failures)
         {
             if (prefab == null)
             {
                 return;
             }
 
-            var renderers = prefab.GetComponentsInChildren<Renderer>(true);
-            if (renderers.Length == 0)
+            if (prefab.GetComponentsInChildren<Renderer>(true).Length == 0)
             {
                 failures.Add($"The {role} prefab '{prefab.name}' has no visible renderer.");
-                return;
             }
 
             foreach (var filter in prefab.GetComponentsInChildren<MeshFilter>(true))
             {
                 if (filter.sharedMesh != null && PrimitiveMeshNames.Contains(filter.sharedMesh.name))
                 {
-                    failures.Add(
-                        $"The {role} prefab '{prefab.name}' still contains primitive final art: {filter.sharedMesh.name}.");
+                    failures.Add($"The {role} prefab '{prefab.name}' contains primitive final art: {filter.sharedMesh.name}.");
                 }
             }
 
-            if (role is "player" or "survivor" or "wolf")
+            if (!needsAnimator)
             {
-                var animator = prefab.GetComponentInChildren<Animator>(true);
-                if (animator == null || animator.runtimeAnimatorController == null)
-                {
-                    failures.Add(
-                        $"The {role} prefab '{prefab.name}' requires a production Animator Controller.");
-                }
+                return;
+            }
+
+            var animator = prefab.GetComponentInChildren<Animator>(true);
+            if (animator == null || animator.runtimeAnimatorController == null)
+            {
+                failures.Add($"The {role} prefab '{prefab.name}' requires an animation controller.");
             }
         }
 
-        private static void ValidateBuildScenes(ICollection<string> failures)
+        private static void ValidateScene(ICollection<string> failures)
         {
             var scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).ToArray();
             if (scenes.Length != 1)
             {
-                failures.Add($"The first vertical slice must have exactly one enabled build scene; found {scenes.Length}.");
+                failures.Add($"Exactly one frozen-outpost scene must be enabled; found {scenes.Length}.");
                 return;
             }
 
-            var originalScene = SceneManager.GetActiveScene().path;
+            var previous = SceneManager.GetActiveScene().path;
             try
             {
                 var scene = EditorSceneManager.OpenScene(scenes[0].path, OpenSceneMode.Single);
-                var cameras = scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<HavenlineIsometricCamera>(true))
-                    .ToArray();
-
-                if (cameras.Length != 1)
-                {
-                    failures.Add($"The vertical slice requires exactly one HavenlineIsometricCamera; found {cameras.Length}.");
-                }
-                else
-                {
-                    var camera = cameras[0].GetComponent<Camera>();
-                    if (camera == null || !camera.orthographic)
-                    {
-                        failures.Add("The HAVENLINE production camera must use the close orthographic isometric presentation.");
-                    }
-                    else if (camera.orthographicSize is < 6.5f or > 10.5f)
-                    {
-                        failures.Add(
-                            $"The production camera size {camera.orthographicSize:0.00} is outside the readable reference range 6.5–10.5.");
-                    }
-                }
-
-                RequireExactlyOne<HavenlinePlayerMotor>(scene, "player motor", failures);
+                RequireExactlyOne<HavenlinePlayerMotor>(scene, "player", failures);
                 RequireExactlyOne<HavenlineFurnace>(scene, "furnace", failures);
                 RequireExactlyOne<HavenlineWarmthZone>(scene, "warmth zone", failures);
 
-                var resourceCount = scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<HavenlineResourceNode>(true))
-                    .Count();
-                if (resourceCount < 6)
+                var cameraRig = FindAll<HavenlineIsometricCamera>(scene);
+                if (cameraRig.Length != 1)
                 {
-                    failures.Add($"The frozen outpost requires at least six authored resource nodes; found {resourceCount}.");
+                    failures.Add($"Exactly one isometric camera is required; found {cameraRig.Length}.");
+                }
+                else
+                {
+                    var camera = cameraRig[0].GetComponent<Camera>();
+                    if (camera == null || !camera.orthographic || camera.orthographicSize is < 6.5f or > 10.5f)
+                    {
+                        failures.Add("The camera must be close orthographic/isometric with a readable 6.5–10.5 size.");
+                    }
                 }
 
-                var helperCount = scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<HavenlineSurvivorHelper>(true))
-                    .Count();
-                if (helperCount < 1)
-                {
-                    failures.Add("The vertical slice must include at least one rescueable survivor/helper.");
-                }
-
-                var barricadeCount = scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<HavenlineBarricade>(true))
-                    .Count();
-                if (barricadeCount < 2)
-                {
-                    failures.Add($"The vertical slice requires at least two visible barricades; found {barricadeCount}.");
-                }
-
-                var wolfCount = scene.GetRootGameObjects()
-                    .SelectMany(root => root.GetComponentsInChildren<HavenlineWolf>(true))
-                    .Count();
-                if (wolfCount < 1)
-                {
-                    failures.Add("The vertical slice must include visible wolf pressure.");
-                }
+                if (FindAll<HavenlineResourceNode>(scene).Length < 6)
+                    failures.Add("At least six authored resource nodes are required.");
+                if (FindAll<HavenlineSurvivorHelper>(scene).Length < 1)
+                    failures.Add("A rescueable survivor/helper is required.");
+                if (FindAll<HavenlineBarricade>(scene).Length < 2)
+                    failures.Add("At least two visible barricades are required.");
+                if (FindAll<HavenlineWolf>(scene).Length < 1)
+                    failures.Add("Visible wolf pressure is required.");
             }
             finally
             {
-                if (!string.IsNullOrWhiteSpace(originalScene) && File.Exists(originalScene))
+                if (!string.IsNullOrWhiteSpace(previous) && File.Exists(previous))
                 {
-                    EditorSceneManager.OpenScene(originalScene, OpenSceneMode.Single);
+                    EditorSceneManager.OpenScene(previous, OpenSceneMode.Single);
                 }
             }
         }
 
-        private static void RequireExactlyOne<T>(
-            Scene scene,
-            string label,
-            ICollection<string> failures)
-            where T : Component
+        private static T[] FindAll<T>(Scene scene) where T : Component =>
+            scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<T>(true)).ToArray();
+
+        private static void RequireExactlyOne<T>(Scene scene, string label, ICollection<string> failures) where T : Component
         {
-            var count = scene.GetRootGameObjects()
-                .SelectMany(root => root.GetComponentsInChildren<T>(true))
-                .Count();
+            var count = FindAll<T>(scene).Length;
             if (count != 1)
             {
-                failures.Add($"The vertical slice requires exactly one {label}; found {count}.");
+                failures.Add($"Exactly one {label} is required; found {count}.");
             }
         }
 
-        private static void ValidatePlayerSettings(ICollection<string> failures)
+        private static void ValidateSettings(ICollection<string> failures)
         {
+            if (QualitySettings.vSyncCount != 0)
+                failures.Add("vSyncCount must be 0 because HAVENLINE manages refresh rate explicitly.");
             if (PlayerSettings.defaultInterfaceOrientation != UIOrientation.LandscapeLeft &&
                 PlayerSettings.defaultInterfaceOrientation != UIOrientation.AutoRotation)
-            {
-                failures.Add("HAVENLINE must support the intended landscape mobile presentation.");
-            }
-
-            if (QualitySettings.vSyncCount != 0)
-            {
-                failures.Add("HAVENLINE controls refresh rate explicitly; vSyncCount must be 0 in the production quality profile.");
-            }
+                failures.Add("Landscape mobile presentation is required.");
         }
 
-        private static void ValidateApprovalMarker(ICollection<string> failures)
+        private static void ValidateApproval(ICollection<string> failures)
         {
             if (!File.Exists(ApprovalPath))
             {
-                failures.Add(
-                    "Visual approval is absent. Android export remains locked until exact Unity-rendered evidence passes review.");
+                failures.Add("Production visual approval is absent. Only a development review-candidate APK may be exported.");
                 return;
             }
 
@@ -273,7 +224,7 @@ namespace Havenline.Editor
             if (!marker.Contains("\"approved\": true", StringComparison.Ordinal) ||
                 !marker.Contains("\"referenceFidelity\": true", StringComparison.Ordinal))
             {
-                failures.Add("VisualApproval.json does not explicitly approve reference fidelity.");
+                failures.Add("VisualApproval.json does not explicitly approve original-reference fidelity.");
             }
         }
     }
