@@ -21,8 +21,8 @@ jobs:
       - name: Record current workflow run
         env:
           GH_TOKEN: ${{ github.token }}
-          TARGET_SHA: 790cc4a3b4933bf3dcccd152760c4919bb0f69a1
-          TARGET_NAME: HAVENLINE Final Android Build
+          TARGET_SHA: f3d636f773b579a4d0b1f64227476476f69df902
+          TARGET_NAME: HAVENLINE Override Hashes
         shell: bash
         run: |
           set -euo pipefail
