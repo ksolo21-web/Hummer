@@ -16,7 +16,7 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - name: Check out application branch
         uses: actions/checkout@v6
@@ -29,6 +29,14 @@ jobs:
           ref: agent/my-study-companion-0140-overlay-payload
           path: workbook-payload
           persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
 
       - name: Reconstruct exact unified 0.14.1 source without compiling legacy stages
         shell: bash
