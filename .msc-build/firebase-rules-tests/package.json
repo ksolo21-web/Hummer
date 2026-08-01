@@ -1,0 +1,14 @@
+{
+  "name": "my-study-companion-firestore-rules-tests",
+  "version": "0.14.0",
+  "private": true,
+  "description": "Deterministic Firestore authorization and workbook integrity tests for My Study Companion.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "5.0.1",
+    "firebase": "12.16.0"
+  }
+}
