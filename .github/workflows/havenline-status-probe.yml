@@ -17,43 +17,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download and pin official Quaternius animated wolf
+      - name: Pin Ultimate Animated Animals wolf from AnimaSim
         shell: bash
-        env:
-          PACK_URL: https://opengameart.org/sites/default/files/Animal%20Pack%20Vol.2%20by%20%40Quaternius.zip
         run: |
           set -euo pipefail
-          archive=/tmp/quaternius-animated-animals.zip
-          extract=/tmp/quaternius-animated-animals
-          curl --fail --location --retry 5 --retry-delay 4 --user-agent 'HAVENLINE-asset-validator/1.0' "$PACK_URL" -o "$archive"
-          test -s "$archive"
-          unzip -t "$archive" >/tmp/quaternius-zip-test.txt
-          unzip -Z1 "$archive" >/tmp/quaternius-files.txt
-          wolf_path="$(awk 'tolower($0) ~ /wolf.*\.fbx$/ {print; exit}' /tmp/quaternius-files.txt)"
+          download_dir=/tmp/animasim-download
+          extract=/tmp/animasim-wolf
+          mkdir -p "$download_dir" "$extract"
+          python3 -m pip download --disable-pip-version-check --no-deps --only-binary=:all: animasim==0.2.1 --dest "$download_dir"
+          package="$(find "$download_dir" -maxdepth 1 -type f -name 'animasim-0.2.1-*.whl' -print -quit)"
+          test -n "$package"
+          unzip -t "$package" >/tmp/animasim-wheel-test.txt
+          unzip -Z1 "$package" >/tmp/animasim-files.txt
+          wolf_path="$(awk 'tolower($0) ~ /(^|\/)wolf[^\/]*\.glb$/ {print; exit}' /tmp/animasim-files.txt)"
           if [[ -z "$wolf_path" ]]; then
-            wolf_path="$(awk 'tolower($0) ~ /wolf.*\.(glb|gltf)$/ {print; exit}' /tmp/quaternius-files.txt)"
+            wolf_path="$(awk 'tolower($0) ~ /wolf.*\.(fbx|gltf)$/ {print; exit}' /tmp/animasim-files.txt)"
           fi
           test -n "$wolf_path"
-          mkdir -p "$extract"
-          unzip -j "$archive" "$wolf_path" -d "$extract"
+          unzip -j "$package" "$wolf_path" -d "$extract"
           wolf_file="$extract/$(basename "$wolf_path")"
           test -s "$wolf_file"
-          strings "$wolf_file" | grep -iE 'idle|walk|run|attack|bite|death|jump|gallop|trot|canter|animstack|animationstack' | sort -fu | head -n 250 > HAVENLINE/animated-wolf-animation-strings.txt || true
+          strings "$wolf_file" | grep -iE 'idle|walk|run|attack|bite|death|jump|gallop|trot|canter|eat|kick|anim' | sort -fu | head -n 400 > HAVENLINE/ultimate-wolf-animation-strings.txt || true
           jq -n \
-            --arg source_url "$PACK_URL" \
-            --arg license "CC0 1.0" \
-            --arg archive_sha256 "$(sha256sum "$archive" | awk '{print $1}')" \
-            --arg archive_bytes "$(stat -c '%s' "$archive")" \
+            --arg package "animasim==0.2.1" \
+            --arg upstream "Quaternius Ultimate Animated Animal Pack" \
+            --arg license "CC0 1.0 model; MIT package code" \
+            --arg wheel_name "$(basename "$package")" \
+            --arg wheel_sha256 "$(sha256sum "$package" | awk '{print $1}')" \
+            --arg wheel_bytes "$(stat -c '%s' "$package")" \
             --arg wolf_archive_path "$wolf_path" \
             --arg wolf_sha256 "$(sha256sum "$wolf_file" | awk '{print $1}')" \
             --arg wolf_git_blob "$(git hash-object "$wolf_file")" \
             --arg wolf_bytes "$(stat -c '%s' "$wolf_file")" \
             --arg inspected_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{source_url:$source_url, license:$license, archive_sha256:$archive_sha256, archive_bytes:($archive_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), inspected_at:$inspected_at}' \
-            > HAVENLINE/animated-wolf-probe.json
-          cp /tmp/quaternius-files.txt HAVENLINE/animated-wolf-files.txt
+            '{package:$package, upstream:$upstream, license:$license, wheel_name:$wheel_name, wheel_sha256:$wheel_sha256, wheel_bytes:($wheel_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), inspected_at:$inspected_at}' \
+            > HAVENLINE/ultimate-wolf-probe.json
+          cp /tmp/animasim-files.txt HAVENLINE/ultimate-wolf-files.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add HAVENLINE/animated-wolf-probe.json HAVENLINE/animated-wolf-files.txt HAVENLINE/animated-wolf-animation-strings.txt
-          git commit -m "Record Quaternius animated wolf clip evidence"
+          git add HAVENLINE/ultimate-wolf-probe.json HAVENLINE/ultimate-wolf-files.txt HAVENLINE/ultimate-wolf-animation-strings.txt
+          git commit -m "Record Ultimate Animated Animals wolf hashes"
           git push
