@@ -18,19 +18,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out workbook source
+        uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-interactive-workbooks-0140
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
+
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+
       - name: Install Android SDK components
         shell: bash
         run: |
@@ -40,6 +52,7 @@ jobs:
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
       - name: Reconstruct verified source and apply combined workbook overlay
         shell: bash
         run: |
@@ -48,12 +61,17 @@ jobs:
           cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode > /tmp/msc-0130.tar.xz
           echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0130.tar.xz' | sha256sum -c -
           tar -xJf /tmp/msc-0130.tar.xz -C .
-          sha256sum .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz | tee /tmp/msc-0140-overlay.sha256
-          xz -t .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz
-          tar -xJf .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz -C .
+          for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
+            grep -v '^#' "$file"
+          done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
+          echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
+          xz -t /tmp/msc-0140-overlay.tar.xz
+          tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
         run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
+
       - uses: actions/upload-artifact@v6
         with:
           name: msc-0.14.0-interactive-workbooks-phone-wear-web
@@ -65,16 +83,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out workbook source
+        uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-interactive-workbooks-0140
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+
       - name: Reconstruct and apply workbook security rules
         shell: bash
         run: |
@@ -82,12 +111,17 @@ jobs:
           cat .msc-build/firebase-integrity-0.12.5.part*.b64 | base64 --decode > /tmp/firebase-integrity.tar.xz
           echo '8915fcd1e78a698c8528d4ccf0c06cace33251ee35e85b4a523a9c0af60db37f  /tmp/firebase-integrity.tar.xz' | sha256sum -c -
           tar -xJf /tmp/firebase-integrity.tar.xz -C .
-          sha256sum .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz | tee /tmp/msc-0140-overlay.sha256
-          xz -t .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz
-          tar -xJf .msc-build/interactive-workbooks-0.14.0-overlay.tar.xz -C .
+          for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
+            grep -v '^#' "$file"
+          done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
+          echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
+          xz -t /tmp/msc-0140-overlay.tar.xz
+          tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+
       - name: Run 23 Firestore security tests
         shell: bash
         run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh firestore
+
       - uses: actions/upload-artifact@v6
         with:
           name: msc-0.14.0-firestore-workbook-integrity
