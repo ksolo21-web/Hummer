@@ -69,7 +69,54 @@ old_velocity = "    velocity.z=direction.y*speed\n"
 new_velocity = "    velocity.z = direction.z * speed\n"
 if player_source.count(old_velocity) != 1:
     raise SystemExit("HAVENLINE controller depth-axis patch expected exactly one source marker")
-player_path.write_text(player_source.replace(old_velocity, new_velocity, 1), encoding="utf-8")
+player_source = player_source.replace(old_velocity, new_velocity, 1)
+
+# Recover before applying another falling movement step, and never preserve a
+# last-safe Y below the visible snow surface. This guarantees an actionable
+# recovery even when the collision solver reports floor contact at -0.005.
+old_physics_start = '''func _physics_process(delta: float) -> void:
+    var keys:=Input.get_vector("move_left","move_right","move_up","move_down")
+'''
+new_physics_start = '''func _physics_process(delta: float) -> void:
+    if global_position.y < FALL_Y:
+        _recover_to_last_safe()
+        return
+    var keys:=Input.get_vector("move_left","move_right","move_up","move_down")
+'''
+if player_source.count(old_physics_start) != 1:
+    raise SystemExit("HAVENLINE pre-physics recovery patch expected one function marker")
+player_source = player_source.replace(old_physics_start, new_physics_start, 1)
+
+old_recovery = '''    if global_position.y<FALL_Y:
+        global_position=last_safe; velocity=Vector3.ZERO; recovered.emit()
+    elif is_on_floor():
+        last_safe=global_position
+    _animate(direction,delta)
+
+func _animate(direction: Vector3,delta: float) -> void:
+'''
+new_recovery = '''    if global_position.y < FALL_Y:
+        _recover_to_last_safe()
+    elif is_on_floor():
+        last_safe = global_position
+        last_safe.y = maxf(last_safe.y, 0.08)
+    _animate(direction,delta)
+
+func _recover_to_last_safe() -> void:
+    var destination := last_safe
+    destination.x = clampf(destination.x, -PLAY_LIMIT + 0.5, PLAY_LIMIT - 0.5)
+    destination.z = clampf(destination.z, -PLAY_LIMIT + 0.5, PLAY_LIMIT - 0.5)
+    destination.y = maxf(destination.y, 0.08)
+    global_position = destination
+    velocity = Vector3.ZERO
+    recovered.emit()
+
+func _animate(direction: Vector3,delta: float) -> void:
+'''
+if player_source.count(old_recovery) != 1:
+    raise SystemExit("HAVENLINE last-safe recovery patch expected one recovery block")
+player_source = player_source.replace(old_recovery, new_recovery, 1)
+player_path.write_text(player_source, encoding="utf-8")
 
 # Use a fully typed runtime harness. This boots and measures the actual project,
 # rather than validating source strings or a mock scene.
@@ -116,10 +163,12 @@ func _run() -> void:
         _fail("Joystick up does not move screen-forward")
         return
     player.set_joystick(Vector2.ZERO)
+    var safe_before_fall: Vector3 = player.global_position
     player.global_position.y = -8.0
     for _frame in range(4):
         await physics_frame
-    if player.global_position.y < 0.0:
+    print("HAVENLINE recovery proof: before=", safe_before_fall, " after=", player.global_position)
+    if player.global_position.y < 0.05 or player.global_position.distance_to(safe_before_fall) > 1.0:
         _fail("Fall recovery failed")
         return
     if gameplay.resources.size() < 10:
@@ -144,9 +193,9 @@ func _run() -> void:
 required = {
     "project.godot": ["run/max_fps=120", 'renderer/rendering_method="mobile"'],
     "scripts/main.gd": ["PROJECTION_ORTHOGONAL", "BoundedSnowTerrain", "DynamicHeatZone"],
-    "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe", "velocity.z = direction.z"],
+    "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe", "velocity.z = direction.z", "_recover_to_last_safe"],
     "scripts/gameplay.gd": ["_auto_interaction", "_helper_work", "_spawn_wolf_wave", "var dir: Vector3"],
-    "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png", "var scene: Node"],
+    "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png", "var scene: Node", "recovery proof"],
 }
 for relative, markers in required.items():
     source = (project / relative).read_text(encoding="utf-8")
@@ -158,5 +207,5 @@ print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
 )
-print("HAVENLINE compatibility fixes applied: typed wolf direction, corrected controller Z axis, typed runtime gate")
+print("HAVENLINE fixes applied: typed wolf direction, corrected controller Z axis, hardened recovery, typed runtime gate")
 print(project)
