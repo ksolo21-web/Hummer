@@ -87,7 +87,7 @@ require_text(
     "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt",
     "memberStudyMaterials",
 )
-require_text("MyStudyCompanionWeb/index.html", 'data-view="studyLibraryView"')
+require_text("MyStudyCompanionWeb/index.html", 'id="studyLibraryList"')
 require_text("MyStudyCompanionWeb/reader.js", "createStudyReader")
 require_text("MyStudyCompanionWeb/firebase-sync.js", "memberStudyMaterials")
 require_text("MyStudyCompanion/firestore.rules", "memberStudyMaterials")
