@@ -1,0 +1,153 @@
+name: HAVENLINE Final Android Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_final_build:
+        description: Type FINAL to run the asset, runtime, and APK gates
+        required: true
+        type: string
+      artifact_retention_days:
+        description: Artifact retention in days
+        required: false
+        default: "30"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: havenline-final-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-production:
+    if: github.event.inputs.confirm_final_build == 'FINAL'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GODOT_VERSION: 4.7.1
+      GODOT_STATUS: stable
+      GODOT_BIN: ${{ github.workspace }}/havenline/.tools/godot
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+
+    steps:
+      - name: Check out isolated HAVENLINE branch
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Verify and unpack checksum-locked HAVENLINE source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.ref_name }}" = "agent/havenline-android-build"
+          test "$(find HAVENLINE/source.parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l)" -eq 6
+          cat HAVENLINE/source.parts/part-*.b64 | base64 --decode > /tmp/Havenline-production-source-v0.2.0.tar.xz
+          echo "1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
+          rm -rf .havenline-src havenline
+          mkdir -p .havenline-src
+          tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
+          mv .havenline-src/Havenline havenline
+          cd havenline
+          python3 tools/preflight.py
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install asset and rendering prerequisites
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends git-lfs unzip xvfb libgl1 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64 mesa-vulkan-drivers
+          git lfs install
+
+      - name: Fetch pinned CC0 final art
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          python3 tools/fetch_assets.py --clean-cache
+          python3 tools/preflight.py --strict
+
+      - name: Install official Godot 4.7.1 editor and export templates
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          mkdir -p .tools /tmp/godot-templates
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_STATUS}"
+          editor="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          templates="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          curl --fail --location --retry 4 --retry-delay 4 "$base/$editor" -o ".tools/$editor"
+          curl --fail --location --retry 4 --retry-delay 4 "$base/$templates" -o ".tools/$templates"
+          unzip -q ".tools/$editor" -d .tools/editor
+          editor_path="$(find .tools/editor -maxdepth 1 -type f -name 'Godot*' | head -n 1)"
+          test -n "$editor_path"
+          mv "$editor_path" "$GODOT_BIN"
+          chmod +x "$GODOT_BIN"
+          unzip -q ".tools/$templates" -d /tmp/godot-templates
+          template_dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          mkdir -p "$template_dir"
+          cp -a /tmp/godot-templates/templates/. "$template_dir/"
+          "$GODOT_BIN" --version | tee build-godot-version.txt
+
+      - name: Prepare Android SDK 35
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.1"
+          echo "JAVA_HOME=$JAVA_HOME"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+      - name: Import production meshes, textures, and animations
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          timeout 25m "$GODOT_BIN" --headless --editor --path . --import 2>&1 | tee build/import.log
+          test -d .godot/imported
+          python3 tools/preflight.py --strict
+
+      - name: Boot and capture the assembled production scene
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          timeout 15m xvfb-run -a "$GODOT_BIN" --path . --rendering-method mobile --script res://tools/runtime_smoke.gd 2>&1 | tee build/runtime-smoke.log
+          test -s build/validation-frame.png
+
+      - name: Export ARM64 Android APK
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          timeout 25m "$GODOT_BIN" --headless --path . --export-debug Android build/Havenline-production.apk 2>&1 | tee build/export.log
+          test -s build/Havenline-production.apk
+          sha256sum build/Havenline-production.apk > build/Havenline-production.apk.sha256
+          cp assets/ASSET_BUILD_REPORT.json build/ASSET_BUILD_REPORT.json
+
+      - name: Upload final APK and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-production-android-${{ github.run_number }}
+          retention-days: ${{ fromJSON(github.event.inputs.artifact_retention_days) }}
+          if-no-files-found: error
+          path: |
+            havenline/build/Havenline-production.apk
+            havenline/build/Havenline-production.apk.sha256
+            havenline/build/validation-frame.png
+            havenline/build/ASSET_BUILD_REPORT.json
+            havenline/build/import.log
+            havenline/build/runtime-smoke.log
+            havenline/build/export.log
+            havenline/build-godot-version.txt
