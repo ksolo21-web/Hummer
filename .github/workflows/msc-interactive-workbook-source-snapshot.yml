@@ -1,9 +1,6 @@
 name: My Study Companion 0.14.0 Interactive Workbooks
 
 on:
-  push:
-    branches:
-      - agent/my-study-companion-interactive-workbooks-0140
   pull_request:
     branches:
       - agent/my-study-companion-0140-ci-base
@@ -11,7 +8,7 @@ on:
 
 concurrency:
   group: msc-0140-interactive-workbooks
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
