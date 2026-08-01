@@ -10,5 +10,5 @@ Visual polish SHA-256: ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4
 Rejected builds: v0.2.0 open-plane camp demo; reference run 2 failed visual review; reference run 3 correctly failed the strict close-camera gate at a 15.56-unit offset.
 Required replacement: compact orthographic-isometric frozen outpost with a 14.42-unit camera offset and 14.8 orthographic size, readable player scale, controlled tent framing, two-line objective card, screen-relative controls, physical perimeter, fall recovery, automatic gathering/carrying/depositing, furnace fuel and expanding heat, survivor helper automation, barricade defense, mobile-safe HUD, imported characters, and full wolf animation.
 Runtime gates: orthographic close camera, compact HUD marker, settled 150-frame capture, forward/right controls, forced fall recovery, bounded terrain, gathering density, furnace system, automatic helper, player animation, full wolf animation, validation frame, ARM64 APK checksum.
-Trigger: reference-slice-v0.3.0-4
+Trigger: reference-slice-v0.3.0-4-retry
 Authorized: 2026-08-01
