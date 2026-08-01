@@ -43,5 +43,6 @@ bash .msc-build/apply-complete-last-major-build-0.14.1.sh
 bash .msc-build/apply-theme-gallery-0.14.1.sh
 bash .msc-build/apply-live-release-completion-0.14.1.sh
 bash .msc-build/apply-production-live-stack-0.14.1.sh
+python3 .msc-build/apply-auth-theme-repair-0.14.1.py
 
-echo 'Reconstructed the exact My Study Companion 0.14.1 release-candidate source with persistent Firestore production storage, scheduled Daily Text, meeting, Watchtower, and Family Worship automation, connected official-content generation, scheduler OIDC, conflict-safe reading and notes, Family Hub, workbooks, 23 permanent themes, 13 new illustrated scenes, visual color wheels, Wear scenery, widgets, and PWA appearance controls.'
+echo 'Reconstructed My Study Companion 0.14.1 with the Google sign-in regression repaired, the 13 rejected experimental themes removed, the approved original and animal themes retained, and the visual color wheel preserved.'
