@@ -109,6 +109,16 @@ for original, repaired in character_repairs.items():
 character_script.write_text(character_source, encoding="utf-8")
 print("HAVENLINE Godot 4.7 character typing repairs applied")
 
+# Temporary exact-scene audit output. It exposes the generated scene source in
+# the CI artifact so the next visual pass can be corrected from the real build,
+# not guessed from a screenshot or a throwaway mockup.
+for audit_relative in ("scripts/main.gd", "scripts/art_factory.gd", "scripts/hud.gd"):
+    audit_path = project / audit_relative
+    if audit_path.is_file():
+        print(f"===== HAVENLINE SOURCE AUDIT START {audit_relative} =====")
+        print(audit_path.read_text(encoding="utf-8"))
+        print(f"===== HAVENLINE SOURCE AUDIT END {audit_relative} =====")
+
 print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
