@@ -1,10 +1,10 @@
 {
-  "status": "success",
-  "run_id": "30707794857",
-  "run_number": "2",
-  "head_sha": "ec754838c3ac2e93e84541debfdc227fb90afa2e",
-  "artifact_id": "8820901635",
-  "artifact_name": "HAVENLINE-reference-android-2",
-  "apk_sha256": "590fa2bffbdb597120148d815a675a1aed305edfb156be1466e0af7db0dedb24",
+  "status": "failure",
+  "run_id": "30708099869",
+  "run_number": "3",
+  "head_sha": "747f643d6f7ad3c716831222e9c369cc9f5e2c45",
+  "artifact_id": "8821024523",
+  "artifact_name": "HAVENLINE-reference-android-3",
+  "apk_sha256": "",
   "reference_patch_sha256": "236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3"
 }
