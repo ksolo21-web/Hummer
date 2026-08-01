@@ -1,0 +1,13 @@
+{
+  "package": "animasim==0.2.1",
+  "upstream": "Quaternius Ultimate Animated Animal Pack",
+  "license": "CC0 1.0 model; MIT package code",
+  "wheel_name": "animasim-0.2.1-py3-none-any.whl",
+  "wheel_sha256": "d111ffc9782f09872846b09ac7868d41e126ef72e3153d9d0173d401be3277a3",
+  "wheel_bytes": 13917433,
+  "wolf_archive_path": "animasim/_assets/glb/wolf.glb",
+  "wolf_sha256": "aa06297d0e66568711885178d1d35e2ca1e392dceb05f988df0497de0274a705",
+  "wolf_git_blob": "b282c1ba53c0f7a8232195ae1949fbb0ea31b0de",
+  "wolf_bytes": 1984192,
+  "inspected_at": "2026-08-01T13:01:52Z"
+}
