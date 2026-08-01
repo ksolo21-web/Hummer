@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cp MyStudyCompanion/firestore.rules .msc-build/firebase-rules-tests/firestore.rules
+test -s .msc-build/firebase-rules-tests/firestore.rules
+
 cd .msc-build/firebase-rules-tests
 npm ci
 
