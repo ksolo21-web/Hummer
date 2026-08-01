@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "run_id": 30706837320,
+  "run_number": 15,
+  "head_sha": "8da4a003dd6c6e5f405bc984d73590bad1ea59c0",
+  "artifact_id": 8820636874,
+  "artifact_name": "HAVENLINE-production-android-15",
+  "apk_sha256": "d0eac11813d55613733e6fceb5d03a847e29eea8344a97ae153ec725103f21f6",
+  "controls_patch_sha256": "bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd"
+}
