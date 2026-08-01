@@ -6,18 +6,27 @@ source = path.read_text(encoding='utf-8')
 
 unified_web_gate = """grep -Fq 'msc-web-v0141-unified-study-reader' MyStudyCompanionWeb/sw.js
 
+  local reader_models=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderModels.kt
   local reader_repo=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt
   local reader_ui=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt
+  local reader_test=MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderModelsTest.kt
   local family_hub=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt
   local app_shell=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
+  test -s \"$reader_models\"
   test -s \"$reader_repo\"
   test -s \"$reader_ui\"
+  test -s \"$reader_test\"
   test -s \"$family_hub\"
   grep -Fq 'OfficialDailyTextRepository' \"$reader_repo\"
   grep -Fq 'OfficialWatchtowerStudyRepository' \"$reader_repo\"
   grep -Fq 'OfficialPageReader' \"$reader_repo\"
   grep -Fq 'memberStudyMaterials' \"$reader_repo\"
+  grep -Fq 'toggleBookmark' \"$reader_repo\"
+  grep -Fq 'bookmarks' \"$reader_models\"
   grep -Fq 'TextToSpeech' \"$reader_ui\"
+  grep -Fq 'RecognizerIntent.ACTION_RECOGNIZE_SPEECH' \"$reader_ui\"
+  grep -Fq 'speechRate' \"$reader_ui\"
+  grep -Fq 'Pause' \"$reader_ui\"
   grep -Fq 'safeDrawingPadding()' \"$app_shell\"
   grep -Fq 'AppRoute.FAMILY, \"Family Hub\"' \"$app_shell\"
   grep -Fq 'fun FamilyHubScreen(' \"$family_hub\"
@@ -30,10 +39,15 @@ unified_web_gate = """grep -Fq 'msc-web-v0141-unified-study-reader' MyStudyCompa
   test -s MyStudyCompanionWeb/reader.js
   grep -Fq 'id=\"studyLibraryList\"' MyStudyCompanionWeb/index.html
   grep -Fq 'id=\"readerModal\"' MyStudyCompanionWeb/index.html
+  grep -Fq 'readerDocumentDictate' MyStudyCompanionWeb/index.html
   grep -Fq 'createStudyReader' MyStudyCompanionWeb/reader.js
   grep -Fq 'speechSynthesis' MyStudyCompanionWeb/reader.js
+  grep -Fq 'SpeechRecognition' MyStudyCompanionWeb/reader.js
+  grep -Fq 'readerGlasses' MyStudyCompanionWeb/reader.js
   grep -Fq 'notesByBlockId' MyStudyCompanionWeb/reader.js
+  grep -Fq 'bookmarks' MyStudyCompanionWeb/reader.js
   grep -Fq 'memberStudyMaterials' MyStudyCompanionWeb/firebase-sync.js
+  grep -Fq 'bookmarks' MyStudyCompanionWeb/firebase-sync.js
 """
 
 replacements = {
@@ -72,8 +86,16 @@ required = (
     "safeDrawingPadding()",
     "Family Hub",
     "STUDY READER",
+    "RecognizerIntent.ACTION_RECOGNIZE_SPEECH",
+    "speechRate",
+    "toggleBookmark",
+    "UnifiedStudyReaderModelsTest.kt",
+    "SpeechRecognition",
+    "readerGlasses",
+    "readerDocumentDictate",
     "createStudyReader",
     "memberStudyMaterials",
+    "bookmarks",
 )
 for marker in required:
     if marker not in source:
@@ -95,4 +117,7 @@ for marker in stale:
         raise SystemExit(f'Stale 0.14.0 CI marker remains: {marker}')
 
 path.write_text(source, encoding='utf-8')
-print(f'Updated {changed} final identity, artifact, cache, and unified-reader gate occurrence(s) for 0.14.1.')
+print(
+    f'Updated {changed} final identity, artifact, cache, unified-reader, '
+    'bookmark, dictation, playback, and glasses gate occurrence(s) for 0.14.1.'
+)
