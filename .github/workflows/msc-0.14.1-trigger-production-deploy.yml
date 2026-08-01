@@ -1,0 +1,32 @@
+name: Trigger My Study Companion 0.14.1 Production Deploy
+
+on:
+  push:
+    branches:
+      - agent/my-study-companion-0141-production-deploy
+    paths:
+      - .msc-build/deploy-production-live-stack.trigger
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-production-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dispatch protected production deployment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/msc-0.14.1-deploy-production-live-stack.yml/dispatches" \
+            -f ref="${GITHUB_REF_NAME}" \
+            -f 'inputs[confirmation]=DEPLOY' \
+            -f 'inputs[deploy_backend]=true' \
+            -f 'inputs[deploy_web_and_rules]=true' \
+            -f 'inputs[provision_schedules]=true'
+          echo "Dispatched the protected production deployment for ${GITHUB_REF_NAME}."
