@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-unified-study-reader
+  group: msc-0141-unified-study-reader-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
-      - name: Check out application source
+      - name: Check out exact application source
         uses: actions/checkout@v6
         with:
-          ref: agent/my-study-companion-interactive-workbooks-0140
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Check out checksum-locked workbook payload
         uses: actions/checkout@v6
@@ -85,10 +85,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Check out application source
+      - name: Check out exact application source
         uses: actions/checkout@v6
         with:
-          ref: agent/my-study-companion-interactive-workbooks-0140
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Check out checksum-locked workbook payload
         uses: actions/checkout@v6
