@@ -32,7 +32,7 @@ jobs:
       SOURCE_SHA256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
       REFERENCE_PATCH_SHA256: 236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3
       REFERENCE_PAYLOAD_SHA256: 2934dd6fbf7fe16d72cb092a190995887764900fb30fa0af30a2f033cfd4bb00
-      CAMERA_PATCH_SHA256: 9e8a3bffdc9a2b131801079a101de54d2062c1fa5aff8f8686d0932188f0af0f
+      CAMERA_PATCH_GIT_BLOB: c177ec471fe3ad71bb36577964c5d5106caf4e2e
 
     steps:
       - name: Check out isolated HAVENLINE branch
@@ -72,7 +72,7 @@ jobs:
           ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b  HAVENLINE/overrides/patch_reference_visual_polish.py
           HASHES
           sha256sum --check --strict /tmp/havenline-overrides.sha256
-          echo "$CAMERA_PATCH_SHA256  HAVENLINE/overrides/patch_reference_camera_gate.py" | sha256sum --check --strict
+          test "$(git hash-object HAVENLINE/overrides/patch_reference_camera_gate.py)" = "$CAMERA_PATCH_GIT_BLOB"
           test "$(find HAVENLINE/overrides/reference_slice_parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "5"
           test "$(cat HAVENLINE/overrides/reference_slice_parts/part-*.b64 | sha256sum | cut -d' ' -f1)" = "$REFERENCE_PAYLOAD_SHA256"
 
@@ -272,8 +272,8 @@ jobs:
             --arg artifact_id "${{ steps.upload_artifact.outputs.artifact-id }}" \
             --arg artifact_name "HAVENLINE-reference-final-${{ github.run_number }}" \
             --arg apk_sha256 "$apk_sha" \
-            --arg camera_patch_sha256 "$CAMERA_PATCH_SHA256" \
-            '{status:$status,run_id:$run_id,run_number:$run_number,head_sha:$head_sha,artifact_id:$artifact_id,artifact_name:$artifact_name,apk_sha256:$apk_sha256,camera_patch_sha256:$camera_patch_sha256}' \
+            --arg camera_patch_git_blob "$CAMERA_PATCH_GIT_BLOB" \
+            '{status:$status,run_id:$run_id,run_number:$run_number,head_sha:$head_sha,artifact_id:$artifact_id,artifact_name:$artifact_name,apk_sha256:$apk_sha256,camera_patch_git_blob:$camera_patch_git_blob}' \
             > HAVENLINE/latest-reference-final-build.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
