@@ -67,7 +67,8 @@ jobs:
           echo "$SOURCE_SHA256  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
           test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
           echo "71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py" | sha256sum --check --strict
-          echo "20163924e5964b4a477cda93f191b7bb396bf33dc6f07a64c8425794b18c7d39  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
+          echo "f45c8ac946fdad9845b4a54dcd7b3995f4fce764f6671cb5b8c48c94b3bcd8ba  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
+          echo "d3f006bbd1f1cef23eb019ebbf28940415a82b16553960c1e63436a9c416dff1  HAVENLINE/overrides/patch_preflight.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
@@ -75,7 +76,7 @@ jobs:
           mkdir -p havenline/build
           cp HAVENLINE/overrides/final_composites.py havenline/tools/final_composites.py
           python3 HAVENLINE/overrides/patch_fetch_assets.py havenline/tools/fetch_assets.py
-          python3 -m py_compile havenline/tools/fetch_assets.py havenline/tools/final_composites.py
+          python3 -m py_compile havenline/tools/fetch_assets.py havenline/tools/final_composites.py havenline/tools/preflight.py
           cd havenline
           python3 tools/preflight.py | tee build/source-preflight.log
 
