@@ -70,6 +70,7 @@ jobs:
           echo "f45c8ac946fdad9845b4a54dcd7b3995f4fce764f6671cb5b8c48c94b3bcd8ba  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
           echo "28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc  HAVENLINE/overrides/patch_preflight.py" | sha256sum --check --strict
           echo "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5  HAVENLINE/overrides/patch_gdscript_47.py" | sha256sum --check --strict
+          echo "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0  HAVENLINE/overrides/patch_runtime_47.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
@@ -78,7 +79,8 @@ jobs:
           cp HAVENLINE/overrides/final_composites.py havenline/tools/final_composites.py
           python3 HAVENLINE/overrides/patch_fetch_assets.py havenline/tools/fetch_assets.py
           python3 HAVENLINE/overrides/patch_gdscript_47.py havenline
-          python3 -m py_compile havenline/tools/fetch_assets.py havenline/tools/final_composites.py havenline/tools/preflight.py
+          python3 HAVENLINE/overrides/patch_runtime_47.py havenline
+          python3 -m py_compile HAVENLINE/overrides/patch_runtime_47.py havenline/tools/fetch_assets.py havenline/tools/final_composites.py havenline/tools/preflight.py
           cd havenline
           python3 tools/preflight.py | tee build/source-preflight.log
 
@@ -161,7 +163,13 @@ jobs:
         working-directory: havenline
         run: |
           set -euo pipefail
-          timeout 15m xvfb-run -a "$GODOT_BIN" --path . --rendering-method mobile --script res://tools/runtime_smoke.gd 2>&1 | tee build/runtime-smoke.log
+          timeout 15m xvfb-run -a "$GODOT_BIN" --path . --rendering-method mobile res://tools/runtime_smoke.tscn 2>&1 | tee build/runtime-smoke.log
+          if grep -qE 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script' build/runtime-smoke.log; then
+            echo "HAVENLINE runtime contained script or shader errors." >&2
+            grep -E 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script' build/runtime-smoke.log >&2
+            exit 1
+          fi
+          grep -q 'HAVENLINE runtime gate passed:' build/runtime-smoke.log
           test -s build/validation-frame.png
 
       - name: Export ARM64 Android APK
