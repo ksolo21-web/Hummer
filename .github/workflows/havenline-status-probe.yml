@@ -29,15 +29,11 @@ jobs:
           test -s "$archive"
           unzip -t "$archive" >/tmp/quaternius-zip-test.txt
           unzip -Z1 "$archive" >/tmp/quaternius-files.txt
-          wolf_path="$(python3 - <<'PY'
-from pathlib import Path
-names = Path('/tmp/quaternius-files.txt').read_text(encoding='utf-8', errors='replace').splitlines()
-candidates = [n for n in names if n.lower().endswith(('.fbx', '.glb', '.gltf')) and 'wolf' in Path(n).name.lower()]
-if not candidates:
-    raise SystemExit('No wolf model found in Quaternius archive')
-print(sorted(candidates, key=lambda n: (0 if n.lower().endswith('.fbx') else 1, len(n), n.lower()))[0])
-PY
-)"
+          wolf_path="$(awk 'tolower($0) ~ /wolf.*\.fbx$/ {print; exit}' /tmp/quaternius-files.txt)"
+          if [[ -z "$wolf_path" ]]; then
+            wolf_path="$(awk 'tolower($0) ~ /wolf.*\.(glb|gltf)$/ {print; exit}' /tmp/quaternius-files.txt)"
+          fi
+          test -n "$wolf_path"
           mkdir -p "$extract"
           unzip -j "$archive" "$wolf_path" -d "$extract"
           wolf_file="$extract/$(basename "$wolf_path")"
