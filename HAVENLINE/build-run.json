@@ -1,15 +1,15 @@
 {
-  "id": 30695934694,
+  "id": 30696255725,
   "name": "HAVENLINE Final Android Build",
-  "status": "in_progress",
-  "conclusion": null,
-  "run_number": 2,
+  "status": "completed",
+  "conclusion": "failure",
+  "run_number": 3,
   "run_attempt": 1,
   "event": "push",
-  "head_sha": "163565e376f9d648d0fe26b55d0e33827578d5c4",
-  "created_at": "2026-08-01T10:33:19Z",
-  "updated_at": "2026-08-01T10:33:23Z",
-  "html_url": "https://github.com/ksolo21-web/Hummer/actions/runs/30695934694",
-  "jobs_url": "https://api.github.com/repos/ksolo21-web/Hummer/actions/runs/30695934694/jobs",
-  "artifacts_url": "https://api.github.com/repos/ksolo21-web/Hummer/actions/runs/30695934694/artifacts"
+  "head_sha": "61c80bba6c5bd47a166df0fc2c71e5e819976e0d",
+  "created_at": "2026-08-01T10:43:17Z",
+  "updated_at": "2026-08-01T10:44:14Z",
+  "html_url": "https://github.com/ksolo21-web/Hummer/actions/runs/30696255725",
+  "jobs_url": "https://api.github.com/repos/ksolo21-web/Hummer/actions/runs/30696255725/jobs",
+  "artifacts_url": "https://api.github.com/repos/ksolo21-web/Hummer/actions/runs/30696255725/artifacts"
 }
