@@ -126,7 +126,7 @@ def polish_world(project: Path) -> None:
         ),
         ("        campfire.position = Vector3(-2.15,0,1.15)\n", "        campfire.position = Vector3(-3.8,0,1.8)\n", "secondary fire position"),
         ("        campfire.scale = Vector3.ONE * 0.64\n", "        campfire.scale = Vector3.ONE * 0.34\n", "secondary fire scale"),
-        ("    for index in range(12):\n", "    for index in range(8):\n", "resource count"),
+        ("    for index in range(12):\n", "    for index in range(10):\n", "resource count"),
         (
             "        resource.position = Vector3(cos(angle) * randf_range(4.8,9.2),0.0,sin(angle) * randf_range(4.8,9.2))\n",
             "        resource.position = Vector3(cos(angle) * randf_range(6.4,10.8),0.0,sin(angle) * randf_range(6.4,10.8))\n",
