@@ -57,6 +57,7 @@ for entry in manifest["files"]:
 ci_dir = repo / "HAVENLINE_PRODUCTION" / "ci"
 sys.path.insert(0, str(ci_dir))
 from visual_refinement import apply as apply_visual_refinement  # noqa: E402
+from visual_final import apply as apply_visual_final  # noqa: E402
 
 legacy_path = ci_dir / "production_patches.py"
 legacy_spec = importlib.util.spec_from_file_location("havenline_legacy_production_patches", legacy_path)
@@ -95,6 +96,7 @@ for module_name, (expected_sha, function_name) in payloads.items():
     getattr(module, function_name)(project)
 
 apply_visual_refinement(project)
+apply_visual_final(project)
 
 print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
