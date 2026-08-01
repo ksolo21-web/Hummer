@@ -69,7 +69,7 @@ jobs:
           echo "e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
           echo "bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd  HAVENLINE/overrides/patch_controls_recovery.py" | sha256sum --check --strict
           echo "2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d22d49a5bbd4f  HAVENLINE/overrides/apply_reference_vertical_slice.py" | sha256sum --check --strict
-          echo "a49974a1662c330cc0dd2acadbeed38b42c66c50bd06804580ef59e337d27c09  HAVENLINE/overrides/patch_reference_visual_polish.py" | sha256sum --check --strict
+          echo "ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b  HAVENLINE/overrides/patch_reference_visual_polish.py" | sha256sum --check --strict
           test "$(find HAVENLINE/overrides/reference_slice_parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "5"
           test "$(cat HAVENLINE/overrides/reference_slice_parts/part-*.b64 | sha256sum | cut -d' ' -f1)" = "$REFERENCE_PAYLOAD_SHA256"
 
@@ -111,9 +111,9 @@ jobs:
           grep -q '^architectures/arm64-v8a=true$' export_presets.cfg
           ! grep -q '^gradle_build/min_sdk=' export_presets.cfg
           ! grep -q '^gradle_build/target_sdk=' export_presets.cfg
-          grep -q 'CAMERA_OFFSET := Vector3(0.0, 11.0, 11.0)' scripts/core/camera_rig.gd
+          grep -q 'CAMERA_OFFSET := Vector3(0.0, 10.2, 10.2)' scripts/core/camera_rig.gd
           grep -q 'PROJECTION_ORTHOGONAL' scripts/core/camera_rig.gd
-          grep -q 'camera.size = 15.5' scripts/core/camera_rig.gd
+          grep -q 'camera.size = 14.8' scripts/core/camera_rig.gd
           grep -q 'movement_direction' scripts/core/camera_rig.gd
           grep -q 'BoundedSnowTerrain' scripts/world/environment_assembler.gd
           grep -q 'DynamicHeatZone' scripts/world/environment_assembler.gd
