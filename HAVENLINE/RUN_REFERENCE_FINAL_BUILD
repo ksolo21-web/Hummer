@@ -9,5 +9,6 @@ Direct physical camera patch SHA-256: 938208c6687a4ece4577a70040c86fc937484df7c8
 Required camera: orthographic size 14.8, physical offset Vector3(0.0, 7.0, 7.0)
 Required gameplay: correct screen-relative movement, bounded terrain, fall recovery, automatic gathering/carry/deposit, dynamic furnace heat, survivor helper automation, barricade defense, animated player and wolf, compact HUD.
 Acceptance: source and asset checks, Godot import, runtime gameplay gates, validation frame, ARM64 APK, APK SHA-256.
-Trigger: final-reference-direct-1
+Correction: removed obsolete sitecustomize camera hook so the explicit checksum-verified physical-camera patch is the only camera mutation.
+Trigger: final-reference-direct-2
 Authorized: 2026-08-01
