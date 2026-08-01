@@ -1,0 +1,54 @@
+name: HAVENLINE Source Verification Status Probe
+
+on:
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/PROBE_SOURCE_V3
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  record-source-verification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate and record source verification run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: a76e39ea3c456c0265b2456ddfd5c7b0afe033ae
+        shell: bash
+        run: |
+          set -euo pipefail
+          found=""
+          for attempt in $(seq 1 18); do
+            payload="$(curl --fail --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs?branch=agent%2Fhavenline-android-build&event=push&per_page=50")"
+            found="$(jq -c --arg sha "$TARGET_SHA" '
+              [.workflow_runs[]
+                | select(.name == "HAVENLINE Source V3 Verification" and .head_sha == $sha)
+                | {id, name, status, conclusion, run_number, run_attempt, event, head_sha, created_at, updated_at, html_url, jobs_url, artifacts_url}]
+              | first // empty
+            ' <<<"$payload")"
+            if [[ -n "$found" && "$(jq -r '.status' <<<"$found")" == "completed" ]]; then
+              break
+            fi
+            sleep 5
+          done
+          if [[ -z "$found" ]]; then
+            found="$(jq -n --arg sha "$TARGET_SHA" '{error:"source verification run not found", head_sha:$sha}')"
+          fi
+          printf '%s\n' "$found" | jq . > HAVENLINE/source-v3-run.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/source-v3-run.json
+          git commit -m "Record HAVENLINE source verification run" || exit 0
+          git push
