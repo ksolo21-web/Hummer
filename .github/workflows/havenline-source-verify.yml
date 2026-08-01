@@ -1,0 +1,68 @@
+name: HAVENLINE Source V3 Verification
+
+on:
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/VERIFY_SOURCE_V3
+
+permissions:
+  contents: write
+
+concurrency:
+  group: havenline-source-v3-verification
+  cancel-in-progress: true
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out isolated HAVENLINE branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and verify production source
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7"
+          part_count="$(find HAVENLINE/source.v3.parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')"
+          test "$part_count" = "24"
+          cat HAVENLINE/source.v3.parts/part-*.b64 | base64 --decode > /tmp/Havenline-production-source-v0.2.0.tar.xz
+          actual="$(sha256sum /tmp/Havenline-production-source-v0.2.0.tar.xz | awk '{print $1}')"
+          test "$actual" = "$expected"
+          test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
+          tar -tJf /tmp/Havenline-production-source-v0.2.0.tar.xz >/tmp/havenline-file-list.txt
+          rm -rf /tmp/havenline-verified
+          mkdir -p /tmp/havenline-verified
+          tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C /tmp/havenline-verified
+          cd /tmp/havenline-verified/Havenline
+          python3 tools/preflight.py
+          printf '%s\n' "$actual" > /tmp/havenline-source-sha.txt
+          printf '%s\n' "$part_count" > /tmp/havenline-source-part-count.txt
+
+      - name: Record verification result
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(cat /tmp/havenline-source-sha.txt)"
+          part_count="$(cat /tmp/havenline-source-part-count.txt)"
+          files="$(wc -l </tmp/havenline-file-list.txt | tr -d ' ')"
+          jq -n \
+            --arg status "verified" \
+            --arg sha256 "$actual" \
+            --arg parts "$part_count" \
+            --arg files "$files" \
+            --arg source_version "0.2.0" \
+            --arg verified_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg workflow_run "$GITHUB_RUN_ID" \
+            '{status:$status, source_version:$source_version, sha256:$sha256, part_count:($parts|tonumber), archive_file_count:($files|tonumber), verified_at:$verified_at, workflow_run_id:($workflow_run|tonumber)}' \
+            > HAVENLINE/source-v3-verification.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/source-v3-verification.json
+          git commit -m "Verify HAVENLINE production source v3"
+          git push
