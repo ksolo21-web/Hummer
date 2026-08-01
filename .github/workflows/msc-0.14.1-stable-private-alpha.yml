@@ -1,0 +1,208 @@
+name: My Study Companion 0.14.1 Stable Private Alpha
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0141-stable-private-alpha-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  stable-private-alpha:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out exact application source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Check out established private-alpha signing material
+        uses: actions/checkout@v6
+        with:
+          ref: agent/msc-theme-studio-091-explicit-signing
+          path: private-alpha-signing
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct exact verified 0.14.1 source
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Restore and verify stable private-alpha signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-stable-private-alpha"
+          mkdir -p "$SIGNING_DIR"
+          base64 --decode \
+            private-alpha-signing/.msc-build/private-alpha-debug.keystore.b64 \
+            > "$SIGNING_DIR/private-alpha-debug.keystore"
+          echo '8b6b00f0d97afa77c3b342a1de47279629dfd2f63400dae6d787e2d25b24af27  '"$SIGNING_DIR/private-alpha-debug.keystore" \
+            | sha256sum -c -
+          keytool -list -v \
+            -keystore "$SIGNING_DIR/private-alpha-debug.keystore" \
+            -storepass android -alias androiddebugkey \
+            > "$SIGNING_DIR/KEY-IDENTITY.txt"
+          grep -Fq 'SHA256: 28:0F:9C:9A:D4:BE:BA:33:72:1A:BD:09:A5:B8:04:60:7A:AE:7C:9D:07:91:8D:67:44:6A:F7:AD:55:6D:EC:44' \
+            "$SIGNING_DIR/KEY-IDENTITY.txt"
+          echo "store_file=$SIGNING_DIR/private-alpha-debug.keystore" >> "$GITHUB_OUTPUT"
+          echo 'PASS: established private-alpha signer restored without exporting the key.'
+
+      - name: Install and verify Firebase Android configuration
+        id: firebase
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          mapfile -t FIREBASE_VALUES < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          project_id = data['project_info']['project_id']
+          assert project_id == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          web_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(web_clients) == 1
+          print(project_id)
+          print(web_clients[0]['client_id'])
+          PY
+          )
+          PROJECT_ID="${FIREBASE_VALUES[0]}"
+          WEB_CLIENT_ID="${FIREBASE_VALUES[1]}"
+          BACKEND_BASE_URL="https://${PROJECT_ID}.web.app/"
+          echo "project_id=$PROJECT_ID" >> "$GITHUB_OUTPUT"
+          echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "backend_base_url=$BACKEND_BASE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Build stable same-package phone and Wear APKs
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: android
+          MSC_RELEASE_KEY_ALIAS: androiddebugkey
+          MSC_RELEASE_KEY_PASSWORD: android
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+          grep -R -Fq "$MSC_BACKEND_BASE_URL" app/build/generated
+
+      - name: Verify package, version, signer, and alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          mkdir -p stable-private-alpha
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE_APK"; test -f "$WEAR_APK"
+          cp "$PHONE_APK" stable-private-alpha/MyStudyCompanion-phone-0.14.1-stable-private-alpha.apk
+          cp "$WEAR_APK" stable-private-alpha/MyStudyCompanion-wear-0.14.1-stable-private-alpha.apk
+
+          "$AAPT" dump badging stable-private-alpha/MyStudyCompanion-phone-0.14.1-stable-private-alpha.apk \
+            > stable-private-alpha/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" \
+            stable-private-alpha/PHONE-IDENTITY.txt
+          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" \
+            stable-private-alpha/PHONE-IDENTITY.txt
+
+          "$AAPT" dump badging stable-private-alpha/MyStudyCompanion-wear-0.14.1-stable-private-alpha.apk \
+            > stable-private-alpha/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" \
+            stable-private-alpha/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.1-wear-private-alpha-unified-study-reader'" \
+            stable-private-alpha/WEAR-IDENTITY.txt
+
+          "$APKSIGNER" verify --verbose --print-certs \
+            stable-private-alpha/MyStudyCompanion-phone-0.14.1-stable-private-alpha.apk \
+            > stable-private-alpha/PHONE-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs \
+            stable-private-alpha/MyStudyCompanion-wear-0.14.1-stable-private-alpha.apk \
+            > stable-private-alpha/WEAR-SIGNATURE.txt
+          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
+            stable-private-alpha/PHONE-SIGNATURE.txt
+          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
+            stable-private-alpha/WEAR-SIGNATURE.txt
+          "$ZIPALIGN" -c -P 16 -v 4 \
+            stable-private-alpha/MyStudyCompanion-phone-0.14.1-stable-private-alpha.apk \
+            > stable-private-alpha/PHONE-ZIPALIGN.txt
+          "$ZIPALIGN" -c -P 16 -v 4 \
+            stable-private-alpha/MyStudyCompanion-wear-0.14.1-stable-private-alpha.apk \
+            > stable-private-alpha/WEAR-ZIPALIGN.txt
+
+          sha256sum stable-private-alpha/*.apk > stable-private-alpha/SHA256SUMS.txt
+          cat > stable-private-alpha/STATUS.txt <<'TXT'
+          PASS: phone and Wear packages use the established stable private-alpha signer.
+          PASS: both packages retain the canonical com.mystudycompanion.app application ID.
+          PASS: the signed phone APK contains the live Firebase Hosting backend base URL and Google web client ID.
+          PASS: the complete connected reader, persistent live stack, 23-theme gallery, and visual color-wheel layer are included in the same signed build.
+          PASS: this signer is intended only for private-alpha testing and is not the offline permanent release/Play key.
+          NOTE: Android will update an installed app only when both package ID and signer match the installed build.
+          TXT
+
+      - name: Upload stable private-alpha APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-stable-private-alpha-phone-wear
+          path: stable-private-alpha
+          retention-days: 5
+          if-no-files-found: error

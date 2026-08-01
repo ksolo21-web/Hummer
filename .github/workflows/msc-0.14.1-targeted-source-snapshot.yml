@@ -1,0 +1,73 @@
+name: My Study Companion 0.14.1 Exact Unified Source Snapshot
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0141-exact-unified-source-snapshot
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out application branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-interactive-workbooks-0140
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Reconstruct exact unified 0.14.1 source without compiling legacy stages
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Package exact unified application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths=(MyStudyCompanion)
+          [[ -d MyStudyCompanionWeb ]] && paths+=(MyStudyCompanionWeb)
+          [[ -d web ]] && paths+=(web)
+          [[ -f firebase.json ]] && paths+=(firebase.json)
+          printf 'Packaging unified source roots:\n'
+          printf '  %s\n' "${paths[@]}"
+          tar \
+            --exclude='**/build' \
+            --exclude='.gradle' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='final-dist' \
+            -czf msc-0.14.1-exact-unified-source.tgz \
+            "${paths[@]}"
+          sha256sum msc-0.14.1-exact-unified-source.tgz > EXACT-UNIFIED-SOURCE-SHA256.txt
+
+      - name: Upload exact unified source
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-exact-unified-source
+          path: |
+            msc-0.14.1-exact-unified-source.tgz
+            EXACT-UNIFIED-SOURCE-SHA256.txt
+          retention-days: 2
+          if-no-files-found: error
