@@ -73,7 +73,7 @@ jobs:
           echo "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0  HAVENLINE/overrides/patch_runtime_47.py" | sha256sum --check --strict
           echo "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a  HAVENLINE/overrides/patch_wolf_animation.py" | sha256sum --check --strict
           echo "9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083  HAVENLINE/overrides/patch_android_export.py" | sha256sum --check --strict
-          echo "7f3d73698bb425b73975777e6cb69926b7b51deae78c42f30b4674d54df69f44  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
+          echo "e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
