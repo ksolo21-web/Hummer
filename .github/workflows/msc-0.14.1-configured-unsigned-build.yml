@@ -1,0 +1,153 @@
+name: My Study Companion 0.14.1 Configured Unsigned Build
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0141-configured-unsigned-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  configured-unsigned:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out exact repair source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct repaired source
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Install verified Firebase Android configuration
+        id: firebase
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          mapfile -t VALUES < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android_clients) == 1
+          assert android_clients[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web_clients) == 1
+          print(web_clients[0]['client_id'])
+          PY
+          )
+          echo "web_client_id=${VALUES[0]}" >> "$GITHUB_OUTPUT"
+          echo 'backend_base_url=https://my-study-companion-abc01.web.app/' >> "$GITHUB_OUTPUT"
+
+      - name: Build configured unsigned phone and Wear APKs
+        shell: bash
+        env:
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+          grep -R -Fq "$MSC_BACKEND_BASE_URL" app/build/generated
+          grep -R -Fq "$MSC_GOOGLE_WEB_CLIENT_ID" app/build/generated
+
+      - name: Verify and package unsigned outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          mkdir -p configured-unsigned
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE_APK"; test -f "$WEAR_APK"
+          cp "$PHONE_APK" configured-unsigned/MyStudyCompanion-phone-0.14.1-configured-unsigned.apk
+          cp "$WEAR_APK" configured-unsigned/MyStudyCompanion-wear-0.14.1-configured-unsigned.apk
+          "$AAPT" dump badging configured-unsigned/MyStudyCompanion-phone-0.14.1-configured-unsigned.apk > configured-unsigned/PHONE-IDENTITY.txt
+          "$AAPT" dump badging configured-unsigned/MyStudyCompanion-wear-0.14.1-configured-unsigned.apk > configured-unsigned/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" configured-unsigned/PHONE-IDENTITY.txt
+          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" configured-unsigned/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" configured-unsigned/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.1-wear-private-alpha-unified-study-reader'" configured-unsigned/WEAR-IDENTITY.txt
+          if "$APKSIGNER" verify configured-unsigned/MyStudyCompanion-phone-0.14.1-configured-unsigned.apk; then
+            echo '::error::Phone staging APK was unexpectedly signed.'
+            exit 1
+          fi
+          if "$APKSIGNER" verify configured-unsigned/MyStudyCompanion-wear-0.14.1-configured-unsigned.apk; then
+            echo '::error::Wear staging APK was unexpectedly signed.'
+            exit 1
+          fi
+          sha256sum configured-unsigned/*.apk > configured-unsigned/SHA256SUMS.txt
+          cat > configured-unsigned/STATUS.txt <<'TXT'
+          PASS: exact repaired source built with the verified Firebase Android configuration.
+          PASS: Google web client ID and live backend URL are compiled into the phone package.
+          PASS: phone and Wear outputs retain the canonical package and repaired 0.14.1 versions.
+          EXPECTED: these staging APKs are unsigned and must receive the recovered Firebase-registered production signer before installation.
+          TXT
+
+      - name: Upload configured unsigned APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-configured-unsigned-phone-wear
+          path: configured-unsigned
+          retention-days: 5
+          if-no-files-found: error
