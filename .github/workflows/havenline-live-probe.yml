@@ -1,0 +1,44 @@
+name: HAVENLINE Live Build Probe
+
+on:
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/PROBE_LIVE_BUILD
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  record-live-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record current production run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRODUCTION_SHA: 03f5760e543dffeea723862f52df2c1acf87785a
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(curl --fail --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs?branch=agent%2Fhavenline-android-build&event=push&per_page=50")"
+          found="$(jq -c --arg sha "$PRODUCTION_SHA" '
+            [.workflow_runs[]
+              | select(.name == "HAVENLINE Final Android Build" and .head_sha == $sha)
+              | {id, name, status, conclusion, run_number, run_attempt, event, head_sha, created_at, updated_at, html_url, jobs_url, artifacts_url}]
+            | first // {error:"production run not found", head_sha:$sha}
+          ' <<<"$payload")"
+          printf '%s\n' "$found" | jq . > HAVENLINE/build-live.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/build-live.json
+          git commit -m "Record HAVENLINE live build status"
+          git push
