@@ -59,7 +59,10 @@ jobs:
 
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
-        run: bash -x .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
+        run: |
+          set -euo pipefail
+          python3 .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py
+          bash -x .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
 
       - uses: actions/upload-artifact@v6
         with:
