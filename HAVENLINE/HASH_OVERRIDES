@@ -1,1 +1,2 @@
 Record exact SHA-256 values for all checksum-locked HAVENLINE overrides and sync the camp-corridor composition into the Android workflow.
+Retry after shell-only checksum sync repair.
