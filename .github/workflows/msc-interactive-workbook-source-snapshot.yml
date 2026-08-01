@@ -118,6 +118,15 @@ jobs:
           xz -t /tmp/msc-0140-overlay.tar.xz
           tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
 
+      - name: Generate missing Firebase test lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .msc-build/firebase-rules-tests
+          if [[ ! -f package-lock.json && ! -f npm-shrinkwrap.json ]]; then
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          fi
+
       - name: Run 23 Firestore security tests
         shell: bash
         run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh firestore
