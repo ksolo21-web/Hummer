@@ -43,6 +43,14 @@ jobs:
         with:
           node-version: '22'
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            MyStudyCompanion/backend/requirements.txt
+            MyStudyCompanion/backend/requirements-dev.txt
+
       - name: Install Android SDK components
         shell: bash
         run: |
@@ -56,6 +64,16 @@ jobs:
       - name: Reconstruct exact post-overlay source once
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Install and run official-reader backend tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            -r MyStudyCompanion/backend/requirements.txt \
+            -r MyStudyCompanion/backend/requirements-dev.txt
+          cd MyStudyCompanion/backend
+          python -m pytest -q
 
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
