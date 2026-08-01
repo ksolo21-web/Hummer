@@ -72,6 +72,8 @@ jobs:
           echo "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5  HAVENLINE/overrides/patch_gdscript_47.py" | sha256sum --check --strict
           echo "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0  HAVENLINE/overrides/patch_runtime_47.py" | sha256sum --check --strict
           echo "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a  HAVENLINE/overrides/patch_wolf_animation.py" | sha256sum --check --strict
+          echo "9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083  HAVENLINE/overrides/patch_android_export.py" | sha256sum --check --strict
+          echo "7f3d73698bb425b73975777e6cb69926b7b51deae78c42f30b4674d54df69f44  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
@@ -82,8 +84,21 @@ jobs:
           python3 HAVENLINE/overrides/patch_gdscript_47.py havenline
           python3 HAVENLINE/overrides/patch_runtime_47.py havenline
           python3 HAVENLINE/overrides/patch_wolf_animation.py havenline
-          python3 -m py_compile HAVENLINE/overrides/patch_runtime_47.py HAVENLINE/overrides/patch_wolf_animation.py havenline/tools/fetch_assets.py havenline/tools/final_composites.py havenline/tools/preflight.py
+          python3 HAVENLINE/overrides/patch_android_export.py havenline
+          python3 HAVENLINE/overrides/patch_opening_composition.py havenline
+          python3 -m py_compile \
+            HAVENLINE/overrides/patch_runtime_47.py \
+            HAVENLINE/overrides/patch_wolf_animation.py \
+            HAVENLINE/overrides/patch_android_export.py \
+            HAVENLINE/overrides/patch_opening_composition.py \
+            havenline/tools/fetch_assets.py \
+            havenline/tools/final_composites.py \
+            havenline/tools/preflight.py
           cd havenline
+          grep -q '^textures/vram_compression/import_etc2_astc=true$' project.godot
+          ! grep -q '^gradle_build/min_sdk=' export_presets.cfg
+          ! grep -q '^gradle_build/target_sdk=' export_presets.cfg
+          grep -q '^architectures/arm64-v8a=true$' export_presets.cfg
           python3 tools/preflight.py | tee build/source-preflight.log
 
       - name: Install Java 17
@@ -130,6 +145,8 @@ jobs:
           mkdir -p "$template_dir"
           cp -a /tmp/godot-templates/templates/. "$template_dir/"
           "$GODOT_BIN" --version | tee build-godot-version.txt
+          test -s "$template_dir/android_debug.apk"
+          test -s "$template_dir/android_release.apk"
 
       - name: Prepare Android SDK 35
         shell: bash
@@ -181,6 +198,10 @@ jobs:
         run: |
           set -euo pipefail
           timeout 25m "$GODOT_BIN" --headless --path . --export-debug Android build/Havenline-production.apk 2>&1 | tee build/export.log
+          if grep -q 'Cannot export project with preset' build/export.log; then
+            echo "HAVENLINE Android preset still contains configuration errors." >&2
+            exit 1
+          fi
           test -s build/Havenline-production.apk
           sha256sum build/Havenline-production.apk > build/Havenline-production.apk.sha256
           cp assets/ASSET_BUILD_REPORT.json build/ASSET_BUILD_REPORT.json
