@@ -1,0 +1,11 @@
+HAVENLINE stable final reference build
+Version: 0.3.0-reference-final
+Branch: agent/havenline-android-build
+Workflow revision: 26d256b5239c3f18200cff86f9158632108b286c
+Build script revision: a1be8ff2339cd4ed5d7ba83fdd620ea3192dee09
+Camera patch Git blob: c177ec471fe3ad71bb36577964c5d5106caf4e2e
+Camera acceptance: orthographic size 14.8, physical offset Vector3(0.0, 7.0, 7.0), settled physical distance no greater than 10.8.
+Gameplay acceptance: correct screen-relative controls, bounded terrain, fall recovery, automatic gathering/carry/deposit, dynamic furnace heat, helper automation, barricade defense, compact HUD, imported player animation, full wolf animation.
+Artifact acceptance: visual validation frame, ARM64 APK export, APK SHA-256.
+Trigger: stable-final-1
+Authorized: 2026-08-01
