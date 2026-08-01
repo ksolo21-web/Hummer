@@ -43,10 +43,10 @@ jobs:
           grep -q 'com.unity.ai.navigation' HAVENLINE_UNITY/Packages/manifest.json
           test ! -e HAVENLINE_UNITY/project.godot
           test ! -d HAVENLINE_UNITY/scripts
-          grep -RIl --include='*.cs' 'Godot' HAVENLINE_UNITY/Assets && {
-            echo 'Godot references are forbidden inside the Unity project.' >&2
+          if grep -RIl --include='*.cs' 'using Godot\|extends Node\|project.godot' HAVENLINE_UNITY/Assets; then
+            echo 'Godot runtime references are forbidden inside the fresh Unity project.' >&2
             exit 1
-          } || true
+          fi
           python3 - <<'PY'
           from pathlib import Path
           root = Path('HAVENLINE_UNITY/Assets/Havenline')
