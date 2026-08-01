@@ -7,7 +7,42 @@ echo '70b806c5b53d8fcaa9e02dbd3b4f3e20ab82b19964d44ccf03e4bb62230955fb  /tmp/msc
   | sha256sum -c -
 xz -t /tmp/msc-theme-gallery-text.patch.xz
 xz -dc /tmp/msc-theme-gallery-text.patch.xz > /tmp/msc-theme-gallery-text.patch
+
+# The Android/Wear/source changes must patch cleanly. Three PWA layout files
+# intentionally use checksum-locked complete replacements because their earlier
+# reader overlays shift markup and stylesheet anchors during reconstruction.
+set +e
 patch --batch --forward -p1 < /tmp/msc-theme-gallery-text.patch
+patch_status=$?
+set -e
+mapfile -t reject_files < <(find MyStudyCompanion MyStudyCompanionWeb -type f -name '*.rej' -print | sort)
+expected_rejects=(
+  'MyStudyCompanionWeb/index.html.rej'
+  'MyStudyCompanionWeb/styles.css.rej'
+  'MyStudyCompanionWeb/sw.js.rej'
+)
+if (( patch_status != 0 )); then
+  if [[ "${reject_files[*]}" != "${expected_rejects[*]}" ]]; then
+    printf 'Unexpected theme patch rejects:\n' >&2
+    printf '  %s\n' "${reject_files[@]}" >&2
+    exit 1
+  fi
+elif (( ${#reject_files[@]} != 0 )); then
+  printf 'Theme patch reported success but left rejects:\n' >&2
+  printf '  %s\n' "${reject_files[@]}" >&2
+  exit 1
+fi
+
+base64 --decode .msc-build/theme-gallery-web-override-0.14.1.b64 \
+  > /tmp/msc-theme-gallery-web-override.tar.xz
+echo '77e4f1f032f76275b61e5422f30f51a0ff97e65f045acaeb81718aee1ee76dac  /tmp/msc-theme-gallery-web-override.tar.xz' \
+  | sha256sum -c -
+xz -t /tmp/msc-theme-gallery-web-override.tar.xz
+tar -xJf /tmp/msc-theme-gallery-web-override.tar.xz -C .
+rm -f \
+  MyStudyCompanionWeb/index.html.rej MyStudyCompanionWeb/index.html.orig \
+  MyStudyCompanionWeb/styles.css.rej MyStudyCompanionWeb/styles.css.orig \
+  MyStudyCompanionWeb/sw.js.rej MyStudyCompanionWeb/sw.js.orig
 
 cat .msc-build/theme-gallery-generator-0.14.1.part*.b64 | tr -d '\n' | base64 --decode \
   > /tmp/msc-theme-gallery-generator.py.xz
