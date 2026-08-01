@@ -15,12 +15,23 @@ permissions:
 jobs:
   source-snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out workbook branch
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-interactive-workbooks-0140
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
 
       - name: Reconstruct verified 0.13.0 source
         shell: bash
