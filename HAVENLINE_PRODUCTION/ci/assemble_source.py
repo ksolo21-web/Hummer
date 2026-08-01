@@ -51,11 +51,21 @@ for entry in manifest["files"]:
     if digest != entry["sha256"]:
         raise SystemExit(f"HAVENLINE source checksum mismatch for {entry['path']}: {digest}")
 
+# Godot 4.7 requires an explicit Vector3 type for this expression because
+# wolf is intentionally stored as an untyped runtime node in the defense list.
+gameplay_path = project / "scripts" / "gameplay.gd"
+gameplay = gameplay_path.read_text(encoding="utf-8")
+old_direction = "        var dir:=(target-wolf.global_position); dir.y=0\n"
+new_direction = "        var dir: Vector3 = target - wolf.global_position; dir.y = 0.0\n"
+if gameplay.count(old_direction) != 1:
+    raise SystemExit("HAVENLINE Godot 4.7 direction-typing patch expected exactly one source marker")
+gameplay_path.write_text(gameplay.replace(old_direction, new_direction, 1), encoding="utf-8")
+
 required = {
     "project.godot": ["run/max_fps=120", 'renderer/rendering_method="mobile"'],
     "scripts/main.gd": ["PROJECTION_ORTHOGONAL", "BoundedSnowTerrain", "DynamicHeatZone"],
     "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe"],
-    "scripts/gameplay.gd": ["_auto_interaction", "_helper_work", "_spawn_wolf_wave"],
+    "scripts/gameplay.gd": ["_auto_interaction", "_helper_work", "_spawn_wolf_wave", "var dir: Vector3"],
     "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png"],
 }
 for relative, markers in required.items():
@@ -68,4 +78,5 @@ print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
 )
+print("HAVENLINE Godot 4.7 compatibility patch applied: explicit wolf direction Vector3")
 print(project)
