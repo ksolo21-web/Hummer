@@ -1,15 +1,15 @@
-HAVENLINE compact reference-slice Android build authorization
-Version: 0.3.0-reference-slice
+HAVENLINE stable reference-final Android build authorization
+Version: 0.3.0-reference-final
 Branch: agent/havenline-android-build
-Workflow revision: 6b2f5f1de49d78d56ccf7ea02f9767105e9f8ed0
+Proven workflow revision: 370a34b0a3e5b5c0c2ed4a17972de6c2bb3bf156
+Stable build script revision: a1be8ff2339cd4ed5d7ba83fdd620ea3192dee09
 Verified base source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Reference patch SHA-256: 236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3
 Reference payload SHA-256: 2934dd6fbf7fe16d72cb092a190995887764900fb30fa0af30a2f033cfd4bb00
-Reference decoder SHA-256: 2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d22d49a5bbd4f
 Visual polish SHA-256: ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b
-Physical camera CI correction SHA-256: b6ba42493c514ecfa969a393a28237757d74719123d678eec095017e361af731
-Rejected builds: v0.2.0 open-plane camp demo; reference run 2 failed visual review; reference runs 3 and 5 correctly failed the strict physical camera-distance gate.
-Required replacement: compact orthographic-isometric frozen outpost with a 7.0-by-7.0 physical camera offset and unchanged 14.8 orthographic framing, readable player scale, controlled tent framing, two-line objective card, screen-relative controls, physical perimeter, fall recovery, automatic gathering/carrying/depositing, furnace fuel and expanding heat, survivor helper automation, barricade defense, mobile-safe HUD, imported characters, and full wolf animation.
-Runtime gates: orthographic close camera, compact HUD marker, settled 150-frame capture, forward/right controls, forced fall recovery, bounded terrain, gathering density, furnace system, automatic helper, player animation, full wolf animation, validation frame, ARM64 APK checksum.
-Trigger: reference-slice-v0.3.0-6
+Projection-correct camera patch Git blob: c177ec471fe3ad71bb36577964c5d5106caf4e2e
+Rejected builds: v0.2.0 open-plane demo; technically passed but visually rejected run 2; later camera runs rejected by obsolete perspective-FOV validation or integrity mismatch.
+Required replacement: compact orthographic-isometric frozen outpost, readable player scale, controlled tent framing, two-line objective card, correct screen-relative controls, physical perimeter, fall recovery, automatic gathering/carrying/depositing, furnace fuel and expanding heat, survivor helper automation, barricade defense, compact mobile HUD, imported characters, and full wolf animation.
+Runtime gates: orthographic projection and size, real settled camera distance, forward/right controls, forced fall recovery, bounded terrain, gathering density, furnace system, automatic helper, compact HUD, player animation, full wolf animation, settled validation frame, ARM64 APK checksum.
+Trigger: proven-workflow-stable-final-7
 Authorized: 2026-08-01
