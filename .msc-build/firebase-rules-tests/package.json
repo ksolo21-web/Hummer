@@ -1,0 +1,10 @@
+{
+  "name": "my-study-companion-firestore-rules-tests",
+  "version": "0.14.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "@firebase/rules-unit-testing": "5.0.1",
+    "firebase": "12.17.0"
+  }
+}
