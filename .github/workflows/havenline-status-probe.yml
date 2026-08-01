@@ -8,47 +8,55 @@ on:
       - HAVENLINE/PROBE_FINAL_BUILD
 
 permissions:
-  actions: read
   contents: write
 
 jobs:
-  record-production-run:
+  inspect-animated-wolf:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Locate and record production run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PRODUCTION_SHA: e0b0242381440a1342313de1284fb2828678984e
+      - name: Download and pin official Quaternius animated wolf
         shell: bash
+        env:
+          PACK_URL: https://opengameart.org/sites/default/files/Animal%20Pack%20Vol.2%20by%20%40Quaternius.zip
         run: |
           set -euo pipefail
-          found=""
-          for attempt in $(seq 1 220); do
-            payload="$(curl --fail --silent --show-error \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs?branch=agent%2Fhavenline-android-build&event=push&per_page=50")"
-            found="$(jq -c --arg sha "$PRODUCTION_SHA" '
-              [.workflow_runs[]
-                | select(.name == "HAVENLINE Final Android Build" and .head_sha == $sha)
-                | {id, name, status, conclusion, run_number, run_attempt, event, head_sha, created_at, updated_at, html_url, jobs_url, artifacts_url}]
-              | first // empty
-            ' <<<"$payload")"
-            if [[ -n "$found" && "$(jq -r '.status' <<<"$found")" == "completed" ]]; then
-              break
-            fi
-            sleep 5
-          done
-          if [[ -z "$found" ]]; then
-            found="$(jq -n --arg sha "$PRODUCTION_SHA" '{error:"production run not found", head_sha:$sha}')"
-          fi
-          printf '%s\n' "$found" | jq . > HAVENLINE/build-run.json
+          archive=/tmp/quaternius-animated-animals.zip
+          extract=/tmp/quaternius-animated-animals
+          curl --fail --location --retry 5 --retry-delay 4 --user-agent 'HAVENLINE-asset-validator/1.0' "$PACK_URL" -o "$archive"
+          test -s "$archive"
+          unzip -t "$archive" >/tmp/quaternius-zip-test.txt
+          unzip -Z1 "$archive" >/tmp/quaternius-files.txt
+          wolf_path="$(python3 - <<'PY'
+from pathlib import Path
+names = Path('/tmp/quaternius-files.txt').read_text(encoding='utf-8', errors='replace').splitlines()
+candidates = [n for n in names if n.lower().endswith(('.fbx', '.glb', '.gltf')) and 'wolf' in Path(n).name.lower()]
+if not candidates:
+    raise SystemExit('No wolf model found in Quaternius archive')
+print(sorted(candidates, key=lambda n: (0 if n.lower().endswith('.fbx') else 1, len(n), n.lower()))[0])
+PY
+)"
+          mkdir -p "$extract"
+          unzip -j "$archive" "$wolf_path" -d "$extract"
+          wolf_file="$extract/$(basename "$wolf_path")"
+          test -s "$wolf_file"
+          jq -n \
+            --arg source_url "$PACK_URL" \
+            --arg license "CC0 1.0" \
+            --arg archive_sha256 "$(sha256sum "$archive" | awk '{print $1}')" \
+            --arg archive_bytes "$(stat -c '%s' "$archive")" \
+            --arg wolf_archive_path "$wolf_path" \
+            --arg wolf_sha256 "$(sha256sum "$wolf_file" | awk '{print $1}')" \
+            --arg wolf_git_blob "$(git hash-object "$wolf_file")" \
+            --arg wolf_bytes "$(stat -c '%s' "$wolf_file")" \
+            --arg inspected_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{source_url:$source_url, license:$license, archive_sha256:$archive_sha256, archive_bytes:($archive_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), inspected_at:$inspected_at}' \
+            > HAVENLINE/animated-wolf-probe.json
+          cp /tmp/quaternius-files.txt HAVENLINE/animated-wolf-files.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add HAVENLINE/build-run.json
-          git commit -m "Record HAVENLINE production build run" || exit 0
+          git add HAVENLINE/animated-wolf-probe.json HAVENLINE/animated-wolf-files.txt
+          git commit -m "Record Quaternius animated wolf hashes"
           git push
