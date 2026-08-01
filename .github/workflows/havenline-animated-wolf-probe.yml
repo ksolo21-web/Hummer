@@ -1,0 +1,79 @@
+name: HAVENLINE Animated Wolf Probe
+
+on:
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/PROBE_ANIMATED_WOLF
+
+permissions:
+  contents: write
+
+concurrency:
+  group: havenline-animated-wolf-probe
+  cancel-in-progress: true
+
+jobs:
+  inspect-official-pack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and inspect Quaternius animated animal pack
+        shell: bash
+        env:
+          PACK_URL: https://opengameart.org/sites/default/files/Animal%20Pack%20Vol.2%20by%20%40Quaternius.zip
+        run: |
+          set -euo pipefail
+          archive=/tmp/quaternius-animated-animals.zip
+          extract=/tmp/quaternius-animated-animals
+          curl --fail --location --retry 5 --retry-delay 4 --user-agent 'HAVENLINE-asset-validator/1.0' "$PACK_URL" -o "$archive"
+          test -s "$archive"
+          file "$archive"
+          unzip -t "$archive" >/tmp/quaternius-zip-test.txt
+          unzip -Z1 "$archive" >/tmp/quaternius-files.txt
+          wolf_path="$(python3 - <<'PY'
+from pathlib import Path
+names = Path('/tmp/quaternius-files.txt').read_text(encoding='utf-8', errors='replace').splitlines()
+candidates = [n for n in names if n.lower().endswith(('.fbx', '.glb', '.gltf')) and 'wolf' in Path(n).name.lower()]
+if not candidates:
+    raise SystemExit('No wolf model found in Quaternius archive')
+preferred = sorted(candidates, key=lambda n: (0 if n.lower().endswith('.fbx') else 1, len(n), n.lower()))[0]
+print(preferred)
+PY
+)"
+          mkdir -p "$extract"
+          unzip -j "$archive" "$wolf_path" -d "$extract"
+          wolf_file="$extract/$(basename "$wolf_path")"
+          test -s "$wolf_file"
+          zip_sha="$(sha256sum "$archive" | awk '{print $1}')"
+          wolf_sha="$(sha256sum "$wolf_file" | awk '{print $1}')"
+          zip_bytes="$(stat -c '%s' "$archive")"
+          wolf_bytes="$(stat -c '%s' "$wolf_file")"
+          wolf_git_blob="$(git hash-object "$wolf_file")"
+          jq -n \
+            --arg source_url "$PACK_URL" \
+            --arg license "CC0 1.0" \
+            --arg archive_sha256 "$zip_sha" \
+            --arg archive_bytes "$zip_bytes" \
+            --arg wolf_archive_path "$wolf_path" \
+            --arg wolf_sha256 "$wolf_sha" \
+            --arg wolf_git_blob "$wolf_git_blob" \
+            --arg wolf_bytes "$wolf_bytes" \
+            --arg inspected_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{source_url:$source_url, license:$license, archive_sha256:$archive_sha256, archive_bytes:($archive_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), inspected_at:$inspected_at}' \
+            > HAVENLINE/animated-wolf-probe.json
+          cp /tmp/quaternius-files.txt HAVENLINE/animated-wolf-files.txt
+          cat HAVENLINE/animated-wolf-probe.json
+
+      - name: Record pinned wolf evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/animated-wolf-probe.json HAVENLINE/animated-wolf-files.txt
+          git commit -m "Record Quaternius animated wolf hashes"
+          git push
