@@ -25,9 +25,9 @@ grep -Fq 'mergeStudyReaderPackets' \
   MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderModels.kt
 grep -Fq 'revisionByDocument' \
   MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt
-grep -Fq 'Icons.Default.Repeat' \
+grep -Fq 'Icons.Outlined.Repeat' \
   MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt
-grep -Fq 'Read note' \
+grep -Fq 'Read my note' \
   MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt
 grep -Fq 'official/read' MyStudyCompanion/backend/app/main.py
 grep -Fq 'class OfficialReaderService' \
