@@ -42,21 +42,8 @@ jobs:
             --arg recorded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             '{final_composites_sha256:$final_composites, patch_fetch_assets_sha256:$patch_fetch_assets, patch_preflight_sha256:$patch_preflight, patch_gdscript_47_sha256:$patch_gdscript_47, patch_runtime_47_sha256:$patch_runtime_47, patch_wolf_animation_sha256:$patch_wolf_animation, patch_android_export_sha256:$patch_android_export, patch_opening_composition_sha256:$patch_opening_composition, head_sha:$head_sha, recorded_at:$recorded_at}' \
             > HAVENLINE/override-hashes.json
-          python3 - "$patch_opening_composition" <<'PY'
-          import re
-          import sys
-          from pathlib import Path
-
-          expected = sys.argv[1]
-          workflow = Path(".github/workflows/havenline-android.yml")
-          source = workflow.read_text(encoding="utf-8")
-          pattern = r'echo "[0-9a-f]{64}  HAVENLINE/overrides/patch_opening_composition\.py" \| sha256sum --check --strict'
-          replacement = f'echo "{expected}  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict'
-          updated, count = re.subn(pattern, replacement, source)
-          if count != 1:
-              raise SystemExit(f"Expected one opening-composition checksum line, found {count}")
-          workflow.write_text(updated, encoding="utf-8")
-          PY
+          sed -E -i "s#[0-9a-f]{64}  HAVENLINE/overrides/patch_opening_composition.py#${patch_opening_composition}  HAVENLINE/overrides/patch_opening_composition.py#" .github/workflows/havenline-android.yml
+          grep -q "${patch_opening_composition}  HAVENLINE/overrides/patch_opening_composition.py" .github/workflows/havenline-android.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add HAVENLINE/override-hashes.json .github/workflows/havenline-android.yml
