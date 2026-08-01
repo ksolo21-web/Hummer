@@ -65,15 +65,19 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
 
-      - name: Install and run official-reader backend tests
+      - name: Install and run backend and persistent Firestore tests
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check \
             -r MyStudyCompanion/backend/requirements.txt \
             -r MyStudyCompanion/backend/requirements-dev.txt
-          cd MyStudyCompanion/backend
-          python -m pytest -q
+          (cd MyStudyCompanion/backend && python -m pytest -q)
+          npx --yes firebase-tools@15.1.0 emulators:exec \
+            --only firestore \
+            --project demo-msc-backend \
+            --config MyStudyCompanion/backend/firebase.json \
+            "python -m pytest -q MyStudyCompanion/backend/tests/test_firestore_repositories.py"
 
       - name: Test, build, verify, and package phone, Wear, and web
         shell: bash
