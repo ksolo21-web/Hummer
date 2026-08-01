@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The reconstruction overlays include older copies of the final CI-gate editor.
+# Preserve the repaired exact-head version before rebuilding the historical
+# source stack, then restore it immediately before the theme/live overlays add
+# their checks. This prevents an old gate layout from aborting the real build.
+cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py \
+  /tmp/msc-final-gate-0.14.1.py
+
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
 
@@ -40,6 +47,11 @@ python3 .msc-build/apply-unified-study-reader-0.14.1.py
 python3 .msc-build/fix-unified-study-reader-compile-0.14.1.py
 bash .msc-build/apply-unified-reader-controls-0.14.1.sh
 bash .msc-build/apply-complete-last-major-build-0.14.1.sh
+
+# Restore the repaired final gate after historical overlays have replaced it.
+cp /tmp/msc-final-gate-0.14.1.py \
+  .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py
+
 bash .msc-build/apply-theme-gallery-0.14.1.sh
 bash .msc-build/apply-live-release-completion-0.14.1.sh
 bash .msc-build/apply-production-live-stack-0.14.1.sh
