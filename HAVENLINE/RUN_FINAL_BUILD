@@ -2,7 +2,7 @@ HAVENLINE production build authorization
 Source version: 0.2.0
 Verified source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Source verification workflow run: 30697295578
-Android workflow revision: b1ef5ed82dec79b93d02ba66a0b285fc5bc503bc
+Android workflow revision: af9aebac7de3a5edb119278b20ae04787dc0cf53
 Final composition generator SHA-256: 71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5
 Pinned asset patch SHA-256: fdf8ba113899c5769aeaab2696f76e4378eb3645781ecc35d872bd3d5b09775f
 Strict validator patch SHA-256: 28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc
@@ -16,5 +16,6 @@ Ultimate wolf wheel SHA-256: d111ffc9782f09872846b09ac7868d41e126ef72e3153d9d017
 Ultimate wolf model SHA-256: aa06297d0e66568711885178d1d35e2ca1e392dceb05f988df0497de0274a705
 Ultimate wolf clips: 12 (Attack, Death, Eating, Gallop, Gallop_Jump, Idle variants, hit reactions, Jump_ToIdle, Walk)
 Authorized: 2026-08-01
-Run policy: checksum-locked final art, strict Godot import, full wolf combat validation, camera-relative control-direction validation, forced out-of-bounds recovery validation, bounded terrain, visually clear production frame, ETC2/ASTC mobile textures, and ARM64 APK export
+Run policy: checksum-locked final art, strict Godot import, full wolf combat validation, camera-relative control-direction validation, forced out-of-bounds recovery validation, bounded terrain, visually clear production frame, ETC2/ASTC mobile textures, ARM64 APK export, and successful artifact locator recording.
 Corrective rebuild: reject run 13 because joystick-forward mapping was inverted and the terrain lacked perimeter/fall recovery. Rebuild against the user-provided compact Whiteout Survival-style reference.
+Trigger: controls-recovery-locator-1
