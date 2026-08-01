@@ -4,12 +4,12 @@ set -euo pipefail
 GENERATOR_XZ="${RUNNER_TEMP:-/tmp}/msc-approved-static-theme-generator-0.14.1.py.xz"
 GENERATOR_PY="${RUNNER_TEMP:-/tmp}/msc-approved-static-theme-generator-0.14.1.py"
 
-cat .msc-build/approved-static-theme-generator-0.14.1.part*.b64 \
+cat .msc-build/approved-static-theme-generator-numpyfree-0.14.1.part*.b64 \
   | tr -d '\n' \
   | base64 --decode \
   > "$GENERATOR_XZ"
 
-echo '3cb7326b0ae2c026757b1971b74e93345dc7a47d430384320716afb0aceb9520  '"$GENERATOR_XZ" \
+echo '570742f8865b5d5e0d1272e380e32cb5910fdfdf87528b190e19f703872df0a5  '"$GENERATOR_XZ" \
   | sha256sum -c -
 xz -t "$GENERATOR_XZ"
 xz --decompress --stdout "$GENERATOR_XZ" > "$GENERATOR_PY"
