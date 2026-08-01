@@ -1,25 +1,14 @@
 {
-  "status": "failed",
-  "failure_stage": "part_hashes",
+  "status": "verified",
+  "failure_stage": "",
   "source_version": "0.2.0",
   "expected_sha256": "1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7",
-  "actual_sha256": "",
+  "actual_sha256": "1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7",
   "expected_bytes": 35460,
-  "actual_bytes": 0,
+  "actual_bytes": 35460,
   "part_count": 24,
-  "archive_file_count": 0,
-  "part_mismatches": [
-    {
-      "file": "HAVENLINE/source.v3.parts/part-004.b64",
-      "expected_git_blob": "392f150f7047b74e91e84c2acf01def38d759b3c",
-      "actual_git_blob": "13beb5321c6a46f47e24269becb3dac599ff8223"
-    },
-    {
-      "file": "HAVENLINE/source.v3.parts/part-006.b64",
-      "expected_git_blob": "8967e75e3cd11c06893cb6d8da65936ad2c6bf70",
-      "actual_git_blob": "ea98a7de28670cc5015c6ddbc2d4740623ee7a8f"
-    }
-  ],
-  "verified_at": "2026-08-01T10:27:50Z",
-  "workflow_run_id": 30695752494
+  "archive_file_count": 67,
+  "part_mismatches": [],
+  "verified_at": "2026-08-01T10:29:54Z",
+  "workflow_run_id": 30695814388
 }
