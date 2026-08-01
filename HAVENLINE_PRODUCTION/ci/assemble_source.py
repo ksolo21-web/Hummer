@@ -86,15 +86,28 @@ for module_name, (expected_sha, function_name) in payloads.items():
     spec.loader.exec_module(module)
     getattr(module, function_name)(project)
 
-# Keep the generated production script observable in CI until the imported
-# character/animation integration compiles cleanly. This is source output from
-# the exact checksum-verified build, not a substitute implementation.
+# Godot 4.7 correctly rejects two impossible/ambiguous static-inference cases
+# emitted by the imported-character payload. Apply exact, guarded source repairs
+# after payload verification so any upstream drift fails closed instead of
+# silently patching the wrong code.
 character_script = project / "scripts" / "production_character.gd"
-if character_script.is_file():
-    character_lines = character_script.read_text(encoding="utf-8").splitlines()
-    print("HAVENLINE generated production_character.gd lines 60-175:")
-    for line_number in range(60, min(175, len(character_lines)) + 1):
-        print(f"{line_number:04d}: {character_lines[line_number - 1]}")
+character_source = character_script.read_text(encoding="utf-8")
+character_repairs = {
+    "    if body_root is AnimationPlayer:\n        animation_players.append(body_root)\n": "",
+    "                var source := mesh_node.get_active_material(surface)\n": (
+        "                var source: Material = mesh_node.get_active_material(surface)\n"
+    ),
+}
+for original, repaired in character_repairs.items():
+    occurrences = character_source.count(original)
+    if occurrences != 1:
+        raise SystemExit(
+            "HAVENLINE character integration repair target mismatch: "
+            f"expected 1 occurrence, found {occurrences}: {original!r}"
+        )
+    character_source = character_source.replace(original, repaired, 1)
+character_script.write_text(character_source, encoding="utf-8")
+print("HAVENLINE Godot 4.7 character typing repairs applied")
 
 print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
