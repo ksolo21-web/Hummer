@@ -8,25 +8,73 @@ on:
       - .msc-build/deploy-production-live-stack.trigger
 
 permissions:
-  actions: write
-  contents: read
+  actions: read
+  contents: write
+  id-token: write
 
 jobs:
-  dispatch-production-deploy:
+  deploy:
+    uses: ./.github/workflows/msc-0.14.1-production-deploy-reusable.yml
+    with:
+      confirmation: DEPLOY
+      deploy_backend: true
+      deploy_web_and_rules: true
+      provision_schedules: true
+    secrets: inherit
+
+  record-result:
+    needs: deploy
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Dispatch protected production deployment
+      - name: Check out deployment branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Capture deployment result and failed logs
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
         run: |
           set -euo pipefail
-          gh api --method POST \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/msc-0.14.1-deploy-production-live-stack.yml/dispatches" \
-            -f ref="${GITHUB_REF_NAME}" \
-            -f 'inputs[confirmation]=DEPLOY' \
-            -f 'inputs[deploy_backend]=true' \
-            -f 'inputs[deploy_web_and_rules]=true' \
-            -f 'inputs[provision_schedules]=true'
-          echo "Dispatched the protected production deployment for ${GITHUB_REF_NAME}."
+          mkdir -p .msc-build
+          {
+            echo "release=0.14.1"
+            echo "source_commit=0a8ba644b28b45b22bdfcee1be3765de80b358d9"
+            echo "trigger_commit=${GITHUB_SHA}"
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo "result=${DEPLOY_RESULT}"
+            echo "recorded_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > .msc-build/production-deploy-result.txt
+
+          if [[ "$DEPLOY_RESULT" != "success" ]]; then
+            gh run view "$GITHUB_RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --log-failed \
+              > .msc-build/production-deploy-failed.log 2>&1 || true
+          else
+            rm -f .msc-build/production-deploy-failed.log
+          fi
+
+      - name: Commit deployment result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'My Study Companion Deployment Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .msc-build/production-deploy-result.txt
+          if [[ -f .msc-build/production-deploy-failed.log ]]; then
+            git add .msc-build/production-deploy-failed.log
+          else
+            git rm --ignore-unmatch .msc-build/production-deploy-failed.log || true
+          fi
+          git commit -m "Record production deployment result: ${{ needs.deploy.result }}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Enforce successful deployment
+        if: ${{ needs.deploy.result != 'success' }}
+        shell: bash
+        run: exit 1
