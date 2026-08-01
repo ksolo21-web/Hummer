@@ -61,6 +61,16 @@ if gameplay.count(old_direction) != 1:
     raise SystemExit("HAVENLINE Godot 4.7 direction-typing patch expected exactly one source marker")
 gameplay_path.write_text(gameplay.replace(old_direction, new_direction, 1), encoding="utf-8")
 
+# Correct the production controller itself: the depth axis is Vector3.z, not
+# Vector3.y. The latter is intentionally zero after ground-plane projection.
+player_path = project / "scripts" / "player.gd"
+player_source = player_path.read_text(encoding="utf-8")
+old_velocity = "    velocity.z=direction.y*speed\n"
+new_velocity = "    velocity.z = direction.z * speed\n"
+if player_source.count(old_velocity) != 1:
+    raise SystemExit("HAVENLINE controller depth-axis patch expected exactly one source marker")
+player_path.write_text(player_source.replace(old_velocity, new_velocity, 1), encoding="utf-8")
+
 # Use a fully typed runtime harness. This boots and measures the actual project,
 # rather than validating source strings or a mock scene.
 runtime_gate = '''extends SceneTree
@@ -101,6 +111,7 @@ func _run() -> void:
         await physics_frame
     var moved: Vector3 = player.global_position - before
     moved.y = 0.0
+    print("HAVENLINE control proof: moved=", moved, " screen_forward=", screen_forward, " dot=", moved.normalized().dot(screen_forward) if moved.length() > 0.0 else -1.0)
     if moved.length() < 0.1 or moved.normalized().dot(screen_forward) < 0.92:
         _fail("Joystick up does not move screen-forward")
         return
@@ -133,7 +144,7 @@ func _run() -> void:
 required = {
     "project.godot": ["run/max_fps=120", 'renderer/rendering_method="mobile"'],
     "scripts/main.gd": ["PROJECTION_ORTHOGONAL", "BoundedSnowTerrain", "DynamicHeatZone"],
-    "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe"],
+    "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe", "velocity.z = direction.z"],
     "scripts/gameplay.gd": ["_auto_interaction", "_helper_work", "_spawn_wolf_wave", "var dir: Vector3"],
     "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png", "var scene: Node"],
 }
@@ -147,5 +158,5 @@ print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
 )
-print("HAVENLINE Godot 4.7 compatibility patches applied: gameplay direction and typed runtime gate")
+print("HAVENLINE compatibility fixes applied: typed wolf direction, corrected controller Z axis, typed runtime gate")
 print(project)
