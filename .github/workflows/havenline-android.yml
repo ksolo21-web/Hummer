@@ -67,7 +67,7 @@ jobs:
           echo "$SOURCE_SHA256  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
           test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
           echo "71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py" | sha256sum --check --strict
-          echo "52c4dd08d2b7104adf1f38b9dcb61e3cb00cf84f638d85de2aa329bc51b51cc8  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
+          echo "20163924e5964b4a477cda93f191b7bb396bf33dc6f07a64c8425794b18c7d39  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
           rm -rf .havenline-src havenline
           mkdir -p .havenline-src
           tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
