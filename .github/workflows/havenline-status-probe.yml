@@ -14,19 +14,19 @@ permissions:
 jobs:
   record-production-run:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
       - name: Locate and record production run
         env:
           GH_TOKEN: ${{ github.token }}
-          PRODUCTION_SHA: 03f5760e543dffeea723862f52df2c1acf87785a
+          PRODUCTION_SHA: e0b0242381440a1342313de1284fb2828678984e
         shell: bash
         run: |
           set -euo pipefail
           found=""
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 220); do
             payload="$(curl --fail --silent --show-error \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${GH_TOKEN}" \
