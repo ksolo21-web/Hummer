@@ -1,5 +1,15 @@
-HAVENLINE production source v0.2.0 is ready for branch publication.
+HAVENLINE production source v0.2.0
 
-The complete validated source archive is preserved in ChatGPT Library and the conversation artifact while the branch payload is being finalized. This marker does not trigger an Android build.
+Branch: agent/havenline-android-build
+Package: com.kaleb.havenline
+Engine: Godot 4.7.1 Mobile renderer
+Source archive: HAVENLINE/source.parts/part-00.b64 through part-05.b64
+Decoded archive SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
+Build workflow: .github/workflows/havenline-android.yml
 
-Source SHA-256: ae728c685f5d2e89405cd4259d3918d5ef40acfc24f126c7526d7531d27b20fc
+Release controls:
+- Manual workflow_dispatch only; branch commits do not automatically consume Actions minutes.
+- The workflow runs only when confirm_final_build is exactly FINAL.
+- The source checksum, final asset manifest, Godot import, scene boot, animated character/enemy runtime gates, validation screenshot, and APK export must all pass.
+- Hummer main remains untouched. This branch must not be merged into the Hummer vehicle project.
+- Missing final characters, animations, environment assets, or UI assets fail the build instead of inserting placeholder geometry.
