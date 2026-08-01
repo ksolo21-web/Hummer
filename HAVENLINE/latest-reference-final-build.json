@@ -1,10 +1,10 @@
 {
   "status": "failure",
-  "run_id": "30709494446",
-  "run_number": "1",
-  "head_sha": "c0d6808dd781380ce8c56fd3fbef8ed68ca04a68",
-  "artifact_id": "8821449054",
-  "artifact_name": "HAVENLINE-reference-final-1",
+  "run_id": "30709796497",
+  "run_number": "2",
+  "head_sha": "b6c8d15b2eecf1f6dd2677f2a8146b757f5b7d51",
+  "artifact_id": "8821541442",
+  "artifact_name": "HAVENLINE-reference-final-2",
   "apk_sha256": "",
   "camera_patch_sha256": "938208c6687a4ece4577a70040c86fc937484df7c866a6afbf72cbd67e82218e"
 }
