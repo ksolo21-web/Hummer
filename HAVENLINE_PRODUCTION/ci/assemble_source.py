@@ -97,7 +97,6 @@ def repair_generated(path: Path, original: str, repaired: str, label: str) -> No
     path.write_text(source.replace(original, repaired, 1), encoding="utf-8")
 
 
-# Godot 4.7 static typing repairs for the imported production character.
 character_script = project / "scripts" / "production_character.gd"
 repair_generated(
     character_script,
@@ -111,21 +110,10 @@ repair_generated(
     "                var source: Material = mesh_node.get_active_material(surface)\n",
     "material type inference",
 )
-print("HAVENLINE Godot 4.7 character typing repairs applied")
 
-# Visual pass 2: remove the oversized canopy obstruction, tighten the camera,
-# restore cold/warm contrast, and replace the opaque heat disc with a readable
-# expanding perimeter ring. Every replacement is exact and fails closed.
 main_script = project / "scripts" / "main.gd"
-repair_generated(
-    main_script,
-    "func _build_world() -> void:\n    world = Node3D.new()\n",
-    "func _build_world() -> void:\n    seed(44017)\n    world = Node3D.new()\n",
-    "deterministic scene composition",
-)
-repair_generated(
-    main_script,
-    '''    env.background_color = Color("#536b7d")
+repair_generated(main_script, "func _build_world() -> void:\n    world = Node3D.new()\n", "func _build_world() -> void:\n    seed(44017)\n    world = Node3D.new()\n", "deterministic scene composition")
+repair_generated(main_script, '''    env.background_color = Color("#536b7d")
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     env.ambient_light_color = Color("#8da6b8")
     env.ambient_light_energy = 0.48
@@ -136,8 +124,7 @@ repair_generated(
     env.fog_density = 0.013
     env.fog_height = 0.0
     env.fog_height_density = 0.20
-''',
-    '''    env.background_color = Color("#243846")
+''', '''    env.background_color = Color("#243846")
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     env.ambient_light_color = Color("#9db3c0")
     env.ambient_light_energy = 0.36
@@ -148,93 +135,58 @@ repair_generated(
     env.fog_density = 0.006
     env.fog_height = 0.0
     env.fog_height_density = 0.12
-''',
-    "cold environment contrast",
-)
-repair_generated(
-    main_script,
-    '''    sun.light_color = Color("#d3e0e8")
+''', "cold environment contrast")
+repair_generated(main_script, '''    sun.light_color = Color("#d3e0e8")
     sun.light_energy = 1.08
-''',
-    '''    sun.light_color = Color("#e1edf3")
+''', '''    sun.light_color = Color("#e1edf3")
     sun.light_energy = 1.32
-''',
-    "crisper key light",
-)
-repair_generated(
-    main_script,
-    '''    for data in [
+''', "crisper key light")
+repair_generated(main_script, '''    for data in [
         [Vector3(-6.4,0,-4.0), deg_to_rad(24.0), 0.68],
         [Vector3(6.4,0,-4.0), deg_to_rad(-24.0), 0.68],
         [Vector3(-8.8,0,6.8), deg_to_rad(62.0), 0.54]
     ]:
-''',
-    '''    for data in [
+''', '''    for data in [
         [Vector3(-7.2,0,-5.8), deg_to_rad(24.0), 0.34],
         [Vector3(7.2,0,-5.8), deg_to_rad(-24.0), 0.34]
     ]:
-''',
-    "scaled and repositioned insulated tents",
-)
-repair_generated(
-    main_script,
-    '''    var ring_mesh := CylinderMesh.new()
+''', "scaled and repositioned insulated tents")
+repair_generated(main_script, '''    var ring_mesh := CylinderMesh.new()
     ring_mesh.top_radius = 1.0
     ring_mesh.bottom_radius = 1.0
     ring_mesh.height = 0.025
     ring_mesh.radial_segments = 64
-''',
-    '''    var ring_mesh := TorusMesh.new()
+''', '''    var ring_mesh := TorusMesh.new()
     ring_mesh.inner_radius = 0.955
     ring_mesh.outer_radius = 1.0
     ring_mesh.rings = 64
     ring_mesh.ring_segments = 12
-''',
-    "heat-zone perimeter geometry",
-)
-repair_generated(
-    main_script,
-    '''    var ring_material := HavenArtFactory.material(Color(1.0,0.32,0.06,0.10),0.55,0,Color("#ff6b24"),1.2)
-''',
-    '''    var ring_material := HavenArtFactory.material(Color(1.0,0.30,0.04,0.58),0.48,0,Color("#ff6b24"),2.2)
-''',
-    "heat-zone glow material",
-)
-repair_generated(
-    main_script,
-    '''    camera.size = 11.6
-''',
-    '''    camera.size = 9.9
-''',
-    "closer readable camera",
-)
-repair_generated(
-    main_script,
-    '''    camera_rig.global_position = player.global_position + Vector3(7.2,9.4,8.4)
+''', "heat-zone perimeter geometry")
+repair_generated(main_script, '''    var ring_material := HavenArtFactory.material(Color(1.0,0.32,0.06,0.10),0.55,0,Color("#ff6b24"),1.2)
+''', '''    var ring_material := HavenArtFactory.material(Color(1.0,0.30,0.04,0.58),0.48,0,Color("#ff6b24"),2.2)
+''', "heat-zone glow material")
+repair_generated(main_script, "    camera.size = 11.6\n", "    camera.size = 9.9\n", "closer readable camera")
+repair_generated(main_script, '''    camera_rig.global_position = player.global_position + Vector3(7.2,9.4,8.4)
     camera_rig.look_at(player.global_position + Vector3(0,0.85,0), Vector3.UP)
-''',
-    '''    camera_rig.global_position = player.global_position + Vector3(6.4,8.2,7.4)
+''', '''    camera_rig.global_position = player.global_position + Vector3(6.4,8.2,7.4)
     camera_rig.look_at(player.global_position + Vector3(0,0.75,0), Vector3.UP)
-''',
-    "initial three-quarter framing",
-)
-repair_generated(
-    main_script,
-    '''    var desired := player.global_position + Vector3(7.2,9.4,8.4)
+''', "initial three-quarter framing")
+repair_generated(main_script, '''    var desired := player.global_position + Vector3(7.2,9.4,8.4)
     camera_rig.global_position = camera_rig.global_position.lerp(desired, 1.0 - exp(-delta * 8.0))
     camera_rig.look_at(player.global_position + Vector3(0,0.85,0), Vector3.UP)
-''',
-    '''    var desired := player.global_position + Vector3(6.4,8.2,7.4)
+''', '''    var desired := player.global_position + Vector3(6.4,8.2,7.4)
     camera_rig.global_position = camera_rig.global_position.lerp(desired, 1.0 - exp(-delta * 8.0))
     camera_rig.look_at(player.global_position + Vector3(0,0.75,0), Vector3.UP)
-''',
-    "follow-camera framing",
-)
-print("HAVENLINE visual pass 2 applied: camera, tents, contrast, and heat ring")
+''', "follow-camera framing")
 
-print(
-    f"HAVENLINE production source verified: {manifest['file_count']} files, "
-    f"{len(parts)} parts, {manifest['archive_sha256']}"
-)
-print("HAVENLINE imported visual payloads verified and applied")
-print(project)
+for audit_relative in (
+    "scripts/production_character.gd",
+    "scripts/player.gd",
+    "scripts/gameplay.gd",
+):
+    audit_path = project / audit_relative
+    print(f"===== HAVENLINE SOURCE AUDIT START {audit_relative} =====")
+    print(audit_path.read_text(encoding="utf-8"))
+    print(f"===== HAVENLINE SOURCE AUDIT END {audit_relative} =====")
+
+raise SystemExit("HAVENLINE targeted source audit complete; next commit replaces this audit gate")
