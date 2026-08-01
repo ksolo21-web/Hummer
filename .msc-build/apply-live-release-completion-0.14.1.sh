@@ -3,7 +3,7 @@ set -euo pipefail
 
 base64 --decode .msc-build/live-release-completion-0.14.1.patch.xz.b64 \
   > /tmp/msc-live-release-completion-0.14.1.patch.xz
-echo 'c8bcff467bf5a0c4a7c2acd2ddf49daea61a19ebad60faa5cb67f6fa6011d72b  /tmp/msc-live-release-completion-0.14.1.patch.xz' \
+echo '945621c73fe28aa06ba30c658fdf3d1bf9d565065abd684ec3e11579e3c82b7e  /tmp/msc-live-release-completion-0.14.1.patch.xz' \
   | sha256sum -c -
 xz -t /tmp/msc-live-release-completion-0.14.1.patch.xz
 xz -dc /tmp/msc-live-release-completion-0.14.1.patch.xz \
