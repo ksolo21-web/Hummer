@@ -44,6 +44,7 @@ bash .msc-build/apply-theme-gallery-0.14.1.sh
 bash .msc-build/apply-live-release-completion-0.14.1.sh
 bash .msc-build/apply-production-live-stack-0.14.1.sh
 python3 .msc-build/apply-auth-theme-repair-0.14.1.py
+python3 .msc-build/fix-rejected-theme-runtime-references-0.14.1.py
 python3 .msc-build/fix-auth-theme-repair-ci-gates-0.14.1.py
 
-echo 'Reconstructed My Study Companion 0.14.1 with the Google sign-in regression repaired, the 13 rejected experimental themes removed, the approved original and animal themes retained, and the visual color wheel preserved.'
+echo 'Reconstructed My Study Companion 0.14.1 with the Google sign-in regression repaired, every rejected experimental theme reference removed, the approved original and animal themes retained, and the visual color wheel preserved.'
