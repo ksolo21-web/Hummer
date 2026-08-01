@@ -1,0 +1,13 @@
+HAVENLINE final corrected reference build
+Version: 0.3.0-reference-final
+Branch: agent/havenline-android-build
+Workflow revision: 10f3126f082baae3d853a0f667c86e591d0a8953
+Base source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
+Reference patch SHA-256: 236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3
+Visual polish SHA-256: ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b
+Direct physical camera patch SHA-256: 938208c6687a4ece4577a70040c86fc937484df7c866a6afbf72cbd67e82218e
+Required camera: orthographic size 14.8, physical offset Vector3(0.0, 7.0, 7.0)
+Required gameplay: correct screen-relative movement, bounded terrain, fall recovery, automatic gathering/carry/deposit, dynamic furnace heat, survivor helper automation, barricade defense, animated player and wolf, compact HUD.
+Acceptance: source and asset checks, Godot import, runtime gameplay gates, validation frame, ARM64 APK, APK SHA-256.
+Trigger: final-reference-direct-1
+Authorized: 2026-08-01
