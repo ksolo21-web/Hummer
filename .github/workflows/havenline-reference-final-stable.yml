@@ -9,15 +9,15 @@ on:
         type: string
   push:
     branches:
-      - agent/havenline-android-build
+      - main
     paths:
-      - HAVENLINE/RUN_REFERENCE_FINAL_STABLE
+      - HAVENLINE/RUN_REFERENCE_FINAL_MAIN
 
 permissions:
   contents: write
 
 concurrency:
-  group: havenline-reference-final-stable-${{ github.ref }}
+  group: havenline-reference-final-stable
   cancel-in-progress: true
 
 jobs:
@@ -31,12 +31,22 @@ jobs:
       GODOT_BIN: ${{ github.workspace }}/havenline/.tools/godot
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       ANDROID_HOME: /usr/local/lib/android/sdk
+      HAVENLINE_BRANCH: agent/havenline-android-build
 
     steps:
       - name: Check out isolated HAVENLINE branch
         uses: actions/checkout@v4
         with:
+          ref: agent/havenline-android-build
+          fetch-depth: 1
           lfs: false
+
+      - name: Verify isolated branch checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$HAVENLINE_BRANCH"
+          echo "HAVENLINE_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Install Java 17
         uses: actions/setup-java@v4
@@ -49,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x HAVENLINE/ci/build_reference_final.sh
-          HAVENLINE/ci/build_reference_final.sh
+          GITHUB_REF_NAME="$HAVENLINE_BRANCH" HAVENLINE/ci/build_reference_final.sh
 
       - name: Upload final APK and validation evidence
         id: upload_artifact
@@ -74,7 +84,7 @@ jobs:
             havenline/build/export.log
             havenline/build-godot-version.txt
 
-      - name: Record stable final build locator
+      - name: Record stable final build locator on HAVENLINE branch
         if: always()
         shell: bash
         run: |
@@ -87,7 +97,7 @@ jobs:
             --arg status "${{ job.status }}" \
             --arg run_id "${{ github.run_id }}" \
             --arg run_number "${{ github.run_number }}" \
-            --arg head_sha "${{ github.sha }}" \
+            --arg head_sha "$HAVENLINE_SOURCE_SHA" \
             --arg artifact_id "${{ steps.upload_artifact.outputs.artifact-id }}" \
             --arg artifact_name "HAVENLINE-reference-final-stable-${{ github.run_number }}" \
             --arg apk_sha256 "$apk_sha" \
