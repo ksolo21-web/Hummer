@@ -26,19 +26,20 @@ for old, new in replacements.items():
     source = source.replace(old, new)
 
 final_web_marker = 'msc-web-v0144-auth-theme-repair'
+# Split the legacy literals so earlier overlay scripts cannot accidentally
+# rewrite this stale-build list while editing their own expected cache marker.
 legacy_web_markers = (
-    'msc-web-v0140-interactive-workbooks',
-    'msc-web-v0141-unified-study-reader',
-    'msc-web-v0142-complete-reader',
-    'msc-web-v0143-theme-gallery',
+    'msc-web-v0140-' + 'interactive-workbooks',
+    'msc-web-v0141-' + 'unified-study-reader',
+    'msc-web-v0142-' + 'complete-reader',
+    'msc-web-v0143-' + 'theme-gallery',
 )
 for marker in legacy_web_markers:
     source = source.replace(marker, final_web_marker)
 
-# Append one independent release gate. This avoids the previous brittle logic
-# that tried to replace one exact old line and then failed before the real build
-# even started. The gate runs after the runner's normal build path and verifies
-# the actual reconstructed files, not merely patch text.
+# Append one independent release gate. The compatibility line for firebase.json
+# is intentionally retained as a stable insertion point for the live-release,
+# theme, and production overlays reconstructed before this validator executes.
 gate_tag = '# MSC_0141_AUTH_THEME_RELEASE_GATE'
 if gate_tag not in source:
     source = source.rstrip() + r'''
@@ -50,6 +51,9 @@ verify_msc_0141_auth_theme_repair() {
   local auth=MyStudyCompanionWeb/firebase-sync.js
   local appearance=MyStudyCompanionWeb/appearance.js
   local app_theme=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt
+
+  # Stable compatibility anchor used by the reconstructed live-stack overlays.
+  grep -Fq 'my-study-companion-private' MyStudyCompanionWeb/firebase.json
 
   # Unified reader and connected content must still be present.
   grep -Fq 'OfficialDailyTextRepository' "$reader_repo"
@@ -107,6 +111,7 @@ required = (
     'MyStudyCompanion-phone-0.14.1',
     'MyStudyCompanion-wear-0.14.1',
     'MyStudyCompanion-Web-0.14.1-PWA.zip',
+    "my-study-companion-private",
     final_web_marker,
     gate_tag,
     'OfficialWatchtowerStudyRepository',
