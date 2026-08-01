@@ -1,3 +1,4 @@
 Verify HAVENLINE production source v0.2.0 reconstructed from 24 checksum-sized parts.
 Expected archive SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Expected archive bytes: 35460
+Verification pass: 2 with per-part Git blob diagnostics.
