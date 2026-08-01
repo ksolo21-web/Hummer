@@ -12,6 +12,30 @@ xz -t /tmp/msc-0141-complete-last-major.patch.xz
 xz -dc /tmp/msc-0141-complete-last-major.patch.xz > /tmp/msc-0141-complete-last-major.patch
 patch --batch --forward -p1 < /tmp/msc-0141-complete-last-major.patch
 
+python3 - <<'PY'
+from pathlib import Path
+
+for relative in (
+    'MyStudyCompanion/backend/app/main.py',
+    'MyStudyCompanion/backend/app/mcp_server.py',
+    'MyStudyCompanion/backend/pyproject.toml',
+    'MyStudyCompanion/backend/tests/test_client_bootstrap_contract.py',
+):
+    path = Path(relative)
+    source = path.read_text(encoding='utf-8')
+    if '0.9.0' in source:
+        source = source.replace('0.9.0', '0.14.1')
+        path.write_text(source, encoding='utf-8')
+
+for relative in (
+    'MyStudyCompanion/backend/app/main.py',
+    'MyStudyCompanion/backend/app/mcp_server.py',
+    'MyStudyCompanion/backend/pyproject.toml',
+):
+    if '0.14.1' not in Path(relative).read_text(encoding='utf-8'):
+        raise SystemExit(f'Backend release identity was not updated in {relative}')
+PY
+
 for file in MyStudyCompanionWeb/*.js; do
   node --check "$file"
 done
