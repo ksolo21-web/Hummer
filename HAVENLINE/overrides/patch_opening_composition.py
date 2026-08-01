@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch HAVENLINE's opening spawn and camera composition for a clear outpost view."""
+"""Patch HAVENLINE's opening spawn and camp composition for a clear gameplay view."""
 from __future__ import annotations
 
 import sys
@@ -22,12 +22,12 @@ def replace_exact(relative: str, old: str, new: str) -> None:
 replace_exact(
     "scripts/main.gd",
     "    player.position = Vector3(0.0, 0.05, 5.7)\n",
-    "    player.position = Vector3(0.0, 0.05, -1.5)\n",
+    "    player.position = Vector3(0.0, 0.05, 7.0)\n",
 )
 replace_exact(
     "scripts/core/camera_rig.gd",
     "    camera.fov = 45.0\n",
-    "    camera.fov = 50.0\n",
+    "    camera.fov = 52.0\n",
 )
 replace_exact(
     "scripts/core/camera_rig.gd",
@@ -42,5 +42,26 @@ if count != 2:
     raise SystemExit(
         f"HAVENLINE composition patch refused: expected two camera offsets, found {count}"
     )
-camera_source = camera_source.replace(old_offset, "Vector3(7.5, 16.0, 20.0)")
+camera_source = camera_source.replace(old_offset, "Vector3(0.0, 15.5, 19.5)")
 camera_path.write_text(camera_source, encoding="utf-8")
+
+replace_exact(
+    "scripts/world/environment_assembler.gd",
+    '    _add_asset("tent", Vector3(-5.7, 0.0, 3.9), deg_to_rad(20.0), 1.05)\n',
+    '    _add_asset("tent", Vector3(-8.2, 0.0, 3.4), deg_to_rad(24.0), 0.82)\n',
+)
+replace_exact(
+    "scripts/world/environment_assembler.gd",
+    '    _add_asset("tent", Vector3(5.5, 0.0, 4.1), deg_to_rad(-20.0), 1.0)\n',
+    '    _add_asset("tent", Vector3(8.2, 0.0, 3.4), deg_to_rad(-24.0), 0.82)\n',
+)
+replace_exact(
+    "scripts/world/environment_assembler.gd",
+    '    _add_asset("fence", Vector3(-8.5, 0.0, 4.4), deg_to_rad(90.0), 1.0)\n',
+    '    _add_asset("fence", Vector3(-10.2, 0.0, 4.6), deg_to_rad(90.0), 0.9)\n',
+)
+replace_exact(
+    "scripts/world/environment_assembler.gd",
+    '    _add_asset("fence", Vector3(8.3, 0.0, 4.2), deg_to_rad(90.0), 1.0)\n',
+    '    _add_asset("fence", Vector3(10.2, 0.0, 4.6), deg_to_rad(90.0), 0.9)\n',
+)
