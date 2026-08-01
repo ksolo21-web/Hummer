@@ -39,5 +39,6 @@ python3 .msc-build/fix-interactive-workbooks-0.14.0.py
 python3 .msc-build/apply-unified-study-reader-0.14.1.py
 python3 .msc-build/fix-unified-study-reader-compile-0.14.1.py
 bash .msc-build/apply-unified-reader-controls-0.14.1.sh
+bash .msc-build/apply-complete-last-major-build-0.14.1.sh
 
-echo 'Reconstructed the exact My Study Companion 0.14.1 unified source with connected bookmarks, dictation, playback, and glasses controls.'
+echo 'Reconstructed the exact My Study Companion 0.14.1 last-major-build source with connected reading, conflict-safe notes, reminders, official-page backend, runtime Firebase support, and wearable controls.'
