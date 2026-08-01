@@ -17,7 +17,7 @@ concurrency:
 jobs:
   export-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out isolated HAVENLINE branch
         uses: actions/checkout@v4
@@ -36,6 +36,46 @@ jobs:
           cp "$archive" HAVENLINE/source-export/
           cp /tmp/havenline-source-files.txt HAVENLINE/source-export/
 
+      - name: Inspect official Quaternius animated wolf
+        shell: bash
+        env:
+          PACK_URL: https://opengameart.org/sites/default/files/Animal%20Pack%20Vol.2%20by%20%40Quaternius.zip
+        run: |
+          set -euo pipefail
+          archive=/tmp/quaternius-animated-animals.zip
+          extract=/tmp/quaternius-animated-animals
+          curl --fail --location --retry 5 --retry-delay 4 --user-agent 'HAVENLINE-asset-validator/1.0' "$PACK_URL" -o "$archive"
+          test -s "$archive"
+          unzip -t "$archive" >/tmp/quaternius-zip-test.txt
+          unzip -Z1 "$archive" >/tmp/quaternius-files.txt
+          wolf_path="$(python3 - <<'PY'
+from pathlib import Path
+names = Path('/tmp/quaternius-files.txt').read_text(encoding='utf-8', errors='replace').splitlines()
+candidates = [n for n in names if n.lower().endswith(('.fbx', '.glb', '.gltf')) and 'wolf' in Path(n).name.lower()]
+if not candidates:
+    raise SystemExit('No wolf model found in Quaternius archive')
+print(sorted(candidates, key=lambda n: (0 if n.lower().endswith('.fbx') else 1, len(n), n.lower()))[0])
+PY
+)"
+          mkdir -p "$extract"
+          unzip -j "$archive" "$wolf_path" -d "$extract"
+          wolf_file="$extract/$(basename "$wolf_path")"
+          test -s "$wolf_file"
+          jq -n \
+            --arg source_url "$PACK_URL" \
+            --arg license "CC0 1.0" \
+            --arg archive_sha256 "$(sha256sum "$archive" | awk '{print $1}')" \
+            --arg archive_bytes "$(stat -c '%s' "$archive")" \
+            --arg wolf_archive_path "$wolf_path" \
+            --arg wolf_sha256 "$(sha256sum "$wolf_file" | awk '{print $1}')" \
+            --arg wolf_git_blob "$(git hash-object "$wolf_file")" \
+            --arg wolf_bytes "$(stat -c '%s' "$wolf_file")" \
+            --arg inspected_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{source_url:$source_url, license:$license, archive_sha256:$archive_sha256, archive_bytes:($archive_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), inspected_at:$inspected_at}' \
+            > HAVENLINE/animated-wolf-probe.json
+          cp /tmp/quaternius-files.txt HAVENLINE/animated-wolf-files.txt
+          cat HAVENLINE/animated-wolf-probe.json
+
       - name: Upload verified source archive
         uses: actions/upload-artifact@v4
         with:
@@ -44,7 +84,7 @@ jobs:
           if-no-files-found: error
           path: HAVENLINE/source-export/
 
-      - name: Record export run
+      - name: Record export and wolf probe
         shell: bash
         run: |
           set -euo pipefail
@@ -58,6 +98,6 @@ jobs:
             > HAVENLINE/source-export-run.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add HAVENLINE/source-export-run.json
-          git commit -m "Record HAVENLINE verified source export"
+          git add HAVENLINE/source-export-run.json HAVENLINE/animated-wolf-probe.json HAVENLINE/animated-wolf-files.txt
+          git commit -m "Record HAVENLINE source export and animated wolf hashes"
           git push
