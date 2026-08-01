@@ -14,7 +14,16 @@ repo = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd()
 out = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else repo / ".havenline-production"
 source_dir = repo / "HAVENLINE_PRODUCTION" / "source"
 manifest = json.loads((source_dir / "manifest.json").read_text(encoding="utf-8"))
-archive_bytes = base64.b64decode((source_dir / "HAVENLINE-production-rebuild-source.zip.b64").read_text(encoding="utf-8"))
+parts_dir = source_dir / "parts"
+parts = sorted(parts_dir.glob("part-*.b64"))
+if len(parts) != int(manifest["part_count"]):
+    raise SystemExit(
+        f"HAVENLINE source part count mismatch: expected {manifest['part_count']}, found {len(parts)}"
+    )
+encoded = "".join(part.read_text(encoding="utf-8").strip() for part in parts)
+if len(encoded) % 4 != 0:
+    raise SystemExit(f"HAVENLINE combined base64 length is invalid: {len(encoded)}")
+archive_bytes = base64.b64decode(encoded, validate=True)
 actual_archive_sha = hashlib.sha256(archive_bytes).hexdigest()
 if actual_archive_sha != manifest["archive_sha256"]:
     raise SystemExit(f"HAVENLINE source archive checksum mismatch: {actual_archive_sha}")
@@ -25,7 +34,9 @@ if out.exists():
     shutil.rmtree(out)
 out.mkdir(parents=True)
 with zipfile.ZipFile(archive_path) as archive:
-    archive.testzip()
+    corrupt = archive.testzip()
+    if corrupt:
+        raise SystemExit(f"HAVENLINE source ZIP contains a corrupt entry: {corrupt}")
     archive.extractall(out)
 
 project = out / "havenline_production"
@@ -40,15 +51,6 @@ for entry in manifest["files"]:
     if digest != entry["sha256"]:
         raise SystemExit(f"HAVENLINE source checksum mismatch for {entry['path']}: {digest}")
 
-# The visual gate captures the exact rendered project after movement/recovery tests.
-runtime_gate = project / "tests" / "runtime_gate.gd"
-text = runtime_gate.read_text(encoding="utf-8")
-old = '    print("HAVENLINE production gate passed: compact camera, controls, recovery, resources, furnace, helper and defense systems present")\n    quit(0)\n'
-new = '    for i in range(90): await process_frame\n    DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://build"))\n    var image := root.get_texture().get_image()\n    var capture_error := image.save_png(ProjectSettings.globalize_path("res://build/validation-frame.png"))\n    if capture_error != OK: _fail("Validation-frame capture failed"); return\n    print("HAVENLINE production gate passed: compact camera, controls, recovery, resources, furnace, helper and defense systems present")\n    quit(0)\n'
-if text.count(old) != 1:
-    raise SystemExit("HAVENLINE visual-capture patch expected one runtime-gate marker")
-runtime_gate.write_text(text.replace(old, new, 1), encoding="utf-8")
-
 required = {
     "project.godot": ["run/max_fps=120", 'renderer/rendering_method="mobile"'],
     "scripts/main.gd": ["PROJECTION_ORTHOGONAL", "BoundedSnowTerrain", "DynamicHeatZone"],
@@ -62,5 +64,8 @@ for relative, markers in required.items():
         if marker not in source:
             raise SystemExit(f"HAVENLINE required marker missing from {relative}: {marker}")
 
-print(f"HAVENLINE production source verified: {manifest['file_count']} files, {manifest['archive_sha256']}")
+print(
+    f"HAVENLINE production source verified: {manifest['file_count']} files, "
+    f"{len(parts)} parts, {manifest['archive_sha256']}"
+)
 print(project)
