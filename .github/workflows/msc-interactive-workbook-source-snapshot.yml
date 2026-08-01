@@ -1,0 +1,54 @@
+name: My Study Companion Interactive Workbook Source Snapshot
+
+on:
+  push:
+    branches:
+      - agent/my-study-companion-interactive-workbooks-0140
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out workbook branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-interactive-workbooks-0140
+
+      - name: Reconstruct verified 0.13.0 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-build-0125-ci.sh
+          cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode \
+            > /tmp/msc-0.13.0-final-major-overlay.tar.xz
+          echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0.13.0-final-major-overlay.tar.xz' \
+            | sha256sum -c -
+          tar -xJf /tmp/msc-0.13.0-final-major-overlay.tar.xz -C .
+
+      - name: Package implementation source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf msc-0.13.0-interactive-workbook-source.tar.gz \
+            MyStudyCompanion/settings.gradle.kts \
+            MyStudyCompanion/build.gradle.kts \
+            MyStudyCompanion/gradle.properties \
+            MyStudyCompanion/gradle/libs.versions.toml \
+            MyStudyCompanion/app/build.gradle.kts \
+            MyStudyCompanion/app/src \
+            MyStudyCompanion/wear/build.gradle.kts \
+            MyStudyCompanion/wear/src \
+            MyStudyCompanionWeb
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.13.0-interactive-workbook-source
+          path: msc-0.13.0-interactive-workbook-source.tar.gz
+          retention-days: 3
+          if-no-files-found: error
