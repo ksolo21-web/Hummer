@@ -28,6 +28,20 @@ def require_text(path: str, needle: str) -> None:
         raise SystemExit(f"Required 0.14.1 marker is missing from {path}: {needle}")
 
 
+def normalize_compile_safe_source() -> None:
+    repository = ROOT / (
+        "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/"
+        "UnifiedStudyReaderRepository.kt"
+    )
+    source = repository.read_text(encoding="utf-8")
+    old = "runCatching(FirebaseFirestore::getInstance).getOrNull()"
+    new = "runCatching { FirebaseFirestore.getInstance() }.getOrNull()"
+    if old in source:
+        repository.write_text(source.replace(old, new, 1), encoding="utf-8")
+    elif new not in source:
+        raise SystemExit("UnifiedStudyReaderRepository Firebase initialization marker was not found.")
+
+
 if len(CHUNKS) != EXPECTED_CHUNK_COUNT:
     raise SystemExit(
         f"Expected {EXPECTED_CHUNK_COUNT} unified-reader payload chunks, found {len(CHUNKS)}."
@@ -63,6 +77,8 @@ if not already_applied:
 else:
     print("Unified-reader 0.14.1 overlay is already present; validating it.")
 
+normalize_compile_safe_source()
+
 require_text(
     "MyStudyCompanion/app/build.gradle.kts",
     'versionName = "0.14.1-private-alpha-unified-study-reader"',
@@ -82,6 +98,10 @@ require_text(
 require_text(
     "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt",
     "UnifiedStudyReaderScreen",
+)
+require_text(
+    "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt",
+    "runCatching { FirebaseFirestore.getInstance() }.getOrNull()",
 )
 require_text(
     "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt",
