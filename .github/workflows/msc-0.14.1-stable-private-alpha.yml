@@ -100,11 +100,12 @@ jobs:
             > MyStudyCompanion/app/google-services.json
           echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
             | sha256sum -c -
-          WEB_CLIENT_ID="$(python3 - <<'PY'
+          mapfile -t FIREBASE_VALUES < <(python3 - <<'PY'
           import json
           from pathlib import Path
           data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
-          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          project_id = data['project_info']['project_id']
+          assert project_id == 'my-study-companion-abc01'
           clients = {
               item['client_info']['android_client_info']['package_name']: item
               for item in data['client']
@@ -112,10 +113,16 @@ jobs:
           canonical = clients['com.mystudycompanion.app']
           web_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
           assert len(web_clients) == 1
+          print(project_id)
           print(web_clients[0]['client_id'])
           PY
-          )"
+          )
+          PROJECT_ID="${FIREBASE_VALUES[0]}"
+          WEB_CLIENT_ID="${FIREBASE_VALUES[1]}"
+          BACKEND_BASE_URL="https://${PROJECT_ID}.web.app/"
+          echo "project_id=$PROJECT_ID" >> "$GITHUB_OUTPUT"
           echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "backend_base_url=$BACKEND_BASE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Build stable same-package phone and Wear APKs
         shell: bash
@@ -125,13 +132,16 @@ jobs:
           MSC_RELEASE_KEY_ALIAS: androiddebugkey
           MSC_RELEASE_KEY_PASSWORD: android
           MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
         run: |
           set -euo pipefail
           cd MyStudyCompanion
           gradle --no-daemon --stacktrace \
             -PMSC_LOCAL_OWNER_MODE=true \
             -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
             :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+          grep -R -Fq "$MSC_BACKEND_BASE_URL" app/build/generated
 
       - name: Verify package, version, signer, and alignment
         shell: bash
@@ -183,7 +193,8 @@ jobs:
           cat > stable-private-alpha/STATUS.txt <<'TXT'
           PASS: phone and Wear packages use the established stable private-alpha signer.
           PASS: both packages retain the canonical com.mystudycompanion.app application ID.
-          PASS: the complete 23-theme gallery and visual color-wheel layer are included in the same signed build.
+          PASS: the signed phone APK contains the live Firebase Hosting backend base URL and Google web client ID.
+          PASS: the complete connected reader, persistent live stack, 23-theme gallery, and visual color-wheel layer are included in the same signed build.
           PASS: this signer is intended only for private-alpha testing and is not the offline permanent release/Play key.
           NOTE: Android will update an installed app only when both package ID and signer match the installed build.
           TXT
