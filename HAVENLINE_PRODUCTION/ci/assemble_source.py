@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib.util
 import json
 import shutil
 import sys
@@ -51,13 +52,43 @@ for entry in manifest["files"]:
     if digest != entry["sha256"]:
         raise SystemExit(f"HAVENLINE source checksum mismatch for {entry['path']}: {digest}")
 
-sys.path.insert(0, str(repo / "HAVENLINE_PRODUCTION" / "ci"))
+ci_dir = repo / "HAVENLINE_PRODUCTION" / "ci"
+sys.path.insert(0, str(ci_dir))
 from production_patches import apply  # noqa: E402
 
 apply(project)
+
+encoded_dir = ci_dir / "encoded"
+decoded_dir = out / ".decoded-ci"
+decoded_dir.mkdir(parents=True, exist_ok=True)
+payloads = {
+    "production_visuals_assets": (
+        "ab24b700cfe9f0bdd02597a0d265e5764ecd3ceb6a8190d8770502845a93a465",
+        "apply_assets",
+    ),
+    "production_visuals_scene": (
+        "86f09f4f993e2319045cf13d14bd353270fde1a069abbba9eb140e6c51f84d4f",
+        "apply_scene",
+    ),
+}
+for module_name, (expected_sha, function_name) in payloads.items():
+    encoded_path = encoded_dir / f"{module_name}.py.b64"
+    decoded_path = decoded_dir / f"{module_name}.py"
+    decoded = base64.b64decode(encoded_path.read_text(encoding="utf-8").strip(), validate=True)
+    actual_sha = hashlib.sha256(decoded).hexdigest()
+    if actual_sha != expected_sha:
+        raise SystemExit(f"HAVENLINE visual payload checksum mismatch for {module_name}: {actual_sha}")
+    decoded_path.write_bytes(decoded)
+    spec = importlib.util.spec_from_file_location(module_name, decoded_path)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"HAVENLINE could not load visual payload: {module_name}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    getattr(module, function_name)(project)
 
 print(
     f"HAVENLINE production source verified: {manifest['file_count']} files, "
     f"{len(parts)} parts, {manifest['archive_sha256']}"
 )
+print("HAVENLINE imported visual payloads verified and applied")
 print(project)
