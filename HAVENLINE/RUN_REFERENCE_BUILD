@@ -1,14 +1,14 @@
 HAVENLINE compact reference-slice Android build authorization
 Version: 0.3.0-reference-slice
 Branch: agent/havenline-android-build
-Workflow revision: 0b6291bb0910abdd0f35262a0ac8c143aba5964d
+Workflow revision: 6b2f5f1de49d78d56ccf7ea02f9767105e9f8ed0
 Verified base source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Reference patch SHA-256: 236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3
 Reference payload SHA-256: 2934dd6fbf7fe16d72cb092a190995887764900fb30fa0af30a2f033cfd4bb00
 Reference decoder SHA-256: 2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d22d49a5bbd4f
-Visual polish SHA-256: a49974a1662c330cc0dd2acadbeed38b42c66c50bd06804580ef59e337d27c09
-Rejected builds: v0.2.0 open-plane camp demo; reference run 2 technically passed but failed visual review because the objective card expanded vertically and perspective tents overwhelmed the player.
-Required replacement: compact orthographic-isometric frozen outpost with readable player scale, controlled tent framing, two-line objective card, screen-relative controls, physical perimeter, fall recovery, automatic gathering/carrying/depositing, furnace fuel and expanding heat, survivor helper automation, barricade defense, mobile-safe HUD, imported characters, and full wolf animation.
+Visual polish SHA-256: ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b
+Rejected builds: v0.2.0 open-plane camp demo; reference run 2 failed visual review; reference run 3 correctly failed the strict close-camera gate at a 15.56-unit offset.
+Required replacement: compact orthographic-isometric frozen outpost with a 14.42-unit camera offset and 14.8 orthographic size, readable player scale, controlled tent framing, two-line objective card, screen-relative controls, physical perimeter, fall recovery, automatic gathering/carrying/depositing, furnace fuel and expanding heat, survivor helper automation, barricade defense, mobile-safe HUD, imported characters, and full wolf animation.
 Runtime gates: orthographic close camera, compact HUD marker, settled 150-frame capture, forward/right controls, forced fall recovery, bounded terrain, gathering density, furnace system, automatic helper, player animation, full wolf animation, validation frame, ARM64 APK checksum.
-Trigger: reference-slice-v0.3.0-3
+Trigger: reference-slice-v0.3.0-4
 Authorized: 2026-08-01
