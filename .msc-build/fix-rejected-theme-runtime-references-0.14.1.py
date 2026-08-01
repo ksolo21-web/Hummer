@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import shutil
 
 root = Path('.')
 
@@ -34,6 +35,12 @@ rejected_slugs = (
     'creation_sky',
     'bible_timeline',
     'bible_map',
+)
+
+approved_slugs = (
+    'calm_light', 'premium_dark', 'warm_editorial',
+    'owl', 'fox', 'lion', 'tiger',
+    'moonlit_wolf', 'golden_owl', 'sakura_tiger',
 )
 
 # The approved-theme repair removed the rejected enum constants, but the
@@ -106,17 +113,30 @@ if count == 0 and 'allApprovedPhoneThemesHaveWearPalettes' not in wear_test_sour
     raise SystemExit('Could not replace the obsolete Wear theme-gallery test.')
 wear_test.write_text(wear_test_source, encoding='utf-8')
 
+app_assets = root / 'MyStudyCompanion/app/src/main/res/drawable-nodpi'
+wear_assets = root / 'MyStudyCompanion/wear/src/main/res/drawable-nodpi'
+web_assets = root / 'MyStudyCompanionWeb/assets'
+asset_roots = (app_assets, wear_assets, web_assets)
+
 # Remove every rejected scene from all packaged targets. This is idempotent and
 # also catches assets restored by a future overlay ordering change.
-asset_roots = (
-    root / 'MyStudyCompanion/app/src/main/res/drawable-nodpi',
-    root / 'MyStudyCompanion/wear/src/main/res/drawable-nodpi',
-    root / 'MyStudyCompanionWeb/assets',
-)
 for asset_root in asset_roots:
     for slug in rejected_slugs:
         for path in asset_root.glob(f'theme_scene_{slug}.*'):
             path.unlink()
+
+# The expanded web override only carried the three newest approved scenes and
+# left seven theme references pointing to missing files. Use the verified phone
+# artwork as the one visual source of truth so Android, Wear, and the PWA all
+# render the same complete ten-theme gallery.
+web_assets.mkdir(parents=True, exist_ok=True)
+for slug in approved_slugs:
+    candidates = tuple(app_assets.glob(f'theme_scene_{slug}.*'))
+    if len(candidates) != 1 or candidates[0].stat().st_size <= 1000:
+        raise SystemExit(f'Expected one verified phone theme asset for {slug}.')
+    source_asset = candidates[0]
+    destination = web_assets / source_asset.name
+    shutil.copy2(source_asset, destination)
 
 # Release gates: no rejected runtime identity or removed drawable may survive.
 source_roots = (
@@ -141,16 +161,9 @@ for asset_root in asset_roots:
     for slug in rejected_slugs:
         if any(asset_root.glob(f'theme_scene_{slug}.*')):
             raise SystemExit(f'Rejected theme asset remains: {slug} in {asset_root}')
-
-approved_slugs = (
-    'calm_light', 'premium_dark', 'warm_editorial',
-    'owl', 'fox', 'lion', 'tiger',
-    'moonlit_wolf', 'golden_owl', 'sakura_tiger',
-)
-for asset_root in asset_roots:
     for slug in approved_slugs:
         matches = tuple(asset_root.glob(f'theme_scene_{slug}.*'))
-        if not matches or not any(path.stat().st_size > 1000 for path in matches):
-            raise SystemExit(f'Approved theme asset missing or empty: {slug} in {asset_root}')
+        if len(matches) != 1 or matches[0].stat().st_size <= 1000:
+            raise SystemExit(f'Approved theme asset missing, duplicated, or empty: {slug} in {asset_root}')
 
-print('Removed all rejected theme branches, tests, drawables, and Wear mappings while preserving the 10 approved themes.')
+print('Removed all rejected theme branches, tests, drawables, and Wear mappings; synchronized the complete 10-theme artwork gallery across phone, Wear, and web.')
