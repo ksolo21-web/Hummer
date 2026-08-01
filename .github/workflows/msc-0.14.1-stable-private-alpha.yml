@@ -30,13 +30,6 @@ jobs:
           path: workbook-payload
           persist-credentials: false
 
-      - name: Check out established private-alpha signing material
-        uses: actions/checkout@v6
-        with:
-          ref: agent/msc-theme-studio-091-explicit-signing
-          path: private-alpha-signing
-          persist-credentials: false
-
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -70,26 +63,41 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
 
-      - name: Restore and verify stable private-alpha signer
+      - name: Restore Firebase-registered Android signer
         id: signer
         shell: bash
+        env:
+          MSC_FIREBASE_KEYSTORE_B64: ${{ secrets.MSC_FIREBASE_KEYSTORE_B64 }}
+          MSC_FIREBASE_KEYSTORE_PASSWORD: ${{ secrets.MSC_FIREBASE_KEYSTORE_PASSWORD }}
+          MSC_FIREBASE_KEY_ALIAS: ${{ secrets.MSC_FIREBASE_KEY_ALIAS }}
+          MSC_FIREBASE_KEY_PASSWORD: ${{ secrets.MSC_FIREBASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          SIGNING_DIR="$RUNNER_TEMP/msc-stable-private-alpha"
+          for name in \
+            MSC_FIREBASE_KEYSTORE_B64 \
+            MSC_FIREBASE_KEYSTORE_PASSWORD \
+            MSC_FIREBASE_KEY_ALIAS \
+            MSC_FIREBASE_KEY_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing protected GitHub Actions secret: $name"
+              echo '::error::The 0.14.1 APK is blocked because the preserved repository signer does not match the Android OAuth SHA-1 registered in Firebase.'
+              exit 1
+            fi
+          done
+
+          SIGNING_DIR="$RUNNER_TEMP/msc-firebase-registered-signing"
           mkdir -p "$SIGNING_DIR"
-          base64 --decode \
-            private-alpha-signing/.msc-build/private-alpha-debug.keystore.b64 \
-            > "$SIGNING_DIR/private-alpha-debug.keystore"
-          echo '8b6b00f0d97afa77c3b342a1de47279629dfd2f63400dae6d787e2d25b24af27  '"$SIGNING_DIR/private-alpha-debug.keystore" \
-            | sha256sum -c -
+          printf '%s' "$MSC_FIREBASE_KEYSTORE_B64" | base64 --decode \
+            > "$SIGNING_DIR/firebase-registered.keystore"
           keytool -list -v \
-            -keystore "$SIGNING_DIR/private-alpha-debug.keystore" \
-            -storepass android -alias androiddebugkey \
+            -keystore "$SIGNING_DIR/firebase-registered.keystore" \
+            -storepass "$MSC_FIREBASE_KEYSTORE_PASSWORD" \
+            -alias "$MSC_FIREBASE_KEY_ALIAS" \
             > "$SIGNING_DIR/KEY-IDENTITY.txt"
-          grep -Fq 'SHA256: 28:0F:9C:9A:D4:BE:BA:33:72:1A:BD:09:A5:B8:04:60:7A:AE:7C:9D:07:91:8D:67:44:6A:F7:AD:55:6D:EC:44' \
+          grep -Fq 'SHA1: 19:97:D4:21:D1:77:21:5A:44:F9:65:1C:E5:3D:BA:EC:15:2F:BC:49' \
             "$SIGNING_DIR/KEY-IDENTITY.txt"
-          echo "store_file=$SIGNING_DIR/private-alpha-debug.keystore" >> "$GITHUB_OUTPUT"
-          echo 'PASS: established private-alpha signer restored without exporting the key.'
+          echo "store_file=$SIGNING_DIR/firebase-registered.keystore" >> "$GITHUB_OUTPUT"
+          echo 'PASS: Firebase-registered Android signer restored and fingerprint verified.'
 
       - name: Install and verify Firebase Android configuration
         id: firebase
@@ -111,7 +119,10 @@ jobs:
               for item in data['client']
           }
           canonical = clients['com.mystudycompanion.app']
+          android_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
           web_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android_clients) == 1
+          assert android_clients[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
           assert len(web_clients) == 1
           print(project_id)
           print(web_clients[0]['client_id'])
@@ -128,9 +139,9 @@ jobs:
         shell: bash
         env:
           MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
-          MSC_RELEASE_STORE_PASSWORD: android
-          MSC_RELEASE_KEY_ALIAS: androiddebugkey
-          MSC_RELEASE_KEY_PASSWORD: android
+          MSC_RELEASE_STORE_PASSWORD: ${{ secrets.MSC_FIREBASE_KEYSTORE_PASSWORD }}
+          MSC_RELEASE_KEY_ALIAS: ${{ secrets.MSC_FIREBASE_KEY_ALIAS }}
+          MSC_RELEASE_KEY_PASSWORD: ${{ secrets.MSC_FIREBASE_KEY_PASSWORD }}
           MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
           MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
         run: |
@@ -143,7 +154,7 @@ jobs:
             :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
           grep -R -Fq "$MSC_BACKEND_BASE_URL" app/build/generated
 
-      - name: Verify package, version, signer, and alignment
+      - name: Verify package, version, Firebase signer, and alignment
         shell: bash
         run: |
           set -euo pipefail
@@ -178,9 +189,9 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs \
             stable-private-alpha/MyStudyCompanion-wear-0.14.1-stable-private-alpha.apk \
             > stable-private-alpha/WEAR-SIGNATURE.txt
-          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
+          grep -Fiq 'Signer #1 certificate SHA-1 digest: 1997d421d177215a44f9651ce53dbaec152fbc49' \
             stable-private-alpha/PHONE-SIGNATURE.txt
-          grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
+          grep -Fiq 'Signer #1 certificate SHA-1 digest: 1997d421d177215a44f9651ce53dbaec152fbc49' \
             stable-private-alpha/WEAR-SIGNATURE.txt
           "$ZIPALIGN" -c -P 16 -v 4 \
             stable-private-alpha/MyStudyCompanion-phone-0.14.1-stable-private-alpha.apk \
@@ -191,11 +202,11 @@ jobs:
 
           sha256sum stable-private-alpha/*.apk > stable-private-alpha/SHA256SUMS.txt
           cat > stable-private-alpha/STATUS.txt <<'TXT'
-          PASS: phone and Wear packages use the established stable private-alpha signer.
+          PASS: phone and Wear packages use the Firebase-registered Android OAuth signer.
           PASS: both packages retain the canonical com.mystudycompanion.app application ID.
           PASS: the signed phone APK contains the live Firebase Hosting backend base URL and Google web client ID.
-          PASS: the complete connected reader, persistent live stack, 23-theme gallery, and visual color-wheel layer are included in the same signed build.
-          PASS: this signer is intended only for private-alpha testing and is not the offline permanent release/Play key.
+          PASS: the rejected experimental themes are absent; the approved original and animal themes remain.
+          PASS: Android package, signer, Firebase resources, and Google sign-in identity are release-gated together.
           NOTE: Android will update an installed app only when both package ID and signer match the installed build.
           TXT
 
