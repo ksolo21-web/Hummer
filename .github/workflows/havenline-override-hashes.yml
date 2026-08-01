@@ -1,0 +1,39 @@
+name: HAVENLINE Override Hashes
+
+on:
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/HASH_OVERRIDES
+
+permissions:
+  contents: write
+
+jobs:
+  record-hashes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record exact repository SHA-256 values
+        shell: bash
+        run: |
+          set -euo pipefail
+          final_composites="$(sha256sum HAVENLINE/overrides/final_composites.py | awk '{print $1}')"
+          patch_fetch_assets="$(sha256sum HAVENLINE/overrides/patch_fetch_assets.py | awk '{print $1}')"
+          patch_preflight="$(sha256sum HAVENLINE/overrides/patch_preflight.py | awk '{print $1}')"
+          jq -n \
+            --arg final_composites "$final_composites" \
+            --arg patch_fetch_assets "$patch_fetch_assets" \
+            --arg patch_preflight "$patch_preflight" \
+            --arg head_sha "$GITHUB_SHA" \
+            --arg recorded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{final_composites_sha256:$final_composites, patch_fetch_assets_sha256:$patch_fetch_assets, patch_preflight_sha256:$patch_preflight, head_sha:$head_sha, recorded_at:$recorded_at}' \
+            > HAVENLINE/override-hashes.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/override-hashes.json
+          git commit -m "Record exact HAVENLINE override hashes"
+          git push
