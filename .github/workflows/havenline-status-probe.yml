@@ -23,10 +23,17 @@ jobs:
           set -euo pipefail
           download_dir=/tmp/animasim-download
           extract=/tmp/animasim-wolf
+          metadata=/tmp/animasim-pypi.json
           mkdir -p "$download_dir" "$extract"
+          curl --fail --location --retry 4 https://pypi.org/pypi/animasim/0.2.1/json -o "$metadata"
           python3 -m pip download --disable-pip-version-check --no-deps --only-binary=:all: animasim==0.2.1 --dest "$download_dir"
           package="$(find "$download_dir" -maxdepth 1 -type f -name 'animasim-0.2.1-*.whl' -print -quit)"
           test -n "$package"
+          wheel_name="$(basename "$package")"
+          wheel_url="$(jq -r --arg name "$wheel_name" '.urls[] | select(.filename == $name) | .url' "$metadata")"
+          published_sha="$(jq -r --arg name "$wheel_name" '.urls[] | select(.filename == $name) | .digests.sha256' "$metadata")"
+          test -n "$wheel_url"
+          test "$published_sha" = "$(sha256sum "$package" | awk '{print $1}')"
           unzip -t "$package" >/tmp/animasim-wheel-test.txt
           unzip -Z1 "$package" >/tmp/animasim-files.txt
           wolf_path="$(awk 'tolower($0) ~ /(^|\/)wolf[^\/]*\.glb$/ {print; exit}' /tmp/animasim-files.txt)"
@@ -37,24 +44,28 @@ jobs:
           unzip -j "$package" "$wolf_path" -d "$extract"
           wolf_file="$extract/$(basename "$wolf_path")"
           test -s "$wolf_file"
-          strings "$wolf_file" | grep -iE 'idle|walk|run|attack|bite|death|jump|gallop|trot|canter|eat|kick|anim' | sort -fu | head -n 400 > HAVENLINE/ultimate-wolf-animation-strings.txt || true
+          python3 -c 'import json,struct,sys; data=open(sys.argv[1],"rb").read(); length,kind=struct.unpack_from("<I4s",data,12); assert kind==b"JSON"; doc=json.loads(data[20:20+length].decode("utf-8").rstrip(" \t\r\n\x00")); print("\n".join(a.get("name","") for a in doc.get("animations",[])))' "$wolf_file" > HAVENLINE/ultimate-wolf-animations.txt
+          animation_count="$(grep -cve '^$' HAVENLINE/ultimate-wolf-animations.txt)"
+          test "$animation_count" -ge 10
           jq -n \
             --arg package "animasim==0.2.1" \
             --arg upstream "Quaternius Ultimate Animated Animal Pack" \
             --arg license "CC0 1.0 model; MIT package code" \
-            --arg wheel_name "$(basename "$package")" \
+            --arg wheel_name "$wheel_name" \
+            --arg wheel_url "$wheel_url" \
             --arg wheel_sha256 "$(sha256sum "$package" | awk '{print $1}')" \
             --arg wheel_bytes "$(stat -c '%s' "$package")" \
             --arg wolf_archive_path "$wolf_path" \
             --arg wolf_sha256 "$(sha256sum "$wolf_file" | awk '{print $1}')" \
             --arg wolf_git_blob "$(git hash-object "$wolf_file")" \
             --arg wolf_bytes "$(stat -c '%s' "$wolf_file")" \
+            --arg animation_count "$animation_count" \
             --arg inspected_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{package:$package, upstream:$upstream, license:$license, wheel_name:$wheel_name, wheel_sha256:$wheel_sha256, wheel_bytes:($wheel_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), inspected_at:$inspected_at}' \
+            '{package:$package, upstream:$upstream, license:$license, wheel_name:$wheel_name, wheel_url:$wheel_url, wheel_sha256:$wheel_sha256, wheel_bytes:($wheel_bytes|tonumber), wolf_archive_path:$wolf_archive_path, wolf_sha256:$wolf_sha256, wolf_git_blob:$wolf_git_blob, wolf_bytes:($wolf_bytes|tonumber), animation_count:($animation_count|tonumber), inspected_at:$inspected_at}' \
             > HAVENLINE/ultimate-wolf-probe.json
           cp /tmp/animasim-files.txt HAVENLINE/ultimate-wolf-files.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add HAVENLINE/ultimate-wolf-probe.json HAVENLINE/ultimate-wolf-files.txt HAVENLINE/ultimate-wolf-animation-strings.txt
-          git commit -m "Record Ultimate Animated Animals wolf hashes"
+          git add HAVENLINE/ultimate-wolf-probe.json HAVENLINE/ultimate-wolf-files.txt HAVENLINE/ultimate-wolf-animations.txt
+          git commit -m "Record Ultimate Animated Animals wolf animation table"
           git push
