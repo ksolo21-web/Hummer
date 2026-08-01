@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-exact-unified-source-snapshot
+  group: msc-0141-exact-unified-source-snapshot-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - name: Check out application branch
+      - name: Check out exact reviewed repair source
         uses: actions/checkout@v6
         with:
-          ref: agent/my-study-companion-interactive-workbooks-0140
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Check out checksum-locked workbook payload
         uses: actions/checkout@v6
@@ -38,11 +38,32 @@ jobs:
         shell: bash
         run: python -m pip install --disable-pip-version-check Pillow==12.2.0
 
-      - name: Reconstruct exact unified 0.14.1 source without compiling legacy stages
+      - name: Reconstruct the exact reviewed 0.14.1 source
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
 
-      - name: Package exact unified application source
+      - name: Prove rejected themes and broken auth handling are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check MyStudyCompanionWeb/firebase-sync.js
+          node --check MyStudyCompanionWeb/app.js
+          node --test MyStudyCompanionWeb/appearance.test.mjs MyStudyCompanionWeb/study-library-merge.test.mjs
+          grep -Fq 'browserLocalPersistence' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'getRedirectResult' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'auth/popup-blocked' MyStudyCompanionWeb/firebase-sync.js
+          ! grep -Fq 'error?.code?.includes("popup")' MyStudyCompanionWeb/firebase-sync.js
+          for rejected in \
+            'Waterfall Serenity' 'Rainforest Harmony' 'Ocean Majesty' 'Celestial Wonder' \
+            'Mountain Sunrise' 'Creation Garden' 'Bible Sketch Study' 'Parable Line Panels' \
+            'Noah’s Ark' 'Red Sea Deliverance' 'Creation Sky' 'Bible Timeline' 'Bible Map'; do
+            ! grep -R -Fq "$rejected" MyStudyCompanion/app/src/main MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/index.html
+          done
+          grep -Fq 'Moonlit Wolf' MyStudyCompanionWeb/appearance.js
+          grep -Fq 'Sakura Tiger' MyStudyCompanionWeb/appearance.js
+          grep -Fq 'appearanceColorWheel' MyStudyCompanionWeb/index.html
+
+      - name: Package exact repaired application source
         shell: bash
         run: |
           set -euo pipefail
@@ -50,24 +71,22 @@ jobs:
           [[ -d MyStudyCompanionWeb ]] && paths+=(MyStudyCompanionWeb)
           [[ -d web ]] && paths+=(web)
           [[ -f firebase.json ]] && paths+=(firebase.json)
-          printf 'Packaging unified source roots:\n'
-          printf '  %s\n' "${paths[@]}"
           tar \
             --exclude='**/build' \
             --exclude='.gradle' \
             --exclude='node_modules' \
             --exclude='dist' \
             --exclude='final-dist' \
-            -czf msc-0.14.1-exact-unified-source.tgz \
+            -czf msc-0.14.1-auth-theme-repaired-source.tgz \
             "${paths[@]}"
-          sha256sum msc-0.14.1-exact-unified-source.tgz > EXACT-UNIFIED-SOURCE-SHA256.txt
+          sha256sum msc-0.14.1-auth-theme-repaired-source.tgz > EXACT-REPAIRED-SOURCE-SHA256.txt
 
-      - name: Upload exact unified source
+      - name: Upload exact repaired source
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-exact-unified-source
+          name: msc-0.14.1-auth-theme-repaired-source
           path: |
-            msc-0.14.1-exact-unified-source.tgz
-            EXACT-UNIFIED-SOURCE-SHA256.txt
-          retention-days: 2
+            msc-0.14.1-auth-theme-repaired-source.tgz
+            EXACT-REPAIRED-SOURCE-SHA256.txt
+          retention-days: 5
           if-no-files-found: error
