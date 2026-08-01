@@ -25,14 +25,16 @@ jobs:
           patch_fetch_assets="$(sha256sum HAVENLINE/overrides/patch_fetch_assets.py | awk '{print $1}')"
           patch_preflight="$(sha256sum HAVENLINE/overrides/patch_preflight.py | awk '{print $1}')"
           patch_gdscript_47="$(sha256sum HAVENLINE/overrides/patch_gdscript_47.py | awk '{print $1}')"
+          patch_runtime_47="$(sha256sum HAVENLINE/overrides/patch_runtime_47.py | awk '{print $1}')"
           jq -n \
             --arg final_composites "$final_composites" \
             --arg patch_fetch_assets "$patch_fetch_assets" \
             --arg patch_preflight "$patch_preflight" \
             --arg patch_gdscript_47 "$patch_gdscript_47" \
+            --arg patch_runtime_47 "$patch_runtime_47" \
             --arg head_sha "$GITHUB_SHA" \
             --arg recorded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{final_composites_sha256:$final_composites, patch_fetch_assets_sha256:$patch_fetch_assets, patch_preflight_sha256:$patch_preflight, patch_gdscript_47_sha256:$patch_gdscript_47, head_sha:$head_sha, recorded_at:$recorded_at}' \
+            '{final_composites_sha256:$final_composites, patch_fetch_assets_sha256:$patch_fetch_assets, patch_preflight_sha256:$patch_preflight, patch_gdscript_47_sha256:$patch_gdscript_47, patch_runtime_47_sha256:$patch_runtime_47, head_sha:$head_sha, recorded_at:$recorded_at}' \
             > HAVENLINE/override-hashes.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
