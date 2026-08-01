@@ -2,7 +2,7 @@ HAVENLINE production build authorization
 Source version: 0.2.0
 Verified source SHA-256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
 Source verification workflow run: 30697295578
-Android workflow revision: 0559a217a99de0128636cfc04be154bc19d4e219
+Android workflow revision: a41d853f7f333c35eda2d22d18f610dee24b27cb
 Final composition generator SHA-256: 71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5
 Pinned asset patch SHA-256: fdf8ba113899c5769aeaab2696f76e4378eb3645781ecc35d872bd3d5b09775f
 Strict validator patch SHA-256: 28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc
@@ -10,10 +10,10 @@ Godot 4.7 compatibility patch SHA-256: 74fcdefa4a7e5275a5ac4990306cb1f39ce86e964
 Runtime boot and shader patch SHA-256: 765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0
 Wolf state and quality-gate patch SHA-256: 5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a
 Android export patch SHA-256: 9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083
-Opening composition patch SHA-256: 7f3d73698bb425b73975777e6cb69926b7b51deae78c42f30b4674d54df69f44
+Opening composition patch SHA-256: e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432
 Ultimate wolf wheel SHA-256: d111ffc9782f09872846b09ac7868d41e126ef72e3153d9d0173d401be3277a3
 Ultimate wolf model SHA-256: aa06297d0e66568711885178d1d35e2ca1e392dceb05f988df0497de0274a705
 Ultimate wolf clips: 12 (Attack, Death, Eating, Gallop, Gallop_Jump, Idle variants, hit reactions, Jump_ToIdle, Walk)
 Authorized: 2026-08-01
-Run policy: checksum-locked final art, strict Godot import, full wolf combat validation, unobstructed production frame, ETC2/ASTC mobile textures, and ARM64 APK export
-Retry: remove invalid non-Gradle SDK overrides, enable Android texture compression before import, and correct opening camera composition
+Run policy: checksum-locked final art, strict Godot import, full wolf combat validation, visually clear production frame, ETC2/ASTC mobile textures, and ARM64 APK export
+Retry: recompose the opening as a centered camp corridor with the player south of the fire and tents pushed outward
