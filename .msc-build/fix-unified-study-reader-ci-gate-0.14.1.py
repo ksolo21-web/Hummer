@@ -34,8 +34,8 @@ unified_web_gate = """grep -Fq 'msc-web-v0142-complete-reader' MyStudyCompanionW
   grep -Fq 'TextToSpeech' \"$reader_ui\"
   grep -Fq 'RecognizerIntent.ACTION_RECOGNIZE_SPEECH' \"$reader_ui\"
   grep -Fq 'speechRate' \"$reader_ui\"
-  grep -Fq 'Icons.Default.Repeat' \"$reader_ui\"
-  grep -Fq 'Read note' \"$reader_ui\"
+  grep -Fq 'Icons.Outlined.Repeat' \"$reader_ui\"
+  grep -Fq 'Read my note' \"$reader_ui\"
   grep -Fq 'FamilyWorshipReminderWorker' \"$family_reminder\"
   grep -Fq 'safeDrawingPadding()' \"$app_shell\"
   grep -Fq 'AppRoute.FAMILY, \"Family Hub\"' \"$app_shell\"
@@ -107,8 +107,8 @@ required = (
     "mergeStudyReaderPackets",
     "revisionByDocument",
     "FamilyWorshipReminderWorker",
-    "Icons.Default.Repeat",
-    "Read note",
+    "Icons.Outlined.Repeat",
+    "Read my note",
     "safeDrawingPadding()",
     "Family Hub",
     "STUDY READER",
