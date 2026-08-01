@@ -66,22 +66,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          paths=(MyStudyCompanion)
+          [[ -d web ]] && paths+=(web)
+          [[ -f firebase.json ]] && paths+=(firebase.json)
+          printf 'Packaging source roots:\n'
+          printf '  %s\n' "${paths[@]}"
           tar \
             --exclude='**/build' \
             --exclude='.gradle' \
             --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='final-dist' \
             -czf msc-0.14.1-exact-source.tgz \
-            MyStudyCompanion/app/src \
-            MyStudyCompanion/wear/src \
-            MyStudyCompanion/web \
-            MyStudyCompanion/app/build.gradle.kts \
-            MyStudyCompanion/wear/build.gradle.kts \
-            MyStudyCompanion/build.gradle.kts \
-            MyStudyCompanion/settings.gradle.kts \
-            MyStudyCompanion/gradle.properties \
-            MyStudyCompanion/gradle/libs.versions.toml \
-            MyStudyCompanion/firestore.rules \
-            MyStudyCompanion/firebase.json
+            "${paths[@]}"
           sha256sum msc-0.14.1-exact-source.tgz > EXACT-SOURCE-SHA256.txt
 
       - name: Upload exact source
