@@ -3,8 +3,8 @@ set -euo pipefail
 
 # The reconstruction overlays include older copies of the final CI-gate editor.
 # Preserve the repaired exact-head version before rebuilding the historical
-# source stack, then restore it immediately before the theme/live overlays add
-# their checks. This prevents an old gate layout from aborting the real build.
+# source stack, then restore it immediately before the theme and production
+# overlays add their checks.
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py \
   /tmp/msc-final-gate-0.14.1.py
 
@@ -55,8 +55,6 @@ cp /tmp/msc-final-gate-0.14.1.py \
 bash .msc-build/apply-theme-gallery-0.14.1.sh
 bash .msc-build/apply-live-release-completion-0.14.1.sh
 bash .msc-build/apply-production-live-stack-0.14.1.sh
-python3 .msc-build/apply-auth-theme-repair-0.14.1.py
-python3 .msc-build/fix-rejected-theme-runtime-references-0.14.1.py
-python3 .msc-build/fix-auth-theme-repair-ci-gates-0.14.1.py
+python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 
-echo 'Reconstructed My Study Companion 0.14.1 with the Google sign-in regression repaired, every rejected experimental theme reference removed, the approved original and animal themes retained, and the visual color wheel preserved.'
+echo 'Reconstructed My Study Companion 0.14.1 with the reliable 0.13.0 Google sign-in lifecycle restored, all 23 approved themes preserved as polished static themes, no live themes, and the visual color wheel retained.'
