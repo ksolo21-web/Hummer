@@ -56,10 +56,15 @@ for entry in manifest["files"]:
 
 ci_dir = repo / "HAVENLINE_PRODUCTION" / "ci"
 sys.path.insert(0, str(ci_dir))
-from production_patches import apply as apply_production_patches  # noqa: E402
 from visual_refinement import apply as apply_visual_refinement  # noqa: E402
 
-apply_production_patches(project)
+legacy_path = ci_dir / "production_patches.py"
+legacy_spec = importlib.util.spec_from_file_location("havenline_legacy_production_patches", legacy_path)
+if legacy_spec is None or legacy_spec.loader is None:
+    raise SystemExit(f"HAVENLINE could not load legacy production patches: {legacy_path}")
+legacy_module = importlib.util.module_from_spec(legacy_spec)
+legacy_spec.loader.exec_module(legacy_module)
+legacy_module.apply(project)
 
 encoded_dir = ci_dir / "encoded"
 decoded_dir = out / ".decoded-ci"
