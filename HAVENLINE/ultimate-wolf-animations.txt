@@ -1,0 +1,12 @@
+Attack
+Death
+Eating
+Gallop
+Gallop_Jump
+Idle
+Idle_2
+Idle_2_HeadLow
+Idle_HitReact1
+Idle_HitReact2
+Jump_ToIdle
+Walk
