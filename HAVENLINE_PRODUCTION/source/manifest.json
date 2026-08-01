@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0-production-slice",
+  "archive_sha256": "88526abc336015540573103a96de465d11d58fbac37825e0359645abab6b59bc",
+  "archive_encoding": "base64",
+  "file_count": 13,
+  "engine": "Godot 4.7.1 Mobile",
+  "files": [
+    {"path":".gitignore","bytes":27,"sha256":"8cd87f28aff04d3e00fea4299b2f104996851e1e454e495ad839380e1ca1b7da"},
+    {"path":"README.md","bytes":973,"sha256":"d8f78d8d0d37af3a49dcf5f03187137e2d029d6c6c093cb37ae4907690f7615e"},
+    {"path":"export_presets.cfg","bytes":707,"sha256":"ca730a9fc5d8d1120b00dd02f7dc75f186715a7550806b8e99240097c9b40b1d"},
+    {"path":"main.tscn","bytes":162,"sha256":"a247980ac7042a67da18a5941474d680bc176fa3ec1512f065b745efbcebbb4a"},
+    {"path":"project.godot","bytes":1450,"sha256":"a67dbbf29ce5b8cfe1284b90d8be634b12bb91603a5f81197a373ddead72fcb8"},
+    {"path":"scripts/art_factory.gd","bytes":11121,"sha256":"ce7b9683f8a603f2aa8e47f6fc420d1084f8c2d3d2046c6e8b094cf62fae0dc8"},
+    {"path":"scripts/gameplay.gd","bytes":5561,"sha256":"178114fa1dd77aaabb27f5b189199be36be0c92625d13af98d884fc5e2e21025"},
+    {"path":"scripts/hud.gd","bytes":4494,"sha256":"7872aa0c085a1ff1b9d66f0254b61475a69db188429914c211801fe99607b495"},
+    {"path":"scripts/main.gd","bytes":5655,"sha256":"3fe85354578e5ac7cf0a1ce5d04871779cc31ab757ef3db5a4ce2fb89d2d6f75"},
+    {"path":"scripts/mobile_joystick.gd","bytes":1739,"sha256":"33e7b77f8862d7472af354dbf41831a25e4982683c258b8149d0cd60e54ec9a9"},
+    {"path":"scripts/player.gd","bytes":3495,"sha256":"884059ab48baa76091fe277c4373721f1d71d4d90c6dd4a35012908254842a65"},
+    {"path":"shaders/snow.gdshader","bytes":903,"sha256":"ed3750ec0166f155158fb52320e3e1a38151e4e3c26377c348418f466c429020"},
+    {"path":"tests/runtime_gate.gd","bytes":1607,"sha256":"12e8e084fef64febcd4755268f06c64566deb95fd1a633ac7f787e91ab870148"}
+  ]
+}
