@@ -67,6 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           paths=(MyStudyCompanion)
+          [[ -d MyStudyCompanionWeb ]] && paths+=(MyStudyCompanionWeb)
           [[ -d web ]] && paths+=(web)
           [[ -f firebase.json ]] && paths+=(firebase.json)
           printf 'Packaging source roots:\n'
