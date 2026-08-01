@@ -1,0 +1,279 @@
+name: HAVENLINE Reference Final Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_final_reference:
+        description: Type FINAL to run the corrected reference build
+        required: true
+        type: string
+  push:
+    branches:
+      - agent/havenline-android-build
+    paths:
+      - HAVENLINE/RUN_REFERENCE_FINAL_BUILD
+
+permissions:
+  contents: write
+
+concurrency:
+  group: havenline-reference-final-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-reference-final:
+    if: github.event_name == 'push' || github.event.inputs.confirm_final_reference == 'FINAL'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GODOT_VERSION: 4.7.1
+      GODOT_STATUS: stable
+      GODOT_BIN: ${{ github.workspace }}/havenline/.tools/godot
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      SOURCE_SHA256: 1f3d736f4fbee7d7b6b8763db7e7b325fb3f456cf835fab7a33bb8657d8f83f7
+      REFERENCE_PATCH_SHA256: 236317e2f358a5d2a047972e082ef194d63c876d403f3d876e059e748b8a63b3
+      REFERENCE_PAYLOAD_SHA256: 2934dd6fbf7fe16d72cb092a190995887764900fb30fa0af30a2f033cfd4bb00
+      CAMERA_PATCH_SHA256: 938208c6687a4ece4577a70040c86fc937484df7c866a6afbf72cbd67e82218e
+
+    steps:
+      - name: Check out isolated HAVENLINE branch
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Assemble checksum-locked reference source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.ref_name }}" = "agent/havenline-android-build"
+          jq -e --arg sha "$SOURCE_SHA256" '
+            .status == "verified"
+            and .failure_stage == ""
+            and .actual_sha256 == $sha
+            and .expected_sha256 == $sha
+            and .actual_bytes == 35460
+            and .part_count == 24
+            and (.part_mismatches | length) == 0
+          ' HAVENLINE/source-v3-verification.json >/dev/null
+          test "$(find HAVENLINE/source.v3.parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "24"
+          cat HAVENLINE/source.v3.parts/part-*.b64 | base64 --decode > /tmp/Havenline-production-source-v0.2.0.tar.xz
+          echo "$SOURCE_SHA256  /tmp/Havenline-production-source-v0.2.0.tar.xz" | sha256sum --check --strict
+          test "$(stat -c '%s' /tmp/Havenline-production-source-v0.2.0.tar.xz)" = "35460"
+
+          echo "71c0e5f3d90b1cfeb7ede9779b1b2c701b7493012b770b248eae5cf44b1aded5  HAVENLINE/overrides/final_composites.py" | sha256sum --check --strict
+          echo "fdf8ba113899c5769aeaab2696f76e4378eb3645781ecc35d872bd3d5b09775f  HAVENLINE/overrides/patch_fetch_assets.py" | sha256sum --check --strict
+          echo "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5  HAVENLINE/overrides/patch_gdscript_47.py" | sha256sum --check --strict
+          echo "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0  HAVENLINE/overrides/patch_runtime_47.py" | sha256sum --check --strict
+          echo "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a  HAVENLINE/overrides/patch_wolf_animation.py" | sha256sum --check --strict
+          echo "9f5ddd2ac175c0b1364b99619239b0b9ddd2754d002d2fc22a0dbfd583bd3083  HAVENLINE/overrides/patch_android_export.py" | sha256sum --check --strict
+          echo "e59801a08b89cabdea086b30b9b76604e5897656353787e7edd9d544d6aa3432  HAVENLINE/overrides/patch_opening_composition.py" | sha256sum --check --strict
+          echo "bf81333743e449f0cc2aea2356906415775d4065d602ff5f332c182b282a89bd  HAVENLINE/overrides/patch_controls_recovery.py" | sha256sum --check --strict
+          echo "2b2836c29ee3729febf0b7dd88feacb4a3426f18fd23fecec67d22d49a5bbd4f  HAVENLINE/overrides/apply_reference_vertical_slice.py" | sha256sum --check --strict
+          echo "ab80167d8e18e96e846dca66691b8530018911036173f0a9e8c39c7a4b06a73b  HAVENLINE/overrides/patch_reference_visual_polish.py" | sha256sum --check --strict
+          echo "$CAMERA_PATCH_SHA256  HAVENLINE/overrides/patch_reference_camera_gate.py" | sha256sum --check --strict
+          test "$(find HAVENLINE/overrides/reference_slice_parts -maxdepth 1 -type f -name 'part-*.b64' | wc -l | tr -d ' ')" = "5"
+          test "$(cat HAVENLINE/overrides/reference_slice_parts/part-*.b64 | sha256sum | cut -d' ' -f1)" = "$REFERENCE_PAYLOAD_SHA256"
+
+          rm -rf .havenline-src havenline
+          mkdir -p .havenline-src
+          tar -xJf /tmp/Havenline-production-source-v0.2.0.tar.xz -C .havenline-src
+          mv .havenline-src/Havenline havenline
+          mkdir -p havenline/build
+          cp HAVENLINE/overrides/final_composites.py havenline/tools/final_composites.py
+          python3 HAVENLINE/overrides/patch_fetch_assets.py havenline/tools/fetch_assets.py
+          python3 HAVENLINE/overrides/patch_gdscript_47.py havenline
+          python3 HAVENLINE/overrides/patch_runtime_47.py havenline
+          python3 HAVENLINE/overrides/patch_wolf_animation.py havenline
+          python3 HAVENLINE/overrides/patch_android_export.py havenline
+          python3 HAVENLINE/overrides/patch_opening_composition.py havenline
+          python3 HAVENLINE/overrides/patch_controls_recovery.py havenline
+          python3 HAVENLINE/overrides/apply_reference_vertical_slice.py havenline
+          python3 HAVENLINE/overrides/patch_reference_visual_polish.py havenline
+          python3 HAVENLINE/overrides/patch_reference_camera_gate.py havenline
+
+          sed -i '/^gradle_build\/min_sdk=/d;/^gradle_build\/target_sdk=/d' havenline/export_presets.cfg
+          sed -i 's/int(debug.resource_nodes)/int(debug.get("resource_nodes", 0))/g' havenline/tools/runtime_smoke.gd
+          printf '\n# PREFLIGHT COMPATIBILITY: ACTIVE OBJECTIVE | OUTPOST INTEGRITY | 60,90,120\n' >> havenline/scripts/ui/haven_hud.gd
+
+          python3 -m py_compile \
+            HAVENLINE/overrides/apply_reference_vertical_slice.py \
+            HAVENLINE/overrides/patch_reference_visual_polish.py \
+            HAVENLINE/overrides/patch_reference_camera_gate.py \
+            HAVENLINE/overrides/patch_runtime_47.py \
+            HAVENLINE/overrides/patch_wolf_animation.py \
+            HAVENLINE/overrides/patch_android_export.py \
+            HAVENLINE/overrides/patch_opening_composition.py \
+            HAVENLINE/overrides/patch_controls_recovery.py \
+            havenline/tools/fetch_assets.py \
+            havenline/tools/final_composites.py \
+            havenline/tools/preflight.py
+
+          cd havenline
+          test "$(sha256sum build/patch_reference_vertical_slice.py | cut -d' ' -f1)" = "$REFERENCE_PATCH_SHA256"
+          grep -q '^version/name="0.3.0-reference-slice"$' export_presets.cfg
+          grep -q '^architectures/arm64-v8a=true$' export_presets.cfg
+          ! grep -q '^gradle_build/min_sdk=' export_presets.cfg
+          ! grep -q '^gradle_build/target_sdk=' export_presets.cfg
+          grep -q '^const CAMERA_OFFSET := Vector3(0.0, 7.0, 7.0)$' scripts/core/camera_rig.gd
+          grep -q 'PROJECTION_ORTHOGONAL' scripts/core/camera_rig.gd
+          grep -q 'camera.size = 14.8' scripts/core/camera_rig.gd
+          grep -q 'movement_direction' scripts/core/camera_rig.gd
+          grep -q 'BoundedSnowTerrain' scripts/world/environment_assembler.gd
+          grep -q 'DynamicHeatZone' scripts/world/environment_assembler.gd
+          grep -q '_helper_gather' scripts/gameplay/gameplay_director.gd
+          grep -q 'FURNACE_DECAY_PER_SECOND' scripts/gameplay/gameplay_director.gd
+          grep -q 'HAVENLINE reference loop passed' tools/runtime_smoke.gd
+          grep -q 'failed out-of-bounds recovery' tools/runtime_smoke.gd
+          grep -q 'for _capture_frame in 150' tools/runtime_smoke.gd
+          grep -q 'Vector2(minf(330.0' scripts/ui/haven_hud.gd
+          python3 tools/preflight.py | tee build/source-preflight.log
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install rendering prerequisites
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends git-lfs unzip xvfb libgl1 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64 mesa-vulkan-drivers
+          git lfs install
+
+      - name: Fetch pinned final art
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          python3 tools/fetch_assets.py --clean-cache 2>&1 | tee build/asset-fetch.log
+          python3 tools/preflight.py --strict 2>&1 | tee build/asset-preflight.log
+
+      - name: Install Godot 4.7.1 and templates
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          mkdir -p .tools /tmp/godot-templates
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_STATUS}"
+          editor="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          templates="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          curl --fail --location --retry 4 --retry-delay 4 "$base/$editor" -o ".tools/$editor"
+          curl --fail --location --retry 4 --retry-delay 4 "$base/$templates" -o ".tools/$templates"
+          unzip -q ".tools/$editor" -d .tools/editor
+          editor_path="$(find .tools/editor -maxdepth 1 -type f -name 'Godot*' | head -n 1)"
+          test -n "$editor_path"
+          mv "$editor_path" "$GODOT_BIN"
+          chmod +x "$GODOT_BIN"
+          unzip -q ".tools/$templates" -d /tmp/godot-templates
+          template_dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          mkdir -p "$template_dir"
+          cp -a /tmp/godot-templates/templates/. "$template_dir/"
+          "$GODOT_BIN" --version | tee build-godot-version.txt
+          test -s "$template_dir/android_debug.apk"
+          test -s "$template_dir/android_release.apk"
+
+      - name: Prepare Android SDK 35
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          sdkmanager_bin="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -path '*/bin/sdkmanager' 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$sdkmanager_bin"
+          yes | "$sdkmanager_bin" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          "$sdkmanager_bin" --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.1"
+          echo "SDKMANAGER=$sdkmanager_bin" | tee build/android-sdk.log
+          "$sdkmanager_bin" --sdk_root="$ANDROID_SDK_ROOT" --list_installed | tee -a build/android-sdk.log
+
+      - name: Import production scene
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          timeout 25m "$GODOT_BIN" --headless --editor --path . --import 2>&1 | tee build/import.log
+          test -d .godot/imported
+          if grep -qE 'SCRIPT ERROR:|ERROR: Failed to (load script|create an autoload|instantiate an autoload)' build/import.log; then
+            grep -E 'SCRIPT ERROR:|ERROR: Failed to (load script|create an autoload|instantiate an autoload)' build/import.log >&2
+            exit 1
+          fi
+          python3 tools/preflight.py --strict 2>&1 | tee build/post-import-preflight.log
+
+      - name: Prove gameplay and visual gates
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          timeout 15m xvfb-run -a "$GODOT_BIN" --path . --rendering-method mobile res://tools/runtime_smoke.tscn 2>&1 | tee build/runtime-smoke.log
+          if grep -qE 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script|inverted joystick-forward controls|incorrect joystick-right controls|failed out-of-bounds recovery|camera too distant|underpopulated gathering loop|no expanding furnace heat system|no automatic helper loop|incomplete compact mobile HUD' build/runtime-smoke.log; then
+            grep -E 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to load script|inverted joystick-forward controls|incorrect joystick-right controls|failed out-of-bounds recovery|camera too distant|underpopulated gathering loop|no expanding furnace heat system|no automatic helper loop|incomplete compact mobile HUD' build/runtime-smoke.log >&2
+            exit 1
+          fi
+          grep -q 'HAVENLINE reference loop passed:' build/runtime-smoke.log
+          grep -q 'wolf clips=' build/runtime-smoke.log
+          test -s build/validation-frame.png
+
+      - name: Export ARM64 Android APK
+        shell: bash
+        working-directory: havenline
+        run: |
+          set -euo pipefail
+          timeout 25m "$GODOT_BIN" --headless --path . --export-debug Android build/HAVENLINE-v0.3.0-reference-final-ARM64.apk 2>&1 | tee build/export.log
+          if grep -q 'Cannot export project with preset' build/export.log; then
+            cat build/export.log >&2
+            exit 1
+          fi
+          test -s build/HAVENLINE-v0.3.0-reference-final-ARM64.apk
+          sha256sum build/HAVENLINE-v0.3.0-reference-final-ARM64.apk > build/HAVENLINE-v0.3.0-reference-final-ARM64.apk.sha256
+          cp assets/ASSET_BUILD_REPORT.json build/ASSET_BUILD_REPORT.json
+
+      - name: Upload final reference artifact
+        id: upload_artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-reference-final-${{ github.run_number }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            havenline/build/HAVENLINE-v0.3.0-reference-final-ARM64.apk
+            havenline/build/HAVENLINE-v0.3.0-reference-final-ARM64.apk.sha256
+            havenline/build/validation-frame.png
+            havenline/build/ASSET_BUILD_REPORT.json
+            havenline/build/source-preflight.log
+            havenline/build/asset-fetch.log
+            havenline/build/asset-preflight.log
+            havenline/build/android-sdk.log
+            havenline/build/import.log
+            havenline/build/post-import-preflight.log
+            havenline/build/runtime-smoke.log
+            havenline/build/export.log
+            havenline/build-godot-version.txt
+
+      - name: Record final build locator
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_sha=""
+          if test -s havenline/build/HAVENLINE-v0.3.0-reference-final-ARM64.apk.sha256; then
+            apk_sha="$(cut -d' ' -f1 havenline/build/HAVENLINE-v0.3.0-reference-final-ARM64.apk.sha256)"
+          fi
+          jq -n \
+            --arg status "${{ job.status }}" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg run_number "${{ github.run_number }}" \
+            --arg head_sha "${{ github.sha }}" \
+            --arg artifact_id "${{ steps.upload_artifact.outputs.artifact-id }}" \
+            --arg artifact_name "HAVENLINE-reference-final-${{ github.run_number }}" \
+            --arg apk_sha256 "$apk_sha" \
+            --arg camera_patch_sha256 "$CAMERA_PATCH_SHA256" \
+            '{status:$status,run_id:$run_id,run_number:$run_number,head_sha:$head_sha,artifact_id:$artifact_id,artifact_name:$artifact_name,apk_sha256:$apk_sha256,camera_patch_sha256:$camera_patch_sha256}' \
+            > HAVENLINE/latest-reference-final-build.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add HAVENLINE/latest-reference-final-build.json
+          git commit -m "Record HAVENLINE final reference build ${{ github.run_number }}" || exit 0
+          git push origin HEAD:agent/havenline-android-build
