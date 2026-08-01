@@ -131,9 +131,9 @@ jobs:
             npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           fi
 
-      - name: Run 26 Firestore security tests
+      - name: Run and capture 26 Firestore security tests
         shell: bash
-        run: bash .msc-build/run-interactive-workbooks-0.14.0-ci.sh firestore
+        run: bash .msc-build/run-firestore-study-reader-0.14.1-ci.sh
 
       - uses: actions/upload-artifact@v6
         with:
