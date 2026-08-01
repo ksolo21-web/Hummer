@@ -21,7 +21,7 @@ jobs:
       - name: Locate and record production run
         env:
           GH_TOKEN: ${{ github.token }}
-          PRODUCTION_SHA: b40ed774acc63491afb955d3397fb4cc1bff6e15
+          PRODUCTION_SHA: 171e2526bb028af6642a09287c9f9dec6e9636c4
         shell: bash
         run: |
           set -euo pipefail
