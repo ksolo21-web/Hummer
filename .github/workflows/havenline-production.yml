@@ -1,0 +1,146 @@
+name: HAVENLINE Production Rebuild
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - HAVENLINE_PRODUCTION/**
+      - .github/workflows/havenline-production.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: havenline-production-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render-and-android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GODOT_VERSION: 4.7.1
+      GODOT_STATUS: stable
+      PROJECT_DIR: ${{ github.workspace }}/.havenline-production/havenline_production
+      GODOT_BIN: ${{ github.workspace }}/.tools/godot
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
+    steps:
+      - name: Check out production branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || 'agent/havenline-production-rebuild' }}
+          fetch-depth: 1
+          lfs: false
+
+      - name: Reconstruct and verify clean production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 HAVENLINE_PRODUCTION/ci/assemble_source.py "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.havenline-production" | tee "$GITHUB_WORKSPACE/source-assembly.log"
+          test -f "$PROJECT_DIR/project.godot"
+          test -f "$PROJECT_DIR/tests/runtime_gate.gd"
+
+      - name: Install rendering prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends unzip xvfb libgl1 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 libasound2t64 mesa-vulkan-drivers
+
+      - name: Install official Godot 4.7.1 editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/.tools/editor"
+          editor="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          url="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${editor}"
+          curl --fail --location --retry 5 --retry-delay 5 "$url" -o "$GITHUB_WORKSPACE/.tools/$editor"
+          unzip -q "$GITHUB_WORKSPACE/.tools/$editor" -d "$GITHUB_WORKSPACE/.tools/editor"
+          editor_path="$(find "$GITHUB_WORKSPACE/.tools/editor" -maxdepth 1 -type f -name 'Godot*' | head -n 1)"
+          test -n "$editor_path"
+          mv "$editor_path" "$GODOT_BIN"
+          chmod +x "$GODOT_BIN"
+          "$GODOT_BIN" --version | tee "$GITHUB_WORKSPACE/godot-version.txt"
+
+      - name: Import and compile the exact scene
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROJECT_DIR/build"
+          timeout 25m "$GODOT_BIN" --headless --editor --path "$PROJECT_DIR" --import 2>&1 | tee "$PROJECT_DIR/build/import.log"
+          if grep -qE 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to (load script|create an autoload|instantiate an autoload)|Parse Error:' "$PROJECT_DIR/build/import.log"; then
+            grep -E 'SCRIPT ERROR:|SHADER ERROR:|ERROR: Failed to (load script|create an autoload|instantiate an autoload)|Parse Error:' "$PROJECT_DIR/build/import.log" >&2
+            exit 1
+          fi
+
+      - name: Prove gameplay and capture exact rendered frame
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 15m xvfb-run -a "$GODOT_BIN" --path "$PROJECT_DIR" --rendering-method mobile --script res://tests/runtime_gate.gd 2>&1 | tee "$PROJECT_DIR/build/runtime-gate.log"
+          grep -q 'HAVENLINE production gate passed:' "$PROJECT_DIR/build/runtime-gate.log"
+          test -s "$PROJECT_DIR/build/validation-frame.png"
+
+      - name: Install Java 17 and Android SDK components
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare Android SDK and debug signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager_bin="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -path '*/bin/sdkmanager' 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$sdkmanager_bin"
+          yes | "$sdkmanager_bin" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
+          "$sdkmanager_bin" --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.1"
+          mkdir -p "$HOME/.android"
+          if ! test -s "$HOME/.android/debug.keystore"; then
+            keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -dname 'CN=Android Debug,O=HAVENLINE,C=US' -keyalg RSA -keysize 2048 -validity 10000
+          fi
+
+      - name: Install official Android export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          templates="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          url="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${templates}"
+          curl --fail --location --retry 5 --retry-delay 8 "$url" -o "$GITHUB_WORKSPACE/.tools/$templates"
+          rm -rf "$GITHUB_WORKSPACE/.tools/templates"
+          mkdir -p "$GITHUB_WORKSPACE/.tools/templates"
+          unzip -q "$GITHUB_WORKSPACE/.tools/$templates" -d "$GITHUB_WORKSPACE/.tools/templates"
+          template_dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          mkdir -p "$template_dir"
+          cp -a "$GITHUB_WORKSPACE/.tools/templates/templates/." "$template_dir/"
+          test -s "$template_dir/android_debug.apk"
+
+      - name: Export and verify ARM64 Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 30m "$GODOT_BIN" --headless --path "$PROJECT_DIR" --export-debug Android "$PROJECT_DIR/build/HAVENLINE-production-arm64.apk" 2>&1 | tee "$PROJECT_DIR/build/android-export.log"
+          test -s "$PROJECT_DIR/build/HAVENLINE-production-arm64.apk"
+          unzip -tq "$PROJECT_DIR/build/HAVENLINE-production-arm64.apk"
+          sha256sum "$PROJECT_DIR/build/HAVENLINE-production-arm64.apk" > "$PROJECT_DIR/build/HAVENLINE-production-arm64.apk.sha256"
+
+      - name: Upload APK, rendered proof, and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-production-${{ github.run_number }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            .havenline-production/havenline_production/build/HAVENLINE-production-arm64.apk
+            .havenline-production/havenline_production/build/HAVENLINE-production-arm64.apk.sha256
+            .havenline-production/havenline_production/build/validation-frame.png
+            .havenline-production/havenline_production/build/import.log
+            .havenline-production/havenline_production/build/runtime-gate.log
+            .havenline-production/havenline_production/build/android-export.log
+            source-assembly.log
+            godot-version.txt
