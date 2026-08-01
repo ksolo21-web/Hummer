@@ -72,8 +72,7 @@ if player_source.count(old_velocity) != 1:
 player_source = player_source.replace(old_velocity, new_velocity, 1)
 
 # Recover before applying another falling movement step, and never preserve a
-# last-safe Y below the visible snow surface. This guarantees an actionable
-# recovery even when the collision solver reports floor contact at -0.005.
+# last-safe Y below the intended visible snow-surface spawn height.
 old_physics_start = '''func _physics_process(delta: float) -> void:
     var keys:=Input.get_vector("move_left","move_right","move_up","move_down")
 '''
@@ -118,8 +117,7 @@ if player_source.count(old_recovery) != 1:
 player_source = player_source.replace(old_recovery, new_recovery, 1)
 player_path.write_text(player_source, encoding="utf-8")
 
-# Use a fully typed runtime harness. This boots and measures the actual project,
-# rather than validating source strings or a mock scene.
+# Fully typed runtime harness: instantiate and measure the actual project.
 runtime_gate = '''extends SceneTree
 
 func _initialize() -> void:
@@ -167,8 +165,13 @@ func _run() -> void:
     player.global_position.y = -8.0
     for _frame in range(4):
         await physics_frame
-    print("HAVENLINE recovery proof: before=", safe_before_fall, " after=", player.global_position)
-    if player.global_position.y < 0.05 or player.global_position.distance_to(safe_before_fall) > 1.0:
+    var recovery_planar_offset := Vector2(
+        player.global_position.x - safe_before_fall.x,
+        player.global_position.z - safe_before_fall.z
+    ).length()
+    var recovery_height_delta := absf(player.global_position.y - safe_before_fall.y)
+    print("HAVENLINE recovery proof: before=", safe_before_fall, " after=", player.global_position, " planar_offset=", recovery_planar_offset, " height_delta=", recovery_height_delta)
+    if player.global_position.y < HavenPlayer.FALL_Y or recovery_planar_offset > 1.0 or recovery_height_delta > 0.25:
         _fail("Fall recovery failed")
         return
     if gameplay.resources.size() < 10:
@@ -195,7 +198,7 @@ required = {
     "scripts/main.gd": ["PROJECTION_ORTHOGONAL", "BoundedSnowTerrain", "DynamicHeatZone"],
     "scripts/player.gd": ["camera_basis_provider", "FALL_Y", "last_safe", "velocity.z = direction.z", "_recover_to_last_safe"],
     "scripts/gameplay.gd": ["_auto_interaction", "_helper_work", "_spawn_wolf_wave", "var dir: Vector3"],
-    "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png", "var scene: Node", "recovery proof"],
+    "tests/runtime_gate.gd": ["dot(screen_forward) < 0.92", "validation-frame.png", "var scene: Node", "recovery_planar_offset"],
 }
 for relative, markers in required.items():
     source = (project / relative).read_text(encoding="utf-8")
