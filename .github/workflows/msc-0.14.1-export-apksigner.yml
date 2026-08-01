@@ -1,0 +1,49 @@
+name: My Study Companion 0.14.1 APK Signer Tool
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-apksigner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact repair source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android APK signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;36.0.0"
+          JAR="$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar"
+          test -s "$JAR"
+          mkdir -p apk-signer-tool
+          cp "$JAR" apk-signer-tool/apksigner-36.0.0.jar
+          sha256sum apk-signer-tool/apksigner-36.0.0.jar > apk-signer-tool/SHA256SUMS.txt
+
+      - name: Upload APK signer tool
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-apksigner-36.0.0
+          path: apk-signer-tool
+          retention-days: 5
+          if-no-files-found: error
