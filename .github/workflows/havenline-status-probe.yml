@@ -38,6 +38,7 @@ jobs:
           unzip -j "$archive" "$wolf_path" -d "$extract"
           wolf_file="$extract/$(basename "$wolf_path")"
           test -s "$wolf_file"
+          strings "$wolf_file" | grep -iE 'idle|walk|run|attack|bite|death|jump|gallop|trot|canter|animstack|animationstack' | sort -fu | head -n 250 > HAVENLINE/animated-wolf-animation-strings.txt || true
           jq -n \
             --arg source_url "$PACK_URL" \
             --arg license "CC0 1.0" \
@@ -53,6 +54,6 @@ jobs:
           cp /tmp/quaternius-files.txt HAVENLINE/animated-wolf-files.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add HAVENLINE/animated-wolf-probe.json HAVENLINE/animated-wolf-files.txt
-          git commit -m "Record Quaternius animated wolf hashes"
+          git add HAVENLINE/animated-wolf-probe.json HAVENLINE/animated-wolf-files.txt HAVENLINE/animated-wolf-animation-strings.txt
+          git commit -m "Record Quaternius animated wolf clip evidence"
           git push
