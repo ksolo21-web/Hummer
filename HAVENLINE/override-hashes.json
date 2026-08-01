@@ -4,7 +4,7 @@
   "patch_preflight_sha256": "28496fb297f5b9f45bbd4c819f9a622431d521df304720c72ad59a1317589dfc",
   "patch_gdscript_47_sha256": "74fcdefa4a7e5275a5ac4990306cb1f39ce86e964782e4eeafcdb7373aa941e5",
   "patch_runtime_47_sha256": "765f8f2365c0c6075751b45cd982b9b95d3f53c828106487c11c885f89d316a0",
-  "patch_wolf_animation_sha256": "b855f0f63adfcfce28b5caaca750d9cadaa5c143a0232c570e4258f439b25720",
-  "head_sha": "8ac53be14619e25f23cb3f6a67d5618e911c36de",
-  "recorded_at": "2026-08-01T13:06:24Z"
+  "patch_wolf_animation_sha256": "5cbde545605234eae3a85e1fdf8f33729040d2b1ad361aabf035b09b542f562a",
+  "head_sha": "03ef432eb61936856e8c3d88f2328c42194da74c",
+  "recorded_at": "2026-08-01T13:07:52Z"
 }
