@@ -1,7 +1,8 @@
 {
   "version": "1.0.0-production-slice",
-  "archive_sha256": "88526abc336015540573103a96de465d11d58fbac37825e0359645abab6b59bc",
-  "archive_encoding": "base64",
+  "archive_sha256": "721c2571cc54630b85d9a7c2c377e4a217210a69ebe189b34a9c031986d71e2c",
+  "archive_encoding": "base64-parts",
+  "part_count": 4,
   "file_count": 13,
   "engine": "Godot 4.7.1 Mobile",
   "files": [
@@ -17,6 +18,6 @@
     {"path":"scripts/mobile_joystick.gd","bytes":1739,"sha256":"33e7b77f8862d7472af354dbf41831a25e4982683c258b8149d0cd60e54ec9a9"},
     {"path":"scripts/player.gd","bytes":3495,"sha256":"884059ab48baa76091fe277c4373721f1d71d4d90c6dd4a35012908254842a65"},
     {"path":"shaders/snow.gdshader","bytes":903,"sha256":"ed3750ec0166f155158fb52320e3e1a38151e4e3c26377c348418f466c429020"},
-    {"path":"tests/runtime_gate.gd","bytes":1607,"sha256":"12e8e084fef64febcd4755268f06c64566deb95fd1a633ac7f787e91ab870148"}
+    {"path":"tests/runtime_gate.gd","bytes":1973,"sha256":"afb617640c4c75de3dcb3ebf4a72c370b4821db4c8ed93ac7905f4ff87b43e01"}
   ]
 }
