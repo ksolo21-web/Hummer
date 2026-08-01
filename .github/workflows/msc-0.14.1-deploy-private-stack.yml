@@ -70,6 +70,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
       - name: Validate non-secret deployment configuration
         shell: bash
         run: |
@@ -97,7 +101,9 @@ jobs:
         run: |
           set -euo pipefail
           for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
-          node --test MyStudyCompanionWeb/study-library-merge.test.mjs
+          node --test \
+            MyStudyCompanionWeb/appearance.test.mjs \
+            MyStudyCompanionWeb/study-library-merge.test.mjs
           python -m pip install --disable-pip-version-check \
             -r MyStudyCompanion/backend/requirements.txt \
             -r MyStudyCompanion/backend/requirements-dev.txt
@@ -214,6 +220,8 @@ jobs:
               'firebase': firebase,
               'officialContentEndpoint': '/v1/official/read',
               'release': '0.14.1',
+              'themeGallery': '23-permanent-themes',
+              'customColorControl': 'visual-color-wheel',
           }
           Path('MyStudyCompanionWeb/runtime-config.json').write_text(
               json.dumps(output, indent=2, sort_keys=True) + '\n',
@@ -250,7 +258,7 @@ jobs:
             --project "$GCP_PROJECT_ID" \
             --only hosting \
             --non-interactive \
-            --message "My Study Companion 0.14.1 complete connected reader"
+            --message "My Study Companion 0.14.1 connected reader and expanded theme gallery"
 
       - name: Verify deployed PWA assets
         if: ${{ inputs.deploy_web_and_rules }}
@@ -262,7 +270,11 @@ jobs:
             "$BASE_URL/runtime-config.json" > deployed-runtime-config.json
           curl --fail --silent --show-error --retry 8 --retry-all-errors \
             "$BASE_URL/sw.js" > deployed-sw.js
-          grep -Fq 'msc-web-v0142-complete-reader' deployed-sw.js
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/appearance.js" > deployed-appearance.js
+          grep -Fq 'msc-web-v0143-theme-gallery' deployed-sw.js
+          grep -Fq 'Waterfall Serenity' deployed-appearance.js
+          grep -Fq 'Bible Map' deployed-appearance.js
           python - <<'PY'
           import json
           from pathlib import Path
@@ -271,6 +283,8 @@ jobs:
           assert payload['firebase']['projectId']
           assert payload['officialContentEndpoint'] == '/v1/official/read'
           assert payload['release'] == '0.14.1'
+          assert payload['themeGallery'] == '23-permanent-themes'
+          assert payload['customColorControl'] == 'visual-color-wheel'
           PY
 
       - name: Write deployment verification report
@@ -284,6 +298,9 @@ jobs:
             echo "backend_deployed=${{ inputs.deploy_backend }}"
             echo "web_and_rules_deployed=${{ inputs.deploy_web_and_rules }}"
             echo "release=0.14.1"
+            echo "themes=23"
+            echo "new_illustrated_themes=13"
+            echo "custom_color=visual-wheel"
             echo "verification=passed"
           } > MSC-0.14.1-DEPLOYMENT-STATUS.txt
 
@@ -295,5 +312,6 @@ jobs:
             cloud-run-health.json
             deployed-runtime-config.json
             deployed-sw.js
+            deployed-appearance.js
           retention-days: 14
           if-no-files-found: warn
