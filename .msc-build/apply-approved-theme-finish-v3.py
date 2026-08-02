@@ -4,8 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
-import subprocess
 from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 ROOT = Path('.')
 MANIFEST = ROOT / '.msc-build/approved-theme-finish-v2-manifest.json'
@@ -23,39 +24,53 @@ TARGETS = (
 
 
 def dimensions(path: Path) -> tuple[int, int]:
-    result = subprocess.run(
-        [
-            'ffprobe', '-v', 'error', '-select_streams', 'v:0',
-            '-show_entries', 'stream=width,height', '-of', 'csv=s=x:p=0',
-            str(path),
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    ).stdout.strip()
-    width, height = result.split('x', 1)
-    return int(width), int(height)
+    with Image.open(path) as image:
+        return image.size
+
+
+def cover(image: Image.Image, size: tuple[int, int]) -> Image.Image:
+    target_width, target_height = size
+    source_width, source_height = image.size
+    scale = max(target_width / source_width, target_height / source_height)
+    resized = image.resize(
+        (round(source_width * scale), round(source_height * scale)),
+        Image.Resampling.LANCZOS,
+    )
+    left = (resized.width - target_width) // 2
+    top = (resized.height - target_height) // 2
+    return resized.crop((left, top, left + target_width, top + target_height))
+
+
+def contain(image: Image.Image, size: tuple[int, int]) -> Image.Image:
+    copy = image.copy()
+    copy.thumbnail(size, Image.Resampling.LANCZOS)
+    return copy
 
 
 def create_preview(scene: Path, preview: Path) -> None:
     preview.parent.mkdir(parents=True, exist_ok=True)
-    graph = (
-        '[0:v]split=2[background_source][foreground_source];'
-        '[background_source]scale=720:1440:force_original_aspect_ratio=increase,'
-        'crop=720:1440,gblur=sigma=20,eq=brightness=-0.10[background];'
-        '[foreground_source]scale=690:1380:force_original_aspect_ratio=decrease[foreground];'
-        '[background]drawbox=x=23:y=40:w=690:h=1380:color=black@0.34:t=fill[shadow];'
-        '[shadow][foreground]overlay=(W-w)/2:(H-h)/2:format=auto[out]'
+    with Image.open(scene) as opened:
+        source = opened.convert('RGB')
+
+    background = cover(source, (720, 1440))
+    background = background.filter(ImageFilter.GaussianBlur(radius=20))
+    background = ImageEnhance.Brightness(background).enhance(0.90).convert('RGBA')
+
+    foreground = contain(source, (690, 1380)).convert('RGBA')
+    x = (720 - foreground.width) // 2
+    y = (1440 - foreground.height) // 2
+
+    shadow = Image.new('RGBA', background.size, (0, 0, 0, 0))
+    drawer = ImageDraw.Draw(shadow)
+    drawer.rounded_rectangle(
+        (max(0, x - 8), max(0, y + 8), min(719, x + foreground.width + 8), min(1439, y + foreground.height + 18)),
+        radius=28,
+        fill=(0, 0, 0, 88),
     )
-    subprocess.run(
-        [
-            'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
-            '-i', str(scene), '-filter_complex', graph, '-map', '[out]',
-            '-frames:v', '1', '-c:v', 'libwebp', '-quality', '94',
-            '-compression_level', '4', str(preview),
-        ],
-        check=True,
-    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=10))
+    composed = Image.alpha_composite(background, shadow)
+    composed.alpha_composite(foreground, (x, y))
+    composed.convert('RGB').save(preview, 'WEBP', quality=94, method=4)
 
 
 primary = TARGETS[0]
@@ -114,4 +129,4 @@ for required in ('browserLocalPersistence', 'getRedirectResult', 'signInWithPopu
     if required not in auth_source:
         raise SystemExit(f'Google sign-in repair was lost: {required}')
 
-print('PASS: approved static artwork finalized once; previews and manifest are byte-identical across phone, Wear OS, and PWA.')
+print('PASS: approved static artwork finalized once with Pillow; previews and manifest are byte-identical across phone, Wear OS, and PWA.')
