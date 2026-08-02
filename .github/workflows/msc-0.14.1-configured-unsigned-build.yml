@@ -1,0 +1,174 @@
+name: My Study Companion 0.14.2 Configured Staging Build
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0142-configured-staging-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  configured-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out exact repair source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct repaired source
+        continue-on-error: true
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
+
+      - name: Install verified Firebase Android configuration
+        id: firebase
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          mapfile -t VALUES < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web_clients = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android_clients) == 1
+          assert android_clients[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web_clients) == 1
+          print(web_clients[0]['client_id'])
+          PY
+          )
+          echo "web_client_id=${VALUES[0]}" >> "$GITHUB_OUTPUT"
+          echo 'backend_base_url=https://my-study-companion-abc01.web.app/' >> "$GITHUB_OUTPUT"
+
+      - name: Create disposable CI packaging signer
+        id: staging_signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-disposable-staging-signing"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/staging.jks" \
+            -storepass 'msc-disposable-staging-only' \
+            -keypass 'msc-disposable-staging-only' \
+            -alias 'msc-disposable-staging' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=Disposable CI Staging, OU=Not For Installation, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/staging.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Build configured staging phone and Wear APKs
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.staging_signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-disposable-staging-only
+          MSC_RELEASE_KEY_ALIAS: msc-disposable-staging
+          MSC_RELEASE_KEY_PASSWORD: msc-disposable-staging-only
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+          grep -R -Fq "$MSC_BACKEND_BASE_URL" app/build/generated
+          grep -R -Fq "$MSC_GOOGLE_WEB_CLIENT_ID" app/build/generated
+
+      - name: Verify and package staging outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          mkdir -p configured-staging
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE_APK"; test -f "$WEAR_APK"
+          cp "$PHONE_APK" configured-staging/MyStudyCompanion-phone-0.14.2-configured-staging.apk
+          cp "$WEAR_APK" configured-staging/MyStudyCompanion-wear-0.14.2-configured-staging.apk
+          "$AAPT" dump badging configured-staging/MyStudyCompanion-phone-0.14.2-configured-staging.apk > configured-staging/PHONE-IDENTITY.txt
+          "$AAPT" dump badging configured-staging/MyStudyCompanion-wear-0.14.2-configured-staging.apk > configured-staging/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='34'" configured-staging/PHONE-IDENTITY.txt
+          grep -q "versionName='0.14.2-private-alpha-workbook-theme-repair'" configured-staging/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360142001'" configured-staging/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.2-wear-private-alpha-workbook-theme-repair'" configured-staging/WEAR-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-phone-0.14.2-configured-staging.apk > configured-staging/PHONE-STAGING-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-wear-0.14.2-configured-staging.apk > configured-staging/WEAR-STAGING-SIGNATURE.txt
+          grep -Fq 'Disposable CI Staging' configured-staging/PHONE-STAGING-SIGNATURE.txt
+          grep -Fq 'Disposable CI Staging' configured-staging/WEAR-STAGING-SIGNATURE.txt
+          sha256sum configured-staging/*.apk > configured-staging/SHA256SUMS.txt
+          cat > configured-staging/STATUS.txt <<'TXT'
+          PASS: exact repaired source built with the verified Firebase Android configuration.
+          PASS: Google web client ID and live backend URL are compiled into the phone package.
+          PASS: phone and Wear outputs retain the canonical package and final 0.14.2 versions.
+          EXPECTED: these staging APKs use a disposable CI packaging signer and must be re-signed with the recovered Firebase-registered signer before installation.
+          TXT
+
+      - name: Upload configured staging APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.2-configured-staging-phone-wear
+          path: configured-staging
+          retention-days: 5
+          if-no-files-found: error

@@ -1,0 +1,219 @@
+    im=gradient((W,H),(7,8,35),(14,7,45)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    # nebula ribbons
+    for center,col,rad in [((340,580),(130,70,210),420),((780,900),(40,130,220),500),((570,350),(220,80,170),300)]:
+        layer=Image.new('RGBA',(W,H),(0,0,0,0)); ld=ImageDraw.Draw(layer,'RGBA')
+        for i in range(18):
+            r=(rad-i*14)*S
+            a=max(0,12+i*2)
+            ld.ellipse(((center[0]*S-r),(center[1]*S-r*.55),(center[0]*S+r),(center[1]*S+r*.55)),outline=(*col,a),width=18*S)
+        im.alpha_composite(layer)
+    rng=random.Random(90)
+    for _ in range(440):
+        x=rng.randrange(W); y=rng.randrange(H); r=rng.choice([1,1,1,2,2,3])*S/2
+        d.ellipse((x-r,y-r,x+r,y+r),fill=(235,238,255,rng.randint(90,255)))
+    # planets
+    for x,y,r,c1,c2 in [(790,260,105,(210,160,240),(70,50,130)),(260,880,72,(75,150,220),(30,50,110)),(760,1210,55,(232,145,100),(100,45,60))]:
+        d.ellipse(((x-r)*S,(y-r)*S,(x+r)*S,(y+r)*S),fill=(*c1,255))
+        d.pieslice(((x-r)*S,(y-r)*S,(x+r)*S,(y+r)*S),80,260,fill=(*c2,220))
+        d.arc(((x-r*1.6)*S,(y-r*.45)*S,(x+r*1.6)*S,(y+r*.45)*S),10,190,fill=(220,210,250,170),width=5*S)
+    # constellations
+    stars=[(120,230),(220,180),(300,270),(410,210),(520,300)]
+    for a,b in zip(stars,stars[1:]):
+        d.line((a[0]*S,a[1]*S,b[0]*S,b[1]*S),fill=(160,180,255,120),width=2*S)
+    for x,y in stars:
+        d.ellipse(((x-5)*S,(y-5)*S,(x+5)*S,(y+5)*S),fill=(245,245,255,230))
+    # mountain base
+    mountain_layer(d,1460*S,[(0,1420*S),(180*S,1250*S),(340*S,1430*S),(570*S,1200*S),(760*S,1390*S),(920*S,1260*S),(W,1400*S)],(5,8,25,255),seed=9)
+    return save(add_noise(im,5,.14),'celestial_wonder')
+
+def scene_mountain():
+    im=gradient((W,H),(244,150,85),(76,111,143)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(650*S,260*S),440*S,(255,224,154),180)
+    d.ellipse((585*S,180*S,720*S,315*S),fill=(255,228,165,245))
+    # clouds
+    for x,y,sc in [(190,220,95),(430,130,80),(880,250,70)]:
+        draw_cloud(d,x*S,y*S,sc*S,(255,225,205,105))
+    mountain_layer(d,870*S,[(0,820*S),(150*S,690*S),(300*S,790*S),(480*S,560*S),(650*S,760*S),(820*S,610*S),(W,800*S)],(147,91,76,255),seed=1)
+    # snow caps
+    d.polygon([(480*S,560*S),(420*S,650*S),(470*S,625*S),(505*S,655*S),(545*S,620*S)],fill=(247,226,211,210))
+    d.polygon([(820*S,610*S),(765*S,690*S),(815*S,665*S),(850*S,700*S)],fill=(245,225,211,190))
+    mountain_layer(d,1050*S,[(0,970*S),(210*S,790*S),(380*S,1020*S),(610*S,750*S),(800*S,960*S),(W,820*S)],(104,77,67,255),seed=2)
+    # lake/valley
+    d.rectangle((0,1010*S,W,H),fill=(37,83,92,255))
+    d.polygon([(420*S,1010*S),(610*S,1010*S),(760*S,1536*S),(200*S,1536*S)],fill=(85,142,143,230))
+    # pines
+    rng=random.Random(99)
+    for layer,base,col in [(0,1220,(34,61,49,255)),(1,1380,(21,43,37,255)),(2,1530,(13,31,28,255))]:
+        x=-10*S
+        while x<W+10*S:
+            h=rng.randint(100,220)*S
+            draw_pine(d,x,base*S,h,col)
+            x+=rng.randint(38,72)*S
+    return save(add_noise(im,5,.15),'mountain_sunrise')
+
+def scene_garden():
+    im=gradient((W,H),(166,217,236),(132,186,119)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(670*S,250*S),420*S,(255,238,181),150)
+    # clouds
+    for x,y,sc in [(180,220,80),(480,120,70),(820,300,65)]:
+        draw_cloud(d,x*S,y*S,sc*S,(255,255,248,150))
+    # hills
+    d.ellipse((-280*S,650*S,620*S,1500*S),fill=(87,153,84,255))
+    d.ellipse((300*S,600*S,1300*S,1460*S),fill=(105,171,92,255))
+    d.ellipse((-100*S,900*S,1100*S,1750*S),fill=(62,130,76,255))
+    # stream
+    d.polygon([(530*S,700*S),(650*S,700*S),(820*S,1536*S),(300*S,1536*S)],fill=(67,159,188,220))
+    for yy in range(850,1500,120):
+        d.arc((350*S,yy*S,770*S,(yy+100)*S),0,180,fill=(200,240,245,110),width=4*S)
+    # large tree
+    d.polygon([(120*S,1150*S),(220*S,500*S),(330*S,1150*S)],fill=(80,61,37,255))
+    rng=random.Random(110)
+    for _ in range(170):
+        x=rng.randint(80,380)*S; y=rng.randint(320,850)*S; rr=rng.randint(12,38)*S
+        d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=rng.choice([(69,133,66,230),(95,161,73,225),(123,179,85,215)]))
+    # flowers foreground
+    colors=[(245,200,80,255),(235,106,140,255),(239,245,245,255),(126,102,214,255),(242,140,74,255)]
+    for _ in range(190):
+        x=rng.randint(0,1024)*S; y=rng.randint(1050,1535)*S
+        stem=rng.randint(20,70)*S
+        d.line((x,y,x,y-stem),fill=(40,103,48,210),width=2*S)
+        r=rng.randint(6,13)*S; c=rng.choice(colors)
+        for a in range(0,360,72):
+            cx=x+math.cos(math.radians(a))*r; cy=y-stem+math.sin(math.radians(a))*r
+            d.ellipse((cx-r*.55,cy-r*.55,cx+r*.55,cy+r*.55),fill=c)
+        d.ellipse((x-r*.35,y-stem-r*.35,x+r*.35,y-stem+r*.35),fill=(220,170,40,255))
+    # birds
+    for x,y,s in [(720,380,16),(780,420,12),(850,330,10)]:
+        d.arc(((x-s)*S,(y-s/2)*S,x*S,(y+s/2)*S),190,350,fill=(55,70,55,230),width=3*S)
+        d.arc((x*S,(y-s/2)*S,(x+s)*S,(y+s/2)*S),190,350,fill=(55,70,55,230),width=3*S)
+    return save(add_noise(im,4,.14),'creation_garden')
+
+# parchment helpers
+def parchment():
+    im=gradient((W,H),(245,232,200),(220,195,145)).convert('RGBA')
+    im=add_noise(im, 12, 0.18)
+    d=ImageDraw.Draw(im,'RGBA')
+    for i in range(12):
+        inset=i*3*S
+        d.rounded_rectangle((inset,inset,W-inset,H-inset),radius=20*S,outline=(95,62,32,max(15,100-i*7)),width=2*S)
+    return im
+
+def scene_sketch():
+    im=parchment(); d=ImageDraw.Draw(im,'RGBA')
+    ink=(77,62,45,220)
+    # mountains/hills line art
+    for offset in [0,15,30]:
+        d.line([(0,720*S+offset*S),(180*S,540*S+offset*S),(310*S,690*S+offset*S),(500*S,470*S+offset*S),(700*S,700*S+offset*S),(850*S,520*S+offset*S),(W,680*S+offset*S)],fill=(ink[0],ink[1],ink[2],80),width=2*S)
+    # large tree
+    d.line((270*S,1080*S,340*S,520*S),fill=ink,width=8*S)
+    branches=[(330,680,220,580),(330,720,460,590),(315,780,190,720),(325,820,500,720)]
+    for x1,y1,x2,y2 in branches:
+        d.line((x1*S,y1*S,x2*S,y2*S),fill=ink,width=5*S)
+    for x,y,r in [(190,530,90),(300,480,105),(420,560,95),(220,650,80),(430,670,80)]:
+        for i in range(3):
+            d.arc(((x-r-i*8)*S,(y-r*.7-i*5)*S,(x+r+i*8)*S,(y+r*.7+i*5)*S),0,360,fill=(ink[0],ink[1],ink[2],110),width=2*S)
+    # well
+    d.ellipse((580*S,880*S,820*S,1010*S),outline=ink,width=5*S)
+    d.rectangle((600*S,940*S,800*S,1110*S),outline=ink,width=5*S)
+    d.line((620*S,875*S,620*S,730*S,780*S,730*S,780*S,875*S),fill=ink,width=5*S)
+    d.line((700*S,730*S,700*S,920*S),fill=ink,width=3*S)
+    d.ellipse((660*S,900*S,740*S,940*S),outline=ink,width=3*S)
+    # figures
+    def person(x,y,sc=1):
+        d.ellipse(((x-18*sc)*S,(y-110*sc)*S,(x+18*sc)*S,(y-74*sc)*S),outline=ink,width=3*S)
+        d.line((x*S,(y-74*sc)*S,x*S,y*S),fill=ink,width=4*S)
+        d.line((x*S,(y-45*sc)*S,(x-38*sc)*S,(y-12*sc)*S),fill=ink,width=3*S)
+        d.line((x*S,(y-45*sc)*S,(x+40*sc)*S,(y-15*sc)*S),fill=ink,width=3*S)
+        d.line((x*S,y*S,(x-25*sc)*S,(y+70*sc)*S),fill=ink,width=3*S)
+        d.line((x*S,y*S,(x+25*sc)*S,(y+70*sc)*S),fill=ink,width=3*S)
+    person(520,1160,1.1); person(860,1130,.9)
+    # scroll/open book motif lower
+    d.rounded_rectangle((120*S,1220*S,900*S,1430*S),radius=25*S,outline=(93,67,39,150),width=3*S)
+    for y in [1270,1320,1370]:
+        d.line((180*S,y*S,460*S,y*S),fill=(93,67,39,110),width=3*S)
+        d.line((560*S,y*S,840*S,y*S),fill=(93,67,39,110),width=3*S)
+    return save(im,'bible_sketch_study')
+
+def scene_parables():
+    im=parchment(); d=ImageDraw.Draw(im,'RGBA'); ink=(78,61,42,220)
+    # six panels
+    boxes=[]
+    for r in range(3):
+        for c in range(2):
+            x=90+c*470; y=150+r*430
+            boxes.append((x,y,390,340))
+            d.rounded_rectangle((x*S,y*S,(x+390)*S,(y+340)*S),radius=18*S,outline=(102,78,48,150),width=4*S)
+    # panel 1 shepherd/sheep
+    x,y,_,_=boxes[0]
+    d.arc(((x+60)*S,(y+120)*S,(x+130)*S,(y+190)*S),0,360,fill=ink,width=3*S)
+    for i in range(4):
+        sx=x+80+i*65; sy=y+240
+        d.ellipse(((sx-35)*S,(sy-22)*S,(sx+35)*S,(sy+22)*S),outline=ink,width=3*S)
+        d.ellipse(((sx+25)*S,(sy-38)*S,(sx+55)*S,(sy-8)*S),outline=ink,width=3*S)
+        for lx in [-20,20]:
+            d.line(((sx+lx)*S,(sy+20)*S,(sx+lx)*S,(sy+55)*S),fill=ink,width=2*S)
+    # panel 2 sower
+    x,y,_,_=boxes[1]
+    d.ellipse(((x+190)*S,(y+60)*S,(x+230)*S,(y+100)*S),outline=ink,width=3*S)
+    d.line(((x+210)*S,(y+100)*S,(x+210)*S,(y+230)*S),fill=ink,width=4*S)
+    d.line(((x+210)*S,(y+140)*S,(x+130)*S,(y+190)*S),fill=ink,width=3*S)
+    d.line(((x+210)*S,(y+140)*S,(x+300)*S,(y+175)*S),fill=ink,width=3*S)
+    for i in range(18):
+        sx=x+90+(i%6)*45; sy=y+220+(i//6)*30
+        d.ellipse((sx*S,sy*S,(sx+5)*S,(sy+5)*S),fill=ink)
+    # panel 3 lamp
+    x,y,_,_=boxes[2]
+    d.arc(((x+130)*S,(y+90)*S,(x+260)*S,(y+240)*S),180,360,fill=ink,width=4*S)
+    d.rectangle(((x+165)*S,(y+220)*S,(x+225)*S,(y+270)*S),outline=ink,width=4*S)
+    d.polygon([((x+195)*S,(y+60)*S),((x+170)*S,(y+120)*S),((x+220)*S,(y+120)*S)],outline=None,fill=(160,93,36,100))
+    d.line(((x+195)*S,(y+60)*S,(x+195)*S,(y+115)*S),fill=ink,width=3*S)
+    # panel 4 mustard tree
+    x,y,_,_=boxes[3]
+    d.line(((x+200)*S,(y+280)*S,(x+200)*S,(y+130)*S),fill=ink,width=5*S)
+    for bx,by in [(150,160),(250,150),(120,210),(280,220)]:
+        d.line(((x+200)*S,(y+180)*S,(x+bx)*S,(y+by)*S),fill=ink,width=3*S)
+        d.ellipse(((x+bx-45)*S,(y+by-35)*S,(x+bx+45)*S,(y+by+35)*S),outline=ink,width=3*S)
+    # panel 5 house rock/sand
+    x,y,_,_=boxes[4]
+    for hx in [80,230]:
+        d.rectangle(((x+hx)*S,(y+170)*S,(x+hx+100)*S,(y+260)*S),outline=ink,width=3*S)
+        d.polygon([((x+hx-15)*S,(y+170)*S),((x+hx+50)*S,(y+110)*S),((x+hx+115)*S,(y+170)*S)],outline=ink,fill=None)
+    d.line(((x+60)*S,(y+280)*S,(x+200)*S,(y+280)*S),fill=ink,width=6*S)
+    for i in range(8):
+        d.arc(((x+220+i*16)*S,(y+270)*S,(x+250+i*16)*S,(y+300)*S),0,180,fill=ink,width=2*S)
+    # panel 6 neighbor/door
+    x,y,_,_=boxes[5]
+    d.rectangle(((x+90)*S,(y+80)*S,(x+300)*S,(y+280)*S),outline=ink,width=4*S)
+    d.rectangle(((x+165)*S,(y+150)*S,(x+225)*S,(y+280)*S),outline=ink,width=3*S)
+    d.ellipse(((x+210)*S,(y+215)*S,(x+220)*S,(y+225)*S),fill=ink)
+    d.line(((x+90)*S,(y+80)*S,(x+195)*S,(y+30)*S,(x+300)*S,(y+80)*S),fill=ink,width=4*S)
+    return save(im,'parable_line_panels')
+
+def scene_noah():
+    im=gradient((W,H),(157,210,235),(104,164,103)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    # rainbow
+    colors=[(220,72,70,210),(239,139,58,210),(244,203,73,210),(92,166,83,210),(71,132,201,210),(120,91,171,210)]
+    for i,c in enumerate(colors):
+        d.arc((70*S,(130+i*12)*S,954*S,(1020+i*12)*S),195,345,fill=c,width=14*S)
+    # hills
+    d.ellipse((-200*S,780*S,620*S,1600*S),fill=(87,145,77,255))
+    d.ellipse((380*S,700*S,1300*S,1550*S),fill=(105,162,83,255))
+    # ark body
+    d.polygon([(190*S,960*S),(820*S,960*S),(730*S,1260*S),(280*S,1260*S)],fill=(111,73,40,255))
+    d.polygon([(280*S,820*S),(730*S,820*S),(820*S,960*S),(190*S,960*S)],fill=(139,92,48,255))
+    d.rectangle((390*S,660*S,625*S,820*S),fill=(148,99,54,255))
+    d.polygon([(360*S,660*S),(507*S,560*S),(655*S,660*S)],fill=(103,67,38,255))
+    for x in [330,450,570,690]:
+        d.line((x*S,960*S,(x-30)*S,1260*S),fill=(69,45,28,180),width=4*S)
+    # windows
+    for x in [430,510,590]:
+        d.rounded_rectangle((x*S,710*S,(x+45)*S,760*S),radius=8*S,fill=(50,81,93,255))
+    # animals foreground silhouettes/pairs
+    rng=random.Random(130)
+    animal_positions=[(160,1320,'elephant'),(310,1390,'giraffe'),(470,1320,'lion'),(650,1390,'deer'),(820,1320,'zebra')]
+    for x,y,t in animal_positions:
+        if t=='elephant':
+            d.ellipse(((x-70)*S,(y-55)*S,(x+60)*S,(y+45)*S),fill=(84,82,75,255))
+            d.ellipse(((x+35)*S,(y-70)*S,(x+95)*S,(y-15)*S),fill=(84,82,75,255))
+            d.line(((x+80)*S,(y-30)*S,(x+105)*S,(y+35)*S),fill=(84,82,75,255),width=12*S)
+        elif t=='giraffe':

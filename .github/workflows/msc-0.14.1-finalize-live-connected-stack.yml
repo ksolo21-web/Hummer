@@ -1,0 +1,397 @@
+name: Finalize My Study Companion 0.14.1 Live Connected Stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type FINALIZE after the private Cloud Run service and PWA have been deployed
+        required: true
+        type: string
+
+concurrency:
+  group: msc-0141-live-connected-finalization
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  CLOUD_RUN_SERVICE: my-study-companion-private
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+  GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+  SCHEDULER_SERVICE_ACCOUNT: ${{ vars.MSC_SCHEDULER_SERVICE_ACCOUNT }}
+
+jobs:
+  finalize-live-connected-stack:
+    if: ${{ inputs.confirmation == 'FINALIZE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: my-study-companion-private
+    steps:
+      - name: Check out exact approved source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Check out established private-alpha signing material
+        uses: actions/checkout@v6
+        with:
+          ref: agent/msc-theme-studio-091-explicit-signing
+          path: private-alpha-signing
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate protected non-secret configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in \
+            GCP_PROJECT_ID \
+            GCP_WORKLOAD_IDENTITY_PROVIDER \
+            GCP_DEPLOY_SERVICE_ACCOUNT \
+            GCP_RUNTIME_SERVICE_ACCOUNT \
+            SCHEDULER_SERVICE_ACCOUNT; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required protected environment variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Install deterministic build dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct exact release-candidate source
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Re-run connected source, web, and backend tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
+          node --test \
+            MyStudyCompanionWeb/appearance.test.mjs \
+            MyStudyCompanionWeb/study-library-merge.test.mjs
+          python -m pip install --disable-pip-version-check \
+            -r MyStudyCompanion/backend/requirements.txt \
+            -r MyStudyCompanion/backend/requirements-dev.txt
+          cd MyStudyCompanion/backend
+          python -m pytest -q
+
+      - name: Authenticate with Google Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - id: live_service
+        name: Resolve and harden the deployed private service
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud services enable \
+            cloudscheduler.googleapis.com \
+            firebasecloudmessaging.googleapis.com \
+            run.googleapis.com \
+            --project "$GCP_PROJECT_ID"
+          gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" \
+            --project "$GCP_PROJECT_ID" >/dev/null
+          gcloud iam service-accounts describe "$SCHEDULER_SERVICE_ACCOUNT" \
+            --project "$GCP_PROJECT_ID" >/dev/null
+          SERVICE_URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --format='value(status.url)')"
+          test -n "$SERVICE_URL"
+          gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+            --member="serviceAccount:$GCP_RUNTIME_SERVICE_ACCOUNT" \
+            --role='roles/firebasecloudmessaging.admin' \
+            --condition=None \
+            --quiet >/dev/null
+          gcloud run services update "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --update-env-vars="MSC_SCHEDULER_SERVICE_ACCOUNT_EMAIL=$SCHEDULER_SERVICE_ACCOUNT" \
+            --quiet >/dev/null
+          echo "service_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify live backend and official-content reader
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.live_service.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            --max-time 20 "$SERVICE_URL/health" > live-health.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('live-health.json').read_text())
+          assert payload['status'] == 'ok'
+          assert payload['version'] == '0.14.1'
+          assert payload['signingKeyConfigured'] is True
+          assert payload['appCheckRequired'] is True
+          assert payload['userAuthRequired'] is True
+          PY
+          status="$(curl --silent --output official-reader-response.json --write-out '%{http_code}' \
+            --get "$SERVICE_URL/v1/official/read" \
+            --data-urlencode 'url=https://www.jw.org/en/library/series/more-topics/bible-verses-about-family/')"
+          test "$status" = '200'
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('official-reader-response.json').read_text())
+          document = payload['document']
+          assert document['officialUrl'].startswith('https://www.jw.org/')
+          assert document['blocks']
+          PY
+
+      - name: Create or update authenticated official-content schedules
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.live_service.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          upsert_job() {
+            local job="$1" schedule="$2" path="$3" description="$4"
+            local command=create
+            if gcloud scheduler jobs describe "$job" \
+              --location "$GCP_REGION" --project "$GCP_PROJECT_ID" >/dev/null 2>&1; then
+              command=update
+            fi
+            gcloud scheduler jobs "$command" http "$job" \
+              --project "$GCP_PROJECT_ID" \
+              --location "$GCP_REGION" \
+              --schedule "$schedule" \
+              --time-zone 'America/Detroit' \
+              --uri "$SERVICE_URL$path" \
+              --http-method POST \
+              --headers 'Content-Type=application/json' \
+              --message-body '{"notifyDevices":true}' \
+              --oidc-service-account-email "$SCHEDULER_SERVICE_ACCOUNT" \
+              --oidc-token-audience "$SERVICE_URL" \
+              --attempt-deadline '30m' \
+              --max-retry-attempts 3 \
+              --min-backoff '60s' \
+              --max-backoff '900s' \
+              --description "$description" \
+              --quiet
+          }
+          upsert_job \
+            'msc-daily-official-study' \
+            '15 0 * * *' \
+            '/admin/v1/automation/daily' \
+            'Generate, validate, sign, publish, and notify the dated Daily Text study.'
+          upsert_job \
+            'msc-weekly-meeting-watchtower' \
+            '15 1 * * 1' \
+            '/admin/v1/automation/weekly' \
+            'Generate, validate, sign, publish, and notify weekly meeting and Watchtower preparation.'
+          for job in msc-daily-official-study msc-weekly-meeting-watchtower; do
+            gcloud scheduler jobs describe "$job" \
+              --location "$GCP_REGION" \
+              --project "$GCP_PROJECT_ID" \
+              --format=json > "$job.json"
+          done
+
+      - name: Verify the deployed PWA and real Firebase runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="https://${GCP_PROJECT_ID}.web.app"
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/runtime-config.json" > deployed-runtime-config.json
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/sw.js" > deployed-sw.js
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/appearance.js" > deployed-appearance.js
+          grep -Fq 'msc-web-v0143-theme-gallery' deployed-sw.js
+          grep -Fq 'Waterfall Serenity' deployed-appearance.js
+          grep -Fq 'Bible Map' deployed-appearance.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('deployed-runtime-config.json').read_text())
+          firebase = payload['firebase']
+          assert firebase['apiKey'] and firebase['authDomain']
+          assert firebase['projectId'] and firebase['appId']
+          assert payload['officialContentEndpoint'] == '/v1/official/read'
+          assert payload['release'] == '0.14.1'
+          PY
+
+      - id: connected_config
+        name: Restore stable signer and Firebase Android configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-live-connected-signer"
+          mkdir -p "$SIGNING_DIR"
+          base64 --decode private-alpha-signing/.msc-build/private-alpha-debug.keystore.b64 \
+            > "$SIGNING_DIR/private-alpha-debug.keystore"
+          echo '8b6b00f0d97afa77c3b342a1de47279629dfd2f63400dae6d787e2d25b24af27  '"$SIGNING_DIR/private-alpha-debug.keystore" \
+            | sha256sum -c -
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          WEB_CLIENT_ID="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          canonical = next(
+              item for item in data['client']
+              if item['client_info']['android_client_info']['package_name'] == 'com.mystudycompanion.app'
+          )
+          web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(web) == 1
+          print(web[0]['client_id'])
+          PY
+          )"
+          echo "store_file=$SIGNING_DIR/private-alpha-debug.keystore" >> "$GITHUB_OUTPUT"
+          echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Build stable-signed APKs with the actual deployed backend URL
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.live_service.outputs.service_url }}
+          STORE_FILE: ${{ steps.connected_config.outputs.store_file }}
+          WEB_CLIENT_ID: ${{ steps.connected_config.outputs.web_client_id }}
+        run: |
+          set -euo pipefail
+          python MyStudyCompanion/tools/verify_connected_build_config.py \
+            --backend-url "$SERVICE_URL" \
+            --google-web-client-id "$WEB_CLIENT_ID"
+          cd MyStudyCompanion
+          MSC_RELEASE_STORE_FILE="$STORE_FILE" \
+          MSC_RELEASE_STORE_PASSWORD=android \
+          MSC_RELEASE_KEY_ALIAS=androiddebugkey \
+          MSC_RELEASE_KEY_PASSWORD=android \
+          gradle --no-daemon --stacktrace \
+            -PMSC_BACKEND_BASE_URL="$SERVICE_URL" \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$WEB_CLIENT_ID" \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+
+      - name: Verify and package live-connected phone and Wear APKs
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.live_service.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          mkdir -p live-connected-private-alpha
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE_APK"; test -f "$WEAR_APK"
+          cp "$PHONE_APK" live-connected-private-alpha/MyStudyCompanion-phone-0.14.1-live-connected.apk
+          cp "$WEAR_APK" live-connected-private-alpha/MyStudyCompanion-wear-0.14.1-live-connected.apk
+          "$AAPT" dump badging live-connected-private-alpha/MyStudyCompanion-phone-0.14.1-live-connected.apk \
+            > live-connected-private-alpha/PHONE-IDENTITY.txt
+          "$AAPT" dump badging live-connected-private-alpha/MyStudyCompanion-wear-0.14.1-live-connected.apk \
+            > live-connected-private-alpha/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" \
+            live-connected-private-alpha/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" \
+            live-connected-private-alpha/WEAR-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs \
+            live-connected-private-alpha/MyStudyCompanion-phone-0.14.1-live-connected.apk \
+            > live-connected-private-alpha/PHONE-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs \
+            live-connected-private-alpha/MyStudyCompanion-wear-0.14.1-live-connected.apk \
+            > live-connected-private-alpha/WEAR-SIGNATURE.txt
+          for report in PHONE-SIGNATURE.txt WEAR-SIGNATURE.txt; do
+            grep -Fq 'Signer #1 certificate SHA-256 digest: 280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' \
+              "live-connected-private-alpha/$report"
+          done
+          "$ZIPALIGN" -c -P 16 -v 4 live-connected-private-alpha/MyStudyCompanion-phone-0.14.1-live-connected.apk \
+            > live-connected-private-alpha/PHONE-ZIPALIGN.txt
+          "$ZIPALIGN" -c -P 16 -v 4 live-connected-private-alpha/MyStudyCompanion-wear-0.14.1-live-connected.apk \
+            > live-connected-private-alpha/WEAR-ZIPALIGN.txt
+          unzip -p live-connected-private-alpha/MyStudyCompanion-phone-0.14.1-live-connected.apk 'classes*.dex' \
+            | strings | grep -Fq "$SERVICE_URL"
+          sha256sum live-connected-private-alpha/*.apk > live-connected-private-alpha/SHA256SUMS.txt
+          printf 'backend_url=%s\nrelease=0.14.1\nsigner=stable-private-alpha\n' "$SERVICE_URL" \
+            > live-connected-private-alpha/CONNECTED-BUILD-STATUS.txt
+
+      - name: Write live finalization report
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.live_service.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "backend_url=${SERVICE_URL}"
+            echo "pwa=https://${GCP_PROJECT_ID}.web.app"
+            echo "daily_schedule=00:15 America/Detroit"
+            echo "weekly_schedule=Monday 01:15 America/Detroit"
+            echo "family_worship_generation=organizer-triggered authenticated signed synchronization"
+            echo "firebase_runtime_config=verified"
+            echo "fcm_runtime_identity=roles/firebasecloudmessaging.admin"
+            echo "phone_and_wear_live_connected_apks=verified"
+            echo "release=0.14.1"
+          } > MSC-0.14.1-LIVE-FINALIZATION-STATUS.txt
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-live-connected-stack-and-apks
+          path: |
+            MSC-0.14.1-LIVE-FINALIZATION-STATUS.txt
+            live-health.json
+            official-reader-response.json
+            deployed-runtime-config.json
+            deployed-sw.js
+            deployed-appearance.js
+            msc-daily-official-study.json
+            msc-weekly-meeting-watchtower.json
+            live-connected-private-alpha
+          retention-days: 14
+          if-no-files-found: error

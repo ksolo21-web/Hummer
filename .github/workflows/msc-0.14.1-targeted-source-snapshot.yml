@@ -1,0 +1,161 @@
+name: My Study Companion 0.14.2 Exact Unified Source Snapshot
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0142-exact-unified-source-snapshot-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact reviewed theme source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Reconstruct the exact reviewed 0.14.2 source from the 0.14.1 baseline
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify real workbook art independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          android='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt'
+          web='MyStudyCompanionWeb/workbook.js'
+          node --check "$web"
+          for marker in drawWorkbookArt drawPdfWorkbookArt detectTapGestures 'Guided drawing canvas'; do
+            grep -Fq "$marker" "$android"
+          done
+          for marker in renderColorByNumber drawArtCanvas artSvg svgArtStrokes; do
+            grep -Fq "$marker" "$web"
+          done
+          ! grep -Fq 'Choose colors, then use the canvas to color or draw.' "$web"
+          echo 'PASS: reconstructed workbook contains real drawing and color-by-number engines.'
+
+      - name: Package reconstructed source before any gate
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths=()
+          [[ -d MyStudyCompanion ]] && paths+=(MyStudyCompanion)
+          [[ -d MyStudyCompanionWeb ]] && paths+=(MyStudyCompanionWeb)
+          [[ -f .msc-build/approved-theme-finish-v2-manifest.json ]] && paths+=(.msc-build/approved-theme-finish-v2-manifest.json)
+          if (( ${#paths[@]} == 0 )); then
+            echo 'No reconstructed source directories were produced.' >&2
+            exit 1
+          fi
+          tar \
+            --exclude='**/build' \
+            --exclude='.gradle' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='final-dist' \
+            -czf msc-0.14.2-reconstructed-before-gates.tgz \
+            "${paths[@]}"
+          sha256sum msc-0.14.2-reconstructed-before-gates.tgz > RECONSTRUCTED-BEFORE-GATES-SHA256.txt
+
+      - name: Upload reconstructed source before any gate
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.2-reconstructed-before-gates
+          path: |
+            msc-0.14.2-reconstructed-before-gates.tgz
+            RECONSTRUCTED-BEFORE-GATES-SHA256.txt
+          retention-days: 5
+          if-no-files-found: error
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
+
+      - name: Verify approved themes and preserve working authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check MyStudyCompanionWeb/firebase-sync.js
+          node --check MyStudyCompanionWeb/app.js
+          node --check MyStudyCompanionWeb/appearance.js
+          node --test MyStudyCompanionWeb/appearance.test.mjs MyStudyCompanionWeb/study-library-merge.test.mjs
+
+          grep -Fq 'browserLocalPersistence' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'getRedirectResult' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'auth/popup-blocked' MyStudyCompanionWeb/firebase-sync.js
+          ! grep -Fq 'error?.code?.includes("popup")' MyStudyCompanionWeb/firebase-sync.js
+
+          for approved in \
+            'Waterfall Serenity' 'Rainforest Harmony' 'Ocean Majesty' 'Celestial Wonder' \
+            'Mountain Sunrise' 'Creation Garden' 'Bible Sketch Study' 'Parable Line Panels' \
+            'Noah’s Ark' 'Red Sea Deliverance' 'Creation Sky' 'Bible Timeline' 'Bible Map' \
+            'Moonlit Wolf' 'Golden Owl' 'Sakura Tiger' 'Lion — Premium II' 'Fox — Premium II'; do
+            grep -R -Fq "$approved" MyStudyCompanion/app/src/main MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/index.html
+          done
+
+          test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 25
+          test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 16
+          test "$(find MyStudyCompanion/wear/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 25
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 25
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 16
+          test -f .msc-build/approved-theme-finish-v2-manifest.json
+          grep -Fq 'ApprovedThemeQuickActions' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+          grep -Fq 'appearanceColorWheel' MyStudyCompanionWeb/index.html
+          grep -Fq '0.14.2-private-alpha-workbook-theme-repair' MyStudyCompanion/app/build.gradle.kts
+          ! grep -R -E 'rememberInfiniteTransition|infiniteRepeatable|isLiveTheme|liveTheme|requestAnimationFrame' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt \
+            MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/styles.css
+
+      - name: Package exact approved-theme application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths=(MyStudyCompanion)
+          [[ -d MyStudyCompanionWeb ]] && paths+=(MyStudyCompanionWeb)
+          [[ -d web ]] && paths+=(web)
+          [[ -f firebase.json ]] && paths+=(firebase.json)
+          tar \
+            --exclude='**/build' \
+            --exclude='.gradle' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='final-dist' \
+            -czf msc-0.14.2-approved-theme-source.tgz \
+            "${paths[@]}"
+          sha256sum msc-0.14.2-approved-theme-source.tgz > APPROVED-THEME-SOURCE-SHA256.txt
+
+      - name: Upload exact approved-theme source
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.2-approved-theme-source
+          path: |
+            msc-0.14.2-approved-theme-source.tgz
+            APPROVED-THEME-SOURCE-SHA256.txt
+          retention-days: 5
+          if-no-files-found: error

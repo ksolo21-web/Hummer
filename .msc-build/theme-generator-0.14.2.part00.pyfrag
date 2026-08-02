@@ -1,0 +1,253 @@
+from PIL import Image, ImageDraw, ImageFilter, ImageEnhance, ImageOps, ImageFont, ImageChops
+import math, random, os, json, hashlib
+from pathlib import Path
+import sys
+
+OUT=Path(sys.argv[1] if len(sys.argv) > 1 else 'theme-assets')
+OUT.mkdir(exist_ok=True)
+S=2
+W,H=1024*S,1536*S
+
+def lerp(a,b,t): return int(a+(b-a)*t)
+def gradient(size, top, bottom, horizontal=False):
+    mask = Image.linear_gradient("L")
+    if horizontal:
+        mask = mask.rotate(90, expand=True)
+    mask = mask.resize(size, Image.Resampling.BICUBIC)
+    return ImageOps.colorize(mask, top, bottom)
+
+def radial_glow(im, center, radius, color, alpha=180):
+    layer = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer, "RGBA")
+    steps = 72
+    for i in range(steps, 0, -1):
+        t = i / steps
+        r = radius * t
+        a = int(alpha * (1 - t) ** 2)
+        draw.ellipse(
+            (center[0] - r, center[1] - r, center[0] + r, center[1] + r),
+            fill=(color[0], color[1], color[2], a),
+        )
+    im.alpha_composite(layer)
+
+def add_noise(im, amount=8, opacity=0.15, monochrome=True):
+    base = im.convert("RGB")
+    # Fixed-seed coarse texture keeps builds deterministic and avoids blur.
+    rng = random.Random(4200 + int(amount * 10))
+    small = Image.new("L", (256, 384))
+    small.putdata([max(0, min(255, 128 + rng.randint(-int(amount * 7), int(amount * 7)))) for _ in range(256 * 384)])
+    noise = small.resize(base.size, Image.Resampling.BICUBIC)
+    noise_rgb = Image.merge("RGB", (noise, noise, noise))
+    textured = ImageChops.soft_light(base, noise_rgb)
+    return Image.blend(base, textured, max(0.0, min(1.0, opacity))).convert("RGBA")
+
+def poly(draw, pts, fill, outline=None, width=1):
+    draw.polygon([(int(x),int(y)) for x,y in pts], fill=fill)
+    if outline:
+        draw.line([(int(x),int(y)) for x,y in pts+[pts[0]]], fill=outline, width=width, joint='curve')
+
+def mountain_layer(draw, base_y, peaks, fill, rough=0.12, seed=0):
+    rng=random.Random(seed)
+    pts=[(0,H)]
+    x=0
+    for px,py in peaks:
+        if x<px:
+            # interpolate ridge with small variations
+            steps=max(2,int((px-x)/(70*S)))
+            sx,sy=(pts[-1] if len(pts)>1 else (0,base_y))
+            if len(pts)==1: sx,sy=0,base_y
+            for i in range(1,steps+1):
+                t=i/steps
+                xx=sx+(px-sx)*t
+                yy=sy+(py-sy)*t + rng.uniform(-rough,rough)*80*S*(1-abs(2*t-1))
+                pts.append((xx,yy))
+        pts.append((px,py))
+        x=px
+    pts.append((W,base_y)); pts.append((W,H))
+    draw.polygon(pts, fill=fill)
+
+def draw_pine(draw, x,y,h,color,trunk=None):
+    trunk=trunk or color
+    tw=max(2,int(h*0.04))
+    draw.rectangle((x-tw//2,y-h*0.08,x+tw//2,y), fill=trunk)
+    for frac,width in [(0.2,.28),(0.38,.42),(0.58,.58),(0.78,.72)]:
+        yy=y-h*frac
+        draw.polygon([(x,yy-h*.22),(x-width*h/2,y-h*(frac-.03)),(x+width*h/2,y-h*(frac-.03))],fill=color)
+
+def draw_cloud(draw, x,y,scale,fill):
+    # overlapping crisp ellipses
+    parts=[(-.5,.1,.55),(-.2,-.1,.7),(.15,0,.62),(.45,.12,.5)]
+    for ox,oy,r in parts:
+        box=(x+(ox-r)*scale,y+(oy-r)*scale,x+(ox+r)*scale,y+(oy+r)*scale)
+        draw.ellipse(box,fill=fill)
+
+def save(im,name):
+    im=im.convert('RGB').resize((1024,1536),Image.Resampling.LANCZOS)
+    im.save(OUT/f'theme_scene_{name}.webp','WEBP',quality=94,method=6)
+    return im
+
+# 1 Moonlit Wolf
+def scene_moonlit_wolf():
+    im=gradient((W,H),(4,12,28),(2,8,16)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(430*S,260*S),420*S,(116,170,224),130)
+    d.ellipse((250*S,80*S,610*S,440*S),fill=(220,235,246,235))
+    d.ellipse((302*S,125*S,360*S,183*S),fill=(175,194,210,70))
+    d.ellipse((430*S,205*S,510*S,280*S),fill=(165,185,203,60))
+    # stars
+    rng=random.Random(10)
+    for _ in range(190):
+        x=rng.randrange(W); y=rng.randrange(int(H*.56)); r=rng.choice([1,1,1,2,2,3])*S/2
+        a=rng.randrange(100,235)
+        d.ellipse((x-r,y-r,x+r,y+r),fill=(210,232,255,a))
+    mountain_layer(d,920*S,[(0,850*S),(180*S,620*S),(330*S,800*S),(520*S,540*S),(690*S,760*S),(870*S,590*S),(W,820*S)],(16,37,61,255),seed=1)
+    mountain_layer(d,1050*S,[(0,970*S),(260*S,740*S),(430*S,930*S),(670*S,680*S),(830*S,910*S),(W,760*S)],(8,25,43,255),seed=2)
+    # snow caps
+    d.polygon([(520*S,540*S),(475*S,625*S),(520*S,602*S),(556*S,632*S)],fill=(138,169,196,150))
+    d.polygon([(870*S,590*S),(825*S,665*S),(867*S,643*S),(905*S,675*S)],fill=(130,164,193,130))
+    # lake/forest
+    d.rectangle((0,950*S,W,H),fill=(3,12,20,255))
+    for layer,base,col in [(0,1120,(9,30,45,255)),(1,1240,(4,20,31,255)),(2,1370,(2,13,20,255))]:
+        rng=random.Random(20+layer)
+        x=-20*S
+        while x<W+20*S:
+            h=rng.randint(120,260)*S
+            draw_pine(d,x,base*S,h,col)
+            x+=rng.randint(35,65)*S
+    # ridge right
+    d.polygon([(650*S,1160*S),(760*S,1050*S),(1024*S,1020*S),(1024*S,1536*S),(690*S,1536*S)],fill=(3,10,16,255))
+    # wolf silhouette with silver rim
+    pts=[(820,1100),(780,1040),(765,970),(790,920),(820,890),(840,830),(865,865),(900,850),(925,900),(920,960),(940,1010),(920,1080),(890,1130),(860,1160)]
+    pts=[(x*S,y*S) for x,y in pts]
+    d.polygon(pts,fill=(10,17,24,255))
+    # snout/ears/tail/legs
+    d.polygon([(925*S,900*S),(990*S,890*S),(940*S,930*S)],fill=(10,17,24,255))
+    d.polygon([(836*S,850*S),(842*S,770*S),(875*S,840*S)],fill=(10,17,24,255))
+    d.polygon([(900*S,850*S),(925*S,785*S),(932*S,875*S)],fill=(10,17,24,255))
+    d.polygon([(788*S,1030*S),(700*S,1080*S),(790*S,1065*S)],fill=(10,17,24,255))
+    d.rectangle((815*S,1120*S,842*S,1250*S),fill=(9,15,21,255))
+    d.rectangle((880*S,1110*S,905*S,1245*S),fill=(9,15,21,255))
+    # silver rim lines
+    d.line(pts+[pts[0]],fill=(165,200,225,180),width=4*S,joint='curve')
+    d.ellipse((938*S,900*S,948*S,910*S),fill=(190,235,255,255))
+    # rock highlights
+    for x,y,w in [(690,1205,220),(780,1270,260),(710,1370,310)]:
+        d.line((x*S,y*S,(x+w)*S,(y-40)*S),fill=(56,81,99,120),width=3*S)
+    return save(add_noise(im,6,.2),'moonlit_wolf')
+
+# Nature scenes
+def scene_waterfall():
+    im=gradient((W,H),(20,74,88),(5,37,39)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(520*S,260*S),520*S,(178,230,203),150)
+    # cliffs
+    d.polygon([(0,0),(300*S,0),(360*S,360*S),(290*S,760*S),(0,980*S)],fill=(18,55,45,255))
+    d.polygon([(W,0),(760*S,0),(700*S,300*S),(760*S,740*S),(W,920*S)],fill=(13,47,40,255))
+    # rock strata
+    for side in [0,1]:
+        rng=random.Random(30+side)
+        for i in range(22):
+            if side==0:
+                x1=rng.randint(0,300)*S; y=rng.randint(80,980)*S; x2=min(360*S,x1+rng.randint(60,180)*S)
+            else:
+                x1=rng.randint(720,1024)*S; y=rng.randint(50,900)*S; x2=min(W,x1+rng.randint(60,180)*S)
+            d.line((x1,y,x2,y+rng.randint(-20,20)*S),fill=(75,112,93,100),width=3*S)
+    # waterfall
+    d.polygon([(410*S,150*S),(610*S,150*S),(590*S,1000*S),(430*S,1000*S)],fill=(140,224,232,210))
+    d.polygon([(470*S,150*S),(545*S,150*S),(540*S,1000*S),(465*S,1000*S)],fill=(220,252,248,180))
+    # ribbons
+    rng=random.Random(31)
+    for _ in range(18):
+        x=rng.randint(420,600)*S
+        d.line((x,180*S,x+rng.randint(-30,30)*S,980*S),fill=(220,255,255,rng.randint(50,130)),width=rng.randint(1,4)*S)
+    # pool
+    d.ellipse((160*S,900*S,860*S,1410*S),fill=(20,128,142,220))
+    for r in range(8):
+        d.arc((260*S-r*35*S,1000*S-r*20*S,760*S+r*35*S,1260*S+r*20*S),0,180,fill=(159,239,230,130),width=3*S)
+    # foliage clusters
+    rng=random.Random(32)
+    for _ in range(420):
+        side=rng.choice([0,1])
+        x=rng.randint(0,360)*S if side==0 else rng.randint(680,1024)*S
+        y=rng.randint(120,1380)*S
+        rr=rng.randint(6,22)*S
+        col=rng.choice([(37,100,55,230),(64,137,70,225),(92,158,85,210),(27,78,48,240)])
+        d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=col)
+    # rocks
+    for x,y,rx,ry in [(130,1330,150,80),(320,1400,130,65),(760,1360,170,85),(900,1450,120,70)]:
+        d.ellipse(((x-rx)*S,(y-ry)*S,(x+rx)*S,(y+ry)*S),fill=(25,54,47,255))
+        d.arc(((x-rx)*S,(y-ry)*S,(x+rx)*S,(y+ry)*S),180,340,fill=(96,131,111,120),width=4*S)
+    return save(add_noise(im,5,.2),'waterfall_serenity')
+
+def scene_rainforest():
+    im=gradient((W,H),(12,66,44),(3,35,28)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(540*S,240*S),500*S,(211,238,157),175)
+    # background jungle ridges
+    mountain_layer(d,900*S,[(0,780*S),(180*S,620*S),(360*S,760*S),(520*S,590*S),(700*S,740*S),(850*S,610*S),(W,760*S)],(20,75,46,255),seed=11)
+    # sun rays
+    for a in [-0.5,-0.25,0,0.25,0.5]:
+        x1=(540+a*180)*S
+        d.polygon([(x1,180*S),((x1-150*S),1200*S),((x1+110*S),1200*S)],fill=(230,245,170,20))
+    # river
+    d.polygon([(460*S,650*S),(620*S,650*S),(760*S,1536*S),(180*S,1536*S)],fill=(33,112,105,235))
+    for yy in range(760,1536,90):
+        width=(yy-650)*.45
+        d.line(((540-width/2)*S,yy*S,(540+width/2)*S,yy*S),fill=(154,216,190,100),width=4*S)
+    # trunks
+    rng=random.Random(45)
+    for side in [0,1]:
+        for i in range(7):
+            x=(rng.randint(0,260) if side==0 else rng.randint(760,1024))*S
+            w=rng.randint(28,60)*S
+            d.polygon([(x-w,0),(x+w,0),(x+w*.65,H),(x-w*.35,H)],fill=(31,55,35,255))
+            # vines
+            for j in range(2):
+                vx=x+rng.randint(-50,50)*S
+                d.arc((vx-80*S,0,vx+80*S,900*S),0 if side==0 else 180,180 if side==0 else 360,fill=(51,103,53,180),width=5*S)
+    # foliage
+    for _ in range(650):
+        x=rng.randint(0,W); y=rng.randint(0,H); rr=rng.randint(5,24)*S
+        if 430*S<x<650*S and y>650*S and rng.random()<.75: continue
+        col=rng.choice([(22,91,49,240),(42,124,58,230),(66,147,65,220),(97,165,75,210),(14,65,40,245)])
+        d.ellipse((x-rr,y-rr*.65,x+rr,y+rr*.65),fill=col)
+    # birds
+    for x,y,s in [(430,250,18),(610,310,14),(520,390,11)]:
+        d.arc(((x-s)*S,(y-s/2)*S,x*S,(y+s/2)*S),190,350,fill=(15,42,31,230),width=3*S)
+        d.arc((x*S,(y-s/2)*S,(x+s)*S,(y+s/2)*S),190,350,fill=(15,42,31,230),width=3*S)
+    return save(add_noise(im,7,.18),'rainforest_harmony')
+
+def scene_ocean():
+    im=gradient((W,H),(74,157,210),(5,64,105)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(760*S,220*S),450*S,(255,211,151),150)
+    # sun
+    d.ellipse((700*S,135*S,835*S,270*S),fill=(255,226,175,235))
+    # distant clouds
+    for x,y,sc in [(180,170,80),(420,240,65),(860,330,55)]:
+        draw_cloud(d,x*S,y*S,sc*S,(235,245,248,95))
+    # horizon
+    d.rectangle((0,530*S,W,H),fill=(14,101,151,255))
+    # distant islands
+    mountain_layer(d,670*S,[(0,650*S),(110*S,580*S),(220*S,650*S),(340*S,600*S),(480*S,660*S),(650*S,590*S),(780*S,650*S),(920*S,620*S),(W,650*S)],(23,74,88,230),seed=3)
+    # wave bands
+    rng=random.Random(80)
+    for band,(y,col) in enumerate([(690,(27,132,181,255)),(880,(12,112,162,255)),(1080,(8,89,139,255)),(1290,(6,70,116,255))]):
+        pts=[(0,H),(0,y*S)]
+        x=0
+        while x<=W:
+            yy=(y+35*math.sin((x/S)/90+band)+rng.uniform(-12,12))*S
+            pts.append((x,yy))
+            x+=35*S
+        pts += [(W,H)]
+        d.polygon(pts,fill=col)
+        # foam crest
+        for x0 in range(-100,1100,140):
+            yy=(y+35*math.sin(x0/90+band))*S
+            d.arc((x0*S,yy-25*S,(x0+130)*S,yy+35*S),180,350,fill=(230,250,250,180),width=5*S)
+    # foreground curling wave right
+    d.arc((480*S,820*S,1150*S,1530*S),190,355,fill=(196,244,245,230),width=35*S)
+    d.arc((560*S,900*S,1080*S,1470*S),200,348,fill=(19,132,171,255),width=85*S)
+    # birds
+    for x,y,s in [(210,360,17),(255,390,12),(340,300,9)]:
+        d.arc(((x-s)*S,(y-s/2)*S,x*S,(y+s/2)*S),190,350,fill=(25,61,74,220),width=3*S)
+        d.arc((x*S,(y-s/2)*S,(x+s)*S,(y+s/2)*S),190,350,fill=(25,61,74,220),width=3*S)
+    return save(add_noise(im,4,.15),'ocean_majesty')
+
+def scene_celestial():

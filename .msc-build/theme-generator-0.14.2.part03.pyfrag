@@ -1,0 +1,14 @@
+    d.ellipse((250*S,1110*S,450*S,1400*S),fill=(215,188,160,245))
+    # teal leaves
+    for _ in range(220):
+        x=rng.randint(0,1024)*S; y=rng.randint(900,1536)*S; rr=rng.randint(5,18)*S
+        d.ellipse((x-rr,y-rr*.55,x+rr,y+rr*.55),fill=rng.choice([(24,98,93,180),(39,127,114,170),(65,145,126,150)]))
+    # rim light
+    d.arc((580*S,500*S,920*S,900*S),190,330,fill=(180,238,226,160),width=6*S)
+    return save(add_noise(im,5,.12),'fox_premium_2')
+
+funcs=[scene_moonlit_wolf,scene_waterfall,scene_rainforest,scene_ocean,scene_celestial,scene_mountain,scene_garden,scene_sketch,scene_parables,scene_noah,scene_redsea,scene_creationsky,scene_timeline,scene_map,scene_lion2,scene_fox2]
+for f in funcs:
+    print("render",f.__name__)
+    f()
+print(len(list(OUT.glob('*.webp'))), "files")

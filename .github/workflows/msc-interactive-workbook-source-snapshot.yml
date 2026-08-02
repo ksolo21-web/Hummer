@@ -1,0 +1,158 @@
+name: My Study Companion 0.14.1 Unified Study Reader
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0141-unified-study-reader-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  phone-wear-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out exact application source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct exact post-overlay source once
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Install and run backend and persistent Firestore tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            -r MyStudyCompanion/backend/requirements.txt \
+            -r MyStudyCompanion/backend/requirements-dev.txt
+          (cd MyStudyCompanion/backend && python -m pytest -q)
+          npx --yes firebase-tools@15.1.0 emulators:exec \
+            --only firestore \
+            --project demo-msc-backend \
+            --config MyStudyCompanion/backend/firebase.json \
+            "python -m pytest -q MyStudyCompanion/backend/tests/test_firestore_repositories.py"
+
+      - name: Test, build, verify, and package phone, Wear, and web
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py
+          bash -x .msc-build/run-interactive-workbooks-0.14.0-ci.sh build
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-unified-study-reader-phone-wear-web
+          path: final-dist
+          retention-days: 5
+          if-no-files-found: error
+
+  firestore-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out exact application source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Reconstruct and apply workbook and study-reader security rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/firebase-integrity-0.12.5.part*.b64 | base64 --decode > /tmp/firebase-integrity.tar.xz
+          echo '8915fcd1e78a698c8528d4ccf0c06cace33251ee35e85b4a523a9c0af60db37f  /tmp/firebase-integrity.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/firebase-integrity.tar.xz -C .
+          for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
+            grep -v '^#' "$file"
+          done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
+          echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
+          xz -t /tmp/msc-0140-overlay.tar.xz
+          tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+          python3 .msc-build/fix-interactive-workbooks-0.14.0.py
+          python3 .msc-build/apply-unified-study-reader-firestore-0.14.1.py
+
+      - name: Generate missing Firebase test lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .msc-build/firebase-rules-tests
+          if [[ ! -f package-lock.json && ! -f npm-shrinkwrap.json ]]; then
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          fi
+
+      - name: Run and capture 26 Firestore security tests
+        shell: bash
+        run: bash .msc-build/run-firestore-study-reader-0.14.1-ci.sh
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-firestore-workbook-and-study-reader-integrity
+          path: |
+            MyStudyCompanion/firestore.rules
+            .msc-build/firebase-rules-tests/rules.test.cjs
+            .msc-build/firebase-rules-tests/FIRESTORE-RULES-TEST-RESULTS.txt
+          retention-days: 5
+          if-no-files-found: error

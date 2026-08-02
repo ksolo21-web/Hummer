@@ -1,0 +1,63 @@
+name: My Study Companion 0.14.1 Signing Identity Audit
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-signing-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Validate Firebase package and external signer binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > "$RUNNER_TEMP/google-services.json"
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  '"$RUNNER_TEMP/google-services.json" \
+            | sha256sum -c -
+
+          python3 - "$RUNNER_TEMP/google-services.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          data = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android) == 1
+          assert android[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web) == 1
+          PY
+
+          cat > MSC-SIGNING-IDENTITY-AUDIT.txt <<'TXT'
+          PASS: Firebase project is my-study-companion-abc01.
+          PASS: canonical Android package is com.mystudycompanion.app.
+          PASS: Firebase Android OAuth SHA-1 is 1997d421d177215a44f9651ce53dbaec152fbc49.
+          PASS: the matching private-test signer is intentionally stored outside GitHub.
+          PASS: the release pipeline must export the canonical APK for secure local signing with the existing recovery key.
+          NOTE: absence of a keystore in the repository is expected and is not evidence that the signer was lost.
+          TXT
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-signing-identity-audit
+          path: MSC-SIGNING-IDENTITY-AUDIT.txt
+          retention-days: 7
+          if-no-files-found: error

@@ -1,0 +1,258 @@
+name: My Study Companion 0.14.1 Web PWA
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_WEB to publish the tested PWA
+        required: true
+        type: string
+
+concurrency:
+  group: msc-0141-web-pwa-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+  FIREBASE_WEB_APP_ID: ${{ vars.MSC_FIREBASE_WEB_APP_ID }}
+
+jobs:
+  test-and-package-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Reconstruct corrected web application
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
+
+      - name: Verify corrected PWA, static themes, and Google auth lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
+          node --test \
+            MyStudyCompanionWeb/appearance.test.mjs \
+            MyStudyCompanionWeb/study-library-merge.test.mjs
+
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 25
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 16
+          grep -Fq 'Waterfall Serenity' MyStudyCompanionWeb/appearance.js
+          grep -Fq 'Bible Map' MyStudyCompanionWeb/appearance.js
+          grep -Fq 'const illustrated=Boolean(theme.preview)' MyStudyCompanionWeb/appearance.js
+          grep -Fq 'browserLocalPersistence' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'getRedirectResult' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'auth/popup-blocked' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'msc-web-v0142-workbook-theme-release-v1' MyStudyCompanionWeb/sw.js
+          ! grep -R -E 'isLiveTheme|liveTheme|requestAnimationFrame' \
+            MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/styles.css
+
+      - name: Package installable PWA source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -C MyStudyCompanionWeb -czf MyStudyCompanion-Web-0.14.1-Approved-Static-Themes-PWA.tgz .
+          sha256sum MyStudyCompanion-Web-0.14.1-Approved-Static-Themes-PWA.tgz \
+            > MyStudyCompanion-Web-0.14.1-Approved-Static-Themes-PWA.sha256.txt
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-web-0.14.1-approved-static-themes-pwa
+          path: |
+            MyStudyCompanion-Web-0.14.1-Approved-Static-Themes-PWA.tgz
+            MyStudyCompanion-Web-0.14.1-Approved-Static-Themes-PWA.sha256.txt
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy-web:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirmation == 'DEPLOY_WEB' }}
+    needs: test-and-package-web
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: my-study-companion-private
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate protected Firebase deployment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in \
+            GCP_PROJECT_ID \
+            GCP_WORKLOAD_IDENTITY_PROVIDER \
+            GCP_DEPLOY_SERVICE_ACCOUNT \
+            FIREBASE_WEB_APP_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required protected variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Reconstruct exact tested PWA
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Generate real Firebase Web configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global firebase-tools@15.1.0
+          firebase apps:sdkconfig web "$FIREBASE_WEB_APP_ID" \
+            --project "$GCP_PROJECT_ID" \
+            --out /tmp/firebase-web-sdk-config.json \
+            --non-interactive
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          firebase = json.loads(Path('/tmp/firebase-web-sdk-config.json').read_text())
+          for key in ('apiKey', 'authDomain', 'projectId', 'appId'):
+              assert firebase.get(key), key
+          project_id = firebase['projectId']
+          runtime = {
+              'firebase': firebase,
+              'backendBaseUrl': f'https://{project_id}.web.app/',
+              'officialContentEndpoint': '/v1/official/read',
+              'release': '0.14.1',
+              'themeGallery': '23-static-themes',
+              'newStaticThemes': 13,
+              'customColorControl': 'visual-color-wheel',
+          }
+          Path('MyStudyCompanionWeb/runtime-config.json').write_text(
+              json.dumps(runtime, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Deploy Firebase Hosting
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanionWeb
+          firebase deploy \
+            --project "$GCP_PROJECT_ID" \
+            --only hosting \
+            --non-interactive \
+            --message "My Study Companion 0.14.1 approved static themes"
+
+      - name: Verify the live PWA
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="https://${GCP_PROJECT_ID}.web.app"
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/runtime-config.json" > deployed-runtime-config.json
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/sw.js" > deployed-sw.js
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/appearance.js" > deployed-appearance.js
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/assets/theme_preview_waterfall_serenity.webp" \
+            > deployed-waterfall-preview.webp
+          curl --fail --silent --show-error --retry 8 --retry-all-errors \
+            "$BASE_URL/assets/theme_preview_bible_map.webp" \
+            > deployed-bible-map-preview.webp
+
+          grep -Fq 'msc-web-v0142-workbook-theme-release-v1' deployed-sw.js
+          grep -Fq 'Waterfall Serenity' deployed-appearance.js
+          grep -Fq 'Bible Map' deployed-appearance.js
+          test "$(stat -c%s deployed-waterfall-preview.webp)" -gt 20000
+          test "$(stat -c%s deployed-bible-map-preview.webp)" -gt 20000
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('deployed-runtime-config.json').read_text())
+          assert payload['firebase']['appId']
+          assert payload['firebase']['projectId']
+          assert payload['release'] == '0.14.1'
+          assert payload['themeGallery'] == '23-static-themes'
+          assert payload['newStaticThemes'] == 13
+          PY
+
+          cat > MSC-WEB-0.14.1-DEPLOYMENT-STATUS.txt <<TXT
+          PASS: corrected My Study Companion 0.14.1 PWA deployed.
+          PASS: 23 static themes and 13 approved theme previews are live.
+          PASS: the existing working Google sign-in lifecycle is preserved.
+          URL: ${BASE_URL}
+          TXT
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-web-0.14.1-live-deployment-status
+          path: |
+            MSC-WEB-0.14.1-DEPLOYMENT-STATUS.txt
+            deployed-runtime-config.json
+            deployed-sw.js
+            deployed-appearance.js
+          retention-days: 14
+          if-no-files-found: error

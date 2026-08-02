@@ -1,0 +1,204 @@
+name: My Study Companion 0.14.2 Canonical Build for Private Signing
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0142-canonical-local-signing-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-private-signing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out exact application source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct exact verified 0.14.2 source
+        continue-on-error: true
+        shell: bash
+        run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
+
+      - name: Install and verify Firebase Android configuration
+        id: firebase
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          mapfile -t FIREBASE_VALUES < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android) == 1
+          assert android[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web) == 1
+          print(data['project_info']['project_id'])
+          print(web[0]['client_id'])
+          PY
+          )
+          PROJECT_ID="${FIREBASE_VALUES[0]}"
+          echo "web_client_id=${FIREBASE_VALUES[1]}" >> "$GITHUB_OUTPUT"
+          echo "backend_base_url=https://${PROJECT_ID}.web.app/" >> "$GITHUB_OUTPUT"
+
+      - name: Create disposable packaging signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-disposable-packaging"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/temporary.jks" \
+            -storepass temporary-build-only \
+            -alias temporary-build-only \
+            -keypass temporary-build-only \
+            -dname 'CN=Disposable CI Packaging,OU=Not For Installation,O=My Study Companion,C=US' \
+            -keyalg RSA -keysize 3072 -validity 30
+          {
+            echo "MSC_RELEASE_STORE_FILE=$SIGNING_DIR/temporary.jks"
+            echo 'MSC_RELEASE_STORE_PASSWORD=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_ALIAS=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_PASSWORD=temporary-build-only'
+          } >> "$GITHUB_ENV"
+
+      - name: Build canonical phone and Wear APKs
+        shell: bash
+        env:
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+
+      - name: Verify and package canonical outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          mkdir -p canonical-for-private-signing
+
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE_APK"; test -f "$WEAR_APK"
+          cp "$PHONE_APK" canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk
+          cp "$WEAR_APK" canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk
+
+          "$AAPT" dump badging canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='34'" \
+            canonical-for-private-signing/PHONE-IDENTITY.txt
+          grep -q "versionName='0.14.2-private-alpha-workbook-theme-repair'" \
+            canonical-for-private-signing/PHONE-IDENTITY.txt
+
+          "$AAPT" dump badging canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360142001'" \
+            canonical-for-private-signing/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.2-wear-private-alpha-workbook-theme-repair'" \
+            canonical-for-private-signing/WEAR-IDENTITY.txt
+
+          "$AAPT" dump resources canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'google_app_id' canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'default_web_client_id' canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'project_id' canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
+
+          "$APKSIGNER" verify --verbose --print-certs \
+            canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/PHONE-PACKAGING-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs \
+            canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/WEAR-PACKAGING-SIGNATURE.txt
+          "$ZIPALIGN" -c -P 16 -v 4 \
+            canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/PHONE-ZIPALIGN.txt
+          "$ZIPALIGN" -c -P 16 -v 4 \
+            canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk \
+            > canonical-for-private-signing/WEAR-ZIPALIGN.txt
+
+          sha256sum canonical-for-private-signing/*.apk \
+            > canonical-for-private-signing/SHA256SUMS-PACKAGING.txt
+          cat > canonical-for-private-signing/LOCAL-SIGNING-REQUIRED.txt <<'TXT'
+          These APKs have the correct package, version, Firebase resources, Google web client ID,
+          backend URL, reader features and static themes. Their CI signatures are disposable.
+          Re-sign them locally with the existing My Study Companion private-test key:
+          alias: my-study-companion-private-test
+          expected certificate SHA-256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+          expected certificate SHA-1: 1997d421d177215a44f9651ce53dbaec152fbc49
+          Do not upload the private key or its credentials to GitHub.
+          TXT
+
+      - name: Upload canonical APKs for private signing
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.2-canonical-for-private-signing
+          path: canonical-for-private-signing
+          retention-days: 5
+          if-no-files-found: error
