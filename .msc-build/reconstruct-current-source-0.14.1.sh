@@ -13,8 +13,15 @@ fi
 # Preserve only the exact-head files that must survive historical overlays.
 exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
 exact_theme_finisher="$(mktemp /tmp/msc-exact-theme-finisher.XXXXXX.py)"
+exact_workbook_art_dir="$(mktemp -d /tmp/msc-exact-workbook-art.XXXXXX)"
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
 cp .msc-build/apply-approved-theme-finish-v3.py "$exact_theme_finisher"
+cp .msc-build/apply-real-workbook-art-pages-0.14.1.sh "$exact_workbook_art_dir"/
+cp .msc-build/real-workbook-art-pages-0.14.1.part*.b64 "$exact_workbook_art_dir"/
+if [[ "$(find "$exact_workbook_art_dir" -maxdepth 1 -name 'real-workbook-art-pages-0.14.1.part*.b64' | wc -l)" -ne 2 ]]; then
+  echo 'Expected both exact workbook-art payload parts.' >&2
+  exit 1
+fi
 
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
@@ -60,8 +67,17 @@ python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
 
-# One authoritative final stage. No legacy child, no process-group isolation,
-# no palette renderer, and no second pass that can overwrite the manifest.
+# Historical overlays contained prompt-only workbook art. Restore and run the
+# exact-head deterministic installer after every overlay so real vector drawing
+# pages, numbered color regions, PDF art and PWA art remain authoritative.
+mkdir -p .msc-build
+cp "$exact_workbook_art_dir"/apply-real-workbook-art-pages-0.14.1.sh .msc-build/
+cp "$exact_workbook_art_dir"/real-workbook-art-pages-0.14.1.part*.b64 .msc-build/
+bash .msc-build/apply-real-workbook-art-pages-0.14.1.sh
+
+# One authoritative final theme stage. No legacy child, no process-group
+# isolation, no palette renderer, and no second pass that can overwrite the
+# manifest.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 python3 "$exact_theme_finisher"
 
@@ -113,7 +129,18 @@ for slug, entry in themes.items():
 home = root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt'
 if 'ApprovedThemeQuickActions' not in home.read_text(encoding='utf-8'):
     raise SystemExit('Approved native quick-action surface is missing.')
-print('PASS: deterministic theme reconstruction completed once with byte-identical assets.')
+
+editor = root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt'
+workbook = root / 'MyStudyCompanionWeb/workbook.js'
+for path, required_markers in (
+    (editor, ('drawWorkbookArt', 'drawPdfWorkbookArt', 'detectTapGestures', 'Guided drawing canvas')),
+    (workbook, ('renderColorByNumber', 'drawArtCanvas', 'artSvg', 'svgArtStrokes')),
+):
+    source = path.read_text(encoding='utf-8')
+    for marker in required_markers:
+        if marker not in source:
+            raise SystemExit(f'Real workbook-art output is missing {marker} in {path}.')
+print('PASS: deterministic theme reconstruction and real workbook-art reconstruction completed once.')
 PY
 
-echo 'Reconstructed My Study Companion 0.14.1 with Google sign-in preserved and the current 23-theme gallery intact.'
+echo 'Reconstructed My Study Companion 0.14.1 with Google sign-in preserved, the current theme gallery intact, and real drawing/color-by-number workbook pages.'
