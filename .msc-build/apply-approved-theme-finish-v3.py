@@ -51,12 +51,14 @@ replace_once(
     'sprite dimensions',
 )
 
-# Force the source WebP to be fully decoded and detached before any row crops.
-# This prevents hosted libwebp lazy-decoder state from corrupting later cells.
+# Decode the checksum-locked source with ffmpeg instead of the hosted Pillow
+# WebP decoder. The hosted decoder corrupts rows below the first five cells even
+# though the source bytes and SHA-256 are correct.
+replace_once('import shutil', 'import shutil\nimport subprocess', 'ffmpeg import')
 replace_once(
     "sprite = Image.open(SPRITE).convert('RGB')",
-    "with Image.open(SPRITE) as opened_sprite:\n    opened_sprite.load()\n    sprite = opened_sprite.convert('RGB').copy()\nsprite.load()",
-    'fully decoded sprite raster',
+    "decoded_sprite = Path('/tmp/msc-approved-theme-sprite-v5-decoded.png')\nsubprocess.run(\n    [\n        'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',\n        '-i', str(SPRITE), str(decoded_sprite),\n    ],\n    check=True,\n)\nwith Image.open(decoded_sprite) as opened_sprite:\n    opened_sprite.load()\n    sprite = opened_sprite.convert('RGB').copy()\nsprite.load()",
+    'ffmpeg-decoded sprite raster',
 )
 replace_once(
     'from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps',
