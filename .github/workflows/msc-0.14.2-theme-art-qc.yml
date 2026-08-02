@@ -31,7 +31,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check Pillow==12.2.0
 
       - name: Build the sixteen corrected themes from stable public-domain sources
-        run: python .msc-build/build-approved-theme-source-artwork-0.14.2-v7.py theme-art-qc
+        run: python .msc-build/build-approved-theme-source-artwork-0.14.2-v8.py theme-art-qc
 
       - name: Verify production artwork contract
         shell: bash
