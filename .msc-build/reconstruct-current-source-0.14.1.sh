@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Historical source overlays create files under /tmp using older driver names.
-# Run this exact-head driver from a unique path so no overlay can replace it.
+# Historical overlays can replace driver files. Run exact-head logic from /tmp.
 if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP:-0}" != "1" ]]; then
   exact_driver="$(mktemp /tmp/msc-exact-head-reconstruct.XXXXXX.sh)"
   cp "$0" "$exact_driver"
@@ -10,16 +9,33 @@ if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP:-0}" != "1" ]]; then
   exec env MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP=1 bash "$exact_driver"
 fi
 
-# Preserve only the exact-head files that must survive historical overlays.
 exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
 exact_theme_finisher="$(mktemp /tmp/msc-exact-theme-finisher.XXXXXX.py)"
 exact_workbook_art_dir="$(mktemp -d /tmp/msc-exact-workbook-art.XXXXXX)"
+exact_release_dir="$(mktemp -d /tmp/msc-exact-0142-release.XXXXXX)"
+
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
 cp .msc-build/apply-approved-theme-finish-v3.py "$exact_theme_finisher"
 cp .msc-build/apply-real-workbook-art-pages-0.14.1.sh "$exact_workbook_art_dir"/
 cp .msc-build/real-workbook-art-pages-0.14.1.part*.b64 "$exact_workbook_art_dir"/
+cp .msc-build/apply-final-theme-release-0.14.2.sh "$exact_release_dir"/
+cp .msc-build/theme-generator-0.14.2.part*.pyfrag "$exact_release_dir"/
+cp .msc-build/theme-registry-0.14.2.part*.pyfrag "$exact_release_dir"/
+
 if [[ "$(find "$exact_workbook_art_dir" -maxdepth 1 -name 'real-workbook-art-pages-0.14.1.part*.b64' | wc -l)" -ne 2 ]]; then
   echo 'Expected both exact workbook-art payload parts.' >&2
+  exit 1
+fi
+if [[ ! -s "$exact_release_dir/apply-final-theme-release-0.14.2.sh" ]]; then
+  echo 'Expected the exact 0.14.2 theme release installer.' >&2
+  exit 1
+fi
+if [[ "$(find "$exact_release_dir" -maxdepth 1 -name 'theme-generator-0.14.2.part*.pyfrag' | wc -l)" -ne 4 ]]; then
+  echo 'Expected four deterministic theme-generator fragments.' >&2
+  exit 1
+fi
+if [[ "$(find "$exact_release_dir" -maxdepth 1 -name 'theme-registry-0.14.2.part*.pyfrag' | wc -l)" -ne 2 ]]; then
+  echo 'Expected two deterministic theme-registry fragments.' >&2
   exit 1
 fi
 
@@ -66,25 +82,23 @@ bash .msc-build/apply-production-live-stack-0.14.1.sh
 python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 
-# This legacy integration stage supplies the current static assets but is known
-# to return a false non-zero status after printing its own PASS result. It is
-# therefore non-authoritative: preserve its output, record its status, and let
-# the exact-head workbook and theme finishers perform the real acceptance gates.
 legacy_art_rc=0
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh || legacy_art_rc=$?
 echo "Legacy static-theme integration process code: ${legacy_art_rc}"
 
-# Historical overlays contained prompt-only workbook art. Restore and run the
-# exact-head deterministic installer after every overlay so real vector drawing
-# pages, numbered color regions, PDF art and PWA art remain authoritative.
+# Restore the exact-head workbook engine after every historical overlay.
 mkdir -p .msc-build
 cp "$exact_workbook_art_dir"/apply-real-workbook-art-pages-0.14.1.sh .msc-build/
 cp "$exact_workbook_art_dir"/real-workbook-art-pages-0.14.1.part*.b64 .msc-build/
 bash .msc-build/apply-real-workbook-art-pages-0.14.1.sh
 
-# One authoritative final theme stage. No legacy child, no process-group
-# isolation, no palette renderer, and no second pass that can overwrite the
-# manifest.
+# Install the 0.14.2 release on top of the verified 0.14.1 baseline.
+cp "$exact_release_dir"/apply-final-theme-release-0.14.2.sh .msc-build/
+cp "$exact_release_dir"/theme-generator-0.14.2.part*.pyfrag .msc-build/
+cp "$exact_release_dir"/theme-registry-0.14.2.part*.pyfrag .msc-build/
+bash .msc-build/apply-final-theme-release-0.14.2.sh
+
+# One authoritative final theme stage: sharp full-scene assets and sharp previews.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 python3 "$exact_theme_finisher"
 
@@ -102,10 +116,12 @@ if not manifest_path.is_file() or manifest_path.stat().st_size < 500:
 manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
 themes = manifest.get('themes', {})
 required = {
+    'moonlit_wolf',
     'waterfall_serenity', 'rainforest_harmony', 'ocean_majesty',
     'celestial_wonder', 'mountain_sunrise', 'creation_garden',
     'bible_sketch_study', 'parable_line_panels', 'noahs_ark',
     'red_sea_deliverance', 'creation_sky', 'bible_timeline', 'bible_map',
+    'lion_premium_2', 'fox_premium_2',
 }
 if set(themes) != required:
     raise SystemExit(f'Approved theme manifest mismatch: {sorted(themes)}')
@@ -116,9 +132,11 @@ roots = (
     root / 'MyStudyCompanionWeb/assets',
 )
 for slug, entry in themes.items():
-    if entry.get('source_mode') != 'approved_static_archive':
-        raise SystemExit(f'{slug} did not use the approved static artwork archive.')
-    if entry.get('scene_dimensions') != [1200, 2400]:
+    if entry.get('source_mode') != 'approved_full_scene_art':
+        raise SystemExit(f'{slug} did not use approved full-scene artwork.')
+    if entry.get('preview_mode') != 'single_sharp_crop_no_blur':
+        raise SystemExit(f'{slug} used a forbidden preview path.')
+    if entry.get('scene_dimensions') != [1024, 1536]:
         raise SystemExit(f'Invalid scene dimensions for {slug}')
     if entry.get('preview_dimensions') != [720, 1440]:
         raise SystemExit(f'Invalid preview dimensions for {slug}')
@@ -132,6 +150,13 @@ for slug, entry in themes.items():
         actual = {hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
         if actual != {expected}:
             raise SystemExit(f'Cross-surface {kind} digest mismatch for {slug}: {actual}')
+
+mode = root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt'
+if mode.read_text(encoding='utf-8').count('isAnimalTheme = true') != 9:
+    raise SystemExit('Expected nine animal themes in the 25-theme registry.')
+for marker in ('LION_PREMIUM_2', 'FOX_PREMIUM_2', 'AUTOMATIC'):
+    if marker not in mode.read_text(encoding='utf-8'):
+        raise SystemExit(f'Missing final theme mode: {marker}')
 
 home = root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt'
 if 'ApprovedThemeQuickActions' not in home.read_text(encoding='utf-8'):
@@ -147,7 +172,8 @@ for path, required_markers in (
     for marker in required_markers:
         if marker not in source:
             raise SystemExit(f'Real workbook-art output is missing {marker} in {path}.')
-print('PASS: deterministic theme reconstruction and real workbook-art reconstruction completed once.')
+
+print('PASS: 0.14.2 reconstructed with real workbook pages and 25 permanent themes plus Automatic.')
 PY
 
-echo 'Reconstructed My Study Companion 0.14.1 with Google sign-in preserved, the current theme gallery intact, and real drawing/color-by-number workbook pages.'
+echo 'Reconstructed My Study Companion 0.14.2 from the verified 0.14.1 baseline with real workbook pages, sharp static theme art, and Google sign-in preserved.'
