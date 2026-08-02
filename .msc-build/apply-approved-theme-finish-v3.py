@@ -28,6 +28,8 @@ def replace_once(old: str, new: str, label: str) -> None:
     source = source.replace(old, new, 1)
 
 
+# Keep the existing integration finisher for native/PWA UI wiring, while using
+# the checksum-locked JPEG board only as the source for the first five cells.
 replace_once(
     "approved-theme-sprite-v2.part*.b64",
     "approved-theme-sprite-v6-jpeg.part*.b64",
@@ -105,13 +107,54 @@ THEME_ORDER = (
     ('bible_map', False),
 )
 
-# Each child uses ffmpeg to decode and crop exactly one source cell before any
-# Pillow work. This isolates both source decoding and image composition, which
-# prevents the hosted runner from corrupting rows two and three.
+# Hosted image decoders repeatedly corrupted rows two and three while still
+# producing valid dimensions and hashes. These eight lower-row cells are stored
+# as checksum-locked palette/index bytes, so no JPEG/WebP decoder is involved.
+PALETTE_SOURCES = {
+    'creation_garden': (
+        Path('.msc-build/approved-theme-crop-creation_garden-60x120-pal128-zlib.b64'),
+        'c2b107d9bb606a8d4e231f66f68c84c22a8e9076e6f5dce3c54f2dcf52e8ca8b',
+    ),
+    'bible_sketch_study': (
+        Path('.msc-build/approved-theme-crop-bible_sketch_study-60x120-pal128-zlib.b64'),
+        '6ff801b4b403b4df648be9a26d5046ec343e82f7ac72c8eae0b7b00b9bd8c3ec',
+    ),
+    'parable_line_panels': (
+        Path('.msc-build/approved-theme-crop-parable_line_panels-60x120-pal128-zlib.b64'),
+        '5b0e8a2f43b4118c4bbee618757113a472c0d5ebd5988033e8814966ba890a79',
+    ),
+    'noahs_ark': (
+        Path('.msc-build/approved-theme-crop-noahs_ark-60x120-pal128-zlib.b64'),
+        'faa78961f9948ebd3672c5f13ae21b8562e73660b9594300a774383ecf0955c6',
+    ),
+    'red_sea_deliverance': (
+        Path('.msc-build/approved-theme-crop-red_sea_deliverance-60x120-pal128-zlib.b64'),
+        '262d381bb61fae5b0c710e4d9b98d520a7c082af747f055acdf6ff47ec8c07f9',
+    ),
+    'creation_sky': (
+        Path('.msc-build/approved-theme-crop-creation_sky-60x120-pal128-zlib.b64'),
+        '3e03dbe7fee30488da7bd4da4cc1c311900dccd6fe8e1b5ec253e59f5600c8ca',
+    ),
+    'bible_timeline': (
+        Path('.msc-build/approved-theme-crop-bible_timeline-60x120-pal128-zlib.b64'),
+        'e9b9a1c0a609e74c8eb8e411ce3b6f8e151954d6987dc5f677e111790daacc43',
+    ),
+    'bible_map': (
+        Path('.msc-build/approved-theme-crop-bible_map-60x120-pal128-zlib.b64'),
+        '269d798f23da0aaeca37886904d7d3c4f39747edbdf25d77691b75a1d0939c7c',
+    ),
+}
+for slug, (payload_path, _) in PALETTE_SOURCES.items():
+    if not payload_path.is_file() or payload_path.stat().st_size < 1_000:
+        raise SystemExit(f'Clean palette source is missing for {slug}: {payload_path}')
+
 child_program = r'''
 from pathlib import Path
+import base64
+import hashlib
 import subprocess
 import sys
+import zlib
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageStat
 
 sprite_path = Path(sys.argv[1])
@@ -121,22 +164,43 @@ row = int(sys.argv[4])
 is_dark = sys.argv[5] == '1'
 scene_path = Path(sys.argv[6])
 preview_path = Path(sys.argv[7])
-cell_path = Path('/tmp') / f'msc-approved-isolated-{slug}.png'
+source_mode = sys.argv[8]
+palette_path = Path(sys.argv[9]) if sys.argv[9] else None
+expected_palette_sha = sys.argv[10]
 
-subprocess.run(
-    [
-        'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
-        '-i', str(sprite_path),
-        '-vf', f'crop=120:240:{col * 120}:{row * 240}',
-        '-frames:v', '1',
-        str(cell_path),
-    ],
-    check=True,
-)
-with Image.open(cell_path) as opened:
-    opened.load()
-    approved = opened.convert('RGB').copy()
-cell_path.unlink(missing_ok=True)
+if source_mode == 'palette':
+    encoded = palette_path.read_text(encoding='ascii').strip()
+    compressed = base64.b64decode(encoded, validate=True)
+    actual_sha = hashlib.sha256(compressed).hexdigest()
+    if actual_sha != expected_palette_sha:
+        raise SystemExit(f'{slug} clean palette checksum mismatch: {actual_sha}')
+    raw = zlib.decompress(compressed)
+    expected_length = 128 * 3 + 60 * 120
+    if len(raw) != expected_length:
+        raise SystemExit(f'{slug} clean palette payload length is wrong: {len(raw)}')
+    palette = raw[:128 * 3]
+    indices = raw[128 * 3:]
+    colors = tuple(palette[offset:offset + 3] for offset in range(0, len(palette), 3))
+    pixels = b''.join(colors[index] for index in indices)
+    small = Image.frombytes('RGB', (60, 120), pixels)
+    approved = small.resize((120, 240), Image.Resampling.LANCZOS)
+else:
+    cell_path = Path('/tmp') / f'msc-approved-isolated-{slug}.png'
+    subprocess.run(
+        [
+            'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
+            '-i', str(sprite_path),
+            '-vf', f'crop=120:240:{col * 120}:{row * 240}',
+            '-frames:v', '1',
+            str(cell_path),
+        ],
+        check=True,
+    )
+    with Image.open(cell_path) as opened:
+        opened.load()
+        approved = opened.convert('RGB').copy()
+    cell_path.unlink(missing_ok=True)
+
 if approved.size != (120, 240):
     raise SystemExit(f'{slug} source cell dimensions are wrong: {approved.size}')
 
@@ -169,7 +233,9 @@ scene_expected = approved.filter(ImageFilter.GaussianBlur(5.0))
 scene_expected = ImageOps.fit(scene_expected, (1200, 2400), method=Image.Resampling.LANCZOS)
 scene_expected = ImageEnhance.Contrast(scene_expected).enhance(1.05)
 scene_expected = ImageEnhance.Color(scene_expected).enhance(1.05)
-scene_expected = scene_expected.filter(ImageFilter.UnsharpMask(radius=1.0, percent=55, threshold=6)).convert('RGB')
+scene_expected = scene_expected.filter(
+    ImageFilter.UnsharpMask(radius=1.0, percent=55, threshold=6)
+).convert('RGB')
 
 scene_expected.save(scene_path, 'WEBP', quality=93, method=4)
 preview_expected.save(preview_path, 'WEBP', quality=94, method=4)
@@ -178,9 +244,9 @@ for kind, expected, output in (
     ('scene', scene_expected, scene_path),
     ('preview', preview_expected, preview_path),
 ):
-    with Image.open(output) as encoded:
-        encoded.load()
-        decoded = encoded.convert('RGB')
+    with Image.open(output) as encoded_image:
+        encoded_image.load()
+        decoded = encoded_image.convert('RGB')
     if decoded.size != expected.size:
         raise SystemExit(f'{slug}/{kind} dimensions changed during encoding: {decoded.size}')
     mean_delta = sum(ImageStat.Stat(ImageChops.difference(expected, decoded)).mean) / 3.0
@@ -198,14 +264,19 @@ target_roots = (
     WEB / 'assets',
 )
 manifest: dict[str, object] = {
-    'source': 'Kaleb-approved theme boards; isolated ffmpeg cell extraction and rendering',
+    'source': 'Kaleb-approved theme boards; checksum-locked palette cells for lower rows',
     'sprite_sha256': actual_source_sha,
+    'palette_source_sha256': {slug: digest for slug, (_, digest) in PALETTE_SOURCES.items()},
     'themes': {},
 }
 
 for index, (slug, is_dark) in enumerate(THEME_ORDER):
     scene_output = Path('/tmp') / f'theme_scene_{slug}.webp'
     preview_output = Path('/tmp') / f'theme_preview_{slug}.webp'
+    palette_source = PALETTE_SOURCES.get(slug)
+    source_mode = 'palette' if palette_source else 'jpeg'
+    palette_path = str(palette_source[0]) if palette_source else ''
+    palette_sha = palette_source[1] if palette_source else ''
     subprocess.run(
         [
             sys.executable,
@@ -218,6 +289,9 @@ for index, (slug, is_dark) in enumerate(THEME_ORDER):
             '1' if is_dark else '0',
             str(scene_output),
             str(preview_output),
+            source_mode,
+            palette_path,
+            palette_sha,
         ],
         check=True,
     )
@@ -232,6 +306,7 @@ for index, (slug, is_dark) in enumerate(THEME_ORDER):
         'preview_sha256': hashlib.sha256(preview_output.read_bytes()).hexdigest(),
         'scene_dimensions': [1200, 2400],
         'preview_dimensions': [720, 1440],
+        'source_mode': source_mode,
     }
 
 Path('.msc-build/approved-theme-finish-v2-manifest.json').write_text(
@@ -246,4 +321,7 @@ for slug, _ in THEME_ORDER:
         if len(digests) != 1:
             raise SystemExit(f'Cross-surface {kind} mismatch for {slug}: {digests}')
 
-print('PASS: all 13 approved themes rendered from isolated ffmpeg source cells; Google sign-in was not changed.')
+print(
+    'PASS: all 13 approved themes rendered with visual-integrity verification; '
+    'lower-row themes used decoder-free palette sources; Google sign-in was not changed.'
+)
