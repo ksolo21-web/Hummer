@@ -24,11 +24,10 @@ jobs:
           set -euo pipefail
           mkdir -p canva-artwork
           curl --fail --location --retry 3 \
-            'https://design.canva.ai/6GsMRsqgPPJ_ouM' \
-            --output canva-artwork/moonlit-wolf-candidate
-          file canva-artwork/moonlit-wolf-candidate | tee canva-artwork/FILE-TYPE.txt
-          identify canva-artwork/moonlit-wolf-candidate | tee canva-artwork/IMAGE-IDENTITY.txt
-          cp canva-artwork/moonlit-wolf-candidate canva-artwork/moonlit-wolf.png
+            'https://s3.amazonaws.com/document-export.canva.com/NPWOM/DAHRJfNPWOM/1/thumbnail/0001.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUHYGFFNMW3%2F20260802%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260802T003341Z&X-Amz-Expires=48585&X-Amz-Signature=ae224c9af2afc8a8281ceb15b4a2a3dd87d656bd2882d03a8c9f17e4a64d653a&X-Amz-SignedHeaders=host&response-expires=Sun%2C%2002%20Aug%202026%2014%3A03%3A26%20GMT' \
+            --output canva-artwork/moonlit-wolf.png
+          file canva-artwork/moonlit-wolf.png | tee canva-artwork/FILE-TYPE.txt
+          identify canva-artwork/moonlit-wolf.png | tee canva-artwork/IMAGE-IDENTITY.txt
           sha256sum canva-artwork/moonlit-wolf.png > canva-artwork/SHA256SUMS.txt
 
       - name: Upload generated artwork
