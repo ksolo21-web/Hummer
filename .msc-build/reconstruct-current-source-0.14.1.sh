@@ -10,14 +10,20 @@ if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP:-0}" != "1" ]]; then
   exec env MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP=1 bash "$exact_driver"
 fi
 
-# Preserve exact-head repair scripts under unique names before historical
-# archives restore older copies into the repository and common /tmp paths.
+# Preserve exact-head repair scripts and decoder-free lower-row theme sources
+# before historical archives restore older copies or remove newer payloads.
 exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
 exact_theme_finisher_v2="$(mktemp /tmp/msc-exact-theme-finisher-v2.XXXXXX.py)"
 exact_theme_finisher_v3="$(mktemp /tmp/msc-exact-theme-finisher-v3.XXXXXX.py)"
+exact_palette_dir="$(mktemp -d /tmp/msc-exact-theme-palettes.XXXXXX)"
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
 cp .msc-build/apply-approved-theme-finish-v2.py "$exact_theme_finisher_v2"
 cp .msc-build/apply-approved-theme-finish-v3.py "$exact_theme_finisher_v3"
+cp .msc-build/approved-theme-crop-*-60x120-pal128-zlib.b64 "$exact_palette_dir"/
+if [[ "$(find "$exact_palette_dir" -maxdepth 1 -type f | wc -l)" -ne 8 ]]; then
+  echo 'Expected all eight decoder-free lower-row theme payloads.' >&2
+  exit 1
+fi
 
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
@@ -62,6 +68,14 @@ bash .msc-build/apply-production-live-stack-0.14.1.sh
 python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
+
+# Restore the exact clean palette payloads after every historical overlay.
+mkdir -p .msc-build
+cp "$exact_palette_dir"/*.b64 .msc-build/
+if [[ "$(find .msc-build -maxdepth 1 -name 'approved-theme-crop-*-60x120-pal128-zlib.b64' | wc -l)" -ne 8 ]]; then
+  echo 'Decoder-free lower-row theme payload restoration failed.' >&2
+  exit 1
+fi
 
 # The finisher validates every scene/preview before printing PASS. Keep it in an
 # explicit OR-list so Bash errexit/ERR handling cannot terminate this exact-head
