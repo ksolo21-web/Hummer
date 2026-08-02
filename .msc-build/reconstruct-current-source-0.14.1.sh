@@ -13,9 +13,11 @@ fi
 # Preserve exact-head repair scripts under unique names before historical
 # archives restore older copies into the repository and common /tmp paths.
 exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
-exact_theme_finisher="$(mktemp /tmp/msc-exact-theme-finisher.XXXXXX.py)"
+exact_theme_finisher_v2="$(mktemp /tmp/msc-exact-theme-finisher-v2.XXXXXX.py)"
+exact_theme_finisher_v3="$(mktemp /tmp/msc-exact-theme-finisher-v3.XXXXXX.py)"
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
-cp .msc-build/apply-approved-theme-finish-v2.py "$exact_theme_finisher"
+cp .msc-build/apply-approved-theme-finish-v2.py "$exact_theme_finisher_v2"
+cp .msc-build/apply-approved-theme-finish-v3.py "$exact_theme_finisher_v3"
 
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
@@ -67,7 +69,8 @@ bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
 # accepts only the complete manifest and byte-identical cross-device assets.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 theme_finish_rc=0
-python3 "$exact_theme_finisher" || theme_finish_rc=$?
+MSC_APPROVED_THEME_FINISH_V2="$exact_theme_finisher_v2" \
+  python3 "$exact_theme_finisher_v3" || theme_finish_rc=$?
 echo "Approved theme finisher process code: ${theme_finish_rc}"
 
 python3 - <<'PY'
