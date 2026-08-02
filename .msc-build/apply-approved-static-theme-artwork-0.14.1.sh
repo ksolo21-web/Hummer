@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-sed -i \
-  's/9cf84adad810ee349e98e62f2bdd52a7c8b8c41bc4cd747c197433f70c5a6edb/4e7720a6a2fc0ff0add3a0b75cd4e2c2b5e20d550940902e4c38774940698a3f/' \
-  .msc-build/apply-approved-theme-finish-v2.py
-
 python3 .msc-build/apply-approved-theme-finish-v2.py
 
 node --check MyStudyCompanionWeb/appearance.js
