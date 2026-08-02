@@ -69,15 +69,15 @@ jobs:
             MyStudyCompanionWeb/appearance.test.mjs \
             MyStudyCompanionWeb/study-library-merge.test.mjs
 
-          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 23
-          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 25
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 16
           grep -Fq 'Waterfall Serenity' MyStudyCompanionWeb/appearance.js
           grep -Fq 'Bible Map' MyStudyCompanionWeb/appearance.js
           grep -Fq 'const illustrated=Boolean(theme.preview)' MyStudyCompanionWeb/appearance.js
           grep -Fq 'browserLocalPersistence' MyStudyCompanionWeb/firebase-sync.js
           grep -Fq 'getRedirectResult' MyStudyCompanionWeb/firebase-sync.js
           grep -Fq 'auth/popup-blocked' MyStudyCompanionWeb/firebase-sync.js
-          grep -Fq 'msc-web-v0145-static-theme-auth-repair' MyStudyCompanionWeb/sw.js
+          grep -Fq 'msc-web-v0142-workbook-theme-release-v1' MyStudyCompanionWeb/sw.js
           ! grep -R -E 'isLiveTheme|liveTheme|requestAnimationFrame' \
             MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/styles.css
 
@@ -223,7 +223,7 @@ jobs:
             "$BASE_URL/assets/theme_preview_bible_map.webp" \
             > deployed-bible-map-preview.webp
 
-          grep -Fq 'msc-web-v0145-static-theme-auth-repair' deployed-sw.js
+          grep -Fq 'msc-web-v0142-workbook-theme-release-v1' deployed-sw.js
           grep -Fq 'Waterfall Serenity' deployed-appearance.js
           grep -Fq 'Bible Map' deployed-appearance.js
           test "$(stat -c%s deployed-waterfall-preview.webp)" -gt 20000
