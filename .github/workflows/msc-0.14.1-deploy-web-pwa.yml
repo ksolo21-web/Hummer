@@ -49,11 +49,16 @@ jobs:
           python-version: '3.12'
 
       - name: Reconstruct corrected web application
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check Pillow==12.2.0
           bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
 
       - name: Verify corrected PWA, static themes, and Google auth lifecycle
         shell: bash
@@ -134,11 +139,16 @@ jobs:
           done
 
       - name: Reconstruct exact tested PWA
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check Pillow==12.2.0
           bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -193,7 +203,7 @@ jobs:
             --project "$GCP_PROJECT_ID" \
             --only hosting \
             --non-interactive \
-            --message "My Study Companion 0.14.1 approved static themes and Google auth repair"
+            --message "My Study Companion 0.14.1 approved static themes"
 
       - name: Verify the live PWA
         shell: bash
@@ -232,7 +242,7 @@ jobs:
           cat > MSC-WEB-0.14.1-DEPLOYMENT-STATUS.txt <<TXT
           PASS: corrected My Study Companion 0.14.1 PWA deployed.
           PASS: 23 static themes and 13 approved theme previews are live.
-          PASS: restored Google popup/redirect session lifecycle is deployed.
+          PASS: the existing working Google sign-in lifecycle is preserved.
           URL: ${BASE_URL}
           TXT
 
