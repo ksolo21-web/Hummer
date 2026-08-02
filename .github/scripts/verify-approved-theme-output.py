@@ -8,10 +8,12 @@ from pathlib import Path
 ROOT = Path('.')
 MANIFEST = ROOT / '.msc-build/approved-theme-finish-v2-manifest.json'
 REQUIRED = {
+    'moonlit_wolf',
     'waterfall_serenity', 'rainforest_harmony', 'ocean_majesty',
     'celestial_wonder', 'mountain_sunrise', 'creation_garden',
     'bible_sketch_study', 'parable_line_panels', 'noahs_ark',
     'red_sea_deliverance', 'creation_sky', 'bible_timeline', 'bible_map',
+    'lion_premium_2', 'fox_premium_2',
 }
 TARGETS = (
     ROOT / 'MyStudyCompanion/app/src/main/res/drawable-nodpi',
@@ -27,9 +29,11 @@ if set(themes) != REQUIRED:
     raise SystemExit(f'Approved theme manifest mismatch: {sorted(themes)}')
 
 for slug, entry in themes.items():
-    if entry.get('source_mode') != 'approved_static_archive':
-        raise SystemExit(f'{slug} did not use the approved static artwork archive.')
-    if entry.get('scene_dimensions') != [1200, 2400]:
+    if entry.get('source_mode') != 'approved_full_scene_art':
+        raise SystemExit(f'{slug} did not use approved full-scene artwork.')
+    if entry.get('preview_mode') != 'single_sharp_crop_no_blur':
+        raise SystemExit(f'{slug} did not use the no-blur preview path.')
+    if entry.get('scene_dimensions') != [1024, 1536]:
         raise SystemExit(f'Invalid scene dimensions for {slug}')
     if entry.get('preview_dimensions') != [720, 1440]:
         raise SystemExit(f'Invalid preview dimensions for {slug}')
@@ -44,9 +48,21 @@ for slug, entry in themes.items():
         if actual != {expected}:
             raise SystemExit(f'Cross-surface {kind} mismatch for {slug}: {actual}')
 
+mode = ROOT / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt'
+wear = ROOT / 'MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearThemeArtwork.kt'
+appearance = ROOT / 'MyStudyCompanionWeb/appearance.js'
+for path, markers in (
+    (mode, ('LION_PREMIUM_2', 'FOX_PREMIUM_2', 'AUTOMATIC')),
+    (wear, ('theme_scene_lion_premium_2', 'theme_scene_fox_premium_2')),
+    (appearance, ('Lion — Premium II', 'Fox — Premium II')),
+):
+    source = path.read_text(encoding='utf-8')
+    for marker in markers:
+        if marker not in source:
+            raise SystemExit(f'Missing 25-theme registry marker {marker} in {path}')
+
 home = ROOT / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt'
 settings = ROOT / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt'
-appearance = ROOT / 'MyStudyCompanionWeb/appearance.js'
 styles = ROOT / 'MyStudyCompanionWeb/styles.css'
 for path in (home, settings, appearance, styles):
     if not path.is_file():
@@ -64,4 +80,4 @@ for required in ('browserLocalPersistence', 'getRedirectResult', 'signInWithPopu
     if required not in auth_source:
         raise SystemExit(f'Google sign-in repair was lost: {required}')
 
-print('PASS: all 13 approved themes are static, byte-identical, and finalized through one deterministic stage.')
+print('PASS: 25 permanent themes plus Automatic are registered; 16 rebuilt/new themes are sharp, static, and byte-identical across all surfaces.')
