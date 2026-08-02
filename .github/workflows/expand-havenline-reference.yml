@@ -1,5 +1,6 @@
 name: Expand HAVENLINE Reference Source
 
+# Integrity retry 1: the PR gate verifies each chunk before expansion.
 on:
   push:
     branches:
