@@ -61,30 +61,26 @@ python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
 
-# Run the exact-head finisher as a child of a verification process. This keeps a
-# hosted Pillow shutdown code from terminating the reconstruction after every
-# asset and hard gate have already completed. The parent accepts only the exact
-# complete manifest, dimensions, files, hashes, and native quick-action surface.
-EXACT_THEME_FINISHER="$exact_theme_finisher" python3 - <<'PY'
+# The finisher validates every scene/preview before printing PASS. Keep it in an
+# explicit OR-list so Bash errexit/ERR handling cannot terminate this exact-head
+# driver on a hosted Pillow shutdown code. The following independent gate then
+# accepts only the complete manifest and byte-identical cross-device assets.
+rm -f .msc-build/approved-theme-finish-v2-manifest.json
+theme_finish_rc=0
+python3 "$exact_theme_finisher" || theme_finish_rc=$?
+echo "Approved theme finisher process code: ${theme_finish_rc}"
+
+python3 - <<'PY'
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 from pathlib import Path
-import subprocess
-import sys
 
 root = Path('.')
 manifest_path = root / '.msc-build/approved-theme-finish-v2-manifest.json'
-manifest_path.unlink(missing_ok=True)
-finisher = Path(os.environ['EXACT_THEME_FINISHER'])
-completed = subprocess.run([sys.executable, str(finisher)], check=False)
-
 if not manifest_path.is_file() or manifest_path.stat().st_size < 500:
-    raise SystemExit(
-        f'Approved theme finisher failed with code {completed.returncode}; manifest is missing or incomplete.'
-    )
+    raise SystemExit('Approved theme manifest is missing or incomplete.')
 manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
 themes = manifest.get('themes', {})
 required = {
@@ -120,8 +116,7 @@ for slug, entry in themes.items():
 home = root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt'
 if 'ApprovedThemeQuickActions' not in home.read_text(encoding='utf-8'):
     raise SystemExit('Approved native quick-action surface is missing.')
-
-print(f'PASS: approved theme child returned {completed.returncode}; all 13 themes and surfaces are fully verified.')
+print('PASS: all 13 approved themes are complete and byte-identical across phone, Wear OS, and PWA.')
 PY
 
 echo 'Reconstructed My Study Companion 0.14.1 with the working Google sign-in preserved and all 23 themes rebuilt as polished static themes matching the approved visual direction.'
