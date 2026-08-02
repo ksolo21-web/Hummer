@@ -1,0 +1,228 @@
+name: My Study Companion 0.14.1 Final Original Theme Set
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0141-final-original-theme-set-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  final-original-theme-set:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out exact application source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic theme build dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct final 0.14.1 original-theme release source
+        shell: bash
+        run: bash .msc-build/reconstruct-final-original-theme-set-0.14.1.sh
+
+      - name: Verify the final selectable theme set and preserved Google sign-in
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODE=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt
+          SETTINGS=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
+          STORE=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeStore.kt
+          WEAR=MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearStudySnapshot.kt
+          APPEARANCE=MyStudyCompanionWeb/appearance.js
+          AUTH=MyStudyCompanionWeb/firebase-sync.js
+
+          grep -Fq 'val availableEntries: List<AppThemeMode>' "$MODE"
+          grep -Fq 'items(AppThemeMode.availableEntries' "$SETTINGS"
+          grep -Fq 'normalizeForRelease' "$STORE"
+          grep -Fq 'fun normalizeWearThemeMode' "$WEAR"
+          grep -Fq 'const RELEASE_THEME_KEYS = new Set(["automatic","calm_light","premium_dark","warm_editorial","owl","fox","lion","tiger","golden_owl","sakura_tiger"])' "$APPEARANCE"
+          grep -Fq 'filter(([key])=>RELEASE_THEME_KEYS.has(key))' "$APPEARANCE"
+          grep -Fq 'browserLocalPersistence' "$AUTH"
+          grep -Fq 'getRedirectResult' "$AUTH"
+          grep -Fq 'signInWithPopup' "$AUTH"
+          grep -Fq 'auth/popup-blocked' "$AUTH"
+
+          node --check "$APPEARANCE"
+          node --check "$AUTH"
+          node --test MyStudyCompanionWeb/appearance.test.mjs MyStudyCompanionWeb/study-library-merge.test.mjs
+
+      - name: Install and verify Firebase Android configuration
+        id: firebase
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          mapfile -t FIREBASE_VALUES < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android) == 1
+          assert android[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web) == 1
+          print(data['project_info']['project_id'])
+          print(web[0]['client_id'])
+          PY
+          )
+          PROJECT_ID="${FIREBASE_VALUES[0]}"
+          echo "web_client_id=${FIREBASE_VALUES[1]}" >> "$GITHUB_OUTPUT"
+          echo "backend_base_url=https://${PROJECT_ID}.web.app/" >> "$GITHUB_OUTPUT"
+
+      - name: Create disposable packaging signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-disposable-packaging"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/temporary.jks" \
+            -storepass temporary-build-only \
+            -alias temporary-build-only \
+            -keypass temporary-build-only \
+            -dname 'CN=Disposable CI Packaging,OU=Not For Installation,O=My Study Companion,C=US' \
+            -keyalg RSA -keysize 3072 -validity 30
+          {
+            echo "MSC_RELEASE_STORE_FILE=$SIGNING_DIR/temporary.jks"
+            echo 'MSC_RELEASE_STORE_PASSWORD=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_ALIAS=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_PASSWORD=temporary-build-only'
+          } >> "$GITHUB_ENV"
+
+      - name: Build final phone and Wear APKs
+        shell: bash
+        env:
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+
+      - name: Verify and package final outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          OUT=final-original-theme-set
+          mkdir -p "$OUT"
+
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE_APK"; test -f "$WEAR_APK"
+          cp "$PHONE_APK" "$OUT/MyStudyCompanion-phone-0.14.1-original-theme-set-canonical.apk"
+          cp "$WEAR_APK" "$OUT/MyStudyCompanion-wear-0.14.1-original-theme-set-canonical.apk"
+
+          "$AAPT" dump badging "$OUT/MyStudyCompanion-phone-0.14.1-original-theme-set-canonical.apk" > "$OUT/PHONE-IDENTITY.txt"
+          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" "$OUT/PHONE-IDENTITY.txt"
+          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" "$OUT/PHONE-IDENTITY.txt"
+          "$AAPT" dump badging "$OUT/MyStudyCompanion-wear-0.14.1-original-theme-set-canonical.apk" > "$OUT/WEAR-IDENTITY.txt"
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" "$OUT/WEAR-IDENTITY.txt"
+
+          "$AAPT" dump resources "$OUT/MyStudyCompanion-phone-0.14.1-original-theme-set-canonical.apk" > "$OUT/FIREBASE-RESOURCE-AUDIT.txt"
+          grep -q 'google_app_id' "$OUT/FIREBASE-RESOURCE-AUDIT.txt"
+          grep -q 'default_web_client_id' "$OUT/FIREBASE-RESOURCE-AUDIT.txt"
+          grep -q 'project_id' "$OUT/FIREBASE-RESOURCE-AUDIT.txt"
+
+          "$APKSIGNER" verify --verbose --print-certs "$OUT/MyStudyCompanion-phone-0.14.1-original-theme-set-canonical.apk" > "$OUT/PHONE-PACKAGING-SIGNATURE.txt"
+          "$APKSIGNER" verify --verbose --print-certs "$OUT/MyStudyCompanion-wear-0.14.1-original-theme-set-canonical.apk" > "$OUT/WEAR-PACKAGING-SIGNATURE.txt"
+          "$ZIPALIGN" -c -P 16 -v 4 "$OUT/MyStudyCompanion-phone-0.14.1-original-theme-set-canonical.apk" > "$OUT/PHONE-ZIPALIGN.txt"
+          "$ZIPALIGN" -c -P 16 -v 4 "$OUT/MyStudyCompanion-wear-0.14.1-original-theme-set-canonical.apk" > "$OUT/WEAR-ZIPALIGN.txt"
+
+          tar -C MyStudyCompanionWeb -czf "$OUT/MyStudyCompanion-Web-0.14.1-original-theme-set-PWA.tgz" .
+          sha256sum "$OUT"/*.apk "$OUT"/*.tgz > "$OUT/SHA256SUMS-PACKAGING.txt"
+          cat > "$OUT/RELEASE-THEME-SET.txt" <<'TXT'
+          Selectable themes:
+          1. Calm Light
+          2. Premium Dark
+          3. Warm Editorial — White
+          4. Owl
+          5. Fox
+          6. Lion
+          7. Tiger
+          8. Golden Owl
+          9. Sakura Tiger
+          10. Automatic
+
+          Moonlit Wolf and all 13 later illustrated themes are removed from the selectable release gallery.
+          Existing removed-theme selections migrate safely to Calm Light.
+          Google sign-in, reader, notes, sync, household, workbook, and backend features are preserved.
+          TXT
+          cat > "$OUT/LOCAL-SIGNING-REQUIRED.txt" <<'TXT'
+          The phone and Wear APKs use a disposable CI packaging signature.
+          Re-sign both locally with the existing private-test key.
+          Expected alias: my-study-companion-private-test
+          Expected SHA-256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+          Expected SHA-1: 1997d421d177215a44f9651ce53dbaec152fbc49
+          TXT
+
+      - name: Upload final original-theme release bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.1-final-original-theme-set
+          path: final-original-theme-set
+          retention-days: 7
+          if-no-files-found: error
