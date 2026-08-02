@@ -58,6 +58,6 @@ bash .msc-build/apply-production-live-stack-0.14.1.sh
 python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
-python3 .msc-build/apply-approved-theme-finish-v2.py
+python3 .msc-build/run-approved-theme-finish-v2.py
 
 echo 'Reconstructed My Study Companion 0.14.1 with the working Google sign-in preserved and all 23 themes rebuilt as polished static themes matching the approved visual direction.'
