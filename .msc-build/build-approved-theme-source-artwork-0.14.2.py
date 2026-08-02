@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -40,9 +42,13 @@ SOURCES = {
 
 
 def commons_original(filename: str) -> str:
-    normalized = filename.replace(" ", "_")
-    digest = hashlib.md5(normalized.encode("utf-8")).hexdigest()
-    return f"https://upload.wikimedia.org/wikipedia/commons/{digest[0]}/{digest[:2]}/{urllib.parse.quote(normalized, safe='()_,.-')}"
+    # Special:Redirect/file resolves the exact Commons file and can return a
+    # production-sized thumbnail, avoiding unnecessary multi-megabyte originals.
+    return (
+        "https://commons.wikimedia.org/wiki/Special:Redirect/file/"
+        + urllib.parse.quote(filename.replace(" ", "_"), safe="()_,.-")
+        + "?width=2048"
+    )
 
 
 def download(key: str) -> Path:
@@ -52,12 +58,30 @@ def download(key: str) -> Path:
     if target.exists() and target.stat().st_size > 10_000:
         return target
     url = commons_original(filename)
-    req = urllib.request.Request(url, headers={"User-Agent": "MyStudyCompanionThemeBuilder/0.14.2 (art QC)"})
-    try:
-        with urllib.request.urlopen(req, timeout=90) as response:
-            data = response.read()
-    except Exception as exc:
-        raise RuntimeError(f"Failed to download {key}: {url}: {exc}") from exc
+    data = None
+    last_error = None
+    for attempt in range(7):
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "MyStudyCompanionThemeBuilder/0.14.2 art-qc (private app build; contact: GitHub ksolo21-web/Hummer)",
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as response:
+                data = response.read()
+            break
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            if exc.code not in (429, 500, 502, 503, 504):
+                raise RuntimeError(f"Failed to download {key}: {url}: {exc}") from exc
+        except Exception as exc:
+            last_error = exc
+        time.sleep(min(45, 5 * (attempt + 1)))
+    if data is None:
+        raise RuntimeError(f"Failed to download {key} after retries: {url}: {last_error}")
+    time.sleep(2.5)
     if len(data) < 10_000:
         raise RuntimeError(f"Downloaded source too small for {key}: {len(data)} bytes")
     target.write_bytes(data)
@@ -97,8 +121,8 @@ def readability(im: Image.Image, top=0.08, bottom=0.40) -> Image.Image:
         t = i / (bands - 1)
         y0 = int(H * i / bands)
         y1 = int(H * (i + 1) / bands) + 1
-        a = int(255 * (top * max(0.0, 1 - t / 0.35) + bottom * max(0.0, (t - 0.55) / 0.45) ** 1.35))
-        draw.rectangle((0, y0, W, y1), fill=(2, 7, 14, min(255, a)))
+        alpha = int(255 * (top * max(0.0, 1 - t / 0.35) + bottom * max(0.0, (t - 0.55) / 0.45) ** 1.35))
+        draw.rectangle((0, y0, W, y1), fill=(2, 7, 14, min(255, alpha)))
     return Image.alpha_composite(im.convert("RGBA"), overlay).convert("RGB")
 
 
@@ -179,8 +203,8 @@ def timeline() -> Image.Image:
 
 
 def bible_map() -> Image.Image:
-    im = ImageEnhance.Contrast(ImageEnhance.Color(parchment(load("map"), (0.53, 0.52), False)).enhance(0.72)).enhance(1.10)
-    return readability(im, top=0.02, bottom=0.18)
+    image = ImageEnhance.Contrast(ImageEnhance.Color(parchment(load("map"), (0.53, 0.52), False)).enhance(0.72)).enhance(1.10)
+    return readability(image, top=0.02, bottom=0.18)
 
 
 def main() -> None:
@@ -209,15 +233,15 @@ def main() -> None:
     draw = ImageDraw.Draw(sheet)
     font = ImageFont.load_default(size=18)
     for i, slug in enumerate(slugs):
-        with Image.open(SCENES / f"theme_scene_{slug}.webp") as im:
-            thumb = im.convert("RGB").resize((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+        with Image.open(SCENES / f"theme_scene_{slug}.webp") as image:
+            thumb = image.convert("RGB").resize((thumb_w, thumb_h), Image.Resampling.LANCZOS)
         x, y = (i % 4) * thumb_w, (i // 4) * (thumb_h + 42)
         sheet.paste(thumb, (x, y))
         draw.rectangle((x, y + thumb_h, x + thumb_w, y + thumb_h + 42), fill="#12161d")
         draw.text((x + 10, y + thumb_h + 12), slug.replace("_", " ").title(), fill="white", font=font)
     sheet.save(OUT / "msc-0.14.2-theme-art-qc-contact-sheet.jpg", quality=94)
 
-    manifest = {"canvas": [W, H], "themes": slugs, "sources": {k: {"filename": v[0], "license": v[1], "url": commons_original(v[0])} for k, v in SOURCES.items()}, "rules": ["standalone full-scene artwork", "no phone or UI baked into artwork", "no blurred crop-fill", "accepted first nine themes are untouched"]}
+    manifest = {"canvas": [W, H], "themes": slugs, "sources": {key: {"filename": value[0], "license": value[1], "url": commons_original(value[0])} for key, value in SOURCES.items()}, "rules": ["standalone full-scene artwork", "no phone or UI baked into artwork", "no blurred crop-fill", "accepted first nine themes are untouched"]}
     (OUT / "SOURCE-CREDITS.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     with (OUT / "SHA256SUMS.txt").open("w", encoding="utf-8") as sums:
         for path in sorted(SCENES.glob("*.webp")):
