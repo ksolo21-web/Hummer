@@ -15,10 +15,12 @@ fi
 exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
 exact_theme_finisher_v2="$(mktemp /tmp/msc-exact-theme-finisher-v2.XXXXXX.py)"
 exact_theme_finisher_v3="$(mktemp /tmp/msc-exact-theme-finisher-v3.XXXXXX.py)"
+exact_clean_renderer="$(mktemp /tmp/msc-exact-clean-theme-renderer.XXXXXX.py)"
 exact_palette_dir="$(mktemp -d /tmp/msc-exact-theme-palettes.XXXXXX)"
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
 cp .msc-build/apply-approved-theme-finish-v2.py "$exact_theme_finisher_v2"
 cp .msc-build/apply-approved-theme-finish-v3.py "$exact_theme_finisher_v3"
+cp .msc-build/run-approved-theme-clean-renderer-0.14.1.py "$exact_clean_renderer"
 cp .msc-build/approved-theme-crop-*-60x120-pal128-zlib.b64 "$exact_palette_dir"/
 if [[ "$(find "$exact_palette_dir" -maxdepth 1 -type f | wc -l)" -ne 8 ]]; then
   echo 'Expected all eight decoder-free lower-row theme payloads.' >&2
@@ -77,15 +79,19 @@ if [[ "$(find .msc-build -maxdepth 1 -name 'approved-theme-crop-*-60x120-pal128-
   exit 1
 fi
 
-# The finisher validates every scene/preview before printing PASS. Keep it in an
-# explicit OR-list so Bash errexit/ERR handling cannot terminate this exact-head
-# driver on a hosted Pillow shutdown code. The following independent gate then
-# accepts only the complete manifest and byte-identical cross-device assets.
+# Run the legacy integration finisher for UI wiring, but never trust its hosted
+# image buffers. The shell catches its historical post-manifest shutdown code.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 theme_finish_rc=0
 MSC_APPROVED_THEME_FINISH_V2="$exact_theme_finisher_v2" \
   python3 "$exact_theme_finisher_v3" || theme_finish_rc=$?
-echo "Approved theme finisher process code: ${theme_finish_rc}"
+echo "Approved theme integration process code: ${theme_finish_rc}"
+
+# Start a brand-new Python process that executes only the ffmpeg/palette renderer
+# embedded in the exact finisher. This cannot inherit the legacy Pillow failure.
+MSC_THEME_FINISHER_V3="$exact_theme_finisher_v3" \
+  python3 "$exact_clean_renderer"
+echo 'Approved clean theme renderer process code: 0'
 
 python3 - <<'PY'
 from __future__ import annotations
@@ -130,10 +136,17 @@ for slug, entry in themes.items():
         if actual != {expected}:
             raise SystemExit(f'Cross-surface {kind} digest mismatch for {slug}: {actual}')
 
+for slug in (
+    'creation_garden', 'bible_sketch_study', 'parable_line_panels', 'noahs_ark',
+    'red_sea_deliverance', 'creation_sky', 'bible_timeline', 'bible_map',
+):
+    if themes[slug].get('source_mode') != 'palette':
+        raise SystemExit(f'{slug} did not use its decoder-free clean palette source.')
+
 home = root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt'
 if 'ApprovedThemeQuickActions' not in home.read_text(encoding='utf-8'):
     raise SystemExit('Approved native quick-action surface is missing.')
-print('PASS: all 13 approved themes are complete and byte-identical across phone, Wear OS, and PWA.')
+print('PASS: all 13 approved themes are complete, clean, and byte-identical across phone, Wear OS, and PWA.')
 PY
 
 echo 'Reconstructed My Study Companion 0.14.1 with the working Google sign-in preserved and all 23 themes rebuilt as polished static themes matching the approved visual direction.'
