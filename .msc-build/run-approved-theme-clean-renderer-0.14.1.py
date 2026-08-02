@@ -1,20 +1,35 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
-import os
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
-finisher_path = Path(os.environ['MSC_THEME_FINISHER_V3'])
-source = finisher_path.read_text(encoding='utf-8')
-marker = "SPRITE_JPEG = Path('/tmp/msc-approved-static-theme-sprite-v6.jpg')"
-position = source.find(marker)
-if position < 0:
-    raise SystemExit('Unable to locate the clean approved-theme renderer in the exact finisher.')
-renderer = source[position:]
-exec(compile(renderer, str(finisher_path), 'exec'), globals(), globals())
+ROOT = Path('.')
+MANIFEST = ROOT / '.msc-build/approved-theme-finish-v2-manifest.json'
+TARGETS = (
+    ROOT / 'MyStudyCompanion/app/src/main/res/drawable-nodpi',
+    ROOT / 'MyStudyCompanion/wear/src/main/res/drawable-nodpi',
+    ROOT / 'MyStudyCompanionWeb/assets',
+)
+
+if not MANIFEST.is_file():
+    raise SystemExit('The deterministic theme finisher did not write its manifest.')
+manifest = json.loads(MANIFEST.read_text(encoding='utf-8'))
+themes = manifest.get('themes', {})
+if len(themes) != 13:
+    raise SystemExit(f'Expected 13 rebuilt approved themes, found {len(themes)}.')
+
+for slug, entry in themes.items():
+    if entry.get('source_mode') != 'approved_static_archive':
+        raise SystemExit(f'Unexpected theme source mode for {slug}: {entry.get("source_mode")}')
+    for kind, key in (('scene', 'scene_sha256'), ('preview', 'preview_sha256')):
+        expected = entry.get(key)
+        copies = tuple(root / f'theme_{kind}_{slug}.webp' for root in TARGETS)
+        if not all(path.is_file() and path.stat().st_size > 20_000 for path in copies):
+            raise SystemExit(f'Missing or undersized {kind} asset for {slug}.')
+        actual = {hashlib.sha256(path.read_bytes()).hexdigest() for path in copies}
+        if actual != {expected}:
+            raise SystemExit(f'Cross-surface {kind} mismatch for {slug}: {actual}')
+
+print('PASS: deterministic theme finalizer output verified; no second renderer was run.')
