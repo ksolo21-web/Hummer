@@ -26,6 +26,27 @@ replace_once(
     '  "assets/theme_scene_fox_premium_2.webp",\n'
 )
 
+widget = ROOT / "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt"
+replace_once(
+    widget,
+    "        AppThemeMode.WATERFALL_SERENITY -> WidgetRawPalette(\n",
+    "        AppThemeMode.LION_PREMIUM_2 -> WidgetRawPalette(\n"
+    "            background = android.graphics.Color.rgb(9, 7, 6),\n"
+    "            primaryText = android.graphics.Color.rgb(255, 247, 234),\n"
+    "            secondaryText = android.graphics.Color.rgb(217, 198, 170),\n"
+    "            accent = android.graphics.Color.rgb(240, 195, 106),\n"
+    "            secondaryAccent = android.graphics.Color.rgb(197, 155, 104),\n"
+    "        )\n"
+    "        AppThemeMode.FOX_PREMIUM_2 -> WidgetRawPalette(\n"
+    "            background = android.graphics.Color.rgb(7, 28, 39),\n"
+    "            primaryText = android.graphics.Color.rgb(241, 250, 250),\n"
+    "            secondaryText = android.graphics.Color.rgb(190, 210, 211),\n"
+    "            accent = android.graphics.Color.rgb(183, 228, 223),\n"
+    "            secondaryAccent = android.graphics.Color.rgb(214, 139, 94),\n"
+    "        )\n"
+    "        AppThemeMode.WATERFALL_SERENITY -> WidgetRawPalette(\n",
+)
+
 app_gradle = ROOT / "MyStudyCompanion/app/build.gradle.kts"
 replace_once(app_gradle, 'versionCode = 33', 'versionCode = 34')
 replace_once(app_gradle, 'versionName = "0.14.1-private-alpha-unified-study-reader"', 'versionName = "0.14.2-private-alpha-workbook-theme-repair"')
@@ -37,4 +58,5 @@ ensure_contains(app_mode, ("LION_PREMIUM_2", "FOX_PREMIUM_2", "AUTOMATIC"))
 ensure_contains(artwork, ("theme_scene_lion_premium_2", "theme_scene_fox_premium_2"))
 ensure_contains(wear_art, ("theme_scene_lion_premium_2", "theme_scene_fox_premium_2"))
 ensure_contains(appearance, ("Lion — Premium II", "Fox — Premium II"))
-print("PASS: 0.14.2 theme registry contains 25 permanent themes plus Automatic across Android, Wear OS, and PWA.")
+ensure_contains(widget, ("AppThemeMode.LION_PREMIUM_2 -> WidgetRawPalette", "AppThemeMode.FOX_PREMIUM_2 -> WidgetRawPalette"))
+print("PASS: 0.14.2 theme registry contains 25 permanent themes plus Automatic across Android, Wear OS, widgets, and PWA.")
