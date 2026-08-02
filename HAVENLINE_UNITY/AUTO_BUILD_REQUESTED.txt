@@ -1,0 +1,4 @@
+HAVENLINE local automatic build request
+
+This marker intentionally starts one local Unity review build after the latest branch pull.
+The editor writes Library/HavenlineLocalAutoBuild.state.txt before execution, so it will not enter a retry loop.
