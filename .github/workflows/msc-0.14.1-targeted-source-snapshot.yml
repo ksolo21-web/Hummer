@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - name: Check out exact reviewed repair source
+      - name: Check out exact reviewed theme source
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -42,28 +42,44 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
 
-      - name: Prove rejected themes and broken auth handling are absent
+      - name: Verify approved themes and preserve working authentication
         shell: bash
         run: |
           set -euo pipefail
           node --check MyStudyCompanionWeb/firebase-sync.js
           node --check MyStudyCompanionWeb/app.js
+          node --check MyStudyCompanionWeb/appearance.js
           node --test MyStudyCompanionWeb/appearance.test.mjs MyStudyCompanionWeb/study-library-merge.test.mjs
+
+          # The already-working 0.14.1 sign-in lifecycle must remain unchanged.
           grep -Fq 'browserLocalPersistence' MyStudyCompanionWeb/firebase-sync.js
           grep -Fq 'getRedirectResult' MyStudyCompanionWeb/firebase-sync.js
           grep -Fq 'auth/popup-blocked' MyStudyCompanionWeb/firebase-sync.js
           ! grep -Fq 'error?.code?.includes("popup")' MyStudyCompanionWeb/firebase-sync.js
-          for rejected in \
+
+          # All approved static themes must be present; none may be live or animated.
+          for approved in \
             'Waterfall Serenity' 'Rainforest Harmony' 'Ocean Majesty' 'Celestial Wonder' \
             'Mountain Sunrise' 'Creation Garden' 'Bible Sketch Study' 'Parable Line Panels' \
-            'Noah’s Ark' 'Red Sea Deliverance' 'Creation Sky' 'Bible Timeline' 'Bible Map'; do
-            ! grep -R -Fq "$rejected" MyStudyCompanion/app/src/main MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/index.html
+            'Noah’s Ark' 'Red Sea Deliverance' 'Creation Sky' 'Bible Timeline' 'Bible Map' \
+            'Moonlit Wolf' 'Golden Owl' 'Sakura Tiger'; do
+            grep -R -Fq "$approved" MyStudyCompanion/app/src/main MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/index.html
           done
-          grep -Fq 'Moonlit Wolf' MyStudyCompanionWeb/appearance.js
-          grep -Fq 'Sakura Tiger' MyStudyCompanionWeb/appearance.js
-          grep -Fq 'appearanceColorWheel' MyStudyCompanionWeb/index.html
 
-      - name: Package exact repaired application source
+          test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 23
+          test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+          test "$(find MyStudyCompanion/wear/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 23
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -eq 23
+          test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+          test -f .msc-build/approved-theme-finish-v2-manifest.json
+          grep -Fq 'ApprovedThemeQuickActions' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+          grep -Fq 'appearanceColorWheel' MyStudyCompanionWeb/index.html
+          ! grep -R -E 'rememberInfiniteTransition|infiniteRepeatable|isLiveTheme|liveTheme|requestAnimationFrame' \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt \
+            MyStudyCompanionWeb/appearance.js MyStudyCompanionWeb/styles.css
+
+      - name: Package exact approved-theme application source
         shell: bash
         run: |
           set -euo pipefail
@@ -77,16 +93,16 @@ jobs:
             --exclude='node_modules' \
             --exclude='dist' \
             --exclude='final-dist' \
-            -czf msc-0.14.1-auth-theme-repaired-source.tgz \
+            -czf msc-0.14.1-approved-theme-source.tgz \
             "${paths[@]}"
-          sha256sum msc-0.14.1-auth-theme-repaired-source.tgz > EXACT-REPAIRED-SOURCE-SHA256.txt
+          sha256sum msc-0.14.1-approved-theme-source.tgz > APPROVED-THEME-SOURCE-SHA256.txt
 
-      - name: Upload exact repaired source
+      - name: Upload exact approved-theme source
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-auth-theme-repaired-source
+          name: msc-0.14.1-approved-theme-source
           path: |
-            msc-0.14.1-auth-theme-repaired-source.tgz
-            EXACT-REPAIRED-SOURCE-SHA256.txt
+            msc-0.14.1-approved-theme-source.tgz
+            APPROVED-THEME-SOURCE-SHA256.txt
           retention-days: 5
           if-no-files-found: error
