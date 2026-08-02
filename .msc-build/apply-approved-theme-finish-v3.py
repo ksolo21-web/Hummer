@@ -72,6 +72,15 @@ replace_once(
     'visual integrity imports',
 )
 
+# Extract every approved phone design with a fresh ffmpeg process. This bypasses
+# the hosted Pillow crop/decoder state that was visibly corrupting row two and
+# row three after the first five themes, despite a correct source checksum.
+replace_once(
+    "    approved = sprite.crop((col * CELL_W, row * CELL_H, (col + 1) * CELL_W, (row + 1) * CELL_H))",
+    "    approved_source = Path('/tmp') / f'msc-approved-cell-{slug}.png'\n    subprocess.run(\n        [\n            'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',\n            '-i', str(SPRITE),\n            '-vf', f'crop={CELL_W}:{CELL_H}:{col * CELL_W}:{row * CELL_H}',\n            '-frames:v', '1',\n            str(approved_source),\n        ],\n        check=True,\n    )\n    with Image.open(approved_source) as approved_image:\n        approved_image.load()\n        approved = approved_image.convert('RGB').copy()\n    approved_source.unlink(missing_ok=True)",
+    'isolated approved-cell extraction',
+)
+
 # Selector previews preserve the exact approved portrait composition. The real
 # native UI remains live; the full-app backdrop is deliberately defocused so
 # screenshot text and duplicate controls never compete with the actual app.
