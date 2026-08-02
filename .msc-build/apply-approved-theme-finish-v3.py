@@ -27,17 +27,17 @@ def replace_once(old: str, new: str, label: str) -> None:
 # 5-column x 3-row sprite with 120 x 240 portrait cells in exact theme order.
 replace_once(
     "approved-theme-sprite-v2.part*.b64",
-    "approved-theme-sprite-v4.part*.b64",
+    "approved-theme-sprite-v5.part*.b64",
     'approved sprite payload',
 )
 replace_once(
     'Approved theme sprite payload is missing.',
-    'Approved theme sprite v4 payload is missing.',
+    'Approved theme sprite v5 payload is missing.',
     'approved sprite missing-message',
 )
 source, checksum_count = re.subn(
     r"EXPECTED_SPRITE_SHA256 = '[0-9a-f]{64}'",
-    "EXPECTED_SPRITE_SHA256 = '0a6a79ea93eb0b34a9841f8ab28bc7ec80b824e9e275abef7a7669ca89409afb'",
+    "EXPECTED_SPRITE_SHA256 = 'f734358af1abbb5fa6ba7f9515ecddc5ec66622753719e7acf6517b59bd3ef24'",
     source,
     count=1,
 )
