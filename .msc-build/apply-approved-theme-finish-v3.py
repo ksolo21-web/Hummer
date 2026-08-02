@@ -28,9 +28,6 @@ def replace_once(old: str, new: str, label: str) -> None:
     source = source.replace(old, new, 1)
 
 
-# Preserve the UI and cross-platform integration work from the approved finisher,
-# but feed it the complete checksum-locked JPEG board instead of the defective
-# hosted WebP source.
 replace_once(
     "approved-theme-sprite-v2.part*.b64",
     "approved-theme-sprite-v6-jpeg.part*.b64",
@@ -79,18 +76,11 @@ source = source.replace("'preview_dimensions': [720, 1380]", "'preview_dimension
 try:
     exec(compile(source, str(WRAPPED), 'exec'))
 except SystemExit as exc:
-    # The original finisher can report a hosted Pillow shutdown code after it has
-    # already applied the UI changes. Asset generation below is fully isolated
-    # and independently verified, so only a complete original manifest is needed.
     original_manifest = Path('.msc-build/approved-theme-finish-v2-manifest.json')
     if not original_manifest.is_file() or original_manifest.stat().st_size < 500:
         raise
     print(f'Approved integration finisher normalized hosted shutdown code: {exc.code}')
 
-# Pillow on the hosted runner corrupts image buffers after approximately five
-# themes when all 13 are processed in one interpreter. Generate each theme from
-# source to final WebP in a brand-new process, so no decoder, crop, compositor,
-# or encoder state can leak from one theme into the next.
 SPRITE_JPEG = Path('/tmp/msc-approved-static-theme-sprite-v6.jpg')
 EXPECTED_JPEG_SHA256 = '896d49e245c3a61ebd3e9ad2efb756ad4072774261cf3568cc940eb735a6d43d'
 if not SPRITE_JPEG.is_file():
@@ -115,8 +105,12 @@ THEME_ORDER = (
     ('bible_map', False),
 )
 
+# Each child uses ffmpeg to decode and crop exactly one source cell before any
+# Pillow work. This isolates both source decoding and image composition, which
+# prevents the hosted runner from corrupting rows two and three.
 child_program = r'''
 from pathlib import Path
+import subprocess
 import sys
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageStat
 
@@ -127,11 +121,24 @@ row = int(sys.argv[4])
 is_dark = sys.argv[5] == '1'
 scene_path = Path(sys.argv[6])
 preview_path = Path(sys.argv[7])
+cell_path = Path('/tmp') / f'msc-approved-isolated-{slug}.png'
 
-with Image.open(sprite_path) as opened:
+subprocess.run(
+    [
+        'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
+        '-i', str(sprite_path),
+        '-vf', f'crop=120:240:{col * 120}:{row * 240}',
+        '-frames:v', '1',
+        str(cell_path),
+    ],
+    check=True,
+)
+with Image.open(cell_path) as opened:
     opened.load()
-    sprite = opened.convert('RGB').copy()
-approved = sprite.crop((col * 120, row * 240, (col + 1) * 120, (row + 1) * 240)).copy()
+    approved = opened.convert('RGB').copy()
+cell_path.unlink(missing_ok=True)
+if approved.size != (120, 240):
+    raise SystemExit(f'{slug} source cell dimensions are wrong: {approved.size}')
 
 preview_background = ImageOps.fit(
     approved,
@@ -191,7 +198,7 @@ target_roots = (
     WEB / 'assets',
 )
 manifest: dict[str, object] = {
-    'source': 'Kaleb-approved My Study Companion theme boards; isolated per-theme rendering',
+    'source': 'Kaleb-approved theme boards; isolated ffmpeg cell extraction and rendering',
     'sprite_sha256': actual_source_sha,
     'themes': {},
 }
@@ -220,19 +227,18 @@ for index, (slug, is_dark) in enumerate(THEME_ORDER):
         shutil.copyfile(scene_output, target_root / scene_output.name)
         shutil.copyfile(preview_output, target_root / preview_output.name)
 
-    scene_sha = hashlib.sha256(scene_output.read_bytes()).hexdigest()
-    preview_sha = hashlib.sha256(preview_output.read_bytes()).hexdigest()
     manifest['themes'][slug] = {
-        'scene_sha256': scene_sha,
-        'preview_sha256': preview_sha,
+        'scene_sha256': hashlib.sha256(scene_output.read_bytes()).hexdigest(),
+        'preview_sha256': hashlib.sha256(preview_output.read_bytes()).hexdigest(),
         'scene_dimensions': [1200, 2400],
         'preview_dimensions': [720, 1440],
     }
 
-manifest_path = Path('.msc-build/approved-theme-finish-v2-manifest.json')
-manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+Path('.msc-build/approved-theme-finish-v2-manifest.json').write_text(
+    json.dumps(manifest, indent=2, sort_keys=True) + '\n',
+    encoding='utf-8',
+)
 
-# Final byte-level contract across phone, Wear OS, and PWA.
 for slug, _ in THEME_ORDER:
     for kind in ('scene', 'preview'):
         files = tuple(root / f'theme_{kind}_{slug}.webp' for root in target_roots)
@@ -240,4 +246,4 @@ for slug, _ in THEME_ORDER:
         if len(digests) != 1:
             raise SystemExit(f'Cross-surface {kind} mismatch for {slug}: {digests}')
 
-print('PASS: all 13 approved themes rendered in isolated processes with visual-integrity verification; Google sign-in was not changed.')
+print('PASS: all 13 approved themes rendered from isolated ffmpeg source cells; Google sign-in was not changed.')
