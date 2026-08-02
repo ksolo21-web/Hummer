@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 path = Path('.msc-build/run-interactive-workbooks-0.14.0-ci.sh')
 source = path.read_text(encoding='utf-8')
@@ -50,6 +51,9 @@ legacy_web_markers = (
 )
 for marker in legacy_web_markers:
     source = source.replace(marker, final_web_marker)
+# Some historical overlay copies store a cache token with an unanticipated
+# suffix. Collapse every contiguous MSC cache token to the one final identity.
+source = re.sub(r'msc-web-v\d+-[A-Za-z0-9-]+', final_web_marker, source)
 
 # Append one independent release gate. The compatibility line for firebase.json
 # is intentionally retained as a stable insertion point for the live-release,
