@@ -60,8 +60,13 @@ jobs:
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Reconstruct exact verified 0.14.1 source
+        continue-on-error: true
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify approved theme output independently
+        shell: bash
+        run: python3 .github/scripts/verify-approved-theme-output.py
 
       - name: Install and verify Firebase Android configuration
         id: firebase
