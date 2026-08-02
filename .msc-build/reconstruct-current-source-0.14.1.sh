@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Historical source overlays contain older copies of this driver. Run from an
-# immutable temporary copy so those overlays cannot replace commands that have
-# not been read yet by Bash.
-if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_TMP:-0}" != "1" ]]; then
-  cp "$0" /tmp/msc-reconstruct-current-source-0.14.1.sh
-  chmod +x /tmp/msc-reconstruct-current-source-0.14.1.sh
-  exec env MSC_RECONSTRUCT_RUNNING_FROM_TMP=1 \
-    bash /tmp/msc-reconstruct-current-source-0.14.1.sh
+# Historical source overlays create files under /tmp using the older driver
+# names. Run this exact-head driver from a unique immutable path so no overlay
+# can replace commands that have not been read yet by Bash.
+if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP:-0}" != "1" ]]; then
+  exact_driver="$(mktemp /tmp/msc-exact-head-reconstruct.XXXXXX.sh)"
+  cp "$0" "$exact_driver"
+  chmod +x "$exact_driver"
+  exec env MSC_RECONSTRUCT_RUNNING_FROM_EXACT_TMP=1 \
+    bash "$exact_driver"
 fi
 
-# The reconstruction overlays include older copies of final repair scripts.
-# Preserve the exact-head versions before rebuilding the historical source
-# stack, then run/restore the preserved copies after every older overlay.
-cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py \
-  /tmp/msc-final-gate-0.14.1.py
-cp .msc-build/apply-approved-theme-finish-v2.py \
-  /tmp/msc-apply-approved-theme-finish-v2.py
+# Preserve exact-head repair scripts under unique names before historical
+# archives restore older copies into the repository and common /tmp paths.
+exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
+exact_theme_finisher="$(mktemp /tmp/msc-exact-theme-finisher.XXXXXX.py)"
+cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
+cp .msc-build/apply-approved-theme-finish-v2.py "$exact_theme_finisher"
 
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
@@ -59,9 +59,8 @@ python3 .msc-build/fix-unified-study-reader-compile-0.14.1.py
 bash .msc-build/apply-unified-reader-controls-0.14.1.sh
 bash .msc-build/apply-complete-last-major-build-0.14.1.sh
 
-# Restore the repaired final gate after historical overlays have replaced it.
-cp /tmp/msc-final-gate-0.14.1.py \
-  .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py
+# Restore the exact-head final gate after historical overlays replace it.
+cp "$exact_final_gate" .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py
 
 bash .msc-build/apply-theme-gallery-0.14.1.sh
 bash .msc-build/apply-live-release-completion-0.14.1.sh
@@ -70,14 +69,13 @@ python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
 
-# The exact-head theme finisher performs its own hard validation of all 13
-# approved scene and preview assets across phone, Wear OS, and PWA, plus the
-# no-live-theme gate. Pillow on one hosted runner may still return a non-zero
-# shutdown code after those validations and the manifest are complete. Capture
-# that code, then accept only fully verified output rather than looping builds.
+# Run the uniquely preserved exact-head theme finisher. It validates all 13
+# scenes and previews across phone, Wear OS, and PWA and does not alter auth.
+# One hosted Pillow runtime can report a shutdown code after completing every
+# verification, so accept only the complete manifest and exact generated output.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 set +e
-python3 /tmp/msc-apply-approved-theme-finish-v2.py
+python3 "$exact_theme_finisher"
 theme_finish_rc=$?
 set -e
 
