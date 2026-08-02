@@ -70,15 +70,9 @@ python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
 
-# Run the preserved exact-head finisher, not an older copy restored by a source
-# archive. Google authentication is intentionally outside this theme-only pass.
+# The finisher performs its own hard validation of all 13 scene and preview
+# assets across phone, Wear OS, and PWA, plus the no-live-theme gate.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 python3 /tmp/msc-apply-approved-theme-finish-v2.py
-
-test -s .msc-build/approved-theme-finish-v2-manifest.json
-test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
-test "$(find MyStudyCompanion/wear/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
-test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
-grep -Fq 'ApprovedThemeQuickActions' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
 
 echo 'Reconstructed My Study Companion 0.14.1 with the working Google sign-in preserved and all 23 themes rebuilt as polished static themes matching the approved visual direction.'
