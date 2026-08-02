@@ -1,0 +1,40 @@
+name: My Study Companion Canva Artwork Fetch
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-canva-artwork-fetch-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch generated Moonlit Wolf candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p canva-artwork
+          curl --fail --location --retry 3 \
+            'https://design.canva.ai/6GsMRsqgPPJ_ouM' \
+            --output canva-artwork/moonlit-wolf-candidate
+          file canva-artwork/moonlit-wolf-candidate | tee canva-artwork/FILE-TYPE.txt
+          identify canva-artwork/moonlit-wolf-candidate | tee canva-artwork/IMAGE-IDENTITY.txt
+          cp canva-artwork/moonlit-wolf-candidate canva-artwork/moonlit-wolf.png
+          sha256sum canva-artwork/moonlit-wolf.png > canva-artwork/SHA256SUMS.txt
+
+      - name: Upload generated artwork
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-canva-artwork-test
+          path: canva-artwork
+          retention-days: 2
+          if-no-files-found: error
