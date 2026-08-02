@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Historical source overlays contain older copies of this driver. Run from an
+# immutable temporary copy so those overlays cannot replace commands that have
+# not been read yet by Bash.
+if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_TMP:-0}" != "1" ]]; then
+  cp "$0" /tmp/msc-reconstruct-current-source-0.14.1.sh
+  chmod +x /tmp/msc-reconstruct-current-source-0.14.1.sh
+  exec env MSC_RECONSTRUCT_RUNNING_FROM_TMP=1 \
+    bash /tmp/msc-reconstruct-current-source-0.14.1.sh
+fi
+
 # The reconstruction overlays include older copies of the final CI-gate editor.
 # Preserve the repaired exact-head version before rebuilding the historical
 # source stack, then restore it immediately before the theme and production
