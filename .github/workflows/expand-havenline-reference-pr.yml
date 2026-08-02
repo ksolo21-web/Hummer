@@ -1,0 +1,49 @@
+name: One-time HAVENLINE Reference Expansion
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .havenline-bootstrap/**
+      - .github/workflows/expand-havenline-reference.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: havenline-reference-pr-expand-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  expand:
+    if: ${{ github.head_ref == 'havenline-unity-reference-rebuild' && !contains(github.event.pull_request.head.label, '[expanded]') && !contains(github.event.pull_request.title, '[expanded]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact rebuild branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Expand and verify the Unity project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find .havenline-bootstrap -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 7
+          cat .havenline-bootstrap/part-*.b64 | base64 --decode > /tmp/havenline-reference.zip
+          unzip -tq /tmp/havenline-reference.zip
+          unzip -oq /tmp/havenline-reference.zip
+          rm -rf .havenline-bootstrap
+          test -f HAVENLINE_REFERENCE_UNITY/ProjectSettings/ProjectVersion.txt
+          test -f HAVENLINE_REFERENCE_UNITY/Assets/Havenline/Editor/HavenlineBuildPipeline.cs
+          test -f HAVENLINE_REFERENCE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json
+          grep -q '^m_EditorVersion: 6000.3.18f1$' HAVENLINE_REFERENCE_UNITY/ProjectSettings/ProjectVersion.txt
+          grep -q 'OrthographicSize = 14.8f' HAVENLINE_REFERENCE_UNITY/Assets/Havenline/Runtime/HavenlineReference.cs
+          grep -q 'new Vector3(0f, 7f, 7f)' HAVENLINE_REFERENCE_UNITY/Assets/Havenline/Runtime/HavenlineReference.cs
+          git config user.name 'HAVENLINE Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'Expand clean HAVENLINE Unity reference source [expanded]'
+          git push origin HEAD:${{ github.head_ref }}
