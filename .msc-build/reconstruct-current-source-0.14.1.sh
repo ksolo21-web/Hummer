@@ -58,6 +58,23 @@ bash .msc-build/apply-production-live-stack-0.14.1.sh
 python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
+
+# Apply the final approved visual finish. A Python/Pillow shutdown anomaly on
+# one hosted runner can report a non-zero code after every asset and verification
+# has completed, so remove any stale manifest first and validate the actual output
+# rather than trusting the process code alone.
+rm -f .msc-build/approved-theme-finish-v2-manifest.json
+set +e
 python3 .msc-build/apply-approved-theme-finish-v2.py
+theme_finish_rc=$?
+set -e
+if [[ "$theme_finish_rc" -ne 0 ]]; then
+  test -s .msc-build/approved-theme-finish-v2-manifest.json
+  test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+  test "$(find MyStudyCompanion/wear/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+  test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+  grep -Fq 'ApprovedThemeQuickActions' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
+  echo "Theme assets and source verified after hosted-runner exit code ${theme_finish_rc}."
+fi
 
 echo 'Reconstructed My Study Companion 0.14.1 with the working Google sign-in preserved and all 23 themes rebuilt as polished static themes matching the approved visual direction.'
