@@ -73,7 +73,7 @@ jobs:
           test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
           grep -Fq 'Waterfall Serenity' MyStudyCompanionWeb/appearance.js
           grep -Fq 'Bible Map' MyStudyCompanionWeb/appearance.js
-          grep -Fq 'theme.preview||theme.art' MyStudyCompanionWeb/appearance.js
+          grep -Fq 'const illustrated=Boolean(theme.preview)' MyStudyCompanionWeb/appearance.js
           grep -Fq 'browserLocalPersistence' MyStudyCompanionWeb/firebase-sync.js
           grep -Fq 'getRedirectResult' MyStudyCompanionWeb/firebase-sync.js
           grep -Fq 'auth/popup-blocked' MyStudyCompanionWeb/firebase-sync.js
