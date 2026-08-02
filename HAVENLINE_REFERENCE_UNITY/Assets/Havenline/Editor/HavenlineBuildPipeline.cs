@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
