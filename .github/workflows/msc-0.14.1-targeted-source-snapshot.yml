@@ -39,9 +39,24 @@ jobs:
         run: python -m pip install --disable-pip-version-check Pillow==12.2.0
 
       - name: Reconstruct the exact reviewed 0.14.1 source
-        continue-on-error: true
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
+
+      - name: Verify real workbook art independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          android='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt'
+          web='MyStudyCompanionWeb/workbook.js'
+          node --check "$web"
+          for marker in drawWorkbookArt drawPdfWorkbookArt detectTapGestures 'Guided drawing canvas'; do
+            grep -Fq "$marker" "$android"
+          done
+          for marker in renderColorByNumber drawArtCanvas artSvg svgArtStrokes; do
+            grep -Fq "$marker" "$web"
+          done
+          ! grep -Fq 'Choose colors, then use the canvas to color or draw.' "$web"
+          echo 'PASS: reconstructed workbook contains real drawing and color-by-number engines.'
 
       - name: Package reconstructed source before any gate
         if: always()
