@@ -194,4 +194,10 @@ for path, required_markers in (
 print('PASS: 0.14.2 reconstructed with real workbook pages and 25 permanent themes plus Automatic.')
 PY
 
+# Historical overlays intentionally mutate the compatibility gate while they
+# are applied. Restore the exact-head final gate after every overlay so the CI
+# runner validates the finished 0.14.2 source instead of a superseded cache or
+# theme contract.
+cp "$exact_final_gate" .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py
+
 echo 'Reconstructed My Study Companion 0.14.2 from the verified 0.14.1 baseline with real workbook pages, sharp static theme art, and Google sign-in preserved.'
