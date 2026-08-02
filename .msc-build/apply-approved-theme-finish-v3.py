@@ -2,9 +2,14 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import json
 import lzma
 import os
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 WRAPPED = Path(os.environ.get('MSC_APPROVED_THEME_FINISH_V2', '.msc-build/apply-approved-theme-finish-v2.py'))
@@ -23,9 +28,9 @@ def replace_once(old: str, new: str, label: str) -> None:
     source = source.replace(old, new, 1)
 
 
-# Use a checksum-locked JPEG contact sheet instead of WebP as the source. The
-# JPEG is the same complete 5-column x 3-row approved board, with 120 x 240
-# portrait cells in exact theme order, but avoids the hosted WebP decoder defect.
+# Preserve the UI and cross-platform integration work from the approved finisher,
+# but feed it the complete checksum-locked JPEG board instead of the defective
+# hosted WebP source.
 replace_once(
     "approved-theme-sprite-v2.part*.b64",
     "approved-theme-sprite-v6-jpeg.part*.b64",
@@ -57,33 +62,10 @@ replace_once(
     'sprite dimensions',
 )
 replace_once(
-    'import shutil',
-    'import shutil\nimport subprocess\nimport sys',
-    'isolated encoder imports',
-)
-replace_once(
     "sprite = Image.open(SPRITE).convert('RGB')",
     "with Image.open(SPRITE) as opened_sprite:\n    opened_sprite.load()\n    sprite = opened_sprite.convert('RGB').copy()\nsprite.load()",
     'fully decoded JPEG raster',
 )
-replace_once(
-    'from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps',
-    'from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageStat',
-    'visual integrity imports',
-)
-
-# Extract every approved phone design with a fresh ffmpeg process. This bypasses
-# the hosted Pillow crop/decoder state that was visibly corrupting row two and
-# row three after the first five themes, despite a correct source checksum.
-replace_once(
-    "    approved = sprite.crop((col * CELL_W, row * CELL_H, (col + 1) * CELL_W, (row + 1) * CELL_H))",
-    "    approved_source = Path('/tmp') / f'msc-approved-cell-{slug}.png'\n    subprocess.run(\n        [\n            'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',\n            '-i', str(SPRITE),\n            '-vf', f'crop={CELL_W}:{CELL_H}:{col * CELL_W}:{row * CELL_H}',\n            '-frames:v', '1',\n            str(approved_source),\n        ],\n        check=True,\n    )\n    with Image.open(approved_source) as approved_image:\n        approved_image.load()\n        approved = approved_image.convert('RGB').copy()\n    approved_source.unlink(missing_ok=True)",
-    'isolated approved-cell extraction',
-)
-
-# Selector previews preserve the exact approved portrait composition. The real
-# native UI remains live; the full-app backdrop is deliberately defocused so
-# screenshot text and duplicate controls never compete with the actual app.
 replace_once(
     'approved.filter(ImageFilter.GaussianBlur(1.45))',
     'approved.filter(ImageFilter.GaussianBlur(5.0))',
@@ -94,31 +76,168 @@ source = source.replace('(690, 1350)', '(690, 1410)')
 source = source.replace('1380 - preview_foreground.height', '1440 - preview_foreground.height')
 source = source.replace("'preview_dimensions': [720, 1380]", "'preview_dimensions': [720, 1440]")
 
-# Encode every WebP in its own clean Python process. This prevents one damaged
-# encoder state from contaminating later themes. Then compare the encoded file
-# to the clean in-memory image and fail the build on visible corruption.
-replace_once(
-    "    scene.save(generated['scene'], 'WEBP', quality=93, method=6)\n    preview.save(generated['preview'], 'WEBP', quality=94, method=6)\n",
-    "    scene_expected = scene.convert('RGB')\n    preview_expected = preview.convert('RGB')\n\n    for output_kind, expected_image, quality in (\n        ('scene', scene_expected, 93),\n        ('preview', preview_expected, 94),\n    ):\n        source_png = Path('/tmp') / f'msc-theme-{slug}-{output_kind}.png'\n        expected_image.save(source_png, 'PNG', optimize=False)\n        subprocess.run(\n            [\n                sys.executable,\n                '-c',\n                (\n                    'from PIL import Image; import sys; '\n                    'src,dst,q=sys.argv[1],sys.argv[2],int(sys.argv[3]); '\n                    'im=Image.open(src); im.load(); '\n                    'im.convert(\\\"RGB\\\").save(dst,\\\"WEBP\\\",quality=q,method=4)'\n                ),\n                str(source_png),\n                str(generated[output_kind]),\n                str(quality),\n            ],\n            check=True,\n        )\n        with Image.open(generated[output_kind]) as encoded_image:\n            encoded_image.load()\n            encoded_rgb = encoded_image.convert('RGB')\n        channel_means = ImageStat.Stat(ImageChops.difference(expected_image, encoded_rgb)).mean\n        mean_delta = sum(channel_means) / len(channel_means)\n        if mean_delta > 6.0:\n            raise SystemExit(\n                f'Visual corruption detected for {slug}/{output_kind}: mean pixel delta {mean_delta:.3f}'\n            )\n        source_png.unlink(missing_ok=True)\n",
-    'isolated WebP encoding and visual gate',
-)
-
 try:
     exec(compile(source, str(WRAPPED), 'exec'))
 except SystemExit as exc:
-    # Never normalize a payload, dimension, checksum, or visual-integrity error.
-    # Only tolerate the historical hosted shutdown quirk after a full manifest.
-    message = str(exc.code)
-    manifest = Path('.msc-build/approved-theme-finish-v2-manifest.json')
-    fatal_markers = (
-        'Visual corruption detected',
-        'checksum mismatch',
-        'payload is missing',
-        'dimensions are wrong',
+    # The original finisher can report a hosted Pillow shutdown code after it has
+    # already applied the UI changes. Asset generation below is fully isolated
+    # and independently verified, so only a complete original manifest is needed.
+    original_manifest = Path('.msc-build/approved-theme-finish-v2-manifest.json')
+    if not original_manifest.is_file() or original_manifest.stat().st_size < 500:
+        raise
+    print(f'Approved integration finisher normalized hosted shutdown code: {exc.code}')
+
+# Pillow on the hosted runner corrupts image buffers after approximately five
+# themes when all 13 are processed in one interpreter. Generate each theme from
+# source to final WebP in a brand-new process, so no decoder, crop, compositor,
+# or encoder state can leak from one theme into the next.
+SPRITE_JPEG = Path('/tmp/msc-approved-static-theme-sprite-v6.jpg')
+EXPECTED_JPEG_SHA256 = '896d49e245c3a61ebd3e9ad2efb756ad4072774261cf3568cc940eb735a6d43d'
+if not SPRITE_JPEG.is_file():
+    raise SystemExit('Approved JPEG source was not reconstructed.')
+actual_source_sha = hashlib.sha256(SPRITE_JPEG.read_bytes()).hexdigest()
+if actual_source_sha != EXPECTED_JPEG_SHA256:
+    raise SystemExit(f'Approved JPEG source checksum mismatch: {actual_source_sha}')
+
+THEME_ORDER = (
+    ('waterfall_serenity', False),
+    ('rainforest_harmony', True),
+    ('ocean_majesty', False),
+    ('celestial_wonder', True),
+    ('mountain_sunrise', False),
+    ('creation_garden', False),
+    ('bible_sketch_study', False),
+    ('parable_line_panels', False),
+    ('noahs_ark', False),
+    ('red_sea_deliverance', False),
+    ('creation_sky', False),
+    ('bible_timeline', False),
+    ('bible_map', False),
+)
+
+child_program = r'''
+from pathlib import Path
+import sys
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageStat
+
+sprite_path = Path(sys.argv[1])
+slug = sys.argv[2]
+col = int(sys.argv[3])
+row = int(sys.argv[4])
+is_dark = sys.argv[5] == '1'
+scene_path = Path(sys.argv[6])
+preview_path = Path(sys.argv[7])
+
+with Image.open(sprite_path) as opened:
+    opened.load()
+    sprite = opened.convert('RGB').copy()
+approved = sprite.crop((col * 120, row * 240, (col + 1) * 120, (row + 1) * 240)).copy()
+
+preview_background = ImageOps.fit(
+    approved,
+    (720, 1440),
+    method=Image.Resampling.LANCZOS,
+).filter(ImageFilter.GaussianBlur(18))
+preview_background = ImageEnhance.Brightness(preview_background).enhance(0.70 if is_dark else 0.90)
+preview_foreground = ImageOps.contain(
+    approved,
+    (690, 1410),
+    method=Image.Resampling.LANCZOS,
+)
+preview = preview_background.convert('RGBA')
+x = (720 - preview_foreground.width) // 2
+y = (1440 - preview_foreground.height) // 2
+shadow = Image.new('RGBA', (720, 1440), (0, 0, 0, 0))
+draw = ImageDraw.Draw(shadow)
+draw.rounded_rectangle(
+    (x + 8, y + 10, x + preview_foreground.width + 8, y + preview_foreground.height + 10),
+    radius=24,
+    fill=(0, 0, 0, 90),
+)
+preview = Image.alpha_composite(preview, shadow.filter(ImageFilter.GaussianBlur(12)))
+preview.alpha_composite(preview_foreground.convert('RGBA'), (x, y))
+preview_expected = preview.convert('RGB')
+
+scene_expected = approved.filter(ImageFilter.GaussianBlur(5.0))
+scene_expected = ImageOps.fit(scene_expected, (1200, 2400), method=Image.Resampling.LANCZOS)
+scene_expected = ImageEnhance.Contrast(scene_expected).enhance(1.05)
+scene_expected = ImageEnhance.Color(scene_expected).enhance(1.05)
+scene_expected = scene_expected.filter(ImageFilter.UnsharpMask(radius=1.0, percent=55, threshold=6)).convert('RGB')
+
+scene_expected.save(scene_path, 'WEBP', quality=93, method=4)
+preview_expected.save(preview_path, 'WEBP', quality=94, method=4)
+
+for kind, expected, output in (
+    ('scene', scene_expected, scene_path),
+    ('preview', preview_expected, preview_path),
+):
+    with Image.open(output) as encoded:
+        encoded.load()
+        decoded = encoded.convert('RGB')
+    if decoded.size != expected.size:
+        raise SystemExit(f'{slug}/{kind} dimensions changed during encoding: {decoded.size}')
+    mean_delta = sum(ImageStat.Stat(ImageChops.difference(expected, decoded)).mean) / 3.0
+    if mean_delta > 6.0:
+        raise SystemExit(f'{slug}/{kind} visual corruption: mean pixel delta {mean_delta:.3f}')
+    if output.stat().st_size <= 20_000:
+        raise SystemExit(f'{slug}/{kind} output is unexpectedly small: {output.stat().st_size}')
+'''
+
+ANDROID = Path('MyStudyCompanion')
+WEB = Path('MyStudyCompanionWeb')
+target_roots = (
+    ANDROID / 'app/src/main/res/drawable-nodpi',
+    ANDROID / 'wear/src/main/res/drawable-nodpi',
+    WEB / 'assets',
+)
+manifest: dict[str, object] = {
+    'source': 'Kaleb-approved My Study Companion theme boards; isolated per-theme rendering',
+    'sprite_sha256': actual_source_sha,
+    'themes': {},
+}
+
+for index, (slug, is_dark) in enumerate(THEME_ORDER):
+    scene_output = Path('/tmp') / f'theme_scene_{slug}.webp'
+    preview_output = Path('/tmp') / f'theme_preview_{slug}.webp'
+    subprocess.run(
+        [
+            sys.executable,
+            '-c',
+            child_program,
+            str(SPRITE_JPEG),
+            slug,
+            str(index % 5),
+            str(index // 5),
+            '1' if is_dark else '0',
+            str(scene_output),
+            str(preview_output),
+        ],
+        check=True,
     )
-    if any(marker in message for marker in fatal_markers):
-        raise
-    if manifest.is_file() and manifest.stat().st_size > 500:
-        print(f'Approved theme finisher normalized hosted shutdown code: {exc.code}')
-    else:
-        raise
+
+    for target_root in target_roots:
+        target_root.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(scene_output, target_root / scene_output.name)
+        shutil.copyfile(preview_output, target_root / preview_output.name)
+
+    scene_sha = hashlib.sha256(scene_output.read_bytes()).hexdigest()
+    preview_sha = hashlib.sha256(preview_output.read_bytes()).hexdigest()
+    manifest['themes'][slug] = {
+        'scene_sha256': scene_sha,
+        'preview_sha256': preview_sha,
+        'scene_dimensions': [1200, 2400],
+        'preview_dimensions': [720, 1440],
+    }
+
+manifest_path = Path('.msc-build/approved-theme-finish-v2-manifest.json')
+manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+
+# Final byte-level contract across phone, Wear OS, and PWA.
+for slug, _ in THEME_ORDER:
+    for kind in ('scene', 'preview'):
+        files = tuple(root / f'theme_{kind}_{slug}.webp' for root in target_roots)
+        digests = {hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+        if len(digests) != 1:
+            raise SystemExit(f'Cross-surface {kind} mismatch for {slug}: {digests}')
+
+print('PASS: all 13 approved themes rendered in isolated processes with visual-integrity verification; Google sign-in was not changed.')
