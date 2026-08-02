@@ -31,7 +31,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check Pillow==12.2.0
 
       - name: Build the sixteen rejected themes from stable licensed sources
-        run: python .msc-build/build-approved-theme-source-artwork-0.14.2-v4.py theme-art-qc
+        run: python .msc-build/build-approved-theme-source-artwork-0.14.2-v5.py theme-art-qc
 
       - name: Verify production artwork contract
         shell: bash
