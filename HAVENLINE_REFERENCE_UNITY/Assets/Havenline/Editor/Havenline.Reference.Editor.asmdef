@@ -5,7 +5,7 @@
     "Havenline.Reference.Runtime",
     "Unity.RenderPipelines.Core.Runtime",
     "Unity.RenderPipelines.Universal.Runtime",
-    "Unity.ugui"
+    "UnityEngine.UI"
   ],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
