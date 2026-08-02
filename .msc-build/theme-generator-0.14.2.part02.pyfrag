@@ -1,0 +1,224 @@
+            d.ellipse(((x-45)*S,(y-45)*S,(x+45)*S,(y+35)*S),fill=(191,143,61,255))
+            d.rectangle(((x+15)*S,(y-160)*S,(x+38)*S,(y-30)*S),fill=(191,143,61,255))
+            d.ellipse(((x+10)*S,(y-190)*S,(x+60)*S,(y-150)*S),fill=(191,143,61,255))
+        elif t=='lion':
+            d.ellipse(((x-55)*S,(y-50)*S,(x+55)*S,(y+40)*S),fill=(174,119,48,255))
+            d.ellipse(((x+30)*S,(y-75)*S,(x+95)*S,(y-10)*S),fill=(112,70,35,255))
+        elif t=='deer':
+            d.ellipse(((x-50)*S,(y-45)*S,(x+45)*S,(y+35)*S),fill=(121,86,54,255))
+            d.rectangle(((x+20)*S,(y-105)*S,(x+35)*S,(y-25)*S),fill=(121,86,54,255))
+            d.ellipse(((x+20)*S,(y-125)*S,(x+62)*S,(y-90)*S),fill=(121,86,54,255))
+        else:
+            d.ellipse(((x-55)*S,(y-45)*S,(x+50)*S,(y+35)*S),fill=(220,215,190,255))
+            d.ellipse(((x+35)*S,(y-70)*S,(x+80)*S,(y-25)*S),fill=(220,215,190,255))
+            for off in [-25,0,25]:
+                d.line(((x+off)*S,(y-45)*S,(x+off+30)*S,(y+30)*S),fill=(44,44,40,220),width=5*S)
+        # legs
+        for lx in [-25,25]:
+            d.line(((x+lx)*S,(y+25)*S,(x+lx)*S,(y+85)*S),fill=(60,50,40,255),width=5*S)
+    # birds
+    for x,y,s in [(160,420,18),(220,370,14),(780,460,16),(840,420,12)]:
+        d.arc(((x-s)*S,(y-s/2)*S,x*S,(y+s/2)*S),190,350,fill=(45,65,60,230),width=3*S)
+        d.arc((x*S,(y-s/2)*S,(x+s)*S,(y+s/2)*S),190,350,fill=(45,65,60,230),width=3*S)
+    return save(add_noise(im,4,.12),'noahs_ark')
+
+def scene_redsea():
+    im=gradient((W,H),(114,190,230),(222,171,97)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(510*S,190*S),380*S,(255,229,157),175)
+    d.ellipse((440*S,120*S,580*S,260*S),fill=(255,232,170,245))
+    # sea walls
+    left=[(0,0),(390*S,0),(330*S,300*S),(400*S,520*S),(300*S,780*S),(390*S,1050*S),(280*S,1536*S),(0,1536*S)]
+    right=[(W,0),(650*S,0),(710*S,300*S),(625*S,520*S),(720*S,780*S),(630*S,1050*S),(745*S,1536*S),(W,1536*S)]
+    d.polygon(left,fill=(22,100,158,255)); d.polygon(right,fill=(18,90,148,255))
+    # wave curls/foam
+    for side in [0,1]:
+        for y in range(120,1500,150):
+            if side==0:
+                d.arc((-80*S,y*S,430*S,(y+220)*S),190,355,fill=(210,246,249,200),width=12*S)
+            else:
+                d.arc((600*S,y*S,1100*S,(y+220)*S),185,350,fill=(210,246,249,200),width=12*S)
+    # path
+    d.polygon([(390*S,1536*S),(635*S,1536*S),(570*S,340*S),(455*S,340*S)],fill=(209,164,96,255))
+    for y in range(500,1500,150):
+        width=(y-340)*.2
+        d.line(((512-width)*S,y*S,(512+width)*S,y*S),fill=(171,126,71,90),width=3*S)
+    # people silhouettes
+    rng=random.Random(150)
+    for i in range(34):
+        y=520+i//7*170+rng.randint(-25,25); x=512+(i%7-3)*35*(1+(y-500)/1400)
+        r=max(4,int((y/1536)*11))
+        d.ellipse(((x-r)*S,(y-r*2)*S,(x+r)*S,y*S),fill=(56,43,35,220))
+        d.line((x*S,y*S,x*S,(y+35+r)*S),fill=(56,43,35,220),width=max(2,r//2)*S)
+        d.line((x*S,(y+15)*S,(x-14)*S,(y+30)*S),fill=(56,43,35,220),width=2*S)
+        d.line((x*S,(y+15)*S,(x+14)*S,(y+30)*S),fill=(56,43,35,220),width=2*S)
+    return save(add_noise(im,4,.15),'red_sea_deliverance')
+
+def scene_creationsky():
+    im=gradient((W,H),(90,174,229),(246,194,111)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(700*S,260*S),500*S,(255,236,170),165)
+    d.ellipse((640*S,190*S,780*S,330*S),fill=(255,230,160,240))
+    # clouds
+    for x,y,sc,a in [(170,240,85,145),(420,390,65,115),(870,470,75,125)]:
+        draw_cloud(d,x*S,y*S,sc*S,(255,255,250,a))
+    # mountains
+    mountain_layer(d,1050*S,[(0,980*S),(170*S,820*S),(330*S,1010*S),(520*S,760*S),(720*S,990*S),(880*S,820*S),(W,960*S)],(108,136,111,230),seed=7)
+    mountain_layer(d,1220*S,[(0,1160*S),(250*S,980*S),(430*S,1180*S),(660*S,930*S),(830*S,1150*S),(W,990*S)],(70,112,84,255),seed=8)
+    # field
+    d.rectangle((0,1180*S,W,H),fill=(86,142,72,255))
+    rng=random.Random(160)
+    for _ in range(220):
+        x=rng.randint(0,1024)*S; y=rng.randint(1180,1535)*S
+        h=rng.randint(18,65)*S
+        d.line((x,y,x-rng.randint(-5,5)*S,y-h),fill=(39,102,51,180),width=2*S)
+    # birds
+    for x,y,s in [(180,520,22),(270,470,18),(380,580,14),(560,430,16),(820,580,20)]:
+        d.arc(((x-s)*S,(y-s/2)*S,x*S,(y+s/2)*S),190,350,fill=(44,69,70,230),width=3*S)
+        d.arc((x*S,(y-s/2)*S,(x+s)*S,(y+s/2)*S),190,350,fill=(44,69,70,230),width=3*S)
+    return save(add_noise(im,3,.12),'creation_sky')
+
+def scene_timeline():
+    im=parchment(); d=ImageDraw.Draw(im,'RGBA')
+    # faint city silhouettes/landmarks
+    ink=(105,76,38,170)
+    # timeline line
+    d.line((120*S,800*S,904*S,800*S),fill=(126,80,28,230),width=7*S)
+    points=[(150,'Creation'),(300,'Flood'),(455,'Patriarchs'),(610,'Kings'),(760,'Messiah'),(890,'Kingdom')]
+    try:
+        font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',24*S)
+        small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',17*S)
+    except: font=small=None
+    for i,(x,label) in enumerate(points):
+        y=800
+        d.ellipse(((x-15)*S,(y-15)*S,(x+15)*S,(y+15)*S),fill=(146,92,29,255))
+        ty=720 if i%2==0 else 850
+        d.line((x*S,y*S,x*S,ty*S),fill=(126,80,28,170),width=3*S)
+        if font:
+            bbox=d.textbbox((0,0),label,font=small)
+            d.text((x*S-(bbox[2]-bbox[0])/2, (ty-45 if i%2==0 else ty+15)*S),label,font=small,fill=(75,53,31,230))
+    # landmark sketches
+    # garden/tree
+    d.line((150*S,500*S,150*S,300*S),fill=ink,width=6*S)
+    for cx,cy in [(110,300),(160,250),(205,315)]:
+        d.ellipse(((cx-60)*S,(cy-45)*S,(cx+60)*S,(cy+45)*S),outline=ink,width=3*S)
+    # ark
+    d.polygon([(230*S,570*S),(350*S,570*S),(330*S,660*S),(250*S,660*S)],outline=ink,fill=None)
+    d.line((250*S,540*S,330*S,540*S,350*S,570*S,230*S,570*S,250*S,540*S),fill=ink,width=3*S)
+    # tent
+    d.polygon([(400*S,620*S),(470*S,430*S),(540*S,620*S)],outline=ink,fill=None)
+    d.line((470*S,430*S,470*S,620*S),fill=ink,width=3*S)
+    # temple
+    d.rectangle((570*S,420*S,680*S,650*S),outline=ink,width=4*S)
+    for x in [590,625,660]:
+        d.line((x*S,470*S,x*S,630*S),fill=ink,width=3*S)
+    d.polygon([(555*S,420*S),(625*S,350*S),(695*S,420*S)],outline=ink,fill=None)
+    # cross/teaching hill (non-denominational: open scroll/book instead)
+    d.arc((710*S,430*S,830*S,610*S),180,360,fill=ink,width=4*S)
+    d.line((730*S,520*S,810*S,520*S),fill=ink,width=3*S)
+    # crown
+    d.polygon([(840*S,520*S),(865*S,430*S),(895*S,500*S),(930*S,420*S),(950*S,520*S)],outline=ink,fill=None)
+    d.rectangle((840*S,520*S,950*S,570*S),outline=ink,width=3*S)
+    # lower route bands
+    for yy in [1080,1170,1260]:
+        d.line((150*S,yy*S,880*S,yy*S),fill=(112,80,46,90),width=3*S)
+    return save(im,'bible_timeline')
+
+def scene_map():
+    im=parchment(); d=ImageDraw.Draw(im,'RGBA')
+    # sea
+    d.polygon([(0,0),(430*S,0),(400*S,250*S),(350*S,420*S),(410*S,620*S),(310*S,760*S),(340*S,980*S),(250*S,1250*S),(300*S,H),(0,H)],fill=(128,170,168,90))
+    # coastline
+    coast=[(430,0),(400,250),(350,420),(410,620),(310,760),(340,980),(250,1250),(300,1536)]
+    d.line([(x*S,y*S) for x,y in coast],fill=(72,92,78,210),width=5*S)
+    # terrain ridges
+    rng=random.Random(170)
+    for _ in range(55):
+        x=rng.randint(380,980); y=rng.randint(100,1450); length=rng.randint(50,160)
+        d.arc(((x-length)*S,(y-30)*S,(x+length)*S,(y+70)*S),190,340,fill=(111,82,48,100),width=2*S)
+    # rivers
+    river=[(680,180),(630,340),(700,520),(640,720),(720,880),(670,1100),(740,1340)]
+    d.line([(x*S,y*S) for x,y in river],fill=(73,130,145,160),width=5*S)
+    # route
+    route=[(430,1290),(520,1120),(480,940),(610,780),(560,600),(700,440),(770,250)]
+    d.line([(x*S,y*S) for x,y in route],fill=(171,84,53,220),width=6*S)
+    for x,y in route:
+        d.ellipse(((x-10)*S,(y-10)*S,(x+10)*S,(y+10)*S),fill=(171,84,53,230))
+    # labels
+    labels=[(480,1320,'JUDEA'),(590,970,'SAMARIA'),(720,620,'GALILEE'),(785,300,'CAPERNAUM'),(360,1120,'DEAD SEA'),(210,460,'MEDITERRANEAN SEA')]
+    try:
+        font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',25*S)
+        small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',18*S)
+    except: font=small=None
+    for x,y,t in labels:
+        if font:
+            d.text((x*S,y*S),t,font=small,fill=(75,58,37,220))
+    # compass
+    cx,cy=830*S,1250*S
+    d.ellipse((cx-120*S,cy-120*S,cx+120*S,cy+120*S),outline=(87,63,38,180),width=4*S)
+    d.line((cx,cy-110*S,cx,cy+110*S),fill=(87,63,38,180),width=3*S)
+    d.line((cx-110*S,cy,cx+110*S,cy),fill=(87,63,38,180),width=3*S)
+    d.polygon([(cx,cy-100*S),(cx-18*S,cy+10*S),(cx+18*S,cy+10*S)],fill=(110,64,35,200))
+    if font: d.text((cx-12*S,cy-150*S),'N',font=small,fill=(75,58,37,220))
+    return save(im,'bible_map')
+
+def scene_lion2():
+    im=gradient((W,H),(16,12,12),(4,4,5)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(720*S,360*S),430*S,(240,175,71),170)
+    d.ellipse((645*S,275*S,800*S,430*S),fill=(240,185,93,220))
+    # savanna ridge
+    mountain_layer(d,1080*S,[(0,1020*S),(200*S,890*S),(410*S,1040*S),(650*S,860*S),(820*S,1000*S),(W,910*S)],(71,45,28,255),seed=3)
+    d.rectangle((0,1060*S,W,H),fill=(26,18,14,255))
+    # lion head/profile
+    # mane outer
+    d.ellipse((525*S,520*S,1020*S,1120*S),fill=(84,49,22,255))
+    # mane tufts
+    rng=random.Random(180)
+    for _ in range(55):
+        a=rng.uniform(0,2*math.pi); r=rng.uniform(210,300)
+        x=770+math.cos(a)*r; y=820+math.sin(a)*r*.9
+        rr=rng.randint(22,55)
+        d.polygon([(770*S,820*S),((x-rr)*S,(y+rr)*S),((x+rr)*S,(y+rr)*S)],fill=rng.choice([(92,54,23,220),(119,68,25,220),(64,39,22,230)]))
+    # face
+    d.ellipse((620*S,600*S,930*S,1010*S),fill=(190,128,57,255))
+    d.ellipse((775*S,740*S,980*S,930*S),fill=(201,143,70,255))
+    d.polygon([(900*S,845*S),(970*S,870*S),(900*S,900*S)],fill=(60,38,25,255))
+    d.ellipse((795*S,710*S,825*S,740*S),fill=(8,8,8,255))
+    d.line((690*S,760*S,610*S,730*S),fill=(50,30,18,180),width=5*S)
+    d.line((690*S,780*S,600*S,790*S),fill=(50,30,18,180),width=4*S)
+    # body/legs
+    d.ellipse((500*S,930*S,920*S,1460*S),fill=(123,75,35,255))
+    d.rectangle((620*S,1300*S,690*S,1536*S),fill=(104,60,28,255))
+    d.rectangle((780*S,1290*S,850*S,1536*S),fill=(104,60,28,255))
+    # rim light
+    d.arc((520*S,520*S,1010*S,1130*S),200,330,fill=(245,190,87,170),width=6*S)
+    return save(add_noise(im,5,.12),'lion_premium_2')
+
+def scene_fox2():
+    im=gradient((W,H),(7,28,39),(5,12,18)).convert('RGBA'); d=ImageDraw.Draw(im,'RGBA')
+    radial_glow(im,(300*S,300*S),400*S,(110,205,205),135)
+    d.ellipse((180*S,170*S,430*S,420*S),fill=(205,235,232,210))
+    # birch forest
+    rng=random.Random(190)
+    for i in range(20):
+        x=rng.randint(0,1024)*S; w=rng.randint(12,28)*S
+        d.rectangle((x-w,0,x+w,H),fill=(160,180,177,150))
+        for y in range(rng.randint(30,120),1536, rng.randint(80,140)):
+            d.line((x-w,y*S,x+w,(y-15)*S),fill=(48,70,70,120),width=3*S)
+    # ground
+    d.rectangle((0,1120*S,W,H),fill=(12,35,39,255))
+    # fox body
+    d.ellipse((430*S,770*S,930*S,1300*S),fill=(156,75,42,255))
+    d.ellipse((600*S,520*S,900*S,870*S),fill=(181,90,48,255))
+    # ears
+    d.polygon([(640*S,580*S),(650*S,430*S),(730*S,580*S)],fill=(155,70,40,255))
+    d.polygon([(790*S,570*S),(860*S,420*S),(875*S,620*S)],fill=(155,70,40,255))
+    d.polygon([(663*S,555*S),(670*S,470*S),(710*S,560*S)],fill=(36,30,30,220))
+    d.polygon([(815*S,555*S),(850*S,465*S),(858*S,585*S)],fill=(36,30,30,220))
+    # muzzle/chest
+    d.ellipse((720*S,680*S,930*S,850*S),fill=(224,179,132,255))
+    d.polygon([(650*S,800*S),(760*S,860*S),(690*S,1160*S),(570*S,1020*S)],fill=(216,174,129,245))
+    # eyes/nose
+    d.ellipse((690*S,640*S,722*S,672*S),fill=(6,8,8,255))
+    d.ellipse((810*S,640*S,842*S,672*S),fill=(6,8,8,255))
+    d.ellipse((890*S,750*S,930*S,785*S),fill=(6,8,8,255))
+    # tail
+    d.ellipse((250*S,1030*S,720*S,1450*S),fill=(150,68,39,255))
