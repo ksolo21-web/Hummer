@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from pathlib import Path
+
+ROOT = Path(".")
+
+def replace_once(path: Path, old: str, new: str) -> None:
+    source = path.read_text(encoding="utf-8")
+    count = source.count(old)
+    if count != 1:
+        raise SystemExit(f"{path}: expected exactly one anchor, found {count}: {old[:80]!r}")
+    path.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+def ensure_contains(path: Path, markers: tuple[str, ...]) -> None:
+    source = path.read_text(encoding="utf-8")
+    for marker in markers:
+        if marker not in source:
+            raise SystemExit(f"{path}: missing required marker {marker!r}")
+
+app_mode = ROOT / "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt"
+replace_once(
+    app_mode,
+    '    SAKURA_TIGER("Sakura Tiger", "🌸", "Warm ivory, coral blossoms, bamboo green, and a calm tiger", isAnimalTheme = true),\n',
+    '    SAKURA_TIGER("Sakura Tiger", "🌸", "Warm ivory, coral blossoms, bamboo green, and a calm tiger", isAnimalTheme = true),\n'
+    '    LION_PREMIUM_2("Lion — Premium II", "🦁✦", "A distinct black-and-gold lion portrait with warm rim light", isAnimalTheme = true),\n'
+    '    FOX_PREMIUM_2("Fox — Premium II", "🦊❄", "A distinct moonlit winter fox scene in teal, copper, and silver", isAnimalTheme = true),\n'
+)
+
+study_theme = ROOT / "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/StudyTheme.kt"
+new_palettes = '''
+private val LionPremium2 = darkColorScheme(
+    primary = Color(0xFFF0C36A),
+    onPrimary = Color(0xFF281800),
+    primaryContainer = Color(0xFF60420A),
+    onPrimaryContainer = Color(0xFFFFE4A3),
+    secondary = Color(0xFFC59B68),
+    secondaryContainer = Color(0xFF4F3823),
+    tertiary = Color(0xFFE5D2B5),
+    tertiaryContainer = Color(0xFF4A3B2B),
+    onTertiaryContainer = Color(0xFFFFEAD0),
+    background = Color(0xFF090706),
+    surface = Color(0xFF16110E),
+    onBackground = Color(0xFFFFF7EA),
+    onSurface = Color(0xFFFFF7EA),
+    surfaceVariant = Color(0xFF2A211A),
+    outline = Color(0xFF755D42),
+)
+
+private val FoxPremium2 = darkColorScheme(
+    primary = Color(0xFFB7E4DF),
+    onPrimary = Color(0xFF06201E),
+    primaryContainer = Color(0xFF214F4C),
+    onPrimaryContainer = Color(0xFFD3FAF5),
+    secondary = Color(0xFFD68B5E),
+    secondaryContainer = Color(0xFF5C3020),
+    tertiary = Color(0xFFC8D2D4),
+    tertiaryContainer = Color(0xFF39474B),
+    onTertiaryContainer = Color(0xFFEAF4F5),
+    background = Color(0xFF071C27),
+    surface = Color(0xFF102A32),
+    onBackground = Color(0xFFF1FAFA),
+    onSurface = Color(0xFFF1FAFA),
+    surfaceVariant = Color(0xFF193A40),
+    outline = Color(0xFF56777A),
+)
+
+'''
+replace_once(study_theme, "private val WaterfallSerenity = lightColorScheme(\n", new_palettes + "private val WaterfallSerenity = lightColorScheme(\n")
+replace_once(
+    study_theme,
+    "    AppThemeMode.SAKURA_TIGER -> SakuraTiger\n    AppThemeMode.WATERFALL_SERENITY -> WaterfallSerenity\n",
+    "    AppThemeMode.SAKURA_TIGER -> SakuraTiger\n"
+    "    AppThemeMode.LION_PREMIUM_2 -> LionPremium2\n"
+    "    AppThemeMode.FOX_PREMIUM_2 -> FoxPremium2\n"
+    "    AppThemeMode.WATERFALL_SERENITY -> WaterfallSerenity\n",
+)
+replace_once(
+    study_theme,
+    "    AppThemeMode.GOLDEN_OWL,\n    AppThemeMode.SAKURA_TIGER -> AnimalTypography\n",
+    "    AppThemeMode.GOLDEN_OWL,\n"
+    "    AppThemeMode.SAKURA_TIGER,\n"
+    "    AppThemeMode.LION_PREMIUM_2,\n"
+    "    AppThemeMode.FOX_PREMIUM_2 -> AnimalTypography\n",
+)
+
+artwork = ROOT / "MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeArtwork.kt"
+replace_once(
+    artwork,
+    "    AppThemeMode.SAKURA_TIGER -> R.drawable.theme_scene_sakura_tiger\n    AppThemeMode.WATERFALL_SERENITY -> R.drawable.theme_scene_waterfall_serenity\n",
+    "    AppThemeMode.SAKURA_TIGER -> R.drawable.theme_scene_sakura_tiger\n"
+    "    AppThemeMode.LION_PREMIUM_2 -> R.drawable.theme_scene_lion_premium_2\n"
+    "    AppThemeMode.FOX_PREMIUM_2 -> R.drawable.theme_scene_fox_premium_2\n"
+    "    AppThemeMode.WATERFALL_SERENITY -> R.drawable.theme_scene_waterfall_serenity\n",
+)
+replace_once(
+    artwork,
+    "    AppThemeMode.GOLDEN_OWL,\n    AppThemeMode.SAKURA_TIGER -> Alignment.CenterEnd\n",
+    "    AppThemeMode.GOLDEN_OWL,\n"
+    "    AppThemeMode.SAKURA_TIGER,\n"
+    "    AppThemeMode.LION_PREMIUM_2,\n"
+    "    AppThemeMode.FOX_PREMIUM_2 -> Alignment.CenterEnd\n",
+)
+
+app_test = ROOT / "MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/design/AppThemeModeTest.kt"
+replace_once(app_test, "fun twentyThreePermanentThemesPlusAutomaticAreAvailable()", "fun twentyFivePermanentThemesPlusAutomaticAreAvailable()")
+replace_once(app_test, "assertEquals(23, permanent.size)", "assertEquals(25, permanent.size)")
+replace_once(app_test, "assertEquals(23, permanent.map { it.displayName }.toSet().size)", "assertEquals(25, permanent.map { it.displayName }.toSet().size)")
+replace_once(app_test, "assertEquals(7, animals.size)", "assertEquals(9, animals.size)")
+replace_once(app_test, "assertEquals(7, animals.map { it.motif }.toSet().size)", "assertEquals(9, animals.map { it.motif }.toSet().size)")
+
+wear_theme = ROOT / "MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearTheme.kt"
+replace_once(
+    wear_theme,
+    '    "SAKURA_TIGER" -> WearPalette(Color(0xFFFFF8F1), Color(0xFFFFFCF8), Color(0xFFF7E8E5), Color(0xFF3B2B2C), Color(0xFF765F61), Color(0xFFC96579), "🌸")\n',
+    '    "SAKURA_TIGER" -> WearPalette(Color(0xFFFFF8F1), Color(0xFFFFFCF8), Color(0xFFF7E8E5), Color(0xFF3B2B2C), Color(0xFF765F61), Color(0xFFC96579), "🌸")\n'
+    '    "LION_PREMIUM_2" -> WearPalette(Color(0xFF090706), Color(0xFF16110E), Color(0xFF2A211A), Color(0xFFFFF7EA), Color(0xFFD9C6AA), Color(0xFFF0C36A), "🦁✦")\n'
+    '    "FOX_PREMIUM_2" -> WearPalette(Color(0xFF071C27), Color(0xFF102A32), Color(0xFF193A40), Color(0xFFF1FAFA), Color(0xFFBED2D3), Color(0xFFB7E4DF), "🦊❄")\n'
+)
+wear_art = ROOT / "MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearThemeArtwork.kt"
+replace_once(
+    wear_art,
+    '    "SAKURA_TIGER" -> R.drawable.theme_scene_sakura_tiger\n    "WATERFALL_SERENITY" -> R.drawable.theme_scene_waterfall_serenity\n',
+    '    "SAKURA_TIGER" -> R.drawable.theme_scene_sakura_tiger\n'
+    '    "LION_PREMIUM_2" -> R.drawable.theme_scene_lion_premium_2\n'
+    '    "FOX_PREMIUM_2" -> R.drawable.theme_scene_fox_premium_2\n'
+    '    "WATERFALL_SERENITY" -> R.drawable.theme_scene_waterfall_serenity\n'
+)
+replace_once(
+    wear_art,
+    '                "MOONLIT_WOLF", "GOLDEN_OWL", "SAKURA_TIGER",\n',
+    '                "MOONLIT_WOLF", "GOLDEN_OWL", "SAKURA_TIGER",\n'
+    '                "LION_PREMIUM_2", "FOX_PREMIUM_2",\n'
+)
+wear_test = ROOT / "MyStudyCompanion/wear/src/test/java/com/mystudycompanion/app/wear/WearThemeTest.kt"
+replace_once(
+    wear_test,
+    '            "MOONLIT_WOLF", "GOLDEN_OWL", "SAKURA_TIGER",\n',
+    '            "MOONLIT_WOLF", "GOLDEN_OWL", "SAKURA_TIGER",\n'
+    '            "LION_PREMIUM_2", "FOX_PREMIUM_2",\n'
+)
+replace_once(wear_test, "assertEquals(7, palettes.map { it.motif }.toSet().size)", "assertEquals(9, palettes.map { it.motif }.toSet().size)")
+replace_once(wear_test, "assertEquals(7, palettes.map { it.accent }.toSet().size)", "assertEquals(9, palettes.map { it.accent }.toSet().size)")
+
+appearance = ROOT / "MyStudyCompanionWeb/appearance.js"
+web_entries = (
+    '  "lion_premium_2": {name:"Lion — Premium II", motif:"🦁✦", description:"A distinct black-and-gold lion portrait with warm rim light.", art:"assets/theme_scene_lion_premium_2.webp", artOpacity:0.37, colors:{primary:"#f0c36a",secondary:"#c59b68",background:"#090706",surface:"#16110e"}},\n'
