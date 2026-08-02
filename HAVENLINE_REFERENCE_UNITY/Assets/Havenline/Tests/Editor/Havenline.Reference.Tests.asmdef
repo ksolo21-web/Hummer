@@ -1,0 +1,20 @@
+{
+  "name": "Havenline.Reference.Tests",
+  "rootNamespace": "Havenline.Tests",
+  "references": [
+    "Havenline.Reference.Runtime",
+    "Havenline.Reference.Editor",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": ["TestAssemblies"]
+}
