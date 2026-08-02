@@ -1,0 +1,40 @@
+    '  "fox_premium_2": {name:"Fox — Premium II", motif:"🦊❄", description:"A distinct moonlit winter fox scene in teal, copper, and silver.", art:"assets/theme_scene_fox_premium_2.webp", artOpacity:0.37, colors:{primary:"#b7e4df",secondary:"#d68b5e",background:"#071c27",surface:"#102a32"}},\n'
+)
+replace_once(
+    appearance,
+    '  "sakura_tiger": {name:"Sakura Tiger", motif:"🌸", description:"Warm ivory, coral blossoms, bamboo green, and a calm tiger.", art:"assets/theme_scene_sakura_tiger.webp", artOpacity:0.32, colors:{primary:"#c96579",secondary:"#68835f",background:"#fff8f1",surface:"#fffcf8"}},\n',
+    '  "sakura_tiger": {name:"Sakura Tiger", motif:"🌸", description:"Warm ivory, coral blossoms, bamboo green, and a calm tiger.", art:"assets/theme_scene_sakura_tiger.webp", artOpacity:0.32, colors:{primary:"#c96579",secondary:"#68835f",background:"#fff8f1",surface:"#fffcf8"}},\n'
+    + web_entries,
+)
+
+web_test = ROOT / "MyStudyCompanionWeb/appearance.test.mjs"
+replace_once(web_test, 'test("all 23 static themes and automatic are present"', 'test("all 25 static themes and automatic are present"')
+replace_once(
+    web_test,
+    '    "Owl","Fox","Lion","Tiger","Moonlit Wolf","Golden Owl","Sakura Tiger",\n',
+    '    "Owl","Fox","Lion","Tiger","Moonlit Wolf","Golden Owl","Sakura Tiger",\n'
+    '    "Lion — Premium II","Fox — Premium II",\n'
+)
+replace_once(web_test, 'msc-web-v0145-static-theme-auth-repair', 'msc-web-v0142-workbook-theme-release')
+sw = ROOT / "MyStudyCompanionWeb/sw.js"
+replace_once(sw, 'const CACHE = "msc-web-v0145-static-theme-auth-repair-v2";', 'const CACHE = "msc-web-v0142-workbook-theme-release-v1";')
+replace_once(
+    sw,
+    '  "assets/theme_scene_sakura_tiger.webp",\n',
+    '  "assets/theme_scene_sakura_tiger.webp",\n'
+    '  "assets/theme_scene_lion_premium_2.webp",\n'
+    '  "assets/theme_scene_fox_premium_2.webp",\n'
+)
+
+app_gradle = ROOT / "MyStudyCompanion/app/build.gradle.kts"
+replace_once(app_gradle, 'versionCode = 33', 'versionCode = 34')
+replace_once(app_gradle, 'versionName = "0.14.1-private-alpha-unified-study-reader"', 'versionName = "0.14.2-private-alpha-workbook-theme-repair"')
+wear_gradle = ROOT / "MyStudyCompanion/wear/build.gradle.kts"
+replace_once(wear_gradle, 'versionCode = 360141001', 'versionCode = 360142001')
+replace_once(wear_gradle, 'versionName = "0.14.1-wear-private-alpha-unified-study-reader"', 'versionName = "0.14.2-wear-private-alpha-workbook-theme-repair"')
+
+ensure_contains(app_mode, ("LION_PREMIUM_2", "FOX_PREMIUM_2", "AUTOMATIC"))
+ensure_contains(artwork, ("theme_scene_lion_premium_2", "theme_scene_fox_premium_2"))
+ensure_contains(wear_art, ("theme_scene_lion_premium_2", "theme_scene_fox_premium_2"))
+ensure_contains(appearance, ("Lion — Premium II", "Fox — Premium II"))
+print("PASS: 0.14.2 theme registry contains 25 permanent themes plus Automatic across Android, Wear OS, and PWA.")
