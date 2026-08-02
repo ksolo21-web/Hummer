@@ -2,10 +2,10 @@
 set -euo pipefail
 
 verify_sources() {
-  grep -q 'versionCode = 33' MyStudyCompanion/app/build.gradle.kts
-  grep -q '0.14.1-private-alpha-unified-study-reader' MyStudyCompanion/app/build.gradle.kts
-  grep -q 'versionCode = 360141001' MyStudyCompanion/wear/build.gradle.kts
-  grep -q '0.14.1-wear-private-alpha-unified-study-reader' MyStudyCompanion/wear/build.gradle.kts
+  grep -q 'versionCode = 34' MyStudyCompanion/app/build.gradle.kts
+  grep -q '0.14.2-private-alpha-workbook-theme-repair' MyStudyCompanion/app/build.gradle.kts
+  grep -q 'versionCode = 360142001' MyStudyCompanion/wear/build.gradle.kts
+  grep -q '0.14.2-wear-private-alpha-workbook-theme-repair' MyStudyCompanion/wear/build.gradle.kts
 
   local model=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/InteractiveWorkbookModels.kt
   local editor=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
@@ -71,7 +71,7 @@ verify_sources() {
   grep -Fq 'notesByBlockId' MyStudyCompanionWeb/reader.js
   grep -Fq 'memberWorkbooks' MyStudyCompanionWeb/firebase-sync.js
   grep -Fq 'memberStudyMaterials' MyStudyCompanionWeb/firebase-sync.js
-  grep -Fq 'msc-web-v0141-unified-study-reader' MyStudyCompanionWeb/sw.js
+  grep -Fq 'msc-web-v0142-workbook-theme-release-v1' MyStudyCompanionWeb/sw.js
   for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
 
   # The exact previously approved content catalogs must survive the overlay.
@@ -141,33 +141,33 @@ package_release() {
   wear_debug="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f -print -quit)"
   test -f "$phone_private"; test -f "$wear_private"; test -f "$phone_debug"; test -f "$wear_debug"
 
-  cp "$phone_private" final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk
-  cp "$wear_private" final-dist/MyStudyCompanion-wear-0.14.1-canonical-temporary-signed.apk
-  cp "$phone_debug" final-dist/MyStudyCompanion-phone-0.14.1-debug.apk
-  cp "$wear_debug" final-dist/MyStudyCompanion-wear-0.14.1-debug.apk
-  unzip -tq final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk
-  unzip -tq final-dist/MyStudyCompanion-wear-0.14.1-canonical-temporary-signed.apk
+  cp "$phone_private" final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk
+  cp "$wear_private" final-dist/MyStudyCompanion-wear-0.14.2-canonical-temporary-signed.apk
+  cp "$phone_debug" final-dist/MyStudyCompanion-phone-0.14.2-debug.apk
+  cp "$wear_debug" final-dist/MyStudyCompanion-wear-0.14.2-debug.apk
+  unzip -tq final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk
+  unzip -tq final-dist/MyStudyCompanion-wear-0.14.2-canonical-temporary-signed.apk
 
-  "$aapt" dump badging final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk | tee final-dist/PHONE-CANONICAL-IDENTITY.txt
-  grep -q "package: name='com.mystudycompanion.app' versionCode='33'" final-dist/PHONE-CANONICAL-IDENTITY.txt
-  grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" final-dist/PHONE-CANONICAL-IDENTITY.txt
-  "$aapt" dump badging final-dist/MyStudyCompanion-wear-0.14.1-canonical-temporary-signed.apk | tee final-dist/WEAR-CANONICAL-IDENTITY.txt
-  grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" final-dist/WEAR-CANONICAL-IDENTITY.txt
-  grep -q "versionName='0.14.1-wear-private-alpha-unified-study-reader'" final-dist/WEAR-CANONICAL-IDENTITY.txt
+  "$aapt" dump badging final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk | tee final-dist/PHONE-CANONICAL-IDENTITY.txt
+  grep -q "package: name='com.mystudycompanion.app' versionCode='34'" final-dist/PHONE-CANONICAL-IDENTITY.txt
+  grep -q "versionName='0.14.2-private-alpha-workbook-theme-repair'" final-dist/PHONE-CANONICAL-IDENTITY.txt
+  "$aapt" dump badging final-dist/MyStudyCompanion-wear-0.14.2-canonical-temporary-signed.apk | tee final-dist/WEAR-CANONICAL-IDENTITY.txt
+  grep -q "package: name='com.mystudycompanion.app' versionCode='360142001'" final-dist/WEAR-CANONICAL-IDENTITY.txt
+  grep -q "versionName='0.14.2-wear-private-alpha-workbook-theme-repair'" final-dist/WEAR-CANONICAL-IDENTITY.txt
 
-  "$aapt" dump resources final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk > final-dist/FIREBASE-RESOURCE-AUDIT.txt
+  "$aapt" dump resources final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk > final-dist/FIREBASE-RESOURCE-AUDIT.txt
   grep -q 'google_app_id' final-dist/FIREBASE-RESOURCE-AUDIT.txt
   grep -q 'default_web_client_id' final-dist/FIREBASE-RESOURCE-AUDIT.txt
   grep -q 'project_id' final-dist/FIREBASE-RESOURCE-AUDIT.txt
-  "$apksigner" verify --verbose --print-certs final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk > final-dist/PHONE-TEMPORARY-SIGNATURE.txt
-  "$apksigner" verify --verbose --print-certs final-dist/MyStudyCompanion-wear-0.14.1-canonical-temporary-signed.apk > final-dist/WEAR-TEMPORARY-SIGNATURE.txt
-  "$zipalign" -c -P 16 -v 4 final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk > final-dist/PHONE-ZIPALIGN.txt
-  "$zipalign" -c -P 16 -v 4 final-dist/MyStudyCompanion-wear-0.14.1-canonical-temporary-signed.apk > final-dist/WEAR-ZIPALIGN.txt
+  "$apksigner" verify --verbose --print-certs final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk > final-dist/PHONE-TEMPORARY-SIGNATURE.txt
+  "$apksigner" verify --verbose --print-certs final-dist/MyStudyCompanion-wear-0.14.2-canonical-temporary-signed.apk > final-dist/WEAR-TEMPORARY-SIGNATURE.txt
+  "$zipalign" -c -P 16 -v 4 final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk > final-dist/PHONE-ZIPALIGN.txt
+  "$zipalign" -c -P 16 -v 4 final-dist/MyStudyCompanion-wear-0.14.2-canonical-temporary-signed.apk > final-dist/WEAR-ZIPALIGN.txt
 
   rm -rf /tmp/phone-strings /tmp/wear-strings
   mkdir -p /tmp/phone-strings /tmp/wear-strings
-  unzip -q final-dist/MyStudyCompanion-phone-0.14.1-debug.apk 'classes*.dex' -d /tmp/phone-strings
-  unzip -q final-dist/MyStudyCompanion-wear-0.14.1-debug.apk 'classes*.dex' -d /tmp/wear-strings
+  unzip -q final-dist/MyStudyCompanion-phone-0.14.2-debug.apk 'classes*.dex' -d /tmp/phone-strings
+  unzip -q final-dist/MyStudyCompanion-wear-0.14.2-debug.apk 'classes*.dex' -d /tmp/wear-strings
   find /tmp/phone-strings -name 'classes*.dex' -type f -print0 | xargs -0 strings -a -n 4 > final-dist/PHONE-STRING-AUDIT.txt
   find /tmp/wear-strings -name 'classes*.dex' -type f -print0 | xargs -0 strings -a -n 4 > final-dist/WEAR-STRING-AUDIT.txt
   grep -Fq 'Draw, color & handwrite' final-dist/PHONE-STRING-AUDIT.txt
@@ -184,13 +184,13 @@ package_release() {
   cp -R MyStudyCompanion/wear/build/reports/tests/testDebugUnitTest final-dist/test-reports/wear
   cp MyStudyCompanion/firestore.rules final-dist/firestore.rules
   cp .msc-build/firebase-rules-tests/rules.test.cjs final-dist/firestore-rules.test.cjs
-  (cd MyStudyCompanionWeb && zip -qr ../final-dist/MyStudyCompanion-Web-0.14.1-PWA.zip .)
-  sha256sum final-dist/MyStudyCompanion-phone-0.14.1-canonical-temporary-signed.apk \
-    final-dist/MyStudyCompanion-wear-0.14.1-canonical-temporary-signed.apk \
-    final-dist/MyStudyCompanion-Web-0.14.1-PWA.zip final-dist/firestore.rules > final-dist/SHA256SUMS.txt
+  (cd MyStudyCompanionWeb && zip -qr ../final-dist/MyStudyCompanion-Web-0.14.2-PWA.zip .)
+  sha256sum final-dist/MyStudyCompanion-phone-0.14.2-canonical-temporary-signed.apk \
+    final-dist/MyStudyCompanion-wear-0.14.2-canonical-temporary-signed.apk \
+    final-dist/MyStudyCompanion-Web-0.14.2-PWA.zip final-dist/firestore.rules > final-dist/SHA256SUMS.txt
 
   cat > final-dist/VERIFICATION-REPORT.txt <<'EOF'
-My Study Companion 0.14.1 Unified Study Reader — Last Major Build
+My Study Companion 0.14.2 Workbook Theme Repair — Final Release Candidate
 PASS: The complete 0.14.0 interactive Assembly, Convention, and Family Worship workbook engine remains present, including drawing, coloring, matching, crosswords, notes, offline storage, and PDF export.
 PASS: Android phone/tablet includes a unified reader for Daily Text, scriptures, Watchtower, meeting material, journeys, Family Worship, events, and verified official JW/WOL pages.
 PASS: Study material uses stable block IDs for paragraph notes, highlights, reading position, and cross-device synchronization.

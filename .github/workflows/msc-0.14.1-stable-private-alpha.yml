@@ -1,4 +1,4 @@
-name: My Study Companion 0.14.1 Canonical Build for Private Signing
+name: My Study Companion 0.14.2 Canonical Build for Private Signing
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-canonical-local-signing-${{ github.event.pull_request.head.sha || github.sha }}
+  group: msc-0142-canonical-local-signing-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -59,7 +59,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
-      - name: Reconstruct exact verified 0.14.1 source
+      - name: Reconstruct exact verified 0.14.2 source
         continue-on-error: true
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
@@ -147,38 +147,40 @@ jobs:
           PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           test -f "$PHONE_APK"; test -f "$WEAR_APK"
-          cp "$PHONE_APK" canonical-for-private-signing/MyStudyCompanion-phone-0.14.1-canonical-for-private-signing.apk
-          cp "$WEAR_APK" canonical-for-private-signing/MyStudyCompanion-wear-0.14.1-canonical-for-private-signing.apk
+          cp "$PHONE_APK" canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk
+          cp "$WEAR_APK" canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk
 
-          "$AAPT" dump badging canonical-for-private-signing/MyStudyCompanion-phone-0.14.1-canonical-for-private-signing.apk \
+          "$AAPT" dump badging canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/PHONE-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" \
+          grep -q "package: name='com.mystudycompanion.app' versionCode='34'" \
             canonical-for-private-signing/PHONE-IDENTITY.txt
-          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" \
+          grep -q "versionName='0.14.2-private-alpha-workbook-theme-repair'" \
             canonical-for-private-signing/PHONE-IDENTITY.txt
 
-          "$AAPT" dump badging canonical-for-private-signing/MyStudyCompanion-wear-0.14.1-canonical-for-private-signing.apk \
+          "$AAPT" dump badging canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/WEAR-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" \
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360142001'" \
+            canonical-for-private-signing/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.2-wear-private-alpha-workbook-theme-repair'" \
             canonical-for-private-signing/WEAR-IDENTITY.txt
 
-          "$AAPT" dump resources canonical-for-private-signing/MyStudyCompanion-phone-0.14.1-canonical-for-private-signing.apk \
+          "$AAPT" dump resources canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
           grep -q 'google_app_id' canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
           grep -q 'default_web_client_id' canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
           grep -q 'project_id' canonical-for-private-signing/FIREBASE-RESOURCE-AUDIT.txt
 
           "$APKSIGNER" verify --verbose --print-certs \
-            canonical-for-private-signing/MyStudyCompanion-phone-0.14.1-canonical-for-private-signing.apk \
+            canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/PHONE-PACKAGING-SIGNATURE.txt
           "$APKSIGNER" verify --verbose --print-certs \
-            canonical-for-private-signing/MyStudyCompanion-wear-0.14.1-canonical-for-private-signing.apk \
+            canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/WEAR-PACKAGING-SIGNATURE.txt
           "$ZIPALIGN" -c -P 16 -v 4 \
-            canonical-for-private-signing/MyStudyCompanion-phone-0.14.1-canonical-for-private-signing.apk \
+            canonical-for-private-signing/MyStudyCompanion-phone-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/PHONE-ZIPALIGN.txt
           "$ZIPALIGN" -c -P 16 -v 4 \
-            canonical-for-private-signing/MyStudyCompanion-wear-0.14.1-canonical-for-private-signing.apk \
+            canonical-for-private-signing/MyStudyCompanion-wear-0.14.2-canonical-for-private-signing.apk \
             > canonical-for-private-signing/WEAR-ZIPALIGN.txt
 
           sha256sum canonical-for-private-signing/*.apk \
@@ -196,7 +198,7 @@ jobs:
       - name: Upload canonical APKs for private signing
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-canonical-for-private-signing
+          name: msc-0.14.2-canonical-for-private-signing
           path: canonical-for-private-signing
           retention-days: 5
           if-no-files-found: error

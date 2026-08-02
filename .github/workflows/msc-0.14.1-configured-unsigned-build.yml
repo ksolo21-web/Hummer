@@ -1,4 +1,4 @@
-name: My Study Companion 0.14.1 Configured Staging Build
+name: My Study Companion 0.14.2 Configured Staging Build
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0141-configured-staging-${{ github.event.pull_request.head.sha || github.sha }}
+  group: msc-0142-configured-staging-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -145,30 +145,30 @@ jobs:
           PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           WEAR_APK="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           test -f "$PHONE_APK"; test -f "$WEAR_APK"
-          cp "$PHONE_APK" configured-staging/MyStudyCompanion-phone-0.14.1-configured-staging.apk
-          cp "$WEAR_APK" configured-staging/MyStudyCompanion-wear-0.14.1-configured-staging.apk
-          "$AAPT" dump badging configured-staging/MyStudyCompanion-phone-0.14.1-configured-staging.apk > configured-staging/PHONE-IDENTITY.txt
-          "$AAPT" dump badging configured-staging/MyStudyCompanion-wear-0.14.1-configured-staging.apk > configured-staging/WEAR-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='33'" configured-staging/PHONE-IDENTITY.txt
-          grep -q "versionName='0.14.1-private-alpha-unified-study-reader'" configured-staging/PHONE-IDENTITY.txt
-          grep -q "package: name='com.mystudycompanion.app' versionCode='360141001'" configured-staging/WEAR-IDENTITY.txt
-          grep -q "versionName='0.14.1-wear-private-alpha-unified-study-reader'" configured-staging/WEAR-IDENTITY.txt
-          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-phone-0.14.1-configured-staging.apk > configured-staging/PHONE-STAGING-SIGNATURE.txt
-          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-wear-0.14.1-configured-staging.apk > configured-staging/WEAR-STAGING-SIGNATURE.txt
+          cp "$PHONE_APK" configured-staging/MyStudyCompanion-phone-0.14.2-configured-staging.apk
+          cp "$WEAR_APK" configured-staging/MyStudyCompanion-wear-0.14.2-configured-staging.apk
+          "$AAPT" dump badging configured-staging/MyStudyCompanion-phone-0.14.2-configured-staging.apk > configured-staging/PHONE-IDENTITY.txt
+          "$AAPT" dump badging configured-staging/MyStudyCompanion-wear-0.14.2-configured-staging.apk > configured-staging/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='34'" configured-staging/PHONE-IDENTITY.txt
+          grep -q "versionName='0.14.2-private-alpha-workbook-theme-repair'" configured-staging/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360142001'" configured-staging/WEAR-IDENTITY.txt
+          grep -q "versionName='0.14.2-wear-private-alpha-workbook-theme-repair'" configured-staging/WEAR-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-phone-0.14.2-configured-staging.apk > configured-staging/PHONE-STAGING-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs configured-staging/MyStudyCompanion-wear-0.14.2-configured-staging.apk > configured-staging/WEAR-STAGING-SIGNATURE.txt
           grep -Fq 'Disposable CI Staging' configured-staging/PHONE-STAGING-SIGNATURE.txt
           grep -Fq 'Disposable CI Staging' configured-staging/WEAR-STAGING-SIGNATURE.txt
           sha256sum configured-staging/*.apk > configured-staging/SHA256SUMS.txt
           cat > configured-staging/STATUS.txt <<'TXT'
           PASS: exact repaired source built with the verified Firebase Android configuration.
           PASS: Google web client ID and live backend URL are compiled into the phone package.
-          PASS: phone and Wear outputs retain the canonical package and repaired 0.14.1 versions.
+          PASS: phone and Wear outputs retain the canonical package and final 0.14.2 versions.
           EXPECTED: these staging APKs use a disposable CI packaging signer and must be re-signed with the recovered Firebase-registered signer before installation.
           TXT
 
       - name: Upload configured staging APKs
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.14.1-configured-staging-phone-wear
+          name: msc-0.14.2-configured-staging-phone-wear
           path: configured-staging
           retention-days: 5
           if-no-files-found: error
