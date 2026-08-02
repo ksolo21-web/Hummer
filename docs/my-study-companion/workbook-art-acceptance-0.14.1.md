@@ -41,3 +41,7 @@ Reject the build if any drawing or color-by-number activity falls back to:
 ## Current deterministic markers
 
 The reconstructed source gate requires Android markers `drawWorkbookArt`, `drawPdfWorkbookArt`, `detectTapGestures`, and `Guided drawing canvas`, plus PWA markers `renderColorByNumber`, `drawArtCanvas`, `artSvg`, and `svgArtStrokes`.
+
+## Verification status
+
+The exact reconstructed-source workflow must pass the workbook-art gate before theme, authentication, or packaging checks are allowed to continue.
