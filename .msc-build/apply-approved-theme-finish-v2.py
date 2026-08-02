@@ -14,7 +14,7 @@ ANDROID = ROOT / 'MyStudyCompanion'
 WEB = ROOT / 'MyStudyCompanionWeb'
 BUILD = ROOT / '.msc-build'
 SPRITE = Path('/tmp/msc-approved-theme-sprite-v2.webp')
-EXPECTED_SPRITE_SHA256 = '9cf84adad810ee349e98e62f2bdd52a7c8b8c41bc4cd747c197433f70c5a6edb'
+EXPECTED_SPRITE_SHA256 = '4e7720a6a2fc0ff0add3a0b75cd4e2c2b5e20d550940902e4c38774940698a3f'
 CELL_W = 180
 CELL_H = 360
 
@@ -67,8 +67,6 @@ for index, (slug, is_dark) in enumerate(THEMES):
     row = index // 5
     approved = sprite.crop((col * CELL_W, row * CELL_H, (col + 1) * CELL_W, (row + 1) * CELL_H))
 
-    # Exact approved phone composition in the selector, presented on a subtle
-    # matching canvas so all theme cards have a consistent premium aspect.
     preview_background = ImageOps.fit(
         approved,
         (720, 1380),
@@ -94,9 +92,6 @@ for index, (slug, is_dark) in enumerate(THEMES):
     preview.alpha_composite(preview_foreground.convert('RGBA'), (x, y))
     preview = preview.convert('RGB')
 
-    # The approved artwork becomes a softly defocused full-app scene. The real
-    # native cards and controls stay crisp and live, while the exact approved
-    # scenery, subjects, lighting, composition, and palette remain recognizable.
     scene = approved.filter(ImageFilter.GaussianBlur(1.45))
     scene = ImageOps.fit(scene, (1200, 2400), method=Image.Resampling.LANCZOS)
     scene = ImageEnhance.Contrast(scene).enhance(1.05)
@@ -126,8 +121,6 @@ for index, (slug, is_dark) in enumerate(THEMES):
         'preview_dimensions': [720, 1380],
     }
 
-# The entire approved scene continues behind the app. Avoid nesting the same
-# full-screen artwork inside individual cards, and use refined glass surfaces.
 backdrop = ANDROID / 'app/src/main/java/com/mystudycompanion/app/design/ThemeBackdrop.kt'
 text = backdrop.read_text(encoding='utf-8')
 text = text.replace(
@@ -397,8 +390,6 @@ service_worker.write_text(text, encoding='utf-8')
     encoding='utf-8',
 )
 
-# Hard verification: the same approved assets must be byte-identical on phone,
-# Wear OS, and PWA, and no live-theme implementation may enter the release.
 for slug, _ in THEMES:
     for kind in ('scene', 'preview'):
         paths = (
