@@ -1,0 +1,57 @@
+name: My Study Companion Theme Source Payload Export
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-theme-source-payload-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact branch source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Package checksum-locked visual source payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t payloads < <(find .msc-build -maxdepth 1 -type f \
+            \( -name 'approved-theme-crop-*.b64' \
+               -o -name 'approved-theme-sprite-v6-jpeg.part*.b64' \
+               -o -name 'approved-theme-sprite-v2.part*.b64' \
+               -o -name 'theme-gallery-generator-0.14.1.part*.b64' \
+               -o -name 'theme-gallery-text-0.14.1.part*.b64' \
+               -o -name 'apply-approved-static-theme-artwork-0.14.1.py' \
+               -o -name 'apply-approved-theme-finish-v2.py' \
+               -o -name 'apply-approved-theme-finish-v3.py' \) \
+            -print | sort)
+          if (( ${#payloads[@]} == 0 )); then
+            echo 'No approved theme source payloads found.' >&2
+            exit 1
+          fi
+          tar -czf msc-theme-source-payloads.tgz "${payloads[@]}"
+          sha256sum msc-theme-source-payloads.tgz > SHA256SUMS.txt
+          printf '%s\n' "${payloads[@]}" > INCLUDED-FILES.txt
+
+      - name: Upload theme source payloads
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-theme-source-payloads
+          path: |
+            msc-theme-source-payloads.tgz
+            SHA256SUMS.txt
+            INCLUDED-FILES.txt
+          retention-days: 5
+          if-no-files-found: error
