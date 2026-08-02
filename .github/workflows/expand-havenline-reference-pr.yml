@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   expand:
-    if: ${{ github.head_ref == 'havenline-unity-reference-rebuild' && !contains(github.event.pull_request.head.label, '[expanded]') && !contains(github.event.pull_request.title, '[expanded]') }}
+    if: ${{ github.head_ref == 'havenline-unity-reference-rebuild' && !contains(github.event.pull_request.title, '[expanded]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -32,6 +32,18 @@ jobs:
         run: |
           set -euo pipefail
           test "$(find .havenline-bootstrap -maxdepth 1 -name 'part-*.b64' | wc -l)" -eq 7
+          wc -c .havenline-bootstrap/part-*.b64
+          sha256sum .havenline-bootstrap/part-*.b64
+          cat > /tmp/expected.sha256 <<'EOF'
+          1376b35ea9c2dd8e357a291b9a8f9d982d64d62baebaf506f85120da7ffe3c23  .havenline-bootstrap/part-00.b64
+          2a082dad4abd7473735afac33888c5066dddc5aa1d05b161c46a391a390cbad2  .havenline-bootstrap/part-01.b64
+          b73c9b98970a328de08464ea0d8908952b9d048e4cb5d2c56a7204282a01d136  .havenline-bootstrap/part-02.b64
+          1d5081bb7ad2cb773e904a1199312d9e576d217125c44110bdf5e8c87e1ae360  .havenline-bootstrap/part-03.b64
+          ef219a42b9fe16a519cc21a718c667235cc0e76c9f121e12a702adf63c35bf72  .havenline-bootstrap/part-04.b64
+          32f56e74d0a0817793694ab76393791d0ac27d4dd4567481c172076ffec64d6f  .havenline-bootstrap/part-05.b64
+          9be78f0a6c175b18d7cfa43bb9ebb0a085cf27edd3172e7af054c74c66aa0d3f  .havenline-bootstrap/part-06.b64
+          EOF
+          sha256sum -c /tmp/expected.sha256
           cat .havenline-bootstrap/part-*.b64 | base64 --decode > /tmp/havenline-reference.zip
           unzip -tq /tmp/havenline-reference.zip
           unzip -oq /tmp/havenline-reference.zip
