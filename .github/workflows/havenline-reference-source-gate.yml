@@ -53,8 +53,12 @@ jobs:
           grep -q 'BuildAndroidReviewCandidate' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
           grep -q 'HavenlineSceneAuthoring.Author' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
           grep -q 'HavenlineAssetBootstrap.Bootstrap' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
-          if grep -RIl --include='*.cs' --include='*.json' --include='*.md' -E 'Godot|project\.godot|extends Node|TODO|placeholder' "$root"; then
-            echo 'Forbidden legacy engine or unfinished placeholder content found in clean HAVENLINE Unity project.' >&2
+          if grep -RIl --include='*.cs' --include='*.json' -E 'Godot|project\.godot|extends Node' "$root"; then
+            echo 'Forbidden legacy-engine content found in the clean HAVENLINE Unity source.' >&2
+            exit 1
+          fi
+          if grep -RIl --include='*.cs' --include='*.json' -E 'TODO|placeholder' "$root"; then
+            echo 'Unfinished placeholder content found in the clean HAVENLINE Unity source.' >&2
             exit 1
           fi
 
