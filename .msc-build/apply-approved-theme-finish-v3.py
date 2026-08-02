@@ -49,13 +49,20 @@ source = source.replace('(690, 1350)', '(690, 1410)')
 source = source.replace('1380 - preview_foreground.height', '1440 - preview_foreground.height')
 source = source.replace("'preview_dimensions': [720, 1380]", "'preview_dimensions': [720, 1440]")
 
-try:
-    exec(compile(source, str(WRAPPED), 'exec'))
-except SystemExit as exc:
-    original_manifest = Path('.msc-build/approved-theme-finish-v2-manifest.json')
-    if not original_manifest.is_file() or original_manifest.stat().st_size < 500:
-        raise
-    print(f'Approved integration finisher normalized hosted shutdown code: {exc.code}')
+integration_script = Path('/tmp/msc-approved-theme-integration-v2.py')
+integration_script.write_text(source, encoding='utf-8')
+integration_result = subprocess.run([sys.executable, str(integration_script)])
+original_manifest = Path('.msc-build/approved-theme-finish-v2-manifest.json')
+if not original_manifest.is_file() or original_manifest.stat().st_size < 500:
+    raise SystemExit(
+        f'Approved integration finisher failed before writing a complete manifest: '
+        f'code={integration_result.returncode}'
+    )
+if integration_result.returncode != 0:
+    print(
+        'Approved integration finisher isolated its hosted shutdown code: '
+        f'{integration_result.returncode}'
+    )
 
 SPRITE_JPEG = Path('/tmp/msc-approved-static-theme-sprite-v6.jpg')
 EXPECTED_JPEG_SHA256 = '896d49e245c3a61ebd3e9ad2efb756ad4072774261cf3568cc940eb735a6d43d'
