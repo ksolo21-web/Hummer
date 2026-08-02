@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEngine;
 
 namespace Havenline.Editor
