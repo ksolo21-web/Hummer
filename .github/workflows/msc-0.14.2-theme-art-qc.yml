@@ -30,8 +30,8 @@ jobs:
       - name: Install deterministic image dependency
         run: python -m pip install --disable-pip-version-check Pillow==12.2.0
 
-      - name: Build the sixteen rejected themes from stable public-domain sources
-        run: python .msc-build/build-approved-theme-source-artwork-0.14.2-v6.py theme-art-qc
+      - name: Build the sixteen corrected themes from stable public-domain sources
+        run: python .msc-build/build-approved-theme-source-artwork-0.14.2-v7.py theme-art-qc
 
       - name: Verify production artwork contract
         shell: bash
@@ -45,7 +45,7 @@ jobs:
           grep -Fq 'accepted first nine themes are untouched' theme-art-qc/SOURCE-CREDITS.json
           (cd theme-art-qc/scenes && sha256sum -c ../SHA256SUMS.txt)
 
-      - name: Upload real theme scenes and visual contact sheet
+      - name: Upload corrected theme scenes and visual contact sheet
         uses: actions/upload-artifact@v6
         with:
           name: msc-0.14.2-real-theme-art-qc
