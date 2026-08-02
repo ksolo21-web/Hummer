@@ -8,7 +8,7 @@ cat .msc-build/connected-study-reader-0.14.1.part*.b64 \
 echo '643a2d1d9f0a1e1b81d80e5448c0bbce77646f3e995a5b5b9c5d42975749094c  /tmp/msc-0141-connected-reader-overlay.tar.xz' \
   | sha256sum -c -
 
-tar -xJf /tmp/msc-0141-connected-reader-overlay.tar.xz -C .
+tar --no-same-owner -xJf /tmp/msc-0141-connected-reader-overlay.tar.xz -C .
 
 node --check MyStudyCompanionWeb/study-reader.js
 node --check MyStudyCompanionWeb/study-library.js

@@ -4,6 +4,11 @@ from pathlib import Path
 source_path = Path('.msc-build/reconstruct-build-0125.sh')
 source = source_path.read_text(encoding='utf-8')
 
+# Some extracted archives record root/group ownership from the build runner.
+# Reconstructing in a restricted or rootless workspace must preserve bytes and
+# modes without attempting to apply those host-specific owners.
+source = source.replace('tar -xJf ', 'tar --no-same-owner -xJf ')
+
 lines = source.splitlines(keepends=True)
 replaced = 0
 for index, line in enumerate(lines):
@@ -26,6 +31,7 @@ replacement = r'''python3 - <<'PY_SOURCE_ONLY'
 from pathlib import Path
 generated = Path('/tmp/reconstruct-build-0125-generated.sh')
 text = generated.read_text(encoding='utf-8')
+text = text.replace('tar -xJf ', 'tar --no-same-owner -xJf ')
 marker = '\ncd MyStudyCompanion\ngradle --no-daemon'
 if marker not in text:
     raise SystemExit('Legacy Gradle build marker was not found.')

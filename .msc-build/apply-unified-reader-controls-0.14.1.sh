@@ -8,7 +8,7 @@ cat .msc-build/unified-reader-controls-0.14.1.part*.b64 \
 echo 'c4cf8237848ff1e838149144be8884abdd5f1fd12bf9adb675184879becb652e  /tmp/msc-0141-unified-reader-controls.tar.xz' \
   | sha256sum -c -
 xz -t /tmp/msc-0141-unified-reader-controls.tar.xz
-tar -xJf /tmp/msc-0141-unified-reader-controls.tar.xz -C .
+tar --no-same-owner -xJf /tmp/msc-0141-unified-reader-controls.tar.xz -C .
 
 python3 - <<'PY'
 from pathlib import Path

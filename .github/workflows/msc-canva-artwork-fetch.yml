@@ -18,22 +18,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Fetch generated Moonlit Wolf candidate
+      - name: Check out exact repair source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic image dependency
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Validate the final local Moonlit Wolf asset
         shell: bash
         run: |
           set -euo pipefail
+          python .msc-build/install-premium-theme-art-0.14.2.py verify-source .msc-build/premium-theme-art-0.14.2
           mkdir -p canva-artwork
-          curl --fail --location --retry 3 \
-            'https://s3.amazonaws.com/document-export.canva.com/NPWOM/DAHRJfNPWOM/1/thumbnail/0001.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUHYGFFNMW3%2F20260802%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260802T003341Z&X-Amz-Expires=48585&X-Amz-Signature=ae224c9af2afc8a8281ceb15b4a2a3dd87d656bd2882d03a8c9f17e4a64d653a&X-Amz-SignedHeaders=host&response-expires=Sun%2C%2002%20Aug%202026%2014%3A03%3A26%20GMT' \
-            --output canva-artwork/moonlit-wolf.png
-          file canva-artwork/moonlit-wolf.png | tee canva-artwork/FILE-TYPE.txt
-          identify canva-artwork/moonlit-wolf.png | tee canva-artwork/IMAGE-IDENTITY.txt
-          sha256sum canva-artwork/moonlit-wolf.png > canva-artwork/SHA256SUMS.txt
+          cp .msc-build/premium-theme-art-0.14.2/theme_scene_moonlit_wolf.webp canva-artwork/
+          file canva-artwork/theme_scene_moonlit_wolf.webp | tee canva-artwork/FILE-TYPE.txt
+          sha256sum canva-artwork/theme_scene_moonlit_wolf.webp > canva-artwork/SHA256SUMS.txt
 
       - name: Upload generated artwork
         uses: actions/upload-artifact@v6
         with:
-          name: msc-canva-artwork-test
+          name: msc-final-moonlit-wolf-artwork
           path: canva-artwork
           retention-days: 2
           if-no-files-found: error

@@ -38,7 +38,7 @@ base64 --decode .msc-build/theme-gallery-web-override-0.14.1.b64 \
 echo '77e4f1f032f76275b61e5422f30f51a0ff97e65f045acaeb81718aee1ee76dac  /tmp/msc-theme-gallery-web-override.tar.xz' \
   | sha256sum -c -
 xz -t /tmp/msc-theme-gallery-web-override.tar.xz
-tar -xJf /tmp/msc-theme-gallery-web-override.tar.xz -C .
+tar --no-same-owner -xJf /tmp/msc-theme-gallery-web-override.tar.xz -C .
 rm -f \
   MyStudyCompanionWeb/index.html.rej MyStudyCompanionWeb/index.html.orig \
   MyStudyCompanionWeb/styles.css.rej MyStudyCompanionWeb/styles.css.orig \
@@ -56,13 +56,24 @@ python3 -c 'import PIL' || {
 }
 python3 /tmp/msc-theme-gallery-generator.py
 
+# Earlier reader overlays shift the PWA markup anchors. The legacy replacement
+# archive predates the final gallery modal, so restore it deterministically
+# before syntax, behavior, and reconstruction gates run.
+python3 .msc-build/fix-theme-gallery-pwa-0.14.2.py
+
 for file in MyStudyCompanionWeb/*.js; do
   node --check "$file"
 done
 node --test MyStudyCompanionWeb/appearance.test.mjs MyStudyCompanionWeb/study-library-merge.test.mjs
 
 python3 - <<'PY'
+import hashlib
+import os
+import shutil
+import tempfile
 from pathlib import Path
+
+from PIL import Image
 
 root = Path('.')
 new_names = (
@@ -72,13 +83,52 @@ new_names = (
     'red_sea_deliverance', 'creation_sky', 'bible_timeline', 'bible_map',
 )
 additional_names = ('moonlit_wolf', 'golden_owl', 'sakura_tiger')
+
+def valid_image(path: Path) -> bool:
+    if not path.is_file() or path.stat().st_size <= 1000:
+        return False
+    try:
+        with Image.open(path) as image:
+            image.verify()
+    except Exception:
+        return False
+    return True
+
+def atomic_copy(source: Path, destination: Path) -> None:
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=destination.parent,
+            prefix=f'.{destination.name}.',
+            suffix='.tmp',
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+        shutil.copyfile(source, temporary)
+        source_digest = hashlib.sha256(source.read_bytes()).hexdigest()
+        copied_digest = hashlib.sha256(temporary.read_bytes()).hexdigest()
+        if copied_digest != source_digest or not valid_image(temporary):
+            raise SystemExit(f'Generated theme repair copy failed: {destination}')
+        os.replace(temporary, destination)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
 for name in new_names + additional_names:
-    for path in (
+    paths = (
         root / f'MyStudyCompanion/app/src/main/res/drawable-nodpi/theme_scene_{name}.webp',
         root / f'MyStudyCompanion/wear/src/main/res/drawable-nodpi/theme_scene_{name}.webp',
         root / f'MyStudyCompanionWeb/assets/theme_scene_{name}.webp',
-    ):
-        assert path.is_file() and path.stat().st_size > 1000, path
+    )
+    valid_sources = tuple(path for path in paths if valid_image(path))
+    if not valid_sources:
+        raise SystemExit(f'No valid generated theme source remained for {name}.')
+    for path in paths:
+        if not valid_image(path):
+            atomic_copy(valid_sources[0], path)
+        if not valid_image(path):
+            raise SystemExit(f'Generated theme asset is invalid after repair: {path}')
 
 mode = (root / 'MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt').read_text()
 assert mode.count('isIllustratedTheme = true') == 13

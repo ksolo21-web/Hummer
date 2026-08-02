@@ -13,6 +13,9 @@ exact_final_gate="$(mktemp /tmp/msc-exact-final-gate.XXXXXX.py)"
 exact_theme_finisher="$(mktemp /tmp/msc-exact-theme-finisher.XXXXXX.py)"
 exact_workbook_art_dir="$(mktemp -d /tmp/msc-exact-workbook-art.XXXXXX)"
 exact_release_dir="$(mktemp -d /tmp/msc-exact-0142-release.XXXXXX)"
+exact_premium_installer="$(mktemp /tmp/msc-exact-premium-installer.XXXXXX.py)"
+exact_premium_art_dir="$(mktemp -d /tmp/msc-exact-premium-art.XXXXXX)"
+exact_protected_theme_dir="$(mktemp -d /tmp/msc-exact-protected-themes.XXXXXX)"
 
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py "$exact_final_gate"
 cp .msc-build/apply-approved-theme-finish-v3.py "$exact_theme_finisher"
@@ -21,6 +24,9 @@ cp .msc-build/real-workbook-art-pages-0.14.1.part*.b64 "$exact_workbook_art_dir"
 cp .msc-build/apply-final-theme-release-0.14.2.sh "$exact_release_dir"/
 cp .msc-build/theme-generator-0.14.2.part*.pyfrag "$exact_release_dir"/
 cp .msc-build/theme-registry-0.14.2.part*.pyfrag "$exact_release_dir"/
+cp .msc-build/install-premium-theme-art-0.14.2.py "$exact_premium_installer"
+cp .msc-build/premium-theme-art-0.14.2/SHA256SUMS.txt "$exact_premium_art_dir"/
+cp .msc-build/premium-theme-art-0.14.2/theme_scene_*.webp "$exact_premium_art_dir"/
 
 if [[ "$(find "$exact_workbook_art_dir" -maxdepth 1 -name 'real-workbook-art-pages-0.14.1.part*.b64' | wc -l)" -ne 2 ]]; then
   echo 'Expected both exact workbook-art payload parts.' >&2
@@ -38,6 +44,11 @@ if [[ "$(find "$exact_release_dir" -maxdepth 1 -name 'theme-registry-0.14.2.part
   echo 'Expected two deterministic theme-registry fragments.' >&2
   exit 1
 fi
+if [[ "$(find "$exact_premium_art_dir" -maxdepth 1 -name 'theme_scene_*.webp' | wc -l)" -ne 16 ]]; then
+  echo 'Expected sixteen exact premium theme scenes.' >&2
+  exit 1
+fi
+python3 "$exact_premium_installer" verify-source "$exact_premium_art_dir"
 
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
@@ -60,14 +71,14 @@ PY
 cat .msc-build/final-major-0.13.0.part*.b64 | base64 --decode > /tmp/msc-0130.tar.xz
 echo 'bd01fe658b10a2203732023cd0a559a538d4152468fcf0a37b5418f7eea1e217  /tmp/msc-0130.tar.xz' | sha256sum -c -
 xz -t /tmp/msc-0130.tar.xz
-tar -xJf /tmp/msc-0130.tar.xz -C .
+tar --no-same-owner -xJf /tmp/msc-0130.tar.xz -C .
 
 for file in workbook-payload/payload/interactive-workbooks-0.14.0.part*.b64; do
   grep -v '^#' "$file"
 done | tr -d '\n' | base64 --decode > /tmp/msc-0140-overlay.tar.xz
 echo '3bdc13f78b42f85861d4f6d92b0892bb1db59224ef318f241bf616ef14a75d32  /tmp/msc-0140-overlay.tar.xz' | sha256sum -c -
 xz -t /tmp/msc-0140-overlay.tar.xz
-tar -xJf /tmp/msc-0140-overlay.tar.xz -C .
+tar --no-same-owner -xJf /tmp/msc-0140-overlay.tar.xz -C .
 
 python3 .msc-build/fix-interactive-workbooks-0.14.0.py
 python3 .msc-build/apply-unified-study-reader-0.14.1.py
@@ -93,10 +104,17 @@ cp "$exact_workbook_art_dir"/real-workbook-art-pages-0.14.1.part*.b64 .msc-build
 bash .msc-build/apply-real-workbook-art-pages-0.14.1.sh
 
 # Install the 0.14.2 release on top of the verified 0.14.1 baseline.
+python3 "$exact_premium_installer" snapshot "$exact_protected_theme_dir"
 cp "$exact_release_dir"/apply-final-theme-release-0.14.2.sh .msc-build/
 cp "$exact_release_dir"/theme-generator-0.14.2.part*.pyfrag .msc-build/
 cp "$exact_release_dir"/theme-registry-0.14.2.part*.pyfrag .msc-build/
-bash .msc-build/apply-final-theme-release-0.14.2.sh
+env \
+  MSC_PREMIUM_THEME_INSTALLER="$exact_premium_installer" \
+  MSC_PREMIUM_THEME_ART_DIR="$exact_premium_art_dir" \
+  bash .msc-build/apply-final-theme-release-0.14.2.sh
+
+# Restore the accepted nine byte-for-byte and install the rebuilt sixteen.
+python3 "$exact_premium_installer" install "$exact_premium_art_dir" "$exact_protected_theme_dir"
 
 # One authoritative final theme stage: sharp full-scene assets and sharp previews.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json

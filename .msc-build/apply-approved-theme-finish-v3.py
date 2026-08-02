@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -26,6 +28,8 @@ TARGETS = (
 
 def dimensions(path: Path) -> tuple[int, int]:
     with Image.open(path) as image:
+        image.verify()
+    with Image.open(path) as image:
         return image.size
 
 def create_preview(scene: Path, preview: Path) -> None:
@@ -40,7 +44,46 @@ def create_preview(scene: Path, preview: Path) -> None:
         method=Image.Resampling.LANCZOS,
         centering=(0.5, 0.47),
     )
-    fitted.save(preview, 'WEBP', quality=94, method=6)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=preview.parent,
+            prefix=f'.{preview.name}.',
+            suffix='.tmp',
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+        fitted.save(temporary, 'WEBP', quality=94, method=6)
+        if temporary.stat().st_size <= 20_000:
+            raise SystemExit(f'Generated preview is undersized: {temporary}')
+        if dimensions(temporary) != (720, 1440):
+            raise SystemExit(f'Generated preview dimensions changed: {temporary}')
+        os.replace(temporary, preview)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+def atomic_copy(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=destination.parent,
+            prefix=f'.{destination.name}.',
+            suffix='.tmp',
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+        shutil.copyfile(source, temporary)
+        if hashlib.sha256(temporary.read_bytes()).hexdigest() != hashlib.sha256(source.read_bytes()).hexdigest():
+            raise SystemExit(f'Artwork copy failed verification: {destination}')
+        dimensions(temporary)
+        os.replace(temporary, destination)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 primary = TARGETS[0]
 for target in TARGETS:
@@ -69,8 +112,8 @@ for slug in THEMES:
         raise SystemExit(f'Approved preview is undersized: {primary_preview}')
 
     for target in TARGETS[1:]:
-        shutil.copyfile(primary_scene, target / primary_scene.name)
-        shutil.copyfile(primary_preview, target / primary_preview.name)
+        atomic_copy(primary_scene, target / primary_scene.name)
+        atomic_copy(primary_preview, target / primary_preview.name)
 
     scene_digest = hashlib.sha256(primary_scene.read_bytes()).hexdigest()
     preview_digest = hashlib.sha256(primary_preview.read_bytes()).hexdigest()
