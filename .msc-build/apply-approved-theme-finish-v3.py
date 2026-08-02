@@ -51,6 +51,19 @@ replace_once(
     'sprite dimensions',
 )
 
+# Force the source WebP to be fully decoded and detached before any row crops.
+# This prevents hosted libwebp lazy-decoder state from corrupting later cells.
+replace_once(
+    "sprite = Image.open(SPRITE).convert('RGB')",
+    "with Image.open(SPRITE) as opened_sprite:\n    opened_sprite.load()\n    sprite = opened_sprite.convert('RGB').copy()\nsprite.load()",
+    'fully decoded sprite raster',
+)
+replace_once(
+    'from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps',
+    'from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps, ImageStat',
+    'visual integrity imports',
+)
+
 # Selector previews preserve the exact approved portrait composition. The real
 # native UI remains live; the full-app backdrop is deliberately defocused so
 # no screenshot text or duplicate controls compete with the actual interface.
@@ -64,13 +77,29 @@ source = source.replace('(690, 1350)', '(690, 1410)')
 source = source.replace('1380 - preview_foreground.height', '1440 - preview_foreground.height')
 source = source.replace("'preview_dimensions': [720, 1380]", "'preview_dimensions': [720, 1440]")
 
+# Use the stable encoder setting and reject visually corrupted WebP output,
+# not merely files that exist or share hashes across device targets.
+replace_once(
+    "    scene.save(generated['scene'], 'WEBP', quality=93, method=6)\n    preview.save(generated['preview'], 'WEBP', quality=94, method=6)\n",
+    "    scene_expected = scene.convert('RGB')\n    preview_expected = preview.convert('RGB')\n    scene_expected.save(generated['scene'], 'WEBP', quality=93, method=4)\n    preview_expected.save(generated['preview'], 'WEBP', quality=94, method=4)\n\n    for output_kind, expected_image in (('scene', scene_expected), ('preview', preview_expected)):\n        with Image.open(generated[output_kind]) as encoded_image:\n            encoded_image.load()\n            encoded_rgb = encoded_image.convert('RGB')\n        channel_means = ImageStat.Stat(ImageChops.difference(expected_image, encoded_rgb)).mean\n        mean_delta = sum(channel_means) / len(channel_means)\n        if mean_delta > 6.0:\n            raise SystemExit(\n                f'Visual corruption detected for {slug}/{output_kind}: mean pixel delta {mean_delta:.3f}'\n            )\n",
+    'stable WebP encoding and visual gate',
+)
+
 try:
     exec(compile(source, str(WRAPPED), 'exec'))
 except SystemExit as exc:
-    # Normalize only a hosted Pillow shutdown quirk occurring after the complete
-    # manifest has been written. The outer reconstruction gate independently
-    # verifies every dimension, digest, file size, and cross-surface copy.
+    # Never normalize a visual-integrity or payload failure. Only tolerate the
+    # historical hosted shutdown quirk after a complete verified manifest.
+    message = str(exc.code)
     manifest = Path('.msc-build/approved-theme-finish-v2-manifest.json')
+    fatal_markers = (
+        'Visual corruption detected',
+        'checksum mismatch',
+        'payload is missing',
+        'dimensions are wrong',
+    )
+    if any(marker in message for marker in fatal_markers):
+        raise
     if manifest.is_file() and manifest.stat().st_size > 500:
         print(f'Approved theme finisher normalized hosted shutdown code: {exc.code}')
     else:
