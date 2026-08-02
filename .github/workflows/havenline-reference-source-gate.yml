@@ -1,0 +1,116 @@
+name: HAVENLINE Reference Source Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - HAVENLINE_REFERENCE_UNITY/**
+      - .github/workflows/havenline-reference-source-gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: havenline-reference-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Validate clean Unity project and exact reference contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=HAVENLINE_REFERENCE_UNITY
+          test -f "$root/ProjectSettings/ProjectVersion.txt"
+          test -f "$root/Packages/manifest.json"
+          test -f "$root/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json"
+          test -f "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          test -f "$root/Assets/Havenline/Runtime/HavenlineInput.cs"
+          test -f "$root/Assets/Havenline/Runtime/HavenlineActor.cs"
+          test -f "$root/Assets/Havenline/Runtime/HavenlineGameplay.cs"
+          test -f "$root/Assets/Havenline/Runtime/HavenlinePresentation.cs"
+          test -f "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs"
+          test -f "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs"
+          test -f "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
+          grep -q '^m_EditorVersion: 6000.3.18f1$' "$root/ProjectSettings/ProjectVersion.txt"
+          grep -q '"com.unity.cloud.gltfast": "6.19.0"' "$root/Packages/manifest.json"
+          grep -q '"com.unity.inputsystem": "1.17.0"' "$root/Packages/manifest.json"
+          grep -q '"com.unity.render-pipelines.universal": "17.3.0"' "$root/Packages/manifest.json"
+          grep -q 'CameraSize = 14.8f' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -q 'CameraOffset = new(0f, 7f, 7f)' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -q 'PlayerSpawn = new(0f, 0.08f, 6.2f)' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -q 'BuildAndroidReviewCandidate' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
+          grep -q 'HavenlineSceneAuthoring.Author' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
+          grep -q 'HavenlineAssetBootstrap.Bootstrap' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
+          if grep -RIl --include='*.cs' --include='*.json' --include='*.md' -E 'Godot|project\.godot|extends Node|TODO|placeholder' "$root"; then
+            echo 'Forbidden legacy engine or unfinished placeholder content found in clean HAVENLINE Unity project.' >&2
+            exit 1
+          fi
+
+      - name: Parse reference JSON and validate gameplay obligations
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          root = Path("HAVENLINE_REFERENCE_UNITY")
+          contract = json.loads((root / "Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json").read_text())
+          manifest = json.loads((root / "Packages/manifest.json").read_text())
+
+          assert contract["product"] == "HAVENLINE"
+          assert contract["unityEditor"] == "6000.3.18f1"
+          assert contract["referencePackage"]["sizeBytes"] == 107695534
+          assert contract["referencePackage"]["sha256"] == "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67"
+          assert contract["camera"] == {
+              "projection": "orthographic",
+              "size": 14.8,
+              "offset": [0.0, 7.0, 7.0],
+              "focusHeight": 0.82,
+              "lookAhead": 1.15,
+          }
+          assert contract["player"]["spawn"] == [0.0, 0.08, 6.2]
+          assert contract["player"]["carryCapacity"] == 6
+          required = {
+              "screen-relative movement",
+              "automatic gathering",
+              "visible carrying",
+              "automatic furnace deposit",
+              "furnace upgrades",
+              "expanding warmth zone",
+              "survivor rescue",
+              "helper gathering and delivery",
+              "barricade repair",
+              "animated wolf pressure",
+              "bounded world and fall recovery",
+              "Galaxy Z Fold safe-area HUD",
+          }
+          assert required == set(contract["requiredLoop"])
+          assert manifest["dependencies"]["com.unity.cloud.gltfast"] == "6.19.0"
+          assert manifest["dependencies"]["com.unity.inputsystem"] == "1.17.0"
+          assert manifest["dependencies"]["com.unity.render-pipelines.universal"] == "17.3.0"
+          print("HAVENLINE clean Unity reference contract passed.")
+
+      - name: Inventory normal source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          find HAVENLINE_REFERENCE_UNITY -type f -print | sort | tee havenline-reference-source-inventory.txt
+          test "$(find HAVENLINE_REFERENCE_UNITY/Assets/Havenline -name '*.cs' | wc -l)" -ge 8
+
+      - name: Upload source-gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-reference-source-gate-${{ github.run_number }}
+          retention-days: 30
+          path: havenline-reference-source-inventory.txt
