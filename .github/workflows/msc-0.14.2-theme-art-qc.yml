@@ -1,0 +1,54 @@
+name: My Study Companion 0.14.2 Theme Artwork QC
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0140-ci-base
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0142-theme-art-qc-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-theme-art-qc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out exact repair source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic image dependency
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Build the sixteen rejected themes from licensed source artwork
+        run: python .msc-build/build-approved-theme-source-artwork-0.14.2.py theme-art-qc
+
+      - name: Verify production artwork contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find theme-art-qc/scenes -name 'theme_scene_*.webp' -type f | wc -l)" -eq 16
+          test -s theme-art-qc/msc-0.14.2-theme-art-qc-contact-sheet.jpg
+          test -s theme-art-qc/SOURCE-CREDITS.json
+          test -s theme-art-qc/SHA256SUMS.txt
+          grep -Fq 'no blurred crop-fill' theme-art-qc/SOURCE-CREDITS.json
+          grep -Fq 'accepted first nine themes are untouched' theme-art-qc/SOURCE-CREDITS.json
+          (cd theme-art-qc/scenes && sha256sum -c ../SHA256SUMS.txt)
+
+      - name: Upload real theme scenes and visual contact sheet
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.14.2-real-theme-art-qc
+          path: theme-art-qc
+          retention-days: 7
+          if-no-files-found: error
