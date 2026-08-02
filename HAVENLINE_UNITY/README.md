@@ -1,8 +1,8 @@
 # HAVENLINE — clean Unity reference rebuild
 
-This is the production restart of HAVENLINE. It is a new Unity 6.3 LTS + URP project built from the preserved, verified reference package and acceptance contract.
+This is the production restart of HAVENLINE in the repository path already connected to the Unity project: `HAVENLINE_UNITY`.
 
-It does **not** reuse the earlier `HAVENLINE_UNITY` generator, Godot scenes, Godot runtime, generated prefabs, or local auto-build scripts.
+The folder name is retained for Unity connectivity, but its implementation is entirely new. It does **not** reuse the abandoned generator, Godot scenes, Godot runtime, generated prefabs, local auto-build scripts, or previous build outputs.
 
 ## Reference identity
 
@@ -39,6 +39,15 @@ The project authors the exact Unity scene from normal source files and checksum-
 - asset bootstrap: `Havenline.Editor.HavenlineAssetBootstrap.Bootstrap`
 - Android build: `Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate`
 
+Unity Build Automation target:
+
+- repository: `ksolo21-web/Hummer`
+- branch: `havenline-unity-reference-rebuild`
+- project path: `HAVENLINE_UNITY`
+- editor: `6000.3.18f1`
+- platform: Android
+- custom build method: `Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate`
+
 Expected outputs:
 
 - `Builds/Android/HAVENLINE-Unity-reference-review-arm64.apk`
@@ -49,4 +58,4 @@ Expected outputs:
 
 ## Truth gate
 
-Source code is not a completed game build. This project remains unapproved until the exact same commit produces a compiled Unity scene, two Unity-rendered frames, an installable APK, build evidence, and a successful physical Galaxy Z Fold test.
+Source code is not a completed game build. This project remains unapproved until the same commit produces a compiled Unity scene, two Unity-rendered frames, an installable APK, build evidence, and a successful physical Galaxy Z Fold test.
