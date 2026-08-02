@@ -42,13 +42,17 @@ SOURCES = {
 
 
 def commons_original(filename: str) -> str:
-    # Special:Redirect/file resolves the exact Commons file and can return a
-    # production-sized thumbnail, avoiding unnecessary multi-megabyte originals.
-    return (
-        "https://commons.wikimedia.org/wiki/Special:Redirect/file/"
-        + urllib.parse.quote(filename.replace(" ", "_"), safe="()_,.-")
-        + "?width=2048"
-    )
+    normalized = filename.replace(" ", "_")
+    digest = hashlib.md5(normalized.encode("utf-8")).hexdigest()
+    original = f"https://upload.wikimedia.org/wikipedia/commons/{digest[0]}/{digest[:2]}/{urllib.parse.quote(normalized, safe='()_,.-')}"
+    # A one-time, cached image proxy prevents Wikimedia from rate-limiting the
+    # shared GitHub runner IP. The generated assets are then checksum-locked.
+    return "https://images.weserv.nl/?" + urllib.parse.urlencode({
+        "url": original,
+        "w": "2048",
+        "output": "jpg",
+        "q": "92",
+    })
 
 
 def download(key: str) -> Path:
