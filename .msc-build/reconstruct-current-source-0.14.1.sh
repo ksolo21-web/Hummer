@@ -11,12 +11,13 @@ if [[ "${MSC_RECONSTRUCT_RUNNING_FROM_TMP:-0}" != "1" ]]; then
     bash /tmp/msc-reconstruct-current-source-0.14.1.sh
 fi
 
-# The reconstruction overlays include older copies of the final CI-gate editor.
-# Preserve the repaired exact-head version before rebuilding the historical
-# source stack, then restore it immediately before the theme and production
-# overlays add their checks.
+# The reconstruction overlays include older copies of final repair scripts.
+# Preserve the exact-head versions before rebuilding the historical source
+# stack, then run/restore the preserved copies after every older overlay.
 cp .msc-build/fix-unified-study-reader-ci-gate-0.14.1.py \
   /tmp/msc-final-gate-0.14.1.py
+cp .msc-build/apply-approved-theme-finish-v2.py \
+  /tmp/msc-apply-approved-theme-finish-v2.py
 
 python3 .msc-build/reconstruct-source-only-0.14.1.py
 bash /tmp/reconstruct-build-0125-source-driver.sh
@@ -69,22 +70,15 @@ python3 .msc-build/fix-static-theme-repair-gate-0.14.1.py
 python3 .msc-build/apply-static-theme-auth-repair-0.14.1.py
 bash .msc-build/apply-approved-static-theme-artwork-0.14.1.sh
 
-# Apply the final approved visual finish. A Python/Pillow shutdown anomaly on
-# one hosted runner can report a non-zero code after every asset and verification
-# has completed, so remove any stale manifest first and validate the actual output
-# rather than trusting the process code alone.
+# Run the preserved exact-head finisher, not an older copy restored by a source
+# archive. Google authentication is intentionally outside this theme-only pass.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
-set +e
-python3 .msc-build/apply-approved-theme-finish-v2.py
-theme_finish_rc=$?
-set -e
-if [[ "$theme_finish_rc" -ne 0 ]]; then
-  test -s .msc-build/approved-theme-finish-v2-manifest.json
-  test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
-  test "$(find MyStudyCompanion/wear/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
-  test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
-  grep -Fq 'ApprovedThemeQuickActions' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
-  echo "Theme assets and source verified after hosted-runner exit code ${theme_finish_rc}."
-fi
+python3 /tmp/msc-apply-approved-theme-finish-v2.py
+
+test -s .msc-build/approved-theme-finish-v2-manifest.json
+test "$(find MyStudyCompanion/app/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+test "$(find MyStudyCompanion/wear/src/main/res/drawable-nodpi -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+test "$(find MyStudyCompanionWeb/assets -maxdepth 1 -name 'theme_preview_*.webp' | wc -l)" -eq 13
+grep -Fq 'ApprovedThemeQuickActions' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt
 
 echo 'Reconstructed My Study Companion 0.14.1 with the working Google sign-in preserved and all 23 themes rebuilt as polished static themes matching the approved visual direction.'
