@@ -1,0 +1,14 @@
+.gradle/
+.kotlin/
+.idea/
+local.properties
+*.iml
+/build/
+**/build/
+.externalNativeBuild/
+.cxx/
+.gradle-bootstrap/
+*.jks
+*.keystore
+secrets.properties
+google-services.json

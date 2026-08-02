@@ -1,0 +1,45 @@
+name: KREATIV Studio Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: ${{ secrets.KREATIV_GOOGLE_WEB_CLIENT_ID }}
+      ORG_GRADLE_PROJECT_KREATIV_OLIVIA_FIREBASE_UID: ${{ secrets.KREATIV_OLIVIA_FIREBASE_UID }}
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: ${{ secrets.KREATIV_FIREBASE_API_KEY }}
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: ${{ secrets.KREATIV_FIREBASE_APP_ID }}
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: ${{ secrets.KREATIV_FIREBASE_PROJECT_ID }}
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: ${{ secrets.KREATIV_FIREBASE_STORAGE_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: yes | sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+      - name: Lint, unit tests, and debug APK
+        run: gradle --no-daemon lintDebug testDebugUnitTest assembleDebug
+      - name: Mentor and new-canvas route smoke test
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: gradle --no-daemon connectedDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KREATIV-Studio-v0.1-debug
+          path: app/build/outputs/apk/debug/app-debug.apk

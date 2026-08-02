@@ -1,0 +1,30 @@
+KREATIV Studio 0.1.0 — build verification
+Generated: 2026-08-02
+
+Completed checks:
+- Gradle 9.4.1 + Android Gradle Plugin 9.2.1 project configuration: passed.
+- Android SDK Platform 37.0 + Build Tools 36.0.0 compilation: passed.
+- `lintDebug`: passed (0 errors; remaining findings are non-blocking warnings/hints).
+- `testDebugUnitTest`: passed (4 tests, 0 failures, 0 errors), including offline Mentor availability and response coverage.
+- `assembleDebug`: passed; generated an installable debug APK.
+- `assembleDebugAndroidTest`: passed; the Mentor/new-canvas route regression test compiles into an installable instrumentation APK.
+- APK identity: com.kreativstudio.app, versionCode 1, versionName 0.1.0-dev, minSdk 28, targetSdk 37.
+- APK signature verification: passed with Android APK Signature Scheme v2 (debug certificate).
+- APK SHA-256: 9bfdc62a339b24380a63988fd3556d63df0641bbea1fe9c3ec30c6f1ab3c00c3.
+- Compact Studio layout: removed the nested horizontal scroll constraint that force-closed the new-canvas route.
+- Screen routing: each destination now receives an isolated composition; the Mentor uses one bounded vertical scroll surface.
+- Kotlin source delimiter and syntax-token scan: passed; no malformed braces, strings, comments, or parser-level syntax diagnostics found.
+- Android XML resources and manifest parse: passed.
+- Firebase JSON parse: passed.
+- Launcher and design PNG integrity: passed.
+- Empty-file scan: passed.
+- TODO/FIXME/stub-marker scan: passed.
+- Gradle distribution SHA-256 pinned and verified against the official Gradle 9.4.1 distribution checksum.
+
+Still requires target-environment verification:
+- Emulator and physical phone/foldable/tablet/S Pen interaction testing.
+- Gemini Nano status, model download, and on-device inference on supported hardware.
+- Google sign-in, App Check, Firestore, Storage, and Firebase AI integration with Olivia's private Firebase configuration.
+- Production release signing and Play-distribution checks. The generated APK uses the standard Android debug signature.
+
+The GitHub Actions workflow installs Android SDK Platform 37.0 plus Build Tools 36.0.0, runs lint and unit tests, assembles the same debug APK, and executes the Mentor/new-canvas route smoke test on an API 35 Android emulator. Firebase/OAuth values must be supplied privately before Google sign-in, cloud sync, App Check, Gemini Nano preparation, or cloud/hybrid Firebase AI can operate.
