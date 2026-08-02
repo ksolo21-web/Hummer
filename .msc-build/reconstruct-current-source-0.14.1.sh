@@ -79,11 +79,12 @@ if [[ "$(find .msc-build -maxdepth 1 -name 'approved-theme-crop-*-60x120-pal128-
   exit 1
 fi
 
-# Run the legacy integration finisher for UI wiring, but never trust its hosted
-# image buffers. The shell catches its historical post-manifest shutdown code.
+# Run the legacy integration finisher for UI wiring in a new session. The old
+# hosted Pillow failure can terminate its process group, but cannot kill this
+# exact reconstruction shell or prevent the clean renderer from running.
 rm -f .msc-build/approved-theme-finish-v2-manifest.json
 theme_finish_rc=0
-MSC_APPROVED_THEME_FINISH_V2="$exact_theme_finisher_v2" \
+setsid env MSC_APPROVED_THEME_FINISH_V2="$exact_theme_finisher_v2" \
   python3 "$exact_theme_finisher_v3" || theme_finish_rc=$?
 echo "Approved theme integration process code: ${theme_finish_rc}"
 
