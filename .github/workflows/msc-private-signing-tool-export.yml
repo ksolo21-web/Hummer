@@ -1,0 +1,54 @@
+name: My Study Companion Private Signing Tool Export
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+
+permissions:
+  contents: read
+
+jobs:
+  export-android-build-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install Android Build Tools 36.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;36.0.0"
+          test -x "$SDK_ROOT/build-tools/36.0.0/zipalign"
+          test -x "$SDK_ROOT/build-tools/36.0.0/aapt"
+          test -x "$SDK_ROOT/build-tools/36.0.0/apksigner"
+
+      - name: Stage private local signing toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          mkdir -p android-build-tools-36.0.0
+          cp -a "$SDK_ROOT/build-tools/36.0.0/." android-build-tools-36.0.0/
+          sha256sum \
+            android-build-tools-36.0.0/apksigner \
+            android-build-tools-36.0.0/lib/apksigner.jar \
+            android-build-tools-36.0.0/zipalign \
+            android-build-tools-36.0.0/aapt \
+            > android-build-tools-36.0.0/TOOL-SHA256SUMS.txt
+
+      - name: Upload local signing toolchain
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-android-build-tools-36.0.0-${{ github.event.pull_request.head.sha }}
+          path: android-build-tools-36.0.0
+          retention-days: 1
+          if-no-files-found: error
