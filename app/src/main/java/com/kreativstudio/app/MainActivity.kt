@@ -5,10 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kreativstudio.app.ui.KreativAdaptiveStudioHost
 import com.kreativstudio.app.ui.KreativAppStable
 import com.kreativstudio.app.ui.KreativLessonWorkspaceHost
 import com.kreativstudio.app.ui.KreativMentorV2Host
+import com.kreativstudio.app.ui.KreativSketchbookStudioHost
 import com.kreativstudio.app.ui.KreativViewModel
 import com.kreativstudio.app.ui.KreativViewModelFactory
 import com.kreativstudio.app.ui.StudioScreen
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
                     KreativLessonWorkspaceHost(viewModel = vm, activity = this)
                 }
                 vm.screen == StudioScreen.STUDIO -> {
-                    KreativAdaptiveStudioHost(viewModel = vm, activity = this)
+                    KreativSketchbookStudioHost(viewModel = vm, activity = this)
                 }
                 vm.screen == StudioScreen.MENTOR -> {
                     KreativMentorV2Host(viewModel = vm, activity = this)
