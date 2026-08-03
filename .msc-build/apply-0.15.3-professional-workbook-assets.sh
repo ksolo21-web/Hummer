@@ -28,9 +28,11 @@ grep -Fq 'object WorkbookIllustrationCatalog' "$APP/companion/WorkbookIllustrati
 grep -Fq 'regionMaskPath' "$APP/companion/WorkbookIllustrationCatalog.kt"
 grep -Fq 'difference-changed.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
 grep -Fq 'drawing-step-1.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
-grep -Fq 'loadWorkbookBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
-grep -Fq 'loadWorkbookMask' "$APP/ui/InteractiveWorkbookEditor.kt"
-grep -Fq 'professionalRegionOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
+grep -Fq 'loadAssetBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
+grep -Fq 'rememberWorkbookIllustration' "$APP/ui/InteractiveWorkbookEditor.kt"
+grep -Fq 'buildColorOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
+grep -Fq 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
+grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'WorkbookIllustrationCatalogTest' "$TESTS/companion/WorkbookIllustrationCatalogTest.kt"
 
 # Reject the primitive vector scene regression from all active production code.
