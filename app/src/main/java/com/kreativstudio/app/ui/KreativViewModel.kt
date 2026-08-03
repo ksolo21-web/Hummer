@@ -20,6 +20,8 @@ import com.kreativstudio.app.model.CanvasElement
 import com.kreativstudio.app.model.CanvasLayer
 import com.kreativstudio.app.model.JournalEntry
 import com.kreativstudio.app.model.KreativProject
+import com.kreativstudio.app.model.LessonMastery
+import com.kreativstudio.app.model.LessonProgress
 import com.kreativstudio.app.model.ProjectAttachment
 import com.kreativstudio.app.model.StrokePoint
 import com.kreativstudio.app.model.StudioThemeId
@@ -332,11 +334,15 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
 
     fun startLesson(lessonId: String) {
         selectedLessonId = lessonId
-        lessonStepIndex = 0
+        val progress = lessonProgress.value.firstOrNull { it.lessonId == lessonId }
+        val lesson = lessons.firstOrNull { it.id == lessonId }
+        lessonStepIndex = lesson?.steps?.indices
+            ?.firstOrNull { it !in progress?.masteredStepIndices.orEmpty() }
+            ?: 0
         val project = currentProject
         if (project == null || project.lessonId != lessonId) {
             createProject(
-                title = lessons.firstOrNull { it.id == lessonId }?.title ?: "Lesson Practice",
+                title = lesson?.title ?: "Lesson Practice",
                 width = 1800,
                 height = 2400,
                 background = 0xFFF8F3EAL,
@@ -346,7 +352,7 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
             screen = StudioScreen.STUDIO
         }
         viewModelScope.launch {
-            container.lessonProgressRepository.markStep(lessonId, 0, attempted = true)
+            container.lessonProgressRepository.markStep(lessonId, progress?.completedSteps ?: 0, attempted = true)
             backupUserState()
         }
     }
@@ -354,14 +360,24 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     fun nextLessonStep() {
         val lesson = lessons.firstOrNull { it.id == selectedLessonId } ?: return
         lessonStepIndex = (lessonStepIndex + 1).coerceAtMost(lesson.steps.lastIndex)
-        viewModelScope.launch {
-            container.lessonProgressRepository.markStep(lesson.id, lessonStepIndex + 1)
-            backupUserState()
-        }
     }
 
     fun previousLessonStep() {
         lessonStepIndex = (lessonStepIndex - 1).coerceAtLeast(0)
+    }
+
+    fun recordLessonAssessment(mastery: LessonMastery) {
+        val lessonId = selectedLessonId ?: currentProject?.lessonId ?: return
+        val step = lessonStepIndex
+        viewModelScope.launch {
+            container.lessonProgressRepository.recordAssessment(lessonId, step, mastery)
+            backupUserState()
+            message = when (mastery) {
+                LessonMastery.READY_TO_ADVANCE -> "Step mastered. You are ready to advance."
+                LessonMastery.NEEDS_PRACTICE -> "This step is saved as Needs Practice. Use the correction, revise, and check again."
+                LessonMastery.NOT_ASSESSED -> "The step was not assessed."
+            }
+        }
     }
 
     fun requestAiAdvice(prompt: String = aiPrompt) {
@@ -498,10 +514,16 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
             if (cloudState.progress.isNotEmpty()) {
                 val merged = (lessonProgress.value + cloudState.progress)
                     .groupBy { it.lessonId }
-                    .map { (_, entries) ->
-                        entries.maxWith(
-                            compareBy<com.kreativstudio.app.model.LessonProgress> { it.completedSteps }
-                                .thenBy { it.lastOpenedAt }
+                    .map { (lessonId, entries) ->
+                        val mastered = entries.flatMap { it.masteredStepIndices }.toSet()
+                        val needsPractice = entries.flatMap { it.needsPracticeStepIndices }.toSet() - mastered
+                        LessonProgress(
+                            lessonId = lessonId,
+                            completedSteps = mastered.size,
+                            attempts = entries.maxOfOrNull { it.attempts } ?: 0,
+                            masteredStepIndices = mastered,
+                            needsPracticeStepIndices = needsPractice,
+                            lastOpenedAt = entries.maxOfOrNull { it.lastOpenedAt } ?: System.currentTimeMillis(),
                         )
                     }
                 container.lessonProgressRepository.replaceAll(merged)
@@ -520,7 +542,11 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     private fun openProjectInternal(project: KreativProject) {
         currentProject = project
         selectedLessonId = project.lessonId
-        lessonStepIndex = 0
+        lessonStepIndex = project.lessonId?.let { lessonId ->
+            val lesson = lessons.firstOrNull { it.id == lessonId }
+            val mastered = lessonProgress.value.firstOrNull { it.lessonId == lessonId }?.masteredStepIndices.orEmpty()
+            lesson?.steps?.indices?.firstOrNull { it !in mastered } ?: 0
+        } ?: 0
         undoStack.clear()
         redoStack.clear()
         replayProgress = 1f
