@@ -1,0 +1,32 @@
+name: Android Signing Tools
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ agent/kreativ-studio-v0.1 ]
+    paths:
+      - '.github/workflows/android-signing-tools.yml'
+
+jobs:
+  package-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: android-actions/setup-android@v3
+      - name: Install Android Build Tools 36
+        run: yes | sdkmanager "build-tools;36.0.0"
+      - name: Package signing utilities and host runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p signing-tools/lib signing-tools/lib64
+          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" signing-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signing-tools/lib/
+          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" signing-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib64/libc++.so" signing-tools/lib64/
+          chmod +x signing-tools/apksigner signing-tools/zipalign
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-build-tools-36-signing-complete
+          path: signing-tools
+          if-no-files-found: error
