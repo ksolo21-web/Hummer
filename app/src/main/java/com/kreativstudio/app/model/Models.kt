@@ -161,6 +161,12 @@ data class LessonStep(
     val title: String,
     val instruction: String,
     val checkpoint: String,
+    val whyItMatters: String = "",
+    val demonstration: String = "",
+    val practice: String = "",
+    val commonMistakes: List<String> = emptyList(),
+    val recommendedTool: ToolType? = null,
+    val recommendedBrushWidth: Float? = null,
 )
 
 @Serializable
