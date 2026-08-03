@@ -13,6 +13,8 @@ TEST="$ROOT/MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/family/F
 grep -Fq 'catch (cancellation: CancellationException)' "$REPO"
 grep -Fq 'throw cancellation' "$REPO"
 grep -Fq 'runFamilyCatching' "$REPO"
+grep -Fq 'return@runFamilyCatching' "$REPO"
+! grep -Fq 'return@runCatching' "$REPO"
 grep -Fq 'familyErrorMessageForDisplay' "$REPO"
 grep -Fq 'requestRefreshCapabilities' "$REPO"
 grep -Fq 'requestCreateHouseholdInvitation' "$REPO"
