@@ -3,7 +3,7 @@ name: KREATIV Studio Android
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, agent/kreativ-studio-v0.1 ]
   pull_request:
 
 jobs:
@@ -11,12 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: ${{ secrets.KREATIV_GOOGLE_WEB_CLIENT_ID }}
+      # Firebase Android client values are public application configuration, not server credentials.
+      # The private signing key remains outside the public repository.
+      ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: 949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com
       ORG_GRADLE_PROJECT_KREATIV_OLIVIA_FIREBASE_UID: ${{ secrets.KREATIV_OLIVIA_FIREBASE_UID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: ${{ secrets.KREATIV_FIREBASE_API_KEY }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: ${{ secrets.KREATIV_FIREBASE_APP_ID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: ${{ secrets.KREATIV_FIREBASE_PROJECT_ID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: ${{ secrets.KREATIV_FIREBASE_STORAGE_BUCKET }}
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: 1:949620144971:android:63fec0446e8549d25946ce
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: my-study-companion-abc01
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -29,8 +31,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.4.1'
-      - name: Lint, unit tests, and debug APK
+      - name: Lint, unit tests, and configured debug APK
         run: gradle --no-daemon lintDebug testDebugUnitTest assembleDebug
+      - name: Verify Firebase and Google configuration were compiled
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R -Fq 'my-study-companion-abc01' app/build/generated/source/buildConfig/debug
+          grep -R -Fq '1:949620144971:android:63fec0446e8549d25946ce' app/build/generated/source/buildConfig/debug
+          grep -R -Fq '949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com' app/build/generated/source/buildConfig/debug
+          grep -R -Fq 'KreativFramedStudioHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
       - name: Enable KVM group access
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -54,10 +64,10 @@ jobs:
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
           if-no-files-found: ignore
-      - name: Upload debug APK
+      - name: Upload configured debug APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: KREATIV-Studio-v0.1-debug
+          name: KREATIV-Studio-v0.1-configured-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
