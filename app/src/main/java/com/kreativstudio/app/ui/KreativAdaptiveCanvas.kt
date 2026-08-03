@@ -6,7 +6,6 @@ import android.graphics.Color as AndroidColor
 import android.graphics.Paint
 import android.view.MotionEvent
 import android.view.View
-import android.view.View.MeasureSpec
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -20,7 +19,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.kreativstudio.app.model.KreativProject
 import com.kreativstudio.app.model.StrokePoint
 import com.kreativstudio.app.ui.canvas.KreativCanvasView
-import kotlin.math.ceil
 
 class AdaptiveCanvasController internal constructor() {
     internal var frame: AdaptiveCanvasFrame? = null
@@ -99,42 +97,19 @@ internal class AdaptiveCanvasFrame(context: Context) : FrameLayout(context) {
     init {
         clipChildren = true
         clipToPadding = true
-        addView(canvasView)
+        addView(
+            canvasView,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
+        )
         setWillNotDraw(false)
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val width = MeasureSpec.getSize(widthMeasureSpec).coerceAtLeast(1)
-        val height = MeasureSpec.getSize(heightMeasureSpec).coerceAtLeast(1)
-        setMeasuredDimension(width, height)
-
-        // KreativCanvasView historically reserved 10% internal breathing room. The
-        // child is intentionally measured at 1 / .9 of the viewport so the actual
-        // page uses the full safe workspace while remaining clipped between bars.
-        val childWidth = ceil(width / .9f).toInt().coerceAtLeast(width)
-        val childHeight = ceil(height / .9f).toInt().coerceAtLeast(height)
-        canvasView.measure(
-            MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY),
-            MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY),
-        )
-    }
-
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        val childLeft = (measuredWidth - canvasView.measuredWidth) / 2
-        val childTop = (measuredHeight - canvasView.measuredHeight) / 2
-        canvasView.layout(
-            childLeft,
-            childTop,
-            childLeft + canvasView.measuredWidth,
-            childTop + canvasView.measuredHeight,
-        )
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (oldw > 0 && oldh > 0 && (w != oldw || h != oldh)) {
-            // Fold/unfold, rotation, split-screen, and keyboard-driven workspace
-            // changes refit the page automatically instead of leaving it offscreen.
+        if (w > 0 && h > 0 && oldw > 0 && oldh > 0 && (w != oldw || h != oldh)) {
+            // The drawing view now receives the exact measured workspace. Refit only
+            // after Compose has finished the Fold, rotation, keyboard, or split-screen
+            // layout so no part of the page is hidden beyond the real viewport.
             post { canvasView.resetView() }
         }
     }
