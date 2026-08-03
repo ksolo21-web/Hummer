@@ -1,30 +1,36 @@
-KREATIV Studio 0.1.0 — build verification
-Generated: 2026-08-02
+KREATIV Studio v0.1 build verification
+=======================================
 
-Completed checks:
-- Gradle 9.4.1 + Android Gradle Plugin 9.2.1 project configuration: passed.
-- Android SDK Platform 37.0 + Build Tools 36.0.0 compilation: passed.
-- `lintDebug`: passed (0 errors; remaining findings are non-blocking warnings/hints).
-- `testDebugUnitTest`: passed (4 tests, 0 failures, 0 errors), including offline Mentor availability and response coverage.
-- `assembleDebug`: passed; generated an installable debug APK.
-- `assembleDebugAndroidTest`: passed; the Mentor/new-canvas route regression test compiles into an installable instrumentation APK.
-- APK identity: com.kreativstudio.app, versionCode 1, versionName 0.1.0-dev, minSdk 28, targetSdk 37.
-- APK signature verification: passed with Android APK Signature Scheme v2 (debug certificate).
-- APK SHA-256: 9bfdc62a339b24380a63988fd3556d63df0641bbea1fe9c3ec30c6f1ab3c00c3.
-- Compact Studio layout: removed the nested horizontal scroll constraint that force-closed the new-canvas route.
-- Screen routing: each destination now receives an isolated composition; the Mentor uses one bounded vertical scroll surface.
-- Kotlin source delimiter and syntax-token scan: passed; no malformed braces, strings, comments, or parser-level syntax diagnostics found.
-- Android XML resources and manifest parse: passed.
-- Firebase JSON parse: passed.
-- Launcher and design PNG integrity: passed.
-- Empty-file scan: passed.
-- TODO/FIXME/stub-marker scan: passed.
-- Gradle distribution SHA-256 pinned and verified against the official Gradle 9.4.1 distribution checksum.
+Verified head: 582638b2377f51d2483e098ed3ebee9d142cc911
+Workflow run: 30778160635
 
-Still requires target-environment verification:
-- Emulator and physical phone/foldable/tablet/S Pen interaction testing.
-- Gemini Nano status, model download, and on-device inference on supported hardware.
-- Google sign-in, App Check, Firestore, Storage, and Firebase AI integration with Olivia's private Firebase configuration.
-- Production release signing and Play-distribution checks. The generated APK uses the standard Android debug signature.
+PASS: lintDebug
+PASS: testDebugUnitTest
+PASS: assembleDebug
+PASS: API 35 Mentor and New Canvas route smoke test
+PASS: Full-screen Studio back and controls assertions
+PASS: Android test diagnostics upload
+PASS: Debug APK artifact upload
 
-The GitHub Actions workflow installs Android SDK Platform 37.0 plus Build Tools 36.0.0, runs lint and unit tests, assembles the same debug APK, and executes the Mentor/new-canvas route smoke test on an API 35 Android emulator. Firebase/OAuth values must be supplied privately before Google sign-in, cloud sync, App Check, Gemini Nano preparation, or cloud/hybrid Firebase AI can operate.
+Full-screen Studio behavior
+---------------------------
+- The drawing canvas is mounted edge-to-edge as the Studio root surface.
+- Studio no longer reserves space for the global app navigation bar.
+- Toolbars are translucent overlays instead of layout rows that shrink the canvas.
+- The project opens in Fill mode by default, with a Fit toggle for whole-page viewing.
+- The artist can hide all Studio controls for a pure full-screen canvas.
+- The guarded canvas frame still catches device-specific render/touch failures.
+
+Verified APK
+------------
+File: KREATIV-Studio-v0.1-Fullscreen-verified.apk
+Size: 97,226,802 bytes
+SHA-256: 42189a285a24f5341ad1394538fbb856612d994dc913582a5589e436125cf414
+
+Authentication boundary
+-----------------------
+The workflow currently receives empty KREATIV Firebase/OAuth variables. The debug
+APK therefore keeps Google sign-in disabled. Google sign-in requires a registered
+com.kreativstudio.app Firebase Android client, matching SHA-1/SHA-256 signing
+fingerprints, the Google web client ID, and a build signed with that registered
+KREATIV certificate.
