@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "width": 512,
+  "height": 768,
+  "assets": [
+    {"id":"creation","file":"creation.webp","sha256":"99f3af54369a4e1dace1113cffbb0bd0227fc8a4558378d986da7c1b9dc3cc3d","size":189392},
+    {"id":"noahs-ark","file":"noahs-ark.webp","sha256":"97e3432e47a6c81652c020c68806f35e15e8097c53abbe4c0ad2ea41d438c59b","size":178976},
+    {"id":"jonah","file":"jonah.webp","sha256":"3778ec2dff6b0136bfdd36c955e8226ef468cc22193b38115e508fdd6bfe6c60","size":142562},
+    {"id":"david-goliath","file":"david-goliath.webp","sha256":"40322edd26faaae9eacc48fbec360636dedd2e2dbdd30f54656ef8534c25abb3","size":149868},
+    {"id":"daniel-lions","file":"daniel-lions.webp","sha256":"08e004cfd4817b2f79146ffad4307f935d901bfeb4d8871becc07f5913948cc4","size":172352},
+    {"id":"jesus-storm","file":"jesus-storm.webp","sha256":"7e0edf8188f67bd1af60b313d3ad95dbea57dce7b1ca7f8409cead394d2d5a63","size":159344},
+    {"id":"good-samaritan","file":"good-samaritan.webp","sha256":"ccd26d9eec0bfb83d9ba057ef9fee1dd6dcf3de8b4eefacc78438e6b1973391f","size":183328},
+    {"id":"lost-sheep","file":"lost-sheep.webp","sha256":"e42448f5a06f99607c55fae56502a9c83860c7e94589c11715a4f1bf915c3ceb","size":177520},
+    {"id":"talents","file":"talents.webp","sha256":"98027e1b2fe7c3cb19f968d8c5dff9a0f719d13dd87d0d2bc76189205d99aa95","size":136442},
+    {"id":"prodigal-son","file":"prodigal-son.webp","sha256":"d533a4a7d7bb2c1ce01315243f04b09ee0618ac76171e893ccbb4e1371229644","size":200860},
+    {"id":"wise-builders","file":"wise-builders.webp","sha256":"ba537d9640342f7cae06188867ee97cbc2aeb377de3e0b0922452ce88e689b34","size":158708},
+    {"id":"armor-of-god","file":"armor-of-god.webp","sha256":"645848b6ceb4e4a2f211855043215b6b334c04b159da878a006dd318e60f9c28","size":177844},
+    {"id":"favorite-scripture","file":"favorite-scripture.webp","sha256":"92286cee1a0743d4123364d0607eaaf8ddac94478e2189fb43f4ae2d80d25fc5","size":179116},
+    {"id":"favorite-animal","file":"favorite-animal.webp","sha256":"9df72f4fe82b6f3148b5a57c809387f6133ce3ee48c8ceeceb2998897a75045e","size":217420},
+    {"id":"faith-action","file":"faith-action.webp","sha256":"96406af366b199f6f26c721074922862b0b948227f70a87ec670a3c9b021d951","size":181998},
+    {"id":"gratitude-journal","file":"gratitude-journal.webp","sha256":"bdfc79e09fbd4e3e40184670036f377fa37fe212f028b3a2c6729b3e3e5a12f9","size":197100}
+  ],
+  "final_source_archive_sha256": "9d20a5448cc7d87152a59533e5cc5e8c3eab41db493c3f07050f397d5d51e154",
+  "final_signed_phone_apk_sha256": "949f9054c76ac33264df5a65c172586d329f2542790f1c41add513787f44553f"
+}
