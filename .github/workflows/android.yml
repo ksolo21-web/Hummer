@@ -37,14 +37,16 @@ jobs:
           gradle-version: '9.4.1'
       - name: Lint, unit tests, and configured debug APK
         run: gradle --no-daemon lintDebug testDebugUnitTest assembleDebug
-      - name: Verify Firebase, adaptive canvas, lesson, and Mentor configuration
+      - name: Verify Firebase, professional canvas, lesson, and Mentor configuration
         shell: bash
         run: |
           set -euo pipefail
           grep -R -Fq 'my-study-companion-abc01' app/build/generated/source/buildConfig/debug
           grep -R -Fq '1:949620144971:android:63fec0446e8549d25946ce' app/build/generated/source/buildConfig/debug
           grep -R -Fq '949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com' app/build/generated/source/buildConfig/debug
-          grep -Fq 'KreativAdaptiveStudioHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
+          grep -Fq 'KreativSketchbookStudioHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
+          grep -Fq 'LayoutParams.MATCH_PARENT' app/src/main/java/com/kreativstudio/app/ui/KreativAdaptiveCanvas.kt
+          ! grep -Fq 'ceil(width / .9f)' app/src/main/java/com/kreativstudio/app/ui/KreativAdaptiveCanvas.kt
           grep -Fq 'KreativLessonWorkspaceHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
           grep -Fq 'KreativMentorV2Host' app/src/main/java/com/kreativstudio/app/MainActivity.kt
           grep -Fq 'WindowInfoTracker' app/src/main/java/com/kreativstudio/app/ui/AdaptiveWindowState.kt
