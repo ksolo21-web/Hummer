@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/msc-auth-diagnostic-temp
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
 
 permissions:
   contents: read
