@@ -19,12 +19,12 @@ TESTS="$ROOT/MyStudyCompanion/app/src/test/java/com/mystudycompanion/app"
 WEB="$ROOT/MyStudyCompanionWeb"
 
 # Android stored-asset loader and exact subject mapping.
-grep -Fq 'internal object ProfessionalWorkbookAssetLoader' "$APP/companion/ProfessionalWorkbookAssets.kt"
-grep -Fq 'fun regionAt' "$APP/companion/ProfessionalWorkbookAssets.kt"
-grep -Fq 'fun createFillOverlay' "$APP/companion/ProfessionalWorkbookAssets.kt"
-grep -Fq 'WorkbookArtTemplate.NOAH_ARK' "$APP/companion/ProfessionalWorkbookAssets.kt"
-grep -Fq 'WorkbookArtTemplate.GRATITUDE_JOURNAL' "$APP/companion/ProfessionalWorkbookAssets.kt"
-grep -Fq 'ProfessionalWorkbookAssetsTest' "$TESTS/companion/ProfessionalWorkbookAssetsTest.kt"
+grep -Fq 'internal object ProfessionalWorkbookAssetLoader' "$APP/ui/ProfessionalWorkbookAssets.kt"
+grep -Fq 'fun regionAt' "$APP/ui/ProfessionalWorkbookAssets.kt"
+grep -Fq 'fun createFillOverlay' "$APP/ui/ProfessionalWorkbookAssets.kt"
+grep -Fq 'WorkbookArtTemplate.NOAH_ARK' "$APP/ui/ProfessionalWorkbookAssets.kt"
+grep -Fq 'WorkbookArtTemplate.GRATITUDE_JOURNAL' "$APP/ui/ProfessionalWorkbookAssets.kt"
+grep -Fq 'ProfessionalWorkbookAssetsTest' "$TESTS/ui/ProfessionalWorkbookAssetsTest.kt"
 
 # Android production workbook renderer uses stored images and masks.
 grep -Fq 'rememberProfessionalWorkbookAsset' "$APP/ui/InteractiveWorkbookEditor.kt"
