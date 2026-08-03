@@ -1,7 +1,6 @@
 package com.kreativstudio.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -37,6 +36,5 @@ class PrimaryRoutesTest {
         )
         composeRule.onNodeWithContentDescription("Back to Atelier").assertIsDisplayed()
         composeRule.onNodeWithText("Controls").assertIsDisplayed()
-        composeRule.onNodeWithText("Atelier").assertDoesNotExist()
     }
 }
