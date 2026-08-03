@@ -1,0 +1,163 @@
+name: My Study Companion 0.15.3 Professional Workbook Gate
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0153-professional-workbook-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out exact repair head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook baseline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic illustration dependencies
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check \
+            Pillow==12.2.0 \
+            numpy==2.4.2 \
+            scikit-image==0.26.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct every accepted repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+
+      - name: Verify professional offline pack and retained repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app'
+          ASSETS='MyStudyCompanion/app/src/main/assets/workbook'
+
+          grep -Fq '0.15.3-private-alpha-professional-workbook-assets' MyStudyCompanion/app/build.gradle.kts
+          grep -Fq '0.15.3-wear-private-alpha-professional-workbook-assets' MyStudyCompanion/wear/build.gradle.kts
+          grep -Fq 'WorkbookIllustrationCatalog.assetFor' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'professionalRegionOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'difference-changed.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
+          ! grep -Eq 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"
+
+          # Previous repairs must remain present.
+          grep -Fq 'Stored Work' "$APP/ui/CompanionHubScreen.kt"
+          grep -Fq 'migrateProfileUid' "$APP/companion/CompanionHubRepository.kt"
+          grep -Fq 'TODAY’S SCRIPTURE' "$APP/ui/HomeScreen.kt"
+          grep -Fq 'FULL DAILY TEXT' "$APP/ui/HomeScreen.kt"
+          grep -Fq 'Scriptures to prepare' "$APP/ui/DailyFieldServicePointerCard.kt"
+          ! grep -R -Eq 'ProfileAgeSetupScreen\(|Google did not provide enough age information' "$APP"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image
+          import numpy as np
+
+          root = Path('MyStudyCompanion/app/src/main/assets/workbook')
+          manifest = json.loads((root / 'manifest.json').read_text())
+          assert len(manifest['assets']) == 16
+          counts = [len(item['regions']) for item in manifest['assets']]
+          assert min(counts) >= 35
+          assert max(counts) <= 70
+          assert all(len(item['differences']) == 5 for item in manifest['assets'])
+          assert {item['id'] for item in manifest['assets']} == {
+              'creation', 'noahs-ark', 'jonah', 'david-goliath', 'daniel-lions',
+              'jesus-storm', 'good-samaritan', 'lost-sheep', 'talents',
+              'prodigal-son', 'wise-builders', 'armor-of-god',
+              'favorite-scripture', 'favorite-animal', 'faith-action',
+              'gratitude-journal',
+          }
+          for item in manifest['assets']:
+              folder = root / item['id']
+              original = np.asarray(Image.open(folder / 'master.webp').convert('RGB'))
+              changed = np.asarray(Image.open(folder / 'difference-changed.webp').convert('RGB'))
+              assert original.shape == changed.shape == (768, 512, 3)
+              assert np.mean(np.abs(original.astype(float) - changed.astype(float))) > 0.8
+              mask = np.asarray(Image.open(folder / 'region-mask.png'))
+              assert len(np.unique(mask)) >= 35
+          print(f"Verified {len(manifest['assets'])} professional packs with {min(counts)}–{max(counts)} regions.")
+          PY
+
+      - name: Run Android and Wear tests and builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            :app:testDebugUnitTest \
+            :wear:testDebugUnitTest \
+            :app:compileDebugKotlin \
+            :wear:compileDebugKotlin \
+            :app:assembleDebug \
+            :wear:assembleDebug
+
+      - name: Verify debug package identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          PHONE="$(find MyStudyCompanion/app/build/outputs/apk/debug -name '*.apk' -type f -print -quit)"
+          WEAR="$(find MyStudyCompanion/wear/build/outputs/apk/debug -name '*.apk' -type f -print -quit)"
+          test -f "$PHONE" && test -f "$WEAR"
+          "$AAPT" dump badging "$PHONE" | grep -q "package: name='com.mystudycompanion.app' versionCode='36'"
+          "$AAPT" dump badging "$WEAR" | grep -q "package: name='com.mystudycompanion.app' versionCode='360153001'"
+
+      - name: Upload professional workbook debug bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.3-professional-workbook-debug
+          path: |
+            MyStudyCompanion/app/build/outputs/apk/debug/*.apk
+            MyStudyCompanion/wear/build/outputs/apk/debug/*.apk
+            MyStudyCompanion/app/src/main/assets/workbook/manifest.json
+            MyStudyCompanion/app/src/main/assets/workbook/SHA256SUMS.txt
+          retention-days: 5
+          if-no-files-found: error
