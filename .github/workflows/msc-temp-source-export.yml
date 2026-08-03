@@ -39,18 +39,20 @@ jobs:
           set -euo pipefail
           bash .msc-build/reconstruct-current-source-0.14.1.sh
           bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/InteractiveWorkbookModels.kt
+          test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt
           test -f MyStudyCompanionWeb/workbook.js
-          tar -czf msc-0.15.1-reconstructed-source.tar.gz MyStudyCompanion MyStudyCompanionWeb
-          sha256sum msc-0.15.1-reconstructed-source.tar.gz > msc-0.15.1-reconstructed-source.sha256
+          tar -czf msc-current-reconstructed-source.tar.gz MyStudyCompanion MyStudyCompanionWeb
+          sha256sum msc-current-reconstructed-source.tar.gz > msc-current-reconstructed-source.sha256
 
       - name: Upload reconstructed source
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.15.1-reconstructed-source-${{ github.event.pull_request.head.sha }}
+          name: msc-current-reconstructed-source-${{ github.event.pull_request.head.sha }}
           path: |
-            msc-0.15.1-reconstructed-source.tar.gz
-            msc-0.15.1-reconstructed-source.sha256
+            msc-current-reconstructed-source.tar.gz
+            msc-current-reconstructed-source.sha256
           retention-days: 1
           if-no-files-found: error
