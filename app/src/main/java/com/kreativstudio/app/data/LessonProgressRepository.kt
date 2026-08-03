@@ -1,6 +1,7 @@
 package com.kreativstudio.app.data
 
 import android.content.Context
+import com.kreativstudio.app.model.LessonMastery
 import com.kreativstudio.app.model.LessonProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,41 @@ class LessonProgressRepository(context: Context) {
             lessonId = lessonId,
             completedSteps = maxOf(current?.completedSteps ?: 0, completedSteps),
             attempts = (current?.attempts ?: 0) + if (attempted) 1 else 0,
+            masteredStepIndices = current?.masteredStepIndices.orEmpty(),
+            needsPracticeStepIndices = current?.needsPracticeStepIndices.orEmpty(),
+            lastOpenedAt = System.currentTimeMillis(),
+        )
+        state.value = state.value.filterNot { it.lessonId == lessonId } + next
+        persist()
+    }
+
+    suspend fun recordAssessment(
+        lessonId: String,
+        stepIndex: Int,
+        mastery: LessonMastery,
+    ) = withContext(Dispatchers.IO) {
+        val current = state.value.firstOrNull { it.lessonId == lessonId }
+        val mastered = current?.masteredStepIndices.orEmpty().toMutableSet()
+        val needsPractice = current?.needsPracticeStepIndices.orEmpty().toMutableSet()
+
+        when (mastery) {
+            LessonMastery.READY_TO_ADVANCE -> {
+                mastered += stepIndex
+                needsPractice -= stepIndex
+            }
+            LessonMastery.NEEDS_PRACTICE -> {
+                needsPractice += stepIndex
+                mastered -= stepIndex
+            }
+            LessonMastery.NOT_ASSESSED -> Unit
+        }
+
+        val next = LessonProgress(
+            lessonId = lessonId,
+            completedSteps = mastered.size,
+            attempts = (current?.attempts ?: 0) + 1,
+            masteredStepIndices = mastered,
+            needsPracticeStepIndices = needsPractice,
             lastOpenedAt = System.currentTimeMillis(),
         )
         state.value = state.value.filterNot { it.lessonId == lessonId } + next
