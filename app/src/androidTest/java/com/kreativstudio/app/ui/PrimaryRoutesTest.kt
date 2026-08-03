@@ -36,8 +36,7 @@ class PrimaryRoutesTest {
             timeoutMillis = 15_000,
         )
         composeRule.onNodeWithContentDescription("Back to Atelier").assertIsDisplayed()
-        composeRule.onNodeWithText("Fit").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Hide controls").assertIsDisplayed()
+        composeRule.onNodeWithText("Controls").assertIsDisplayed()
         composeRule.onNodeWithText("Atelier").assertDoesNotExist()
     }
 }
