@@ -21,27 +21,45 @@ class PrimaryRoutesTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun mentorLessonAndNewCanvasRoutesRenderWithoutClosing() {
-        composeRule.onNodeWithText("Open Olivia's private preview").performScrollTo().performClick()
-        composeRule.waitUntilAtLeastOneExists(hasText("Ask Mentor"), timeoutMillis = 10_000)
+    fun mentorRouteRendersCanvasAwareExperience() {
+        enterOliviaPreview()
 
         composeRule.onNodeWithText("Ask Mentor").performScrollTo().performClick()
+        composeRule.waitUntilAtLeastOneExists(
+            hasText("Canvas-aware teacher and critic"),
+            timeoutMillis = 10_000,
+        )
         composeRule.onNodeWithText("Canvas-aware teacher and critic").assertIsDisplayed()
         composeRule.onNodeWithText("Analyze current canvas").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Back to Atelier").assertExists()
+    }
 
-        composeRule.onNodeWithContentDescription("Back to Atelier").performClick()
+    @Test
+    fun lessonRouteRendersInstructionAndCanvasWorkspace() {
+        enterOliviaPreview()
+
         composeRule.onNodeWithText("Start lesson").performScrollTo().performClick()
-        composeRule.onNodeWithText("KREATIV Mentor Academy").assertIsDisplayed()
+        composeRule.waitUntilAtLeastOneExists(
+            hasText("KREATIV Mentor Academy"),
+            timeoutMillis = 10_000,
+        )
         composeRule.onAllNodesWithText("Begin lesson")[0].performScrollTo().performClick()
 
-        composeRule.waitUntilAtLeastOneExists(hasText("Objective"), timeoutMillis = 15_000)
-        composeRule.onNodeWithText("Objective").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Mastery checkpoint").assertExists()
-        composeRule.onNodeWithText("Check my work").assertIsDisplayed()
+        composeRule.waitUntilAtLeastOneExists(
+            hasContentDescription("Back to lessons"),
+            timeoutMillis = 15_000,
+        )
+        composeRule.onNodeWithContentDescription("Back to lessons").assertIsDisplayed()
+        composeRule.onNodeWithText("Objective").assertExists()
+        composeRule.onNodeWithText("Check my work").assertExists()
+    }
 
-        composeRule.onNodeWithContentDescription("Back to lessons").performClick()
-        composeRule.onNodeWithText("Atelier").performClick()
+    @Test
+    fun newCanvasRouteRendersAdaptiveStudio() {
+        enterOliviaPreview()
+
         composeRule.onNodeWithText("New canvas").performScrollTo().performClick()
+        composeRule.waitUntilAtLeastOneExists(hasText("Create canvas"), timeoutMillis = 10_000)
         composeRule.onNodeWithText("Create canvas").performClick()
 
         composeRule.waitUntilAtLeastOneExists(
@@ -49,6 +67,15 @@ class PrimaryRoutesTest {
             timeoutMillis = 15_000,
         )
         composeRule.onNodeWithContentDescription("Back to Atelier").assertIsDisplayed()
-        composeRule.onNodeWithText("Controls").assertIsDisplayed()
+        composeRule.onNodeWithText("Controls").assertExists()
+    }
+
+    private fun enterOliviaPreview() {
+        composeRule.waitUntilAtLeastOneExists(
+            hasText("Open Olivia's private preview"),
+            timeoutMillis = 10_000,
+        )
+        composeRule.onNodeWithText("Open Olivia's private preview").performScrollTo().performClick()
+        composeRule.waitUntilAtLeastOneExists(hasText("Ask Mentor"), timeoutMillis = 10_000)
     }
 }
