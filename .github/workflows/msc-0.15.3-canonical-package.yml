@@ -1,4 +1,4 @@
-name: My Study Companion 0.15.3 Canonical Package
+name: My Study Companion 0.15.3 Canonical Android Wear Web Package
 
 on:
   pull_request:
@@ -12,6 +12,10 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  RELEASE_VERSION: 0.15.3
+  WEB_CACHE_VERSION: msc-web-v0153-professional-workbook-assets-v1
 
 jobs:
   package:
@@ -41,6 +45,10 @@ jobs:
         with:
           gradle-version: '8.13'
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -53,6 +61,7 @@ jobs:
             Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
@@ -68,6 +77,71 @@ jobs:
             MyStudyCompanion/app/src/main/java/com/mystudycompanion/app
           grep -Fq 'WorkbookIllustrationCatalog.assetFor' \
             MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+
+      - name: Verify and package synchronized web release
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            node --check "$file"
+          done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
+
+          mapfile -t TESTS < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.test.mjs' -print | sort)
+          if (( ${#TESTS[@]} > 0 )); then
+            node --test "${TESTS[@]}"
+          fi
+
+          grep -Fq 'loadProfessionalWorkbookAsset' MyStudyCompanionWeb/workbook.js
+          grep -Fq 'professionalPrintData' MyStudyCompanionWeb/workbook.js
+          grep -Fq 'renderSavedWork' MyStudyCompanionWeb/workbook.js
+          grep -Fq "$WEB_CACHE_VERSION" MyStudyCompanionWeb/sw.js
+          ! grep -R -Eq 'msc-web-v0151|msc-web-v0152' MyStudyCompanionWeb/sw.js
+          diff -ru MyStudyCompanion/app/src/main/assets/workbook MyStudyCompanionWeb/assets/workbook
+
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          android = Path('MyStudyCompanion/app/src/main/assets/workbook')
+          web = Path('MyStudyCompanionWeb/assets/workbook')
+          a_manifest = json.loads((android / 'manifest.json').read_text())
+          w_manifest = json.loads((web / 'manifest.json').read_text())
+          assert a_manifest == w_manifest
+          assert a_manifest['version'] >= 3
+          assert len(a_manifest['assets']) == 16
+          assert all(35 <= len(item['regions']) <= 70 for item in a_manifest['assets'])
+          assert all(len(item['differences']) == 5 for item in a_manifest['assets'])
+
+          def digest(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          android_files = sorted(p.relative_to(android) for p in android.rglob('*') if p.is_file())
+          web_files = sorted(p.relative_to(web) for p in web.rglob('*') if p.is_file())
+          assert android_files == web_files
+          for relative in android_files:
+              assert digest(android / relative) == digest(web / relative), relative
+
+          release = {
+              'release': '0.15.3',
+              'commit': os.environ['GITHUB_SHA'],
+              'serviceWorkerCache': 'msc-web-v0153-professional-workbook-assets-v1',
+              'workbookManifest': 'assets/workbook/manifest.json',
+              'releaseTrain': ['android', 'wear', 'web'],
+          }
+          Path('MyStudyCompanionWeb/release-manifest.json').write_text(
+              json.dumps(release, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(f'PASS: {len(android_files)} workbook files are byte-identical across Android and web.')
+          PY
+
+          mkdir -p release-0.15.3/web
+          (
+            cd MyStudyCompanionWeb
+            zip -q -r ../release-0.15.3/web/MyStudyCompanionWeb-0.15.3-PWA.zip . \
+              -x '*.DS_Store' '__pycache__/*' '*.pyc' '*.orig' '*.rej'
+          )
 
       - name: Install verified Firebase configuration
         id: firebase
@@ -131,7 +205,7 @@ jobs:
             -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
             :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
 
-      - name: Verify identities, signatures, alignment, and package bundle
+      - name: Verify identities, signatures, alignment, and unified package bundle
         shell: bash
         run: |
           set -euo pipefail
@@ -147,6 +221,7 @@ jobs:
           cp "$PHONE_SOURCE" "$PHONE_APK"
           cp "$WEAR_SOURCE" "$WEAR_APK"
           cp -a MyStudyCompanion/app/src/main/assets/workbook/. release-0.15.3/generated-assets/
+          cp MyStudyCompanionWeb/release-manifest.json release-0.15.3/metadata/WEB-RELEASE-MANIFEST.json
 
           "$AAPT" dump badging "$PHONE_APK" > release-0.15.3/metadata/PHONE-IDENTITY.txt
           "$AAPT" dump badging "$WEAR_APK" > release-0.15.3/metadata/WEAR-IDENTITY.txt
@@ -158,12 +233,19 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$WEAR_APK" > release-0.15.3/metadata/WEAR-CI-SIGNATURE.txt
           "$ZIPALIGN" -c -P 16 -v 4 "$PHONE_APK" > release-0.15.3/metadata/PHONE-ZIPALIGN.txt
           "$ZIPALIGN" -c -P 16 -v 4 "$WEAR_APK" > release-0.15.3/metadata/WEAR-ZIPALIGN.txt
-          sha256sum "$PHONE_APK" "$WEAR_APK" > release-0.15.3/metadata/CI-SHA256SUMS.txt
+          sha256sum "$PHONE_APK" "$WEAR_APK" \
+            release-0.15.3/web/MyStudyCompanionWeb-0.15.3-PWA.zip \
+            > release-0.15.3/metadata/CI-SHA256SUMS.txt
 
-      - name: Upload canonical 0.15.3 package
+          cat > release-0.15.3/metadata/RELEASE-TRAIN.txt <<'TXT'
+          Android phone, Wear OS, and PWA are reconstructed from the same repair overlays.
+          The release is invalid if any one of the three surfaces is missing or out of sync.
+          TXT
+
+      - name: Upload canonical synchronized 0.15.3 package
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.15.3-canonical-package
+          name: msc-0.15.3-canonical-android-wear-web-package
           path: release-0.15.3
-          retention-days: 5
+          retention-days: 14
           if-no-files-found: error
