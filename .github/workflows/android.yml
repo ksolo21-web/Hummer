@@ -31,15 +31,33 @@ jobs:
           gradle-version: '9.4.1'
       - name: Lint, unit tests, and debug APK
         run: gradle --no-daemon lintDebug testDebugUnitTest assembleDebug
+      - name: Enable KVM group access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - name: Mentor and new-canvas route smoke test
-        uses: ReactiveCircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          emulator-boot-timeout: 900
           script: gradle --no-daemon connectedDebugAndroidTest
-      - uses: actions/upload-artifact@v4
+      - name: Upload Android test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KREATIV-Studio-v0.1-test-diagnostics
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: ignore
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: KREATIV-Studio-v0.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
