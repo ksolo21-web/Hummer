@@ -77,7 +77,6 @@ jobs:
         run: |
           set -euo pipefail
           APP='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app'
-          ASSETS='MyStudyCompanion/app/src/main/assets/workbook'
 
           require_text() {
             local needle="$1"
@@ -107,7 +106,16 @@ jobs:
           require_text 'difference-changed.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
           reject_regex 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"
 
-          require_text 'Stored Work' "$APP/ui/CompanionHubScreen.kt"
+          # Verify the actual saved-work architecture rather than a UI label in an unrelated screen.
+          require_text 'fun hasStoredWork()' "$APP/companion/InteractiveWorkbookModels.kt"
+          require_text 'interactiveWorkbooksByUid' "$APP/companion/CompanionModels.kt"
+          require_text 'private fun updateWorkbookPage' "$APP/companion/CompanionHubRepository.kt"
+          require_text 'interactiveWorkbooksByUid = current.interactiveWorkbooksByUid +' "$APP/companion/CompanionHubRepository.kt"
+          require_text 'StoredWorkbookWorkView' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'Open saved work' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'reopen exactly where this profile left them' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'uploadWorkbookPages' "$APP/family/FamilyWorshipOrganizerRepository.kt"
+
           require_text 'migrateProfileUid' "$APP/companion/CompanionHubRepository.kt"
           require_text 'TODAY’S SCRIPTURE' "$APP/ui/HomeScreen.kt"
           require_text 'FULL DAILY TEXT' "$APP/ui/HomeScreen.kt"
@@ -116,7 +124,7 @@ jobs:
             echo 'Child-facing manual age chooser remains active.' >&2
             exit 1
           fi
-          echo 'PASS retained Daily Text, automatic profile, ministry, Z Flip, and Stored Work repairs.'
+          echo 'PASS retained Daily Text, automatic profile, ministry, Z Flip, and per-profile saved-work repairs.'
 
           python - <<'PY'
           import json
@@ -161,13 +169,15 @@ jobs:
                   'master.webp', 'line.webp', 'drawing-step-1.webp',
                   'drawing-step-2.webp', 'difference-changed.webp', 'region-mask.png',
               )
+              missing = False
               for name in required:
                   path = folder / name
                   if not path.is_file():
                       failures.append(f'{asset_id}: missing {name}')
+                      missing = True
                   elif path.stat().st_size <= 600:
                       failures.append(f'{asset_id}: {name} too small ({path.stat().st_size} bytes)')
-              if failures and any(message.startswith(f'{asset_id}: missing') for message in failures):
+              if missing:
                   continue
               original = np.asarray(Image.open(folder / 'master.webp').convert('RGB'))
               changed = np.asarray(Image.open(folder / 'difference-changed.webp').convert('RGB'))
