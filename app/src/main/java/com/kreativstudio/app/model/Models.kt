@@ -170,10 +170,19 @@ data class LessonStep(
 )
 
 @Serializable
+enum class LessonMastery {
+    NOT_ASSESSED,
+    NEEDS_PRACTICE,
+    READY_TO_ADVANCE,
+}
+
+@Serializable
 data class LessonProgress(
     val lessonId: String,
     val completedSteps: Int = 0,
     val attempts: Int = 0,
+    val masteredStepIndices: Set<Int> = emptySet(),
+    val needsPracticeStepIndices: Set<Int> = emptySet(),
     val lastOpenedAt: Long = System.currentTimeMillis(),
 )
 
