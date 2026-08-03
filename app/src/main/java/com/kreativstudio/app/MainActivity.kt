@@ -6,8 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kreativstudio.app.ui.KreativAppStable
+import com.kreativstudio.app.ui.KreativFullscreenStudioHost
 import com.kreativstudio.app.ui.KreativViewModel
 import com.kreativstudio.app.ui.KreativViewModelFactory
+import com.kreativstudio.app.ui.StudioScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +18,11 @@ class MainActivity : ComponentActivity() {
         val app = application as KreativApplication
         setContent {
             val vm: KreativViewModel = viewModel(factory = KreativViewModelFactory(app.container))
-            KreativAppStable(viewModel = vm, activity = this)
+            if (vm.screen == StudioScreen.STUDIO) {
+                KreativFullscreenStudioHost(viewModel = vm)
+            } else {
+                KreativAppStable(viewModel = vm, activity = this)
+            }
         }
     }
 }
