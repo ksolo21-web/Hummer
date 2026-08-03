@@ -82,7 +82,9 @@ jobs:
           grep -Fq '0.15.3-private-alpha-professional-workbook-assets' MyStudyCompanion/app/build.gradle.kts
           grep -Fq '0.15.3-wear-private-alpha-professional-workbook-assets' MyStudyCompanion/wear/build.gradle.kts
           grep -Fq 'WorkbookIllustrationCatalog.assetFor' "$APP/ui/InteractiveWorkbookEditor.kt"
-          grep -Fq 'professionalRegionOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'buildColorOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
           grep -Fq 'difference-changed.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
           ! grep -Eq 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"
 
