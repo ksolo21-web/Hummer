@@ -22,6 +22,7 @@ if "import kotlinx.coroutines.CancellationException" not in text:
 # Kotlin runCatching also catches CancellationException. In this repository that
 # converted normal structured-concurrency cancellation into a red user error.
 text = text.replace("runCatching {", "runFamilyCatching {")
+text = text.replace("return@runCatching", "return@runFamilyCatching")
 marker = "data class FamilyOrganizerState("
 assert marker in text
 helper = '''internal inline fun <T> runFamilyCatching(block: () -> T): Result<T> = try {
