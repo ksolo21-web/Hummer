@@ -3,6 +3,7 @@ KREATIV Studio v0.1 build verification
 
 Validated application and test head: 582638b2377f51d2483e098ed3ebee9d142cc911
 Workflow run: 30778160635
+Later commits only update this verification document; application source is unchanged.
 
 PASS: lintDebug
 PASS: testDebugUnitTest
