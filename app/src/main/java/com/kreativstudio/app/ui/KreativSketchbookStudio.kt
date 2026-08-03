@@ -51,7 +51,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -89,11 +88,6 @@ import com.kreativstudio.app.model.ToolType
 import com.kreativstudio.app.ui.theme.KreativTheme
 import kotlinx.coroutines.delay
 
-/**
- * Canvas-first studio shell benchmarked against professional mobile sketch apps.
- * The normal mode gives the canvas the exact measured rectangle between two fixed,
- * fully visible bars. Clean Canvas removes both bars without changing project data.
- */
 @Composable
 fun KreativSketchbookStudioHost(viewModel: KreativViewModel, activity: Activity) {
     val settings by viewModel.settings.collectAsState()
@@ -107,49 +101,38 @@ fun KreativSketchbookStudioHost(viewModel: KreativViewModel, activity: Activity)
 
     KreativTheme(settings) {
         Box(Modifier.fillMaxSize().background(Color(0xFF101014))) {
-            SketchbookStudio(viewModel, activity)
+            ProfessionalStudio(viewModel, activity)
             SnackbarHost(
-                hostState = snackbar,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 86.dp),
+                snackbar,
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 82.dp),
             )
         }
     }
 }
 
 @Composable
-private fun SketchbookStudio(viewModel: KreativViewModel, activity: Activity) {
-    val project = viewModel.currentProject
-    if (project == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Button(onClick = { viewModel.createProject("New Artwork") }) { Text("Create canvas") }
-        }
-        return
-    }
-
+private fun ProfessionalStudio(viewModel: KreativViewModel, activity: Activity) {
+    val project = viewModel.currentProject ?: return
     val context = LocalContext.current
-    val windowState = rememberKreativWindowState(activity)
+    val window = rememberKreativWindowState(activity)
     val controller = rememberAdaptiveCanvasController()
     var controlsOpen by remember { mutableStateOf(false) }
-    var renameOpen by remember { mutableStateOf(false) }
     var cleanCanvas by remember { mutableStateOf(false) }
+    var renameOpen by remember { mutableStateOf(false) }
     var textPoint by remember { mutableStateOf<StrokePoint?>(null) }
 
-    val attachLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+    val attach = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.addAttachments(context, uris, AttachmentKind.REFERENCE)
     }
-    val exportProjectLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    val exportProject = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) viewModel.exportProject(uri)
     }
-    val exportPngLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
+    val exportPng = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
         if (uri != null) viewModel.exportPng(uri)
     }
 
-    LaunchedEffect(windowState.signature, cleanCanvas) {
-        // Wait for Compose and WindowManager to publish the final Fold/workspace size.
-        delay(90)
+    LaunchedEffect(window.signature, cleanCanvas) {
+        delay(100)
         controller.fit()
     }
 
@@ -177,7 +160,7 @@ private fun SketchbookStudio(viewModel: KreativViewModel, activity: Activity) {
         }
     } else {
         Column(Modifier.fillMaxSize()) {
-            ProfessionalTopBar(
+            ProTopBar(
                 project = project,
                 busy = viewModel.isBusy,
                 onBack = { viewModel.navigate(StudioScreen.HOME) },
@@ -188,42 +171,32 @@ private fun SketchbookStudio(viewModel: KreativViewModel, activity: Activity) {
                 onSync = viewModel::syncCurrentProject,
                 onFit = controller::fit,
                 onRotate = { controller.rotate() },
-                onAttach = { attachLauncher.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*")) },
-                onCleanCanvas = { cleanCanvas = true },
-                onControls = { controlsOpen = true },
+                onAttach = { attach.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*")) },
+                onClean = { cleanCanvas = true },
+                onMore = { controlsOpen = true },
             )
 
             AdaptiveCanvasArea(
                 viewModel = viewModel,
                 project = project,
                 controller = controller,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(Color(0xFF101014)),
+                modifier = Modifier.weight(1f).fillMaxWidth().background(Color(0xFF101014)),
                 onTextPlacement = { textPoint = it },
             )
 
-            ProfessionalBrushDock(
-                viewModel = viewModel,
-                singleRow = windowState.widthDp >= 600,
-                onControls = { controlsOpen = true },
-            )
+            ProBrushDock(viewModel, singleRow = window.widthDp >= 600) { controlsOpen = true }
         }
     }
 
     if (controlsOpen) {
         ModalBottomSheet(onDismissRequest = { controlsOpen = false }) {
-            ProfessionalControlsSheet(
+            ProControlsSheet(
                 viewModel = viewModel,
                 project = project,
-                onAttach = { attachLauncher.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*")) },
-                onExportProject = { exportProjectLauncher.launch("${project.title.proFileName()}.kreativ.json") },
-                onExportPng = { exportPngLauncher.launch("${project.title.proFileName()}.png") },
-                onCleanCanvas = {
-                    controlsOpen = false
-                    cleanCanvas = true
-                },
+                onReference = { attach.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*")) },
+                onExportProject = { exportProject.launch("${project.title.fileSafe()}.kreativ.json") },
+                onExportPng = { exportPng.launch("${project.title.fileSafe()}.png") },
+                onClean = { controlsOpen = false; cleanCanvas = true },
             )
         }
     }
@@ -233,15 +206,7 @@ private fun SketchbookStudio(viewModel: KreativViewModel, activity: Activity) {
         AlertDialog(
             onDismissRequest = { textPoint = null },
             title = { Text("Add text") },
-            text = {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text("Artwork text") },
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
+            text = { OutlinedTextField(text, { text = it }, label = { Text("Artwork text") }, minLines = 3) },
             confirmButton = {
                 Button(onClick = { viewModel.addText(text, point); textPoint = null }, enabled = text.isNotBlank()) {
                     Text("Place text")
@@ -257,16 +222,14 @@ private fun SketchbookStudio(viewModel: KreativViewModel, activity: Activity) {
             onDismissRequest = { renameOpen = false },
             title = { Text("Rename project") },
             text = { OutlinedTextField(title, { title = it }, label = { Text("Project title") }) },
-            confirmButton = {
-                Button(onClick = { viewModel.renameProject(title); renameOpen = false }) { Text("Save") }
-            },
+            confirmButton = { Button(onClick = { viewModel.renameProject(title); renameOpen = false }) { Text("Save") } },
             dismissButton = { TextButton(onClick = { renameOpen = false }) { Text("Cancel") } },
         )
     }
 }
 
 @Composable
-private fun ProfessionalTopBar(
+private fun ProTopBar(
     project: KreativProject,
     busy: Boolean,
     onBack: () -> Unit,
@@ -278,36 +241,21 @@ private fun ProfessionalTopBar(
     onFit: () -> Unit,
     onRotate: () -> Unit,
     onAttach: () -> Unit,
-    onCleanCanvas: () -> Unit,
-    onControls: () -> Unit,
+    onClean: () -> Unit,
+    onMore: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().statusBarsPadding(),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(64.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(Modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Atelier") }
             Column(
-                modifier = Modifier
-                    .widthIn(min = 132.dp, max = 220.dp)
-                    .clickable(onClick = onRename)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                Modifier.widthIn(min = 128.dp, max = 220.dp).clickable(onClick = onRename).padding(horizontal = 8.dp),
             ) {
-                Text(
-                    project.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "${project.widthPx} × ${project.heightPx}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text(project.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${project.widthPx} × ${project.heightPx}", style = MaterialTheme.typography.labelSmall)
             }
             LazyRow(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -317,7 +265,7 @@ private fun ProfessionalTopBar(
             ) {
                 item { IconButton(onClick = onUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "Undo") } }
                 item { IconButton(onClick = onRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "Redo") } }
-                item { IconButton(onClick = onSave) { Icon(Icons.Default.Save, "Save locally") } }
+                item { IconButton(onClick = onSave) { Icon(Icons.Default.Save, "Save") } }
                 item {
                     IconButton(onClick = onSync, enabled = !busy) {
                         if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -327,8 +275,8 @@ private fun ProfessionalTopBar(
                 item { IconButton(onClick = onFit) { Icon(Icons.Default.Refresh, "Frame canvas") } }
                 item { IconButton(onClick = onRotate) { Icon(Icons.Default.RotateRight, "Rotate canvas") } }
                 item { IconButton(onClick = onAttach) { Icon(Icons.Default.PhotoLibrary, "Add reference") } }
-                item { IconButton(onClick = onCleanCanvas) { Icon(Icons.Default.VisibilityOff, "Clean canvas") } }
-                item { IconButton(onClick = onControls) { Icon(Icons.Default.MoreHoriz, "More controls") } }
+                item { IconButton(onClick = onClean) { Icon(Icons.Default.VisibilityOff, "Clean canvas") } }
+                item { IconButton(onClick = onMore) { Icon(Icons.Default.MoreHoriz, "More controls") } }
             }
         }
     }
@@ -336,62 +284,37 @@ private fun ProfessionalTopBar(
 }
 
 @Composable
-private fun ProfessionalBrushDock(
-    viewModel: KreativViewModel,
-    singleRow: Boolean,
-    onControls: () -> Unit,
-) {
+private fun ProBrushDock(viewModel: KreativViewModel, singleRow: Boolean, onMore: () -> Unit) {
     HorizontalDivider()
-    Surface(
-        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp,
-    ) {
+    Surface(Modifier.fillMaxWidth().navigationBarsPadding(), tonalElevation = 8.dp) {
         if (singleRow) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 8.dp),
+                Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ColorPuck(viewModel.activeColorArgb)
-                LazyRow(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    items(proTools, key = { it }) { tool -> ProToolChip(viewModel, tool) }
+                ColorDot(viewModel.activeColorArgb)
+                LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(proTools, key = { it }) { tool -> ToolChip(viewModel, tool) }
                 }
-                Text("${viewModel.brushWidth.toInt()} px", style = MaterialTheme.typography.labelLarge)
-                Slider(
-                    value = viewModel.brushWidth,
-                    onValueChange = { viewModel.brushWidth = it },
-                    valueRange = 1f..180f,
-                    modifier = Modifier.width(190.dp),
-                )
-                IconButton(onClick = onControls) { Icon(Icons.Default.MoreHoriz, "Controls") }
+                Text("${viewModel.brushWidth.toInt()} px")
+                Slider(viewModel.brushWidth, { viewModel.brushWidth = it }, valueRange = 1f..180f, modifier = Modifier.width(180.dp))
+                IconButton(onClick = onMore) { Icon(Icons.Default.MoreHoriz, "Controls") }
             }
         } else {
             Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    items(proTools, key = { it }) { tool -> ProToolChip(viewModel, tool) }
+                LazyRow(contentPadding = PaddingValues(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(proTools, key = { it }) { tool -> ToolChip(viewModel, tool) }
                 }
                 Row(
-                    Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 10.dp),
+                    Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ColorPuck(viewModel.activeColorArgb)
-                    Text("${viewModel.brushWidth.toInt()} px", style = MaterialTheme.typography.labelLarge)
-                    Slider(
-                        value = viewModel.brushWidth,
-                        onValueChange = { viewModel.brushWidth = it },
-                        valueRange = 1f..180f,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = onControls) { Icon(Icons.Default.MoreHoriz, "Controls") }
+                    ColorDot(viewModel.activeColorArgb)
+                    Text("${viewModel.brushWidth.toInt()} px")
+                    Slider(viewModel.brushWidth, { viewModel.brushWidth = it }, valueRange = 1f..180f, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onMore) { Icon(Icons.Default.MoreHoriz, "Controls") }
                 }
             }
         }
@@ -399,39 +322,28 @@ private fun ProfessionalBrushDock(
 }
 
 @Composable
-private fun ProToolChip(viewModel: KreativViewModel, tool: ToolType) {
+private fun ToolChip(viewModel: KreativViewModel, tool: ToolType) {
     FilterChip(
         selected = viewModel.activeTool == tool,
         onClick = { viewModel.activeTool = tool },
-        label = { Text(tool.proLabel()) },
-        leadingIcon = {
-            Icon(
-                if (tool == ToolType.TEXT) Icons.Default.TextFields else Icons.Default.Edit,
-                contentDescription = null,
-                modifier = Modifier.size(17.dp),
-            )
-        },
+        label = { Text(tool.name.lowercase().replaceFirstChar(Char::uppercase)) },
+        leadingIcon = { Icon(if (tool == ToolType.TEXT) Icons.Default.TextFields else Icons.Default.Edit, null, Modifier.size(17.dp)) },
     )
 }
 
 @Composable
-private fun ColorPuck(argb: Long) {
-    Surface(
-        modifier = Modifier.size(31.dp),
-        shape = CircleShape,
-        color = Color(argb),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-    ) {}
+private fun ColorDot(argb: Long) {
+    Surface(Modifier.size(31.dp), shape = CircleShape, color = Color(argb), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {}
 }
 
 @Composable
-private fun ProfessionalControlsSheet(
+private fun ProControlsSheet(
     viewModel: KreativViewModel,
     project: KreativProject,
-    onAttach: () -> Unit,
+    onReference: () -> Unit,
     onExportProject: () -> Unit,
     onExportPng: () -> Unit,
-    onCleanCanvas: () -> Unit,
+    onClean: () -> Unit,
 ) {
     val settings by viewModel.settings.collectAsState()
     LazyColumn(
@@ -442,34 +354,20 @@ private fun ProfessionalControlsSheet(
         item { Text("Studio controls", style = MaterialTheme.typography.headlineMedium) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onCleanCanvas, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.VisibilityOff, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Clean canvas")
-                }
-                OutlinedButton(onClick = onAttach, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.PhotoLibrary, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Reference")
-                }
+                Button(onClick = onClean, modifier = Modifier.weight(1f)) { Icon(Icons.Default.VisibilityOff, null); Spacer(Modifier.width(6.dp)); Text("Clean canvas") }
+                OutlinedButton(onClick = onReference, modifier = Modifier.weight(1f)) { Icon(Icons.Default.PhotoLibrary, null); Spacer(Modifier.width(6.dp)); Text("Reference") }
             }
         }
         item {
             Text("Color", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(proColors) { value ->
                     val selected = viewModel.activeColorArgb == value
                     Surface(
-                        modifier = Modifier
-                            .size(if (selected) 46.dp else 40.dp)
-                            .clickable { viewModel.activeColorArgb = value },
+                        modifier = Modifier.size(if (selected) 46.dp else 40.dp).clickable { viewModel.activeColorArgb = value },
                         shape = CircleShape,
                         color = Color(value),
-                        border = BorderStroke(
-                            if (selected) 3.dp else 1.dp,
-                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        ),
+                        border = BorderStroke(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
                     ) {}
                 }
             }
@@ -477,9 +375,9 @@ private fun ProfessionalControlsSheet(
         item {
             Text("Brush response", style = MaterialTheme.typography.titleLarge)
             Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
-            Slider(viewModel.brushOpacity, { viewModel.brushOpacity = it }, valueRange = .05f..1f)
+            Slider(viewModel.brushOpacity, { viewModel.brushOpacity = it }, valueRange = 0.05f..1f)
             Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(viewModel.stabilization, { viewModel.stabilization = it }, valueRange = 0f...95f)
+            Slider(viewModel.stabilization, { viewModel.stabilization = it }, valueRange = 0f..0.95f)
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -487,37 +385,21 @@ private fun ProfessionalControlsSheet(
                 IconButton(onClick = viewModel::addLayer) { Icon(Icons.Default.Add, "Add layer") }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                project.layers.asReversed().forEach { layer -> ProLayerRow(viewModel, project, layer) }
+                project.layers.asReversed().forEach { layer -> LayerRow(viewModel, project, layer) }
             }
         }
         item {
             Text("Precision", style = MaterialTheme.typography.titleLarge)
-            ProToggle("Perfect shape snapping", settings.shapeSnapEnabled) { value ->
-                viewModel.updateSettings { it.copy(shapeSnapEnabled = value) }
-            }
-            ProToggle("Mirror symmetry", settings.symmetryEnabled) { value ->
-                viewModel.updateSettings { it.copy(symmetryEnabled = value) }
-            }
-            ProToggle("Perspective guide", settings.perspectiveGridEnabled) { value ->
-                viewModel.updateSettings { it.copy(perspectiveGridEnabled = value) }
-            }
-            ProToggle("Palm rejection", settings.palmRejectionEnabled) { value ->
-                viewModel.updateSettings { it.copy(palmRejectionEnabled = value) }
-            }
+            Toggle("Perfect shape snapping", settings.shapeSnapEnabled) { value -> viewModel.updateSettings { it.copy(shapeSnapEnabled = value) } }
+            Toggle("Mirror symmetry", settings.symmetryEnabled) { value -> viewModel.updateSettings { it.copy(symmetryEnabled = value) } }
+            Toggle("Perspective guide", settings.perspectiveGridEnabled) { value -> viewModel.updateSettings { it.copy(perspectiveGridEnabled = value) } }
+            Toggle("Palm rejection", settings.palmRejectionEnabled) { value -> viewModel.updateSettings { it.copy(palmRejectionEnabled = value) } }
         }
         item {
             Text("Export", style = MaterialTheme.typography.titleLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onExportProject, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Download, null)
-                    Spacer(Modifier.width(5.dp))
-                    Text("Project")
-                }
-                OutlinedButton(onClick = onExportPng, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Download, null)
-                    Spacer(Modifier.width(5.dp))
-                    Text("PNG")
-                }
+                OutlinedButton(onClick = onExportProject, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Download, null); Spacer(Modifier.width(5.dp)); Text("Project") }
+                OutlinedButton(onClick = onExportPng, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Download, null); Spacer(Modifier.width(5.dp)); Text("PNG") }
             }
         }
         item { Spacer(Modifier.height(24.dp)) }
@@ -525,61 +407,39 @@ private fun ProfessionalControlsSheet(
 }
 
 @Composable
-private fun ProLayerRow(viewModel: KreativViewModel, project: KreativProject, layer: CanvasLayer) {
+private fun LayerRow(viewModel: KreativViewModel, project: KreativProject, layer: CanvasLayer) {
     val active = layer.id == project.activeLayerId
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { viewModel.selectLayer(layer.id) },
+        Modifier.fillMaxWidth().clickable { viewModel.selectLayer(layer.id) },
         shape = RoundedCornerShape(14.dp),
         color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { viewModel.toggleLayerVisibility(layer.id) }) {
-                Icon(if (layer.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-            }
+            IconButton(onClick = { viewModel.toggleLayerVisibility(layer.id) }) { Icon(if (layer.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null) }
             Text(layer.name, modifier = Modifier.weight(1f))
-            IconButton(onClick = { viewModel.toggleLayerLock(layer.id) }) {
-                Icon(if (layer.isLocked) Icons.Default.Lock else Icons.Default.LockOpen, null)
-            }
-            IconButton(onClick = { viewModel.deleteLayer(layer.id) }, enabled = project.layers.size > 1) {
-                Icon(Icons.Default.Delete, null)
-            }
+            IconButton(onClick = { viewModel.toggleLayerLock(layer.id) }) { Icon(if (layer.isLocked) Icons.Default.Lock else Icons.Default.LockOpen, null) }
+            IconButton(onClick = { viewModel.deleteLayer(layer.id) }, enabled = project.layers.size > 1) { Icon(Icons.Default.Delete, null) }
         }
     }
 }
 
 @Composable
-private fun ProToggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked, onChange)
     }
 }
 
 private val proTools = listOf(
-    ToolType.PEN,
-    ToolType.PENCIL,
-    ToolType.WATERCOLOR,
-    ToolType.CHARCOAL,
-    ToolType.MARKER,
-    ToolType.ERASER,
-    ToolType.LINE,
-    ToolType.RECTANGLE,
-    ToolType.ELLIPSE,
-    ToolType.SELECT,
-    ToolType.TEXT,
+    ToolType.PEN, ToolType.PENCIL, ToolType.WATERCOLOR, ToolType.CHARCOAL,
+    ToolType.MARKER, ToolType.ERASER, ToolType.LINE, ToolType.RECTANGLE,
+    ToolType.ELLIPSE, ToolType.SELECT, ToolType.TEXT,
 )
 
 private val proColors = listOf(
-    0xFF17121FL,
-    0xFFFFFFFFL,
-    0xFF6E3BC9L,
-    0xFFB86CFFL,
-    0xFFD7A25FL,
-    0xFFB44F64L,
-    0xFF4B75B8L,
-    0xFF3F8B72L,
-    0xFFDB7F45L,
+    0xFF17121FL, 0xFFFFFFFFL, 0xFF6E3BC9L, 0xFFB86CFFL, 0xFFD7A25FL,
+    0xFFB44F64L, 0xFF4B75B8L, 0xFF3F8B72L, 0xFFDB7F45L,
 )
 
-private fun ToolType.proLabel(): String = name.lowercase().replaceFirstChar(Char::uppercase)
-private fun String.proFileName(): String = replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_').ifBlank { "KREATIV_Artwork" }
+private fun String.fileSafe(): String = replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_').ifBlank { "KREATIV_Artwork" }
