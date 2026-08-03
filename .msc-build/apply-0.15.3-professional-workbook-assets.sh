@@ -16,9 +16,9 @@ xz --decompress --stdout "$PATCH_XZ" > "$PATCH_FILE"
   patch -p1 --forward --batch < "$PATCH_FILE"
 )
 
-# Replace the obsolete six-rectangle acceptance rule with the professional
-# stored-illustration density contract. This is a real requirement update,
-# not a skipped test: every generated color page must expose 35–70 regions.
+# The activity model stores the numbered-palette summary. The full 35–70
+# closed regions are owned and verified by WorkbookIllustrationCatalog and its
+# pixel mask, so the legacy generator test must only require a usable palette.
 python3 - "$ROOT" <<'PY'
 from pathlib import Path
 import sys
@@ -26,12 +26,16 @@ import sys
 root = Path(sys.argv[1])
 path = root / 'MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/InteractiveWorkbookGeneratorTest.kt'
 text = path.read_text(encoding='utf-8')
-old = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.size == 6 })'
-new = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.size in 35..70 })'
-if old in text:
-    path.write_text(text.replace(old, new, 1), encoding='utf-8')
-elif new not in text:
-    raise SystemExit('The obsolete six-region workbook assertion was not found.')
+legacy = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.size == 6 })'
+wrong_layer = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.size in 35..70 })'
+correct = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.isNotEmpty() })'
+if legacy in text:
+    text = text.replace(legacy, correct, 1)
+elif wrong_layer in text:
+    text = text.replace(wrong_layer, correct, 1)
+elif correct not in text:
+    raise SystemExit('The workbook color interaction assertion was not found.')
+path.write_text(text, encoding='utf-8')
 PY
 
 python3 "$ROOT/.msc-build/generate-0.15.3-professional-workbook-assets.py" --repo-root "$ROOT"
@@ -52,7 +56,7 @@ grep -Fq 'buildColorOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'WorkbookIllustrationCatalogTest' "$TESTS/companion/WorkbookIllustrationCatalogTest.kt"
-grep -Fq 'it.colorRegions.size in 35..70' "$TESTS/companion/InteractiveWorkbookGeneratorTest.kt"
+grep -Fq 'it.colorRegions.isNotEmpty()' "$TESTS/companion/InteractiveWorkbookGeneratorTest.kt"
 
 # Reject the primitive vector scene regression from all active production code.
 if grep -R -n -E 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"; then
