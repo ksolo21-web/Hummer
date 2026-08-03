@@ -1,12 +1,10 @@
 package com.kreativstudio.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -28,8 +26,10 @@ class PrimaryRoutesTest {
             hasContentDescription("Back to Atelier"),
             timeoutMillis = 15_000,
         )
-        composeRule.onNodeWithContentDescription("Back to Atelier").assertExists()
-        composeRule.onNodeWithText("KREATIV Mentor").assertExists()
+        composeRule.waitUntilAtLeastOneExists(
+            hasText("KREATIV Mentor"),
+            timeoutMillis = 15_000,
+        )
     }
 
     @Test
@@ -43,7 +43,6 @@ class PrimaryRoutesTest {
             hasContentDescription("Back to lessons"),
             timeoutMillis = 20_000,
         )
-        composeRule.onNodeWithContentDescription("Back to lessons").assertExists()
     }
 
     @Test
@@ -57,7 +56,6 @@ class PrimaryRoutesTest {
             hasContentDescription("Back to Atelier"),
             timeoutMillis = 20_000,
         )
-        composeRule.onNodeWithContentDescription("Back to Atelier").assertExists()
     }
 
     private fun enterOliviaPreview() {
