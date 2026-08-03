@@ -144,7 +144,6 @@ private fun ProfessionalStudio(
     ) { uri -> if (uri != null) viewModel.exportPng(uri) }
 
     LaunchedEffect(window.signature, cleanCanvas) {
-        // Let WindowManager and Compose finish the Fold posture remeasurement first.
         delay(100)
         controller.fit()
     }
@@ -191,7 +190,6 @@ private fun ProfessionalStudio(
                 onMore = { controlsOpen = true },
             )
 
-            // This weighted child receives only the real space between both bars.
             AdaptiveCanvasArea(
                 viewModel = viewModel,
                 project = project,
@@ -506,17 +504,9 @@ private fun StudioControlsSheet(
         item {
             Text("Brush response", style = MaterialTheme.typography.titleLarge)
             Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
-            Slider(
-                viewModel.brushOpacity,
-                { viewModel.brushOpacity = it },
-                valueRange = .05f..1f,
-            )
+            Slider(viewModel.brushOpacity, { viewModel.brushOpacity = it }, valueRange = .05f..1f)
             Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(
-                viewModel.stabilization,
-                { viewModel.stabilization = it },
-                valueRange = 0f..0.95f,
-            )
+            Slider(viewModel.stabilization, { viewModel.stabilization = it }, valueRange = 0f..0.95f)
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -524,9 +514,7 @@ private fun StudioControlsSheet(
                 ActionIcon(Icons.Default.Add, "Add layer", viewModel::addLayer)
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                project.layers.asReversed().forEach { layer ->
-                    LayerRow(viewModel, project, layer)
-                }
+                project.layers.asReversed().forEach { layer -> LayerRow(viewModel, project, layer) }
             }
         }
         item {
@@ -584,20 +572,15 @@ private fun LayerRow(
             IconButton(onClick = { viewModel.toggleLayerLock(layer.id) }) {
                 Icon(if (layer.isLocked) Icons.Default.Lock else Icons.Default.LockOpen, null)
             }
-            IconButton(
-                onClick = { viewModel.deleteLayer(layer.id) },
-                enabled = project.layers.size > 1,
-            ) { Icon(Icons.Default.Delete, null) }
+            IconButton(onClick = { viewModel.deleteLayer(layer.id) }, enabled = project.layers.size > 1) {
+                Icon(Icons.Default.Delete, null)
+            }
         }
     }
 }
 
 @Composable
-private fun SettingToggle(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
+private fun SettingToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
@@ -631,6 +614,4 @@ private val palette = listOf(
 )
 
 private fun String.fileSafe(): String =
-    replace(Regex("[^A-Za-z0-9._-]+"), "_")
-        .trim('_')
-        .ifBlank { "KREATIV_Artwork" }
+    replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_').ifBlank { "KREATIV_Artwork" }
