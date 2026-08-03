@@ -17,6 +17,9 @@ permissions:
 env:
   RELEASE_VERSION: 0.15.4
   WEB_CACHE_VERSION: msc-web-v0154-professional-workbook-household-v1
+  GCP_PROJECT_ID: my-study-companion-abc01
+  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
 
 jobs:
   verify-web-parity:
@@ -57,7 +60,7 @@ jobs:
           bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
           bash .msc-build/apply-0.15.4-web-household-parity.sh
 
-      - name: Verify PWA behavior and household repair
+      - name: Verify PWA behavior household repair and professional assets
         shell: bash
         run: |
           set -euo pipefail
@@ -72,11 +75,6 @@ jobs:
           grep -Fq "$WEB_CACHE_VERSION" MyStudyCompanionWeb/sw.js
           ! grep -R -Eq 'msc-web-v0151|msc-web-v0152|msc-web-v0153-professional-workbook-assets-v1' MyStudyCompanionWeb/sw.js
           ! find MyStudyCompanionWeb -type f \( -name '*.orig' -o -name '*.rej' -o -name '*.tmp' \) -print -quit | grep -q .
-
-      - name: Prove Android and PWA professional assets are byte-identical
-        shell: bash
-        run: |
-          set -euo pipefail
           diff -ru MyStudyCompanion/app/src/main/assets/workbook MyStudyCompanionWeb/assets/workbook
           python - <<'PY'
           import hashlib, json
@@ -124,11 +122,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     environment: my-study-companion-private
-    env:
-      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
-      FIREBASE_WEB_APP_ID: ${{ vars.MSC_FIREBASE_WEB_APP_ID }}
     steps:
       - name: Check out exact verified release head
         uses: actions/checkout@v6
@@ -150,14 +143,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Validate protected Firebase deployment configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          for name in GCP_PROJECT_ID GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT FIREBASE_WEB_APP_ID; do
-            test -n "${!name:-}" || { echo "Missing protected environment variable: $name" >&2; exit 1; }
-          done
-
       - name: Reconstruct exact verified web release
         shell: bash
         run: |
@@ -170,7 +155,7 @@ jobs:
           bash .msc-build/apply-0.15.4-web-household-parity.sh
           diff -ru MyStudyCompanion/app/src/main/assets/workbook MyStudyCompanionWeb/assets/workbook
 
-      - name: Authenticate with Google Workload Identity Federation
+      - name: Authenticate without a stored service-account key
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
@@ -182,12 +167,28 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
           version: '>= 523.0.0'
 
-      - name: Generate runtime configuration
+      - name: Resolve the existing Firebase Web app and generate runtime config
         shell: bash
         run: |
           set -euo pipefail
           npm install --global firebase-tools@15.1.0
-          firebase apps:sdkconfig web "$FIREBASE_WEB_APP_ID" --project "$GCP_PROJECT_ID" --out /tmp/firebase-web-sdk-config.json --non-interactive
+          firebase apps:list web --project "$GCP_PROJECT_ID" --json > /tmp/firebase-web-apps.json
+          WEB_APP_ID="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          payload=json.loads(Path('/tmp/firebase-web-apps.json').read_text())
+          result=payload.get('result',payload)
+          if isinstance(result,dict):
+              result=result.get('apps',result.get('result',[]))
+          apps=result if isinstance(result,list) else []
+          apps=[item for item in apps if str(item.get('platform','WEB')).upper()=='WEB']
+          if not apps: raise SystemExit('No Firebase Web app exists in the project.')
+          preferred=next((item for item in apps if 'study companion' in str(item.get('displayName','')).lower()),apps[0])
+          print(preferred['appId'])
+          PY
+          )"
+          test -n "$WEB_APP_ID"
+          firebase apps:sdkconfig web "$WEB_APP_ID" --project "$GCP_PROJECT_ID" --out /tmp/firebase-web-sdk-config.json --non-interactive
           python - <<'PY'
           import json, os
           from pathlib import Path
