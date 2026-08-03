@@ -8,6 +8,7 @@ import android.graphics.Color as AndroidColor
 import android.graphics.Paint
 import android.view.MotionEvent
 import android.view.View
+import android.view.View.MeasureSpec
 import android.widget.FrameLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -58,7 +60,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -85,7 +86,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kreativstudio.app.model.AttachmentKind
@@ -112,24 +112,24 @@ fun KreativFullscreenStudioHost(viewModel: KreativViewModel) {
 
     KreativTheme(settings) {
         Box(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .background(LocalKreativTokens.current.canvasChrome),
         ) {
-            FullscreenStudioContent(viewModel)
+            FullscreenStudio(viewModel)
             SnackbarHost(
                 hostState = snackbar,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 154.dp),
+                    .padding(bottom = 150.dp),
             )
         }
     }
 }
 
 @Composable
-private fun FullscreenStudioContent(viewModel: KreativViewModel) {
+private fun FullscreenStudio(viewModel: KreativViewModel) {
     val project = viewModel.currentProject
     if (project == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -206,7 +206,7 @@ private fun FullscreenStudioContent(viewModel: KreativViewModel) {
         )
 
         if (chromeVisible) {
-            StudioTopOverlay(
+            FullscreenTopBar(
                 project = project,
                 fillViewport = fillViewport,
                 onBack = { viewModel.navigate(StudioScreen.HOME) },
@@ -219,15 +219,11 @@ private fun FullscreenStudioContent(viewModel: KreativViewModel) {
                 onRotate = { frame?.canvasView?.rotateCanvas(15f) },
                 onToggleViewport = { fillViewport = !fillViewport },
                 onAttach = { attachLauncher.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*")) },
-                onExportProject = { exportProjectLauncher.launch("${project.title.fullscreenFileName()}.kreativ.json") },
-                onExportPng = { exportPngLauncher.launch("${project.title.fullscreenFileName()}.png") },
-                onHideChrome = { chromeVisible = false },
+                onExportProject = { exportProjectLauncher.launch("${project.title.safeFileName()}.kreativ.json") },
+                onExportPng = { exportPngLauncher.launch("${project.title.safeFileName()}.png") },
+                onHide = { chromeVisible = false },
             )
-
-            StudioBottomOverlay(
-                viewModel = viewModel,
-                onControls = { controlsOpen = true },
-            )
+            FullscreenBottomBar(viewModel, onControls = { controlsOpen = true })
         } else {
             Surface(
                 modifier = Modifier
@@ -247,7 +243,7 @@ private fun FullscreenStudioContent(viewModel: KreativViewModel) {
 
     if (controlsOpen) {
         ModalBottomSheet(onDismissRequest = { controlsOpen = false }) {
-            FullscreenStudioControls(
+            StudioControlsSheet(
                 viewModel = viewModel,
                 project = project,
                 onAttach = { attachLauncher.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*")) },
@@ -289,11 +285,7 @@ private fun FullscreenStudioContent(viewModel: KreativViewModel) {
             onDismissRequest = { renameOpen = false },
             title = { Text("Rename project") },
             text = {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Project title") },
-                )
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Project title") })
             },
             confirmButton = {
                 Button(onClick = { viewModel.renameProject(title); renameOpen = false }) { Text("Save title") }
@@ -304,7 +296,7 @@ private fun FullscreenStudioContent(viewModel: KreativViewModel) {
 }
 
 @Composable
-private fun StudioTopOverlay(
+private fun BoxScope.FullscreenTopBar(
     project: KreativProject,
     fillViewport: Boolean,
     onBack: () -> Unit,
@@ -319,7 +311,7 @@ private fun StudioTopOverlay(
     onAttach: () -> Unit,
     onExportProject: () -> Unit,
     onExportPng: () -> Unit,
-    onHideChrome: () -> Unit,
+    onHide: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -330,7 +322,7 @@ private fun StudioTopOverlay(
         tonalElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -358,11 +350,7 @@ private fun StudioTopOverlay(
                 item { IconButton(onClick = onSync) { Icon(Icons.Default.CloudSync, "Sync") } }
                 item { IconButton(onClick = onReset) { Icon(Icons.Default.Refresh, "Reset canvas view") } }
                 item { IconButton(onClick = onRotate) { Icon(Icons.Default.RotateRight, "Rotate canvas") } }
-                item {
-                    TextButton(onClick = onToggleViewport) {
-                        Text(if (fillViewport) "Fit" else "Fill")
-                    }
-                }
+                item { TextButton(onClick = onToggleViewport) { Text(if (fillViewport) "Fit" else "Fill") } }
                 item { IconButton(onClick = onAttach) { Icon(Icons.Default.PhotoLibrary, "Add reference") } }
                 item {
                     OutlinedButton(onClick = onExportProject) {
@@ -378,29 +366,14 @@ private fun StudioTopOverlay(
                         Text("PNG")
                     }
                 }
-                item { IconButton(onClick = onHideChrome) { Icon(Icons.Default.VisibilityOff, "Hide controls") } }
+                item { IconButton(onClick = onHide) { Icon(Icons.Default.VisibilityOff, "Hide controls") } }
             }
         }
     }
 }
 
 @Composable
-private fun BoxScopeStudioBottomSurface(content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = .9f),
-        tonalElevation = 8.dp,
-        content = content,
-    )
-}
-
-@Composable
-private fun androidx.compose.foundation.layout.BoxScope.StudioBottomOverlay(
-    viewModel: KreativViewModel,
-    onControls: () -> Unit,
-) {
+private fun BoxScope.FullscreenBottomBar(viewModel: KreativViewModel, onControls: () -> Unit) {
     Surface(
         modifier = Modifier
             .align(Alignment.BottomCenter)
@@ -410,18 +383,18 @@ private fun androidx.compose.foundation.layout.BoxScope.StudioBottomOverlay(
         tonalElevation = 8.dp,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+            Modifier.fillMaxWidth().padding(vertical = 5.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(fullscreenTools, key = { it }) { tool ->
+                items(studioTools, key = { it }) { tool ->
                     FilterChip(
                         selected = viewModel.activeTool == tool,
                         onClick = { viewModel.activeTool = tool },
-                        label = { Text(tool.fullscreenLabel()) },
+                        label = { Text(tool.toolLabel()) },
                         leadingIcon = {
                             Icon(
                                 if (tool == ToolType.TEXT) Icons.Default.TextFields else Icons.Default.Edit,
@@ -433,7 +406,7 @@ private fun androidx.compose.foundation.layout.BoxScope.StudioBottomOverlay(
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -458,7 +431,7 @@ private fun androidx.compose.foundation.layout.BoxScope.StudioBottomOverlay(
 }
 
 @Composable
-private fun FullscreenStudioControls(
+private fun StudioControlsSheet(
     viewModel: KreativViewModel,
     project: KreativProject,
     onAttach: () -> Unit,
@@ -481,7 +454,7 @@ private fun FullscreenStudioControls(
             Text("Color", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                items(fullscreenColors) { color ->
+                items(studioColors) { color ->
                     val selected = viewModel.activeColorArgb == color
                     Surface(
                         modifier = Modifier
@@ -502,7 +475,7 @@ private fun FullscreenStudioControls(
             Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
             Slider(value = viewModel.brushOpacity, onValueChange = { viewModel.brushOpacity = it }, valueRange = .05f..1f)
             Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(value = viewModel.stabilization, onValueChange = { viewModel.stabilization = it }, valueRange = 0f...95f)
+            Slider(value = viewModel.stabilization, onValueChange = { viewModel.stabilization = it }, valueRange = 0f..0.95f)
         }
         item {
             Text("Brush library", style = MaterialTheme.typography.titleLarge)
@@ -522,21 +495,21 @@ private fun FullscreenStudioControls(
                 IconButton(onClick = viewModel::addLayer) { Icon(Icons.Default.Add, "Add layer") }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                project.layers.asReversed().forEach { layer -> FullscreenLayerRow(viewModel, project, layer) }
+                project.layers.asReversed().forEach { layer -> LayerControlRow(viewModel, project, layer) }
             }
         }
         item {
             Text("Precision", style = MaterialTheme.typography.titleLarge)
-            FullscreenToggle("Perfect shape snapping", settings.shapeSnapEnabled) { value ->
+            ToggleRow("Perfect shape snapping", settings.shapeSnapEnabled) { value ->
                 viewModel.updateSettings { it.copy(shapeSnapEnabled = value) }
             }
-            FullscreenToggle("Mirror symmetry", settings.symmetryEnabled) { value ->
+            ToggleRow("Mirror symmetry", settings.symmetryEnabled) { value ->
                 viewModel.updateSettings { it.copy(symmetryEnabled = value) }
             }
-            FullscreenToggle("Perspective guide", settings.perspectiveGridEnabled) { value ->
+            ToggleRow("Perspective guide", settings.perspectiveGridEnabled) { value ->
                 viewModel.updateSettings { it.copy(perspectiveGridEnabled = value) }
             }
-            FullscreenToggle("Palm rejection", settings.palmRejectionEnabled) { value ->
+            ToggleRow("Palm rejection", settings.palmRejectionEnabled) { value ->
                 viewModel.updateSettings { it.copy(palmRejectionEnabled = value) }
             }
         }
@@ -578,7 +551,7 @@ private fun FullscreenStudioControls(
 }
 
 @Composable
-private fun FullscreenLayerRow(viewModel: KreativViewModel, project: KreativProject, layer: CanvasLayer) {
+private fun LayerControlRow(viewModel: KreativViewModel, project: KreativProject, layer: CanvasLayer) {
     val active = layer.id == project.activeLayerId
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { viewModel.selectLayer(layer.id) },
@@ -601,7 +574,7 @@ private fun FullscreenLayerRow(viewModel: KreativViewModel, project: KreativProj
 }
 
 @Composable
-private fun FullscreenToggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange)
@@ -634,7 +607,7 @@ private class FullscreenCanvasFrame(context: Context) : FrameLayout(context) {
 
     fun updateProject(project: KreativProject) {
         val old = canvasView.project
-        val sizeChanged = old?.widthPx != project.widthPx || old.heightPx != project.heightPx
+        val sizeChanged = old?.widthPx != project.widthPx || old?.heightPx != project.heightPx
         canvasView.project = project
         if (sizeChanged) requestLayout()
     }
@@ -645,30 +618,35 @@ private class FullscreenCanvasFrame(context: Context) : FrameLayout(context) {
         setMeasuredDimension(width, height)
 
         val project = canvasView.project
-        val childSize = if (fillViewport && project != null) {
+        val childWidth: Int
+        val childHeight: Int
+        if (fillViewport && project != null) {
             val scale = max(
                 width.toFloat() / project.widthPx.coerceAtLeast(1),
                 height.toFloat() / project.heightPx.coerceAtLeast(1),
             )
-            val childWidth = ceil(project.widthPx * scale / .9f).toInt().coerceAtLeast(width)
-            val childHeight = ceil(project.heightPx * scale / .9f).toInt().coerceAtLeast(height)
-            childWidth to childHeight
+            childWidth = ceil(project.widthPx * scale / .9f).toInt().coerceAtLeast(width)
+            childHeight = ceil(project.heightPx * scale / .9f).toInt().coerceAtLeast(height)
         } else {
-            width to height
+            childWidth = width
+            childHeight = height
         }
 
         canvasView.measure(
-            MeasureSpec.makeMeasureSpec(childSize.first, MeasureSpec.EXACTLY),
-            MeasureSpec.makeMeasureSpec(childSize.second, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY),
         )
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        val childWidth = canvasView.measuredWidth
-        val childHeight = canvasView.measuredHeight
-        val childLeft = (measuredWidth - childWidth) / 2
-        val childTop = (measuredHeight - childHeight) / 2
-        canvasView.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
+        val childLeft = (measuredWidth - canvasView.measuredWidth) / 2
+        val childTop = (measuredHeight - canvasView.measuredHeight) / 2
+        canvasView.layout(
+            childLeft,
+            childTop,
+            childLeft + canvasView.measuredWidth,
+            childTop + canvasView.measuredHeight,
+        )
     }
 
     fun reportFailure(error: Throwable) {
@@ -719,7 +697,7 @@ private class FullscreenCanvasFrame(context: Context) : FrameLayout(context) {
     }
 }
 
-private val fullscreenTools = listOf(
+private val studioTools = listOf(
     ToolType.PEN,
     ToolType.PENCIL,
     ToolType.WATERCOLOR,
@@ -739,7 +717,7 @@ private val fullscreenTools = listOf(
     ToolType.TEXT,
 )
 
-private val fullscreenColors = listOf(
+private val studioColors = listOf(
     0xFF17121FL,
     0xFFFFFFFFL,
     0xFF6E3BC9L,
@@ -751,7 +729,7 @@ private val fullscreenColors = listOf(
     0xFFDB7F45L,
 )
 
-private fun ToolType.fullscreenLabel(): String = name.lowercase().replaceFirstChar(Char::uppercase)
+private fun ToolType.toolLabel(): String = name.lowercase().replaceFirstChar(Char::uppercase)
 
-private fun String.fullscreenFileName(): String =
+private fun String.safeFileName(): String =
     replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_').ifBlank { "KREATIV_Artwork" }
