@@ -71,3 +71,20 @@ jobs:
           name: KREATIV-Studio-v0.1-configured-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Package Android signing utilities
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p signing-tools/lib
+          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" signing-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signing-tools/lib/
+          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" signing-tools/
+          chmod +x signing-tools/apksigner signing-tools/zipalign
+      - name: Upload Android signing utilities
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-tools-36-signing
+          path: signing-tools
+          if-no-files-found: error
