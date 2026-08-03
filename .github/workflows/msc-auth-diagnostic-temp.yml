@@ -1,0 +1,38 @@
+name: My Study Companion Deployment Auth Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/msc-auth-diagnostic-temp
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: my-study-companion-private
+    env:
+      VAR_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      SECRET_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+      VAR_WIF: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      SECRET_WIF: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      VAR_DEPLOY_SA: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      SECRET_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      FIREBASE_PROJECT_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MY_STUDY_COMPANION_ABC01 }}
+      FIREBASE_GENERIC_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      GOOGLE_ADC_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      GCP_SA_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      GOOGLE_CLOUD_SA_KEY: ${{ secrets.GOOGLE_CLOUD_SERVICE_ACCOUNT_KEY }}
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      GCLOUD_AUTH: ${{ secrets.GCLOUD_AUTH }}
+    steps:
+      - name: Report credential path availability without values
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() { if [[ -n "${!1:-}" ]]; then echo "$1=available"; else echo "$1=missing"; fi; }
+          for name in VAR_PROJECT SECRET_PROJECT VAR_WIF SECRET_WIF VAR_DEPLOY_SA SECRET_DEPLOY_SA FIREBASE_PROJECT_SA FIREBASE_GENERIC_SA GOOGLE_ADC_JSON GCP_SA_KEY GOOGLE_CLOUD_SA_KEY FIREBASE_TOKEN GCLOUD_AUTH; do
+            check "$name"
+          done
