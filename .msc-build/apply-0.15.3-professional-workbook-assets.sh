@@ -58,6 +58,69 @@ PY
 
 python3 "$ROOT/.msc-build/generate-0.15.3-professional-workbook-assets.py" --repo-root "$ROOT"
 
+# Update the real service worker after every older overlay has finished. Bump
+# the cache key and include the complete professional workbook asset pack in
+# the install shell so the PWA cannot keep serving 0.15.1 artwork and remains
+# available offline before an individual lesson has been opened.
+python3 - "$ROOT" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+root = Path(sys.argv[1])
+web = root / 'MyStudyCompanionWeb'
+sw_path = web / 'sw.js'
+assets_root = web / 'assets/workbook'
+new_cache = 'msc-web-v0153-professional-workbook-assets-v1'
+text = sw_path.read_text(encoding='utf-8')
+
+text, replaced = re.subn(
+    r'const\s+CACHE\s*=\s*["\'][^"\']+["\'];',
+    f'const CACHE = "{new_cache}";',
+    text,
+    count=1,
+)
+if replaced != 1:
+    raise SystemExit('Could not replace the production PWA cache declaration.')
+
+asset_paths = sorted(
+    f'assets/workbook/{path.relative_to(assets_root).as_posix()}'
+    for path in assets_root.rglob('*')
+    if path.is_file()
+)
+if not asset_paths:
+    raise SystemExit('No professional web workbook assets were generated.')
+
+shell_start = text.find('const SHELL = [')
+if shell_start < 0:
+    raise SystemExit('The PWA service-worker shell array was not found.')
+shell_end = text.find('\n];', shell_start)
+if shell_end < 0:
+    raise SystemExit('The PWA service-worker shell array terminator was not found.')
+
+shell = text[shell_start:shell_end]
+missing = [path for path in asset_paths if f'"{path}"' not in shell]
+if missing:
+    entries = ''.join(f'  "{path}",\n' for path in missing)
+    text = text[:shell_end] + '\n' + entries.rstrip('\n') + text[shell_end:]
+
+sw_path.write_text(text, encoding='utf-8')
+
+# Old patch attempts can create reject/temporary files even when a later
+# override repairs the final PWA. They must never ship in the web package.
+for pattern in ('*.rej', '*.orig', '*.tmp'):
+    for path in web.rglob(pattern):
+        path.unlink()
+
+final = sw_path.read_text(encoding='utf-8')
+if new_cache not in final:
+    raise SystemExit('The production service worker did not retain the 0.15.3 cache key.')
+for asset_path in asset_paths:
+    if f'"{asset_path}"' not in final:
+        raise SystemExit(f'The service worker did not precache {asset_path}.')
+print(f'PASS: service worker cache upgraded and {len(asset_paths)} workbook files precached.')
+PY
+
 APP="$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app"
 TESTS="$ROOT/MyStudyCompanion/app/src/test/java/com/mystudycompanion/app"
 ANDROID_ASSETS="$ROOT/MyStudyCompanion/app/src/main/assets/workbook"
@@ -76,6 +139,8 @@ grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'WorkbookIllustrationCatalogTest' "$TESTS/companion/WorkbookIllustrationCatalogTest.kt"
 grep -Fq 'it.colorRegions.isNotEmpty()' "$TESTS/companion/InteractiveWorkbookGeneratorTest.kt"
 grep -Fq 'msc-web-v0153-professional-workbook-assets-v1' "$ROOT/MyStudyCompanionWeb/appearance.test.mjs"
+grep -Fq 'msc-web-v0153-professional-workbook-assets-v1' "$ROOT/MyStudyCompanionWeb/sw.js"
+grep -Fq 'assets/workbook/manifest.json' "$ROOT/MyStudyCompanionWeb/sw.js"
 
 # Reject the primitive vector scene regression from all active production code.
 if grep -R -n -E 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"; then
