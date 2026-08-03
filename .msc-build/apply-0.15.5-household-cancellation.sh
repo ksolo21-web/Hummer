@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$ROOT/.msc-build/patch-0.15.5-household-cancellation.py" "$ROOT"
+python3 "$ROOT/.msc-build/patch-0.15.5-pwa-release-test.py" "$ROOT"
 
 REPO="$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt"
 UI="$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HouseholdScreen.kt"
@@ -29,5 +30,6 @@ grep -Fq '0.15.5-private-alpha-household-cancellation-fix' "$ROOT/MyStudyCompani
 grep -Fq 'versionCode = 360155001' "$ROOT/MyStudyCompanion/wear/build.gradle.kts"
 grep -Fq '0.15.5-wear-private-alpha-household-cancellation-fix' "$ROOT/MyStudyCompanion/wear/build.gradle.kts"
 grep -Fq 'msc-web-v0155-household-cancellation-v1' "$ROOT/MyStudyCompanionWeb/sw.js"
+grep -Fq 'msc-web-v0155-household-cancellation-v1' "$ROOT/MyStudyCompanionWeb/appearance.test.mjs"
 
 printf 'Applied My Study Companion 0.15.5 household coroutine and invitation safety repair.\n'
