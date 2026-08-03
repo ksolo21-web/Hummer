@@ -8,6 +8,11 @@ android {
     namespace = "com.kreativstudio.app"
     compileSdk = 37
 
+    val privateAlphaStoreFile = project.findProperty("KREATIV_PRIVATE_ALPHA_STORE_FILE")?.toString().orEmpty()
+    val privateAlphaStorePassword = project.findProperty("KREATIV_PRIVATE_ALPHA_STORE_PASSWORD")?.toString().orEmpty()
+    val privateAlphaKeyAlias = project.findProperty("KREATIV_PRIVATE_ALPHA_KEY_ALIAS")?.toString().orEmpty()
+    val privateAlphaKeyPassword = project.findProperty("KREATIV_PRIVATE_ALPHA_KEY_PASSWORD")?.toString().orEmpty()
+
     defaultConfig {
         applicationId = "com.kreativstudio.app"
         minSdk = 28
@@ -18,7 +23,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // Set these in ~/.gradle/gradle.properties or project gradle.properties for a private build.
+        // Set these in ~/.gradle/gradle.properties, project gradle.properties, or CI secrets.
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${project.findProperty("KREATIV_GOOGLE_WEB_CLIENT_ID") ?: ""}\"")
         buildConfigField("String", "OLIVIA_FIREBASE_UID", "\"${project.findProperty("KREATIV_OLIVIA_FIREBASE_UID") ?: ""}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${project.findProperty("KREATIV_FIREBASE_API_KEY") ?: ""}\"")
@@ -33,9 +38,24 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        create("privateAlpha") {
+            if (privateAlphaStoreFile.isNotBlank()) storeFile = file(privateAlphaStoreFile)
+            storePassword = privateAlphaStorePassword
+            keyAlias = privateAlphaKeyAlias
+            keyPassword = privateAlphaKeyPassword
+        }
+    }
+
     buildTypes {
         debug {
             versionNameSuffix = "-dev"
+        }
+        create("privateAlpha") {
+            initWith(getByName("debug"))
+            versionNameSuffix = "-private-alpha"
+            signingConfig = signingConfigs.getByName("privateAlpha")
+            matchingFallbacks += listOf("debug")
         }
         release {
             isMinifyEnabled = true
@@ -46,7 +66,6 @@ android {
             )
         }
     }
-
 
     packaging {
         resources.excludes += setOf(
@@ -88,7 +107,6 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.11.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
 
-    // Stable AndroidX Ink foundation for production-grade stylus work.
     implementation("androidx.ink:ink-authoring:1.0.0")
     implementation("androidx.ink:ink-brush:1.0.0")
     implementation("androidx.ink:ink-rendering:1.0.0")
@@ -104,10 +122,10 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-ai")
-    // Experimental Firebase hybrid router: Gemini Nano/AICore first, cloud fallback.
     implementation("com.google.firebase:firebase-ai-ondevice:16.0.0-beta04")
     implementation("com.google.firebase:firebase-appcheck-playintegrity")
     debugImplementation("com.google.firebase:firebase-appcheck-debug")
+    "privateAlphaImplementation"("com.google.firebase:firebase-appcheck-debug")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
@@ -115,6 +133,7 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    "privateAlphaImplementation"("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
