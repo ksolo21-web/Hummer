@@ -129,7 +129,7 @@ private fun MentorV2Screen(viewModel: KreativViewModel, activity: Activity) {
         onDispose { previewBitmap?.recycle() }
     }
 
-    val analyze = {
+    val analyze: () -> Unit = {
         scope.launch {
             busy = true
             result = null
@@ -144,8 +144,9 @@ private fun MentorV2Screen(viewModel: KreativViewModel, activity: Activity) {
                 preferOnDevice = settings.aiLocalFirst,
             )
             busy = false
-            listState.animateScrollToItem(if (windowState.isExpanded) 4 else 6)
+            listState.animateScrollToItem(if (windowState.isExpanded) 3 else 4)
         }
+        Unit
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
