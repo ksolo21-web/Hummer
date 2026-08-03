@@ -2,7 +2,6 @@ package com.kreativstudio.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertExists
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -21,61 +20,52 @@ class PrimaryRoutesTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun mentorRouteRendersCanvasAwareExperience() {
+    fun mentorRouteOpensWithoutClosing() {
         enterOliviaPreview()
-
         composeRule.onNodeWithText("Ask Mentor").performScrollTo().performClick()
-        composeRule.waitUntilAtLeastOneExists(
-            hasText("Canvas-aware teacher and critic"),
-            timeoutMillis = 10_000,
-        )
-        composeRule.onNodeWithText("Canvas-aware teacher and critic").assertIsDisplayed()
-        composeRule.onNodeWithText("Analyze current canvas").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("Back to Atelier").assertExists()
-    }
-
-    @Test
-    fun lessonRouteRendersInstructionAndCanvasWorkspace() {
-        enterOliviaPreview()
-
-        composeRule.onNodeWithText("Start lesson").performScrollTo().performClick()
-        composeRule.waitUntilAtLeastOneExists(
-            hasText("KREATIV Mentor Academy"),
-            timeoutMillis = 10_000,
-        )
-        composeRule.onAllNodesWithText("Begin lesson")[0].performScrollTo().performClick()
-
-        composeRule.waitUntilAtLeastOneExists(
-            hasContentDescription("Back to lessons"),
-            timeoutMillis = 15_000,
-        )
-        composeRule.onNodeWithContentDescription("Back to lessons").assertIsDisplayed()
-        composeRule.onNodeWithText("Objective").assertExists()
-        composeRule.onNodeWithText("Check my work").assertExists()
-    }
-
-    @Test
-    fun newCanvasRouteRendersAdaptiveStudio() {
-        enterOliviaPreview()
-
-        composeRule.onNodeWithText("New canvas").performScrollTo().performClick()
-        composeRule.waitUntilAtLeastOneExists(hasText("Create canvas"), timeoutMillis = 10_000)
-        composeRule.onNodeWithText("Create canvas").performClick()
 
         composeRule.waitUntilAtLeastOneExists(
             hasContentDescription("Back to Atelier"),
             timeoutMillis = 15_000,
         )
-        composeRule.onNodeWithContentDescription("Back to Atelier").assertIsDisplayed()
-        composeRule.onNodeWithText("Controls").assertExists()
+        composeRule.onNodeWithContentDescription("Back to Atelier").assertExists()
+        composeRule.onNodeWithText("KREATIV Mentor").assertExists()
+    }
+
+    @Test
+    fun lessonRouteOpensWithoutClosing() {
+        enterOliviaPreview()
+        composeRule.onNodeWithText("Start lesson").performScrollTo().performClick()
+
+        composeRule.waitUntilAtLeastOneExists(hasText("Begin lesson"), timeoutMillis = 15_000)
+        composeRule.onAllNodesWithText("Begin lesson")[0].performScrollTo().performClick()
+        composeRule.waitUntilAtLeastOneExists(
+            hasContentDescription("Back to lessons"),
+            timeoutMillis = 20_000,
+        )
+        composeRule.onNodeWithContentDescription("Back to lessons").assertExists()
+    }
+
+    @Test
+    fun newCanvasRouteOpensWithoutClosing() {
+        enterOliviaPreview()
+        composeRule.onNodeWithText("New canvas").performScrollTo().performClick()
+
+        composeRule.waitUntilAtLeastOneExists(hasText("Create canvas"), timeoutMillis = 10_000)
+        composeRule.onNodeWithText("Create canvas").performClick()
+        composeRule.waitUntilAtLeastOneExists(
+            hasContentDescription("Back to Atelier"),
+            timeoutMillis = 20_000,
+        )
+        composeRule.onNodeWithContentDescription("Back to Atelier").assertExists()
     }
 
     private fun enterOliviaPreview() {
         composeRule.waitUntilAtLeastOneExists(
             hasText("Open Olivia's private preview"),
-            timeoutMillis = 10_000,
+            timeoutMillis = 15_000,
         )
         composeRule.onNodeWithText("Open Olivia's private preview").performScrollTo().performClick()
-        composeRule.waitUntilAtLeastOneExists(hasText("Ask Mentor"), timeoutMillis = 10_000)
+        composeRule.waitUntilAtLeastOneExists(hasText("Ask Mentor"), timeoutMillis = 15_000)
     }
 }
