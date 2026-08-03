@@ -79,22 +79,44 @@ jobs:
           APP='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app'
           ASSETS='MyStudyCompanion/app/src/main/assets/workbook'
 
-          grep -Fq '0.15.3-private-alpha-professional-workbook-assets' MyStudyCompanion/app/build.gradle.kts
-          grep -Fq '0.15.3-wear-private-alpha-professional-workbook-assets' MyStudyCompanion/wear/build.gradle.kts
-          grep -Fq 'WorkbookIllustrationCatalog.assetFor' "$APP/ui/InteractiveWorkbookEditor.kt"
-          grep -Fq 'buildColorOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
-          grep -Fq 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
-          grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
-          grep -Fq 'difference-changed.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
-          ! grep -Eq 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text() {
+            local needle="$1"
+            local file="$2"
+            if ! grep -Fq "$needle" "$file"; then
+              echo "MISSING REQUIRED MARKER: '$needle' in $file" >&2
+              exit 1
+            fi
+            echo "PASS marker: $needle"
+          }
+          reject_regex() {
+            local pattern="$1"
+            local file="$2"
+            if grep -En "$pattern" "$file"; then
+              echo "REJECTED LEGACY MARKER remains in $file: $pattern" >&2
+              exit 1
+            fi
+            echo "PASS rejected legacy pattern: $pattern"
+          }
 
-          # Previous repairs must remain present.
-          grep -Fq 'Stored Work' "$APP/ui/CompanionHubScreen.kt"
-          grep -Fq 'migrateProfileUid' "$APP/companion/CompanionHubRepository.kt"
-          grep -Fq 'TODAY’S SCRIPTURE' "$APP/ui/HomeScreen.kt"
-          grep -Fq 'FULL DAILY TEXT' "$APP/ui/HomeScreen.kt"
-          grep -Fq 'Scriptures to prepare' "$APP/ui/DailyFieldServicePointerCard.kt"
-          ! grep -R -Eq 'ProfileAgeSetupScreen\(|Google did not provide enough age information' "$APP"
+          require_text '0.15.3-private-alpha-professional-workbook-assets' MyStudyCompanion/app/build.gradle.kts
+          require_text '0.15.3-wear-private-alpha-professional-workbook-assets' MyStudyCompanion/wear/build.gradle.kts
+          require_text 'WorkbookIllustrationCatalog.assetFor' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'buildColorOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
+          require_text 'difference-changed.webp' "$APP/companion/WorkbookIllustrationCatalog.kt"
+          reject_regex 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"
+
+          require_text 'Stored Work' "$APP/ui/CompanionHubScreen.kt"
+          require_text 'migrateProfileUid' "$APP/companion/CompanionHubRepository.kt"
+          require_text 'TODAY’S SCRIPTURE' "$APP/ui/HomeScreen.kt"
+          require_text 'FULL DAILY TEXT' "$APP/ui/HomeScreen.kt"
+          require_text 'Scriptures to prepare' "$APP/ui/DailyFieldServicePointerCard.kt"
+          if grep -R -En 'ProfileAgeSetupScreen\(|Google did not provide enough age information' "$APP"; then
+            echo 'Child-facing manual age chooser remains active.' >&2
+            exit 1
+          fi
+          echo 'PASS retained Daily Text, automatic profile, ministry, Z Flip, and Stored Work repairs.'
 
           python - <<'PY'
           import json
@@ -103,28 +125,75 @@ jobs:
           import numpy as np
 
           root = Path('MyStudyCompanion/app/src/main/assets/workbook')
-          manifest = json.loads((root / 'manifest.json').read_text())
-          assert len(manifest['assets']) == 16
-          counts = [len(item['regions']) for item in manifest['assets']]
-          assert min(counts) >= 35
-          assert max(counts) <= 70
-          assert all(len(item['differences']) == 5 for item in manifest['assets'])
-          assert {item['id'] for item in manifest['assets']} == {
+          manifest_path = root / 'manifest.json'
+          if not manifest_path.is_file():
+              raise SystemExit(f'Missing manifest: {manifest_path}')
+          manifest = json.loads(manifest_path.read_text())
+          assets = manifest.get('assets', [])
+          print(f"Manifest version={manifest.get('version')} assets={len(assets)}")
+          expected = {
               'creation', 'noahs-ark', 'jonah', 'david-goliath', 'daniel-lions',
               'jesus-storm', 'good-samaritan', 'lost-sheep', 'talents',
               'prodigal-son', 'wise-builders', 'armor-of-god',
               'favorite-scripture', 'favorite-animal', 'faith-action',
               'gratitude-journal',
           }
-          for item in manifest['assets']:
-              folder = root / item['id']
+          actual = {item.get('id') for item in assets}
+          if len(assets) != 16:
+              raise SystemExit(f'Expected 16 assets; found {len(assets)}: {sorted(actual)}')
+          if actual != expected:
+              raise SystemExit(f'Asset IDs mismatch. Missing={sorted(expected-actual)} extra={sorted(actual-expected)}')
+
+          failures = []
+          counts = []
+          for item in assets:
+              asset_id = item['id']
+              folder = root / asset_id
+              region_count = len(item.get('regions', []))
+              difference_count = len(item.get('differences', []))
+              counts.append(region_count)
+              print(f"{asset_id}: manifestRegions={region_count}, differences={difference_count}")
+              if not 35 <= region_count <= 70:
+                  failures.append(f'{asset_id}: region count {region_count} outside 35–70')
+              if difference_count != 5:
+                  failures.append(f'{asset_id}: expected 5 differences; found {difference_count}')
+              required = (
+                  'master.webp', 'line.webp', 'drawing-step-1.webp',
+                  'drawing-step-2.webp', 'difference-changed.webp', 'region-mask.png',
+              )
+              for name in required:
+                  path = folder / name
+                  if not path.is_file():
+                      failures.append(f'{asset_id}: missing {name}')
+                  elif path.stat().st_size <= 600:
+                      failures.append(f'{asset_id}: {name} too small ({path.stat().st_size} bytes)')
+              if failures and any(message.startswith(f'{asset_id}: missing') for message in failures):
+                  continue
               original = np.asarray(Image.open(folder / 'master.webp').convert('RGB'))
               changed = np.asarray(Image.open(folder / 'difference-changed.webp').convert('RGB'))
-              assert original.shape == changed.shape == (768, 512, 3)
-              assert np.mean(np.abs(original.astype(float) - changed.astype(float))) > 0.8
+              print(f"{asset_id}: masterShape={original.shape}, changedShape={changed.shape}")
+              if original.shape != (768, 512, 3) or changed.shape != (768, 512, 3):
+                  failures.append(f'{asset_id}: invalid image dimensions {original.shape}/{changed.shape}')
+              if original.shape == changed.shape:
+                  mean_delta = float(np.mean(np.abs(original.astype(float) - changed.astype(float))))
+                  print(f"{asset_id}: changedMeanDelta={mean_delta:.4f}")
+                  if mean_delta <= 0.8:
+                      failures.append(f'{asset_id}: changed image delta {mean_delta:.4f} is too subtle')
               mask = np.asarray(Image.open(folder / 'region-mask.png'))
-              assert len(np.unique(mask)) >= 35
-          print(f"Verified {len(manifest['assets'])} professional packs with {min(counts)}–{max(counts)} regions.")
+              unique_count = int(len(np.unique(mask)))
+              print(f"{asset_id}: maskShape={mask.shape}, uniqueMaskRegions={unique_count}")
+              if mask.shape != (768, 512):
+                  failures.append(f'{asset_id}: invalid mask dimensions {mask.shape}')
+              if unique_count < 35:
+                  failures.append(f'{asset_id}: only {unique_count} unique mask regions')
+
+          print(f"Region range: {min(counts)}–{max(counts)}")
+          if failures:
+              print('PROFESSIONAL PACK VERIFICATION FAILURES:')
+              for failure in failures:
+                  print(f' - {failure}')
+              raise SystemExit(1)
+          print(f"Verified {len(assets)} professional packs with {min(counts)}–{max(counts)} regions.")
           PY
 
       - name: Run Android and Wear tests and builds
