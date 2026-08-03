@@ -37,7 +37,7 @@ jobs:
             numpy==2.4.2 \
             scikit-image==0.26.0
 
-      - name: Reconstruct exact complete source
+      - name: Reconstruct exact complete 0.15.5 source
         shell: bash
         run: |
           set -euo pipefail
@@ -45,11 +45,16 @@ jobs:
           bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
           bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
           bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/InteractiveWorkbookModels.kt
           test -f MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt
           test -f MyStudyCompanion/app/src/main/assets/workbook/manifest.json
           test -f MyStudyCompanionWeb/workbook.js
+          grep -Fq 'versionCode = 38' MyStudyCompanion/app/build.gradle.kts
+          grep -Fq 'runFamilyCatching' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+          grep -Fq 'requestCreateHouseholdInvitation' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
           tar -czf msc-current-reconstructed-source.tar.gz MyStudyCompanion MyStudyCompanionWeb
           sha256sum msc-current-reconstructed-source.tar.gz > msc-current-reconstructed-source.sha256
 
