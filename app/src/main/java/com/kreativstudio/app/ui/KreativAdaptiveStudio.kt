@@ -374,7 +374,7 @@ private fun SmartControlsSheet(viewModel: KreativViewModel, project: KreativProj
             Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
             Slider(viewModel.brushOpacity, { viewModel.brushOpacity = it }, valueRange = .05f..1f)
             Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(viewModel.stabilization, { viewModel.stabilization = it }, valueRange = 0f...95f)
+            Slider(viewModel.stabilization, { viewModel.stabilization = it }, valueRange = 0f..0.95f)
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
