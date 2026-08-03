@@ -26,16 +26,16 @@ class PrimaryRoutesTest {
 
         composeRule.onNodeWithText("Ask Mentor").performScrollTo().performClick()
         composeRule.onNodeWithText("Canvas-aware teacher and critic").assertIsDisplayed()
-        composeRule.onNodeWithText("Analyze current canvas").assertIsDisplayed()
+        composeRule.onNodeWithText("Analyze current canvas").performScrollTo().assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("Back to Atelier").performClick()
         composeRule.onNodeWithText("Start lesson").performScrollTo().performClick()
         composeRule.onNodeWithText("KREATIV Mentor Academy").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Begin lesson")[0].performClick()
+        composeRule.onAllNodesWithText("Begin lesson")[0].performScrollTo().performClick()
 
         composeRule.waitUntilAtLeastOneExists(hasText("Objective"), timeoutMillis = 15_000)
-        composeRule.onNodeWithText("Objective").assertIsDisplayed()
-        composeRule.onNodeWithText("Show me").assertIsDisplayed()
+        composeRule.onNodeWithText("Objective").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Mastery checkpoint").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Check my work").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("Back to lessons").performClick()
