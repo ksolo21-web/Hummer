@@ -1,4 +1,4 @@
-name: My Study Companion 0.15.1 Workbook Flip Profile Fixes
+name: My Study Companion 0.15.1 Complete Repair Gate
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: msc-0151-workbook-flip-profile-${{ github.event.pull_request.head.sha || github.sha }}
+  group: msc-0151-complete-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
-      - name: Check out exact repair head
+      - name: Check out exact complete-repair head
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -63,16 +63,37 @@ jobs:
         shell: bash
         run: bash .msc-build/reconstruct-current-source-0.14.1.sh
 
-      - name: Apply checksum-locked 0.15.1 fixes
+      - name: Apply checksum-locked complete 0.15.1 repair
         shell: bash
         run: bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
 
-      - name: Verify required source repairs
+      - name: Verify every required repair is present
         shell: bash
         run: |
           set -euo pipefail
           APP='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app'
-          node --check MyStudyCompanionWeb/workbook.js
+          TESTS='MyStudyCompanion/app/src/test/java/com/mystudycompanion/app'
+          WEB='MyStudyCompanionWeb'
+          node --check "$WEB/workbook.js"
+
+          grep -Fq 'ACTIVITY_LIBRARY' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'fun activityLibraryBook' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'Triple("gratitude-journal"' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'selectedColorNumbers' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'colorUndo' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'drawingSteps' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'fun hasStoredWork' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'fun applyWorkbookColor' "$APP/companion/CompanionHubRepository.kt"
+          grep -Fq 'fun redoWorkbookColor' "$APP/companion/CompanionHubRepository.kt"
+          grep -Fq 'fun redoWorkbookStroke' "$APP/companion/CompanionHubRepository.kt"
+          grep -Fq 'fun resetWorkbookPage' "$APP/companion/CompanionHubRepository.kt"
+          grep -Fq 'StoredWorkbookWorkView' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'pointInsidePolygon' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'drawingStepsFor' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'filledCorrectly' "$APP/ui/InteractiveWorkbookEditor.kt"
+          grep -Fq 'Open 16-page activity library' "$APP/ui/FamilyWorshipScreen.kt"
+          grep -Fq 'activityLibraryContainsAllPromisedRealSavedActivities' "$TESTS/companion/InteractiveWorkbookGeneratorTest.kt"
+
           grep -Fq 'buildCrosswordPuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
           grep -Fq 'buildWordSearchPuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
           grep -Fq 'DifferencePuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
@@ -81,10 +102,17 @@ jobs:
           grep -Fq 'SCOPE_BIRTHDAY' "$APP/auth/GoogleSignInCoordinator.kt"
           grep -Fq 'contentWindowInsets = WindowInsets.safeDrawing' "$APP/ui/MyStudyCompanionApp.kt"
           grep -Fq 'maxWidth < 390.dp' "$APP/ui/HomeScreen.kt"
-          ! grep -R -Fq 'Good morning, Kaleb' "$APP" MyStudyCompanionWeb
-          grep -Fq 'renderCrossword' MyStudyCompanionWeb/workbook.js
-          grep -Fq 'renderWordSearch' MyStudyCompanionWeb/workbook.js
-          grep -Fq 'renderDifferences' MyStudyCompanionWeb/workbook.js
+          ! grep -R -Fq 'Good morning, Kaleb' "$APP" "$WEB"
+
+          grep -Fq 'renderSavedWork' "$WEB/workbook.js"
+          grep -Fq 'activityLibraryBook' "$WEB/workbook.js"
+          grep -Fq 'selectedColorNumbers' "$WEB/workbook.js"
+          grep -Fq 'colorUndo' "$WEB/workbook.js"
+          grep -Fq 'drawingSteps' "$WEB/workbook.js"
+          grep -Fq 'renderCrossword' "$WEB/workbook.js"
+          grep -Fq 'renderWordSearch' "$WEB/workbook.js"
+          grep -Fq 'renderDifferences' "$WEB/workbook.js"
+          grep -Fq 'msc-web-v0151-complete-workbook-profile-v2' "$WEB/sw.js"
 
       - name: Run Android and Wear tests and debug builds
         shell: bash
@@ -161,7 +189,7 @@ jobs:
             -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
             :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
 
-      - name: Verify and package 0.15.1 APKs
+      - name: Verify and package complete 0.15.1 APKs
         shell: bash
         run: |
           set -euo pipefail
@@ -176,8 +204,8 @@ jobs:
           test -f "$PHONE_SOURCE"
           test -f "$WEAR_SOURCE"
 
-          PHONE_APK='release-0.15.1/phone/MyStudyCompanion-phone-0.15.1-ci.apk'
-          WEAR_APK='release-0.15.1/wear/MyStudyCompanion-wear-0.15.1-ci.apk'
+          PHONE_APK='release-0.15.1/phone/MyStudyCompanion-phone-0.15.1-complete-ci.apk'
+          WEAR_APK='release-0.15.1/wear/MyStudyCompanion-wear-0.15.1-complete-ci.apk'
           cp "$PHONE_SOURCE" "$PHONE_APK"
           cp "$WEAR_SOURCE" "$WEAR_APK"
 
@@ -195,17 +223,20 @@ jobs:
           sha256sum "$PHONE_APK" "$WEAR_APK" > release-0.15.1/metadata/SHA256SUMS.txt
 
           cat > release-0.15.1/metadata/STATUS.txt <<'TXT'
-          PASS: connected crossword, word-search, and find-the-difference engines compiled and tested.
-          PASS: account-specific greeting and age-level binding compiled and tested.
-          PASS: safe-inset and narrow-width Z Flip layout repairs compiled.
+          PASS: real closed-region color-by-number, numbered palette, validation, undo/redo/reset, persistence, and blank/completed export compiled and tested.
+          PASS: guided drawing steps, finger/stylus tools, saved strokes, undo/redo/clear, and restoration compiled and tested.
+          PASS: Stored Work resumes per-profile drawings, colors, puzzles, notes, and completion state.
+          PASS: all 16 promised activity-library topics are generated as real drawing, coloring, challenge, and reflection pages.
+          PASS: crossword, word-search, find-the-difference, matching, saved work, and PDF paths compiled together.
+          PASS: account-specific greeting, age-level binding, and safe Z Flip narrow-screen reflow compiled and tested.
           NOTE: CI APKs use a disposable packaging certificate. Re-sign with the Firebase-registered private-test certificate before Google Sign-In device testing.
           NOTE: final Z Flip 7 acceptance still requires installation on the actual family devices.
           TXT
 
-      - name: Upload 0.15.1 verification bundle
+      - name: Upload complete 0.15.1 verification bundle
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.15.1-workbook-flip-profile-ci
+          name: msc-0.15.1-complete-repair-ci
           path: release-0.15.1
           retention-days: 5
           if-no-files-found: error
