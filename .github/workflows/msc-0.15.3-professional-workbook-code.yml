@@ -79,14 +79,14 @@ jobs:
           node --check "$WEB/workbook.js"
           node --check "$WEB/sw.js"
 
-          grep -Fq 'internal object ProfessionalWorkbookAssetLoader' "$APP/companion/ProfessionalWorkbookAssets.kt"
-          grep -Fq 'fun regionAt' "$APP/companion/ProfessionalWorkbookAssets.kt"
-          grep -Fq 'fun createFillOverlay' "$APP/companion/ProfessionalWorkbookAssets.kt"
+          grep -Fq 'internal object ProfessionalWorkbookAssetLoader' "$APP/ui/ProfessionalWorkbookAssets.kt"
+          grep -Fq 'fun regionAt' "$APP/ui/ProfessionalWorkbookAssets.kt"
+          grep -Fq 'fun createFillOverlay' "$APP/ui/ProfessionalWorkbookAssets.kt"
           grep -Fq 'rememberProfessionalWorkbookAsset' "$APP/ui/InteractiveWorkbookEditor.kt"
           grep -Fq 'professionalAsset.differenceSpots' "$APP/ui/InteractiveWorkbookEditor.kt"
           grep -Fq 'drawingStepIndex' "$APP/ui/InteractiveWorkbookEditor.kt"
           grep -Fq 'drawPdfBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
-          grep -Fq 'ProfessionalWorkbookAssetsTest' "$TESTS/companion/ProfessionalWorkbookAssetsTest.kt"
+          grep -Fq 'ProfessionalWorkbookAssetsTest' "$TESTS/ui/ProfessionalWorkbookAssetsTest.kt"
 
           grep -Fq 'loadProfessionalWorkbookAsset' "$WEB/workbook.js"
           grep -Fq 'professionalPrintData' "$WEB/workbook.js"
