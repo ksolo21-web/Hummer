@@ -75,7 +75,7 @@ jobs:
           node --check MyStudyCompanionWeb/workbook.js
           grep -Fq 'buildCrosswordPuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
           grep -Fq 'buildWordSearchPuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
-          grep -Fq 'FindDifferencesPuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
+          grep -Fq 'DifferencePuzzle' "$APP/companion/InteractiveWorkbookModels.kt"
           grep -Fq 'ProfileAgeSetupScreen' "$APP/ui/MyStudyCompanionApp.kt"
           grep -Fq 'GoogleProfileHints' "$APP/auth/AuthModels.kt"
           grep -Fq 'SCOPE_BIRTHDAY' "$APP/auth/GoogleSignInCoordinator.kt"
