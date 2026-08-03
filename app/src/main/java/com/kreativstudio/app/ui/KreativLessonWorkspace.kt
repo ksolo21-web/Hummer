@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -134,7 +133,7 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
         showGuide = false
     }
 
-    val checkWork = {
+    val checkWork: () -> Unit = {
         scope.launch {
             checking = true
             assessment = CanvasAwareMentorEngine.analyze(
@@ -146,6 +145,7 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
             checking = false
             compactPanelOpen = true
         }
+        Unit
     }
 
     Column(Modifier.fillMaxSize()) {
