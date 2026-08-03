@@ -31,6 +31,8 @@ jobs:
           bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
           bash .msc-build/apply-0.15.4-web-household-parity.sh
           bash .msc-build/apply-0.15.5-household-cancellation.sh
+          grep -Fq 'return@runFamilyCatching' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+          ! grep -Fq 'return@runCatching' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
           tar -czf msc-current-reconstructed-source.tar.gz MyStudyCompanion MyStudyCompanionWeb
           sha256sum msc-current-reconstructed-source.tar.gz > msc-current-reconstructed-source.sha256
       - uses: actions/upload-artifact@v6
