@@ -131,6 +131,8 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
     LaunchedEffect(stepIndex) {
         assessment = null
         showGuide = false
+        step.recommendedTool?.let { viewModel.activeTool = it }
+        step.recommendedBrushWidth?.let { viewModel.brushWidth = it }
     }
 
     val checkWork: () -> Unit = {
@@ -138,9 +140,15 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
             checking = true
             assessment = CanvasAwareMentorEngine.analyze(
                 project = viewModel.currentProject,
-                artistRequest = "Evaluate my current canvas for this lesson step. Identify what is working, what is missing, and the single correction I should make next.",
+                artistRequest = "Evaluate my current canvas for this lesson step. Identify visible evidence of what is working, what is missing, and the single correction I should make next.",
                 preferOnDevice = viewModel.settings.value.aiLocalFirst,
-                lessonContext = "${lesson.title}, step ${stepIndex + 1}: ${step.title}. Instruction: ${step.instruction}. Checkpoint: ${step.checkpoint}",
+                lessonContext = buildString {
+                    append("${lesson.title}, step ${stepIndex + 1}: ${step.title}. ")
+                    append("Instruction: ${step.instruction}. Checkpoint: ${step.checkpoint}. ")
+                    if (step.whyItMatters.isNotBlank()) append("Why it matters: ${step.whyItMatters}. ")
+                    if (step.practice.isNotBlank()) append("Practice assignment: ${step.practice}. ")
+                    if (step.commonMistakes.isNotEmpty()) append("Common mistakes: ${step.commonMistakes.joinToString()}")
+                },
             )
             checking = false
             compactPanelOpen = true
@@ -184,7 +192,7 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
                     showGuide = showGuide,
                     onToggleGuide = { showGuide = !showGuide },
                     onCheck = checkWork,
-                    modifier = Modifier.widthIn(min = 330.dp, max = 390.dp).fillMaxHeight(),
+                    modifier = Modifier.widthIn(min = 350.dp, max = 430.dp).fillMaxHeight(),
                 )
             }
         } else {
@@ -198,7 +206,7 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
                     showGuide = showGuide,
                     onToggleGuide = { showGuide = !showGuide },
                     onCheck = checkWork,
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 270.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
                     onCollapse = { compactPanelOpen = false },
                 )
             } else {
@@ -333,9 +341,46 @@ private fun LessonInstructionPanel(
                     onCollapse?.let { TextButton(onClick = it) { Text("Hide") } }
                 }
             }
+            if (step.recommendedTool != null || step.recommendedBrushWidth != null) {
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        step.recommendedTool?.let { tool ->
+                            item { AssistChip(onClick = {}, label = { Text("Tool: ${tool.name.lowercase().replaceFirstChar(Char::uppercase)}") }) }
+                        }
+                        step.recommendedBrushWidth?.let { width ->
+                            item { AssistChip(onClick = {}, label = { Text("Brush: ${width.toInt()} px") }) }
+                        }
+                    }
+                }
+            }
             item {
                 Text("Objective", style = MaterialTheme.typography.titleMedium)
                 Text(step.instruction, style = MaterialTheme.typography.bodyLarge)
+            }
+            if (step.whyItMatters.isNotBlank()) {
+                item {
+                    LessonTeachingCard("Why this matters", step.whyItMatters, MaterialTheme.colorScheme.primaryContainer)
+                }
+            }
+            if (step.demonstration.isNotBlank()) {
+                item {
+                    LessonTeachingCard("What Show Me demonstrates", step.demonstration, MaterialTheme.colorScheme.tertiaryContainer)
+                }
+            }
+            if (step.practice.isNotBlank()) {
+                item {
+                    LessonTeachingCard("Guided practice", step.practice, MaterialTheme.colorScheme.surfaceVariant)
+                }
+            }
+            if (step.commonMistakes.isNotEmpty()) {
+                item {
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Watch for these mistakes", style = MaterialTheme.typography.titleMedium)
+                            step.commonMistakes.forEach { mistake -> Text("• $mistake") }
+                        }
+                    }
+                }
             }
             item {
                 Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(14.dp)) {
@@ -380,6 +425,16 @@ private fun LessonInstructionPanel(
             item {
                 Text("Course: ${lesson.title}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    }
+}
+
+@Composable
+private fun LessonTeachingCard(title: String, body: String, color: Color) {
+    Surface(Modifier.fillMaxWidth(), color = color, shape = RoundedCornerShape(14.dp)) {
+        Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(body)
         }
     }
 }
@@ -438,7 +493,7 @@ private fun BoxScope.LessonGuideOverlay(project: KreativProject, category: Lesso
             val browY = head.top + head.height * .43f
             drawLine(bright, Offset(head.left, browY), Offset(head.right, browY), strokeWidth = stroke)
 
-            if (stepIndex >= 1) {
+            if (stepIndex >= 2) {
                 val jaw = Path().apply {
                     moveTo(head.left + head.width * .08f, head.top + head.height * .46f)
                     lineTo(head.left + head.width * .18f, head.bottom - head.height * .08f)
@@ -448,7 +503,7 @@ private fun BoxScope.LessonGuideOverlay(project: KreativProject, category: Lesso
                 }
                 drawPath(jaw, guide, style = Stroke(stroke))
             }
-            if (stepIndex >= 2) {
+            if (stepIndex >= 3) {
                 val eyeY = browY + head.height * .08f
                 val noseY = head.top + head.height * .68f
                 val mouthY = head.top + head.height * .82f
@@ -456,7 +511,11 @@ private fun BoxScope.LessonGuideOverlay(project: KreativProject, category: Lesso
                 drawLine(guide.copy(alpha = .75f), Offset(head.left + head.width * .3f, noseY), Offset(head.right - head.width * .3f, noseY), strokeWidth = stroke)
                 drawLine(guide.copy(alpha = .75f), Offset(head.left + head.width * .25f, mouthY), Offset(head.right - head.width * .25f, mouthY), strokeWidth = stroke)
             }
-            if (stepIndex >= 3) {
+            if (stepIndex >= 4) {
+                drawCircle(bright, radius = head.width * .08f, center = Offset(head.left + head.width * .36f, browY + head.height * .08f), style = Stroke(stroke))
+                drawCircle(bright, radius = head.width * .08f, center = Offset(head.right - head.width * .36f, browY + head.height * .08f), style = Stroke(stroke))
+            }
+            if (stepIndex >= 5) {
                 drawRect(
                     Color(0x553E2A5C),
                     topLeft = Offset(head.center.x, head.top),
@@ -464,9 +523,9 @@ private fun BoxScope.LessonGuideOverlay(project: KreativProject, category: Lesso
                 )
                 drawLine(bright, Offset(head.center.x, head.top), Offset(head.center.x, head.bottom), strokeWidth = stroke)
             }
-            if (stepIndex >= 4) {
-                drawCircle(bright, radius = head.width * .08f, center = Offset(head.left + head.width * .36f, browY + head.height * .08f), style = Stroke(stroke))
-                drawCircle(bright, radius = head.width * .08f, center = Offset(head.right - head.width * .36f, browY + head.height * .08f), style = Stroke(stroke))
+            if (stepIndex >= 6) {
+                val focusCenter = Offset(head.left + head.width * .36f, browY + head.height * .08f)
+                drawCircle(Color(0x99FFD37A), radius = head.width * .13f, center = focusCenter, style = Stroke(stroke * 1.3f))
             }
         } else {
             drawLine(guide, Offset(page.left, page.center.y), Offset(page.right, page.center.y), strokeWidth = stroke)
