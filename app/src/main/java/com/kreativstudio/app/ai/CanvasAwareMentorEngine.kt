@@ -9,6 +9,7 @@ import com.google.firebase.ai.type.PublicPreviewAPI
 import com.google.firebase.ai.type.content
 import com.kreativstudio.app.BuildConfig
 import com.kreativstudio.app.model.KreativProject
+import com.kreativstudio.app.model.LessonMastery
 
 data class CanvasMentorResult(
     val title: String,
@@ -16,9 +17,12 @@ data class CanvasMentorResult(
     val actions: List<String>,
     val sourceLabel: String,
     val sawCanvas: Boolean,
+    val mastery: LessonMastery = LessonMastery.NOT_ASSESSED,
 )
 
 object CanvasAwareMentorEngine {
+    private val masteryLine = Regex("(?im)^MASTERY:\\s*(READY|REVISE)\\s*$")
+
     @OptIn(PublicPreviewAPI::class)
     suspend fun analyze(
         project: KreativProject?,
@@ -47,13 +51,20 @@ object CanvasAwareMentorEngine {
                 text(promptText)
             }
             val response = model.generateContent(prompt)
-            val text = response.text?.trim().orEmpty()
-            if (text.isBlank()) {
-                offlineResult(project, request, "The AI service returned no usable response.")
+            val rawText = response.text?.trim().orEmpty()
+            if (rawText.isBlank()) {
+                offlineResult(project, request, lessonContext, "The AI service returned no usable response.")
             } else {
+                val mastery = when {
+                    lessonContext == null -> LessonMastery.NOT_ASSESSED
+                    masteryLine.find(rawText)?.groupValues?.getOrNull(1).equals("READY", ignoreCase = true) ->
+                        LessonMastery.READY_TO_ADVANCE
+                    else -> LessonMastery.NEEDS_PRACTICE
+                }
+                val cleanedText = rawText.replace(masteryLine, "").trim().ifBlank { rawText }
                 CanvasMentorResult(
                     title = if (lessonContext == null) "Canvas-aware KREATIV Mentor" else "Lesson check",
-                    explanation = text,
+                    explanation = cleanedText,
                     actions = listOf(
                         "Apply only the highest-priority correction first.",
                         "Compare the result at full size and thumbnail size.",
@@ -61,10 +72,11 @@ object CanvasAwareMentorEngine {
                     ),
                     sourceLabel = if (preferOnDevice) "Private local-first multimodal analysis" else "Cloud multimodal analysis",
                     sawCanvas = bitmap != null,
+                    mastery = mastery,
                 )
             }
         } catch (error: Throwable) {
-            offlineResult(project, request, error.message)
+            offlineResult(project, request, lessonContext, error.message)
         } finally {
             bitmap?.recycle()
         }
@@ -81,7 +93,11 @@ object CanvasAwareMentorEngine {
         appendLine("Analyze from large structure to small detail: composition, proportion, perspective, values, color, edges, and technique.")
         appendLine("State what is working, identify the three highest-impact corrections in order, explain why each matters, and give one short practice drill.")
         appendLine("When an artwork image is supplied, refer to visible evidence and specific canvas regions. When it is not supplied, clearly say that visual inspection was unavailable.")
-        lessonContext?.let { appendLine("Current lesson objective and rubric: $it") }
+        lessonContext?.let {
+            appendLine("Current lesson objective and rubric: $it")
+            appendLine("Begin the response with exactly one separate line: MASTERY: READY or MASTERY: REVISE.")
+            appendLine("Use READY only when visible evidence satisfies the stated checkpoint. A blank, minimal, unclear, or uninspectable canvas must be REVISE.")
+        }
         project?.let {
             appendLine("Project: ${it.title}; ${it.widthPx} x ${it.heightPx}; ${it.layers.size} layers; ${it.elements.size} marks; ${it.attachments.size} references.")
         }
@@ -93,6 +109,7 @@ object CanvasAwareMentorEngine {
     private fun offlineResult(
         project: KreativProject?,
         request: String,
+        lessonContext: String?,
         error: String?,
     ): CanvasMentorResult {
         val marks = project?.elements?.size ?: 0
@@ -120,6 +137,7 @@ object CanvasAwareMentorEngine {
             ),
             sourceLabel = "Offline rules-based fallback — not visual AI analysis",
             sawCanvas = false,
+            mastery = if (lessonContext == null) LessonMastery.NOT_ASSESSED else LessonMastery.NEEDS_PRACTICE,
         )
     }
 }
