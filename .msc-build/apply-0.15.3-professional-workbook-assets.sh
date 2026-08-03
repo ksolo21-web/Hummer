@@ -16,6 +16,24 @@ xz --decompress --stdout "$PATCH_XZ" > "$PATCH_FILE"
   patch -p1 --forward --batch < "$PATCH_FILE"
 )
 
+# Replace the obsolete six-rectangle acceptance rule with the professional
+# stored-illustration density contract. This is a real requirement update,
+# not a skipped test: every generated color page must expose 35–70 regions.
+python3 - "$ROOT" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+path = root / 'MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/InteractiveWorkbookGeneratorTest.kt'
+text = path.read_text(encoding='utf-8')
+old = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.size == 6 })'
+new = 'assertTrue(art.filter { it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }.all { it.colorRegions.size in 35..70 })'
+if old in text:
+    path.write_text(text.replace(old, new, 1), encoding='utf-8')
+elif new not in text:
+    raise SystemExit('The obsolete six-region workbook assertion was not found.')
+PY
+
 python3 "$ROOT/.msc-build/generate-0.15.3-professional-workbook-assets.py" --repo-root "$ROOT"
 
 APP="$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app"
@@ -34,6 +52,7 @@ grep -Fq 'buildColorOverlay' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'WorkbookIllustrationCatalogTest' "$TESTS/companion/WorkbookIllustrationCatalogTest.kt"
+grep -Fq 'it.colorRegions.size in 35..70' "$TESTS/companion/InteractiveWorkbookGeneratorTest.kt"
 
 # Reject the primitive vector scene regression from all active production code.
 if grep -R -n -E 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"; then
@@ -53,7 +72,7 @@ for root_arg in sys.argv[1:]:
     manifest = json.loads((root / 'manifest.json').read_text())
     assert manifest['version'] >= 3
     assert len(manifest['assets']) == 16
-    assert all(len(asset['regions']) >= 35 for asset in manifest['assets'])
+    assert all(35 <= len(asset['regions']) <= 70 for asset in manifest['assets'])
     assert all(len(asset['differences']) == 5 for asset in manifest['assets'])
     for asset in manifest['assets']:
         folder = root / asset['id']
@@ -64,7 +83,7 @@ for root_arg in sys.argv[1:]:
             path = folder / name
             assert path.is_file() and path.stat().st_size > 600, path
         labels = np.asarray(Image.open(folder / 'region-mask.png'))
-        assert len(np.unique(labels)) >= 35
+        assert 35 <= len(np.unique(labels)) <= 70
 PY
 
 printf 'Applied My Study Companion 0.15.3 professional stored-illustration workbook repair.\n'
