@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.kreativstudio.app.ui
 
 import android.app.Activity
@@ -50,9 +52,7 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Grid4x4
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MenuBook
@@ -151,7 +151,8 @@ fun KreativAppStable(viewModel: KreativViewModel, activity: Activity) {
                     .padding(padding)
                     .windowInsetsPadding(WindowInsets.safeDrawing),
             ) {
-                if (user == null) {
+                val signedIn = user
+                if (signedIn == null) {
                     StableWelcomeScreen(
                         busy = viewModel.isBusy,
                         googleConfigured = viewModel.isGoogleConfigured,
@@ -160,7 +161,7 @@ fun KreativAppStable(viewModel: KreativViewModel, activity: Activity) {
                         onGuest = viewModel::useGuestStudio,
                     )
                 } else {
-                    StableAppShell(viewModel, requireNotNull(user))
+                    StableAppShell(viewModel, signedIn)
                 }
             }
         }
@@ -196,8 +197,7 @@ private fun StableWelcomeScreen(
             shape = RoundedCornerShape(30.dp),
         ) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                val wide = maxWidth >= 760.dp
-                if (wide) {
+                if (maxWidth >= 760.dp) {
                     Row(
                         Modifier.fillMaxSize().padding(26.dp),
                         horizontalArrangement = Arrangement.spacedBy(26.dp),
@@ -308,7 +308,26 @@ private fun StableAppShell(viewModel: KreativViewModel, user: AppUser) {
         val useRail = maxWidth >= 1200.dp && !settings.focusMode
         if (useRail) {
             Row(Modifier.fillMaxSize()) {
-                StableNavigationRail(viewModel)
+                NavigationRail(
+                    modifier = Modifier.fillMaxHeight(),
+                    header = {
+                        Image(
+                            painter = painterResource(R.drawable.kreativ_icon_source),
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(58.dp).clip(CircleShape),
+                        )
+                    },
+                ) {
+                    stableNavItems.forEach { item ->
+                        NavigationRailItem(
+                            selected = viewModel.screen == item.screen,
+                            onClick = { viewModel.navigate(item.screen) },
+                            icon = { Icon(item.icon, null) },
+                            label = { Text(item.label) },
+                            alwaysShowLabel = true,
+                        )
+                    }
+                }
                 VerticalDivider(Modifier.fillMaxHeight())
                 StableScreenHost(viewModel, user, Modifier.weight(1f))
             }
@@ -333,30 +352,6 @@ private fun StableScreenHost(viewModel: KreativViewModel, user: AppUser, modifie
                 StudioScreen.MENTOR -> StableMentorScreen(viewModel)
                 StudioScreen.SETTINGS -> SettingsScreen(viewModel, user)
             }
-        }
-    }
-}
-
-@Composable
-private fun StableNavigationRail(viewModel: KreativViewModel) {
-    NavigationRail(
-        modifier = Modifier.fillMaxHeight(),
-        header = {
-            Image(
-                painter = painterResource(R.drawable.kreativ_icon_source),
-                contentDescription = null,
-                modifier = Modifier.padding(10.dp).size(58.dp).clip(CircleShape),
-            )
-        },
-    ) {
-        stableNavItems.forEach { item ->
-            NavigationRailItem(
-                selected = viewModel.screen == item.screen,
-                onClick = { viewModel.navigate(item.screen) },
-                icon = { Icon(item.icon, null) },
-                label = { Text(item.label) },
-                alwaysShowLabel = true,
-            )
         }
     }
 }
@@ -418,7 +413,6 @@ private fun StableMentorScreen(viewModel: KreativViewModel) {
                             Text("Ask about your art", style = MaterialTheme.typography.titleLarge)
                             Text(
                                 if (settings.aiLocalFirst) "Local-first coaching is active." else "Cloud coaching is active when Firebase AI is configured.",
-                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -439,7 +433,7 @@ private fun StableMentorScreen(viewModel: KreativViewModel) {
                                 val total = onDeviceMentor.bytesToDownload
                                 if (total != null && total > 0L) {
                                     LinearProgressIndicator(
-                                        progress = { (onDeviceMentor.bytesDownloaded.toFloat() / total).coerceIn(0f, 1f) },
+                                        progress = { (onDeviceMentor.bytesDownloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f) },
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                 } else {
@@ -470,7 +464,7 @@ private fun StableMentorScreen(viewModel: KreativViewModel) {
                         }
                     }
                     Button(
-                        onClick = viewModel::requestAiAdvice,
+                        onClick = { viewModel.requestAiAdvice() },
                         enabled = !viewModel.isBusy,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -499,10 +493,6 @@ private fun StableMentorScreen(viewModel: KreativViewModel) {
                                 Text(action, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                             }
                         }
-                        Text(
-                            "AI suggestions are guidance only. Apply changes on a duplicate layer and keep the artist in control.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }
@@ -602,7 +592,7 @@ private fun StableStudioScreen(viewModel: KreativViewModel) {
             factory = { canvasContext ->
                 SafeCanvasFrame(canvasContext).also { frame ->
                     canvasFrame = frame
-                    frame.onCanvasFailure = { message -> viewModel.showMessage(message) }
+                    frame.onCanvasFailure = viewModel::showMessage
                     frame.canvasView.onElementsFinished = viewModel::addElements
                     frame.canvasView.onEraseGesture = viewModel::erase
                     frame.canvasView.onFillRequested = viewModel::fillBackground
@@ -640,7 +630,13 @@ private fun StableStudioScreen(viewModel: KreativViewModel) {
                             selected = viewModel.activeTool == tool,
                             onClick = { viewModel.activeTool = tool },
                             label = { Text(tool.stableLabel()) },
-                            leadingIcon = { Icon(if (tool == ToolType.TEXT) Icons.Default.TextFields else Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = {
+                                Icon(
+                                    if (tool == ToolType.TEXT) Icons.Default.TextFields else Icons.Default.Edit,
+                                    null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            },
                         )
                     }
                 }
@@ -727,6 +723,7 @@ private fun StableStudioControls(
 ) {
     val settings by viewModel.settings.collectAsState()
     var journalText by remember { mutableStateOf("") }
+
     LazyColumn(
         modifier = Modifier.fillMaxWidth().fillMaxHeight(.88f).navigationBarsPadding(),
         contentPadding = PaddingValues(18.dp),
@@ -756,7 +753,7 @@ private fun StableStudioControls(
             Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
             Slider(value = viewModel.brushOpacity, onValueChange = { viewModel.brushOpacity = it }, valueRange = .05f..1f)
             Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(value = viewModel.stabilization, onValueChange = { viewModel.stabilization = it }, valueRange = 0f...95f)
+            Slider(value = viewModel.stabilization, onValueChange = { viewModel.stabilization = it }, valueRange = 0f..0.95f)
         }
         item {
             Text("Brush library", style = MaterialTheme.typography.titleLarge)
@@ -776,9 +773,7 @@ private fun StableStudioControls(
                 IconButton(onClick = viewModel::addLayer) { Icon(Icons.Default.Add, "Add layer") }
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                project.layers.asReversed().forEach { layer ->
-                    StableLayerRow(viewModel, project, layer)
-                }
+                project.layers.asReversed().forEach { layer -> StableLayerRow(viewModel, project, layer) }
             }
         }
         item {
@@ -800,7 +795,7 @@ private fun StableStudioControls(
                 Spacer(Modifier.width(6.dp))
                 Text("Add material texture")
             }
-            Text("${project.attachments.size} attachment${if (project.attachments.size == 1) "" else "s"}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${project.attachments.size} attachment${if (project.attachments.size == 1) "" else "s"}")
         }
         item {
             Text("Journal", style = MaterialTheme.typography.titleLarge)
@@ -928,9 +923,7 @@ private class SafeCanvasFrame(context: Context) : FrameLayout(context) {
     private fun reportOnce() {
         if (reported) return
         reported = true
-        post {
-            onCanvasFailure("Canvas entered safe mode instead of closing: ${failure ?: "unknown render error"}")
-        }
+        post { onCanvasFailure("Canvas entered safe mode instead of closing: ${failure ?: "unknown render error"}") }
     }
 }
 
