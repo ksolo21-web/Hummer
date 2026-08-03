@@ -1,0 +1,122 @@
+name: My Study Companion 0.15.2 Daily Profile Ministry Gate
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0152-daily-profile-ministry-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Check out exact repair head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook baseline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic image dependency
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct complete workbook repair source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+
+      - name: Apply Daily Text, profile, and ministry repairs
+        shell: bash
+        run: bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+
+      - name: Verify accepted behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app'
+          TESTS='MyStudyCompanion/app/src/test/java/com/mystudycompanion/app'
+
+          grep -Fq 'TODAY’S SCRIPTURE' "$APP/ui/HomeScreen.kt"
+          grep -Fq 'FULL DAILY TEXT' "$APP/ui/HomeScreen.kt"
+          grep -Fq 'STUDY COMPANION REFLECTION' "$APP/ui/HomeScreen.kt"
+          grep -Fq 'Discuss with Study Assistant' "$APP/ui/HomeScreen.kt"
+
+          grep -Fq 'internal object StudyGroupAssignmentResolver' "$APP/companion/StudyGroupAssignmentResolver.kt"
+          grep -Fq 'migrateProfileUid' "$APP/companion/CompanionHubRepository.kt"
+          grep -Fq 'HOUSEHOLD_PROFILE' "$APP/companion/CompanionModels.kt"
+          grep -Fq 'StudyGroupAssignmentResolverTest' "$TESTS/companion/StudyGroupAssignmentResolverTest.kt"
+          ! grep -R -Eq 'ProfileAgeSetupScreen\(|Google did not provide enough age information' "$APP"
+
+          grep -Fq 'val scriptureReferences: List<String>' "$APP/companion/DailyMinistryPointerCatalog.kt"
+          grep -Fq 'val actions: List<String>' "$APP/companion/DailyMinistryPointerCatalog.kt"
+          grep -Fq 'val suggestedWords: String' "$APP/companion/DailyMinistryPointerCatalog.kt"
+          grep -Fq 'val returnVisitQuestion: String' "$APP/companion/DailyMinistryPointerCatalog.kt"
+          grep -Fq 'Why this helps' "$APP/ui/DailyFieldServicePointerCard.kt"
+          grep -Fq 'Try this today' "$APP/ui/DailyFieldServicePointerCard.kt"
+          grep -Fq 'Suggested words' "$APP/ui/DailyFieldServicePointerCard.kt"
+          grep -Fq 'Return-visit bridge' "$APP/ui/DailyFieldServicePointerCard.kt"
+          grep -Fq 'Scriptures to prepare' "$APP/ui/DailyFieldServicePointerCard.kt"
+
+      - name: Run phone and Wear tests and compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            :app:testDebugUnitTest \
+            :wear:testDebugUnitTest \
+            :app:compileDebugKotlin \
+            :wear:compileDebugKotlin \
+            :app:assembleDebug \
+            :wear:assembleDebug
+
+      - name: Upload debug validation APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.2-daily-profile-ministry-debug
+          path: |
+            MyStudyCompanion/app/build/outputs/apk/debug/*.apk
+            MyStudyCompanion/wear/build/outputs/apk/debug/*.apk
+          retention-days: 3
+          if-no-files-found: error
