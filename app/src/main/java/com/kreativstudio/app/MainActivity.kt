@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kreativstudio.app.ui.KreativApp
+import com.kreativstudio.app.ui.KreativAppStable
 import com.kreativstudio.app.ui.KreativViewModel
 import com.kreativstudio.app.ui.KreativViewModelFactory
 
@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
         val app = application as KreativApplication
         setContent {
             val vm: KreativViewModel = viewModel(factory = KreativViewModelFactory(app.container))
-            KreativApp(viewModel = vm, activity = this)
+            KreativAppStable(viewModel = vm, activity = this)
         }
     }
 }
