@@ -6,8 +6,10 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -32,33 +34,21 @@ class AuthRepository(
 
     suspend fun signInWithGoogle(activity: Activity): Result<AppUser> = runCatching {
         check(isGoogleConfigured) {
-            "Google sign-in is ready in the codebase but needs the private Firebase and OAuth values for this build."
+            "This KREATIV build is missing its registered Firebase/OAuth configuration."
         }
-
-        val googleOption = GetGoogleIdOption.Builder()
-            .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-            .setFilterByAuthorizedAccounts(false)
-            .setAutoSelectEnabled(true)
-            .build()
-
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleOption)
-            .build()
 
         val result = try {
-            credentialManager.getCredential(
-                context = activity,
-                request = request,
-            )
+            requestExplicitGoogleSignIn(activity)
         } catch (error: NoCredentialException) {
-            throw IllegalStateException(
-                "No Google credential is available. Add or select a Google account, then try again.",
-                error,
-            )
+            requestAnyGoogleAccount(activity)
+        } catch (error: GetCredentialCancellationException) {
+            throw IllegalStateException("Google sign-in was cancelled.", error)
         }
+
         val credential = result.credential
-        check(credential is CustomCredential &&
-            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        check(
+            credential is CustomCredential &&
+                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL,
         ) { "Google did not return a supported ID credential." }
 
         val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
@@ -66,7 +56,43 @@ class AuthRepository(
         val authResult = FirebaseAuth.getInstance().signInWithCredential(firebaseCredential).await()
         val firebaseUser = requireNotNull(authResult.user) { "Firebase did not return a signed-in user." }
         firebaseUser.toAppUser().also { state.value = it }
+    }.recoverCatching { error ->
+        val message = error.message.orEmpty()
+        if (
+            "DEVELOPER_ERROR" in message ||
+            "10:" in message ||
+            "configuration" in message.lowercase()
+        ) {
+            throw IllegalStateException(
+                "Google rejected this APK's package or signing certificate. Register com.kreativstudio.app and this APK's SHA-1/SHA-256 in Firebase, then rebuild with that registered signer.",
+                error,
+            )
+        }
+        throw error
     }
+
+    private suspend fun requestExplicitGoogleSignIn(activity: Activity) = credentialManager.getCredential(
+        context = activity,
+        request = GetCredentialRequest.Builder()
+            .addCredentialOption(
+                GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                    .build(),
+            )
+            .build(),
+    )
+
+    private suspend fun requestAnyGoogleAccount(activity: Activity) = credentialManager.getCredential(
+        context = activity,
+        request = GetCredentialRequest.Builder()
+            .addCredentialOption(
+                GetGoogleIdOption.Builder()
+                    .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                    .setFilterByAuthorizedAccounts(false)
+                    .setAutoSelectEnabled(false)
+                    .build(),
+            )
+            .build(),
+    )
 
     fun useOliviaPreview(): AppUser = AppUser(
         uid = "local-olivia-preview",
