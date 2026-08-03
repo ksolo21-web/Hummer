@@ -79,7 +79,7 @@ jobs:
           grep -Fq 'SHA1: 5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59' signer.txt
           grep -Fq 'SHA256: 07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D' signer.txt
 
-      - name: Build adaptive authenticated APK
+      - name: Build professional canvas authenticated APK
         shell: bash
         run: |
           set -euo pipefail
@@ -87,7 +87,8 @@ jobs:
           grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID" app/build/generated
           grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID" app/build/generated
           grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID" app/build/generated
-          grep -Fq 'KreativAdaptiveStudioHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
+          grep -Fq 'KreativSketchbookStudioHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
+          grep -Fq 'LayoutParams.MATCH_PARENT' app/src/main/java/com/kreativstudio/app/ui/KreativAdaptiveCanvas.kt
           grep -Fq 'KreativLessonWorkspaceHost' app/src/main/java/com/kreativstudio/app/MainActivity.kt
           grep -Fq 'KreativMentorV2Host' app/src/main/java/com/kreativstudio/app/MainActivity.kt
 
