@@ -38,6 +38,24 @@ elif correct not in text:
 path.write_text(text, encoding='utf-8')
 PY
 
+# Keep the web acceptance tests on the same service-worker cache contract as
+# the production 0.15.3 PWA. Older release assertions must never block a newer
+# synchronized Android/Wear/Web release.
+python3 - "$ROOT" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+root = Path(sys.argv[1])
+path = root / 'MyStudyCompanionWeb/appearance.test.mjs'
+text = path.read_text(encoding='utf-8')
+new_cache = 'msc-web-v0153-professional-workbook-assets-v1'
+text = re.sub(r'msc-web-v0(?:142|143|151|152)[A-Za-z0-9._-]*', new_cache, text)
+if new_cache not in text:
+    raise SystemExit('The PWA cache assertion could not be upgraded to 0.15.3.')
+path.write_text(text, encoding='utf-8')
+PY
+
 python3 "$ROOT/.msc-build/generate-0.15.3-professional-workbook-assets.py" --repo-root "$ROOT"
 
 APP="$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app"
@@ -57,6 +75,7 @@ grep -Fq 'regionAt' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'drawIllustrationBitmap' "$APP/ui/InteractiveWorkbookEditor.kt"
 grep -Fq 'WorkbookIllustrationCatalogTest' "$TESTS/companion/WorkbookIllustrationCatalogTest.kt"
 grep -Fq 'it.colorRegions.isNotEmpty()' "$TESTS/companion/InteractiveWorkbookGeneratorTest.kt"
+grep -Fq 'msc-web-v0153-professional-workbook-assets-v1' "$ROOT/MyStudyCompanionWeb/appearance.test.mjs"
 
 # Reject the primitive vector scene regression from all active production code.
 if grep -R -n -E 'fun drawWorkbookArt|WorkbookArtScene\(|workbookArtScene\(' "$APP/ui/InteractiveWorkbookEditor.kt"; then
