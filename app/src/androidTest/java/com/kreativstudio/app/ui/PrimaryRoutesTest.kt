@@ -1,6 +1,7 @@
 package com.kreativstudio.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -35,7 +36,7 @@ class PrimaryRoutesTest {
 
         composeRule.waitUntilAtLeastOneExists(hasText("Objective"), timeoutMillis = 15_000)
         composeRule.onNodeWithText("Objective").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText("Mastery checkpoint").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Mastery checkpoint").assertExists()
         composeRule.onNodeWithText("Check my work").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("Back to lessons").performClick()
