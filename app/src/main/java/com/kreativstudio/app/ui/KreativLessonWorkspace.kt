@@ -79,6 +79,7 @@ import com.kreativstudio.app.ai.CanvasMentorResult
 import com.kreativstudio.app.model.KreativProject
 import com.kreativstudio.app.model.Lesson
 import com.kreativstudio.app.model.LessonCategory
+import com.kreativstudio.app.model.LessonMastery
 import com.kreativstudio.app.model.LessonStep
 import com.kreativstudio.app.model.StrokePoint
 import com.kreativstudio.app.model.ToolType
@@ -138,7 +139,7 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
     val checkWork: () -> Unit = {
         scope.launch {
             checking = true
-            assessment = CanvasAwareMentorEngine.analyze(
+            val evaluated = CanvasAwareMentorEngine.analyze(
                 project = viewModel.currentProject,
                 artistRequest = "Evaluate my current canvas for this lesson step. Identify visible evidence of what is working, what is missing, and the single correction I should make next.",
                 preferOnDevice = viewModel.settings.value.aiLocalFirst,
@@ -150,6 +151,8 @@ private fun LessonWorkspace(viewModel: KreativViewModel, activity: Activity) {
                     if (step.commonMistakes.isNotEmpty()) append("Common mistakes: ${step.commonMistakes.joinToString()}")
                 },
             )
+            assessment = evaluated
+            viewModel.recordLessonAssessment(evaluated.mastery)
             checking = false
             compactPanelOpen = true
         }
@@ -416,6 +419,24 @@ private fun LessonInstructionPanel(
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(result.title, style = MaterialTheme.typography.titleLarge)
                             AssistChip(onClick = {}, label = { Text(result.sourceLabel) })
+                            Surface(
+                                color = if (result.mastery == LessonMastery.READY_TO_ADVANCE) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.errorContainer
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                            ) {
+                                Text(
+                                    if (result.mastery == LessonMastery.READY_TO_ADVANCE) {
+                                        "Mastery: Ready to advance"
+                                    } else {
+                                        "Mastery: Needs practice"
+                                    },
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                            }
                             Text(result.explanation)
                             result.actions.forEachIndexed { index, action -> Text("${index + 1}. $action") }
                         }
