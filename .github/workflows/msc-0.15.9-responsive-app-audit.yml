@@ -1,0 +1,213 @@
+name: My Study Companion 0.15.9 Responsive App Audit
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+    paths:
+      - .github/workflows/msc-0.15.9-responsive-app-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: msc-0159-responsive-app-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Publish run ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$RUNNER_TEMP/msc-responsive-audit-status"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-responsive-audit-status" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-responsive-audit-status"
+              cat > MSC-0.15.9-RESPONSIVE-AUDIT-STATUS.txt <<EOF
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=in_progress
+          source_commit=${GITHUB_SHA}
+          EOF
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add MSC-0.15.9-RESPONSIVE-AUDIT-STATUS.txt
+              git commit -m "Record responsive app audit ${GITHUB_RUN_ID} in progress" || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-responsive-audit-status" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-responsive-audit-status" || true
+
+      - name: Reconstruct exact 0.15.9 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/prepare-0.15.9-narrow-layout-gate.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+
+      - name: Audit every ordinary screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import shutil
+
+          ui = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui')
+          out = Path('.msc-debug/0.15.9-responsive-app-audit')
+          if out.exists():
+              shutil.rmtree(out)
+          (out / 'review-sources').mkdir(parents=True)
+
+          scroll_tokens = (
+              'LazyColumn(', 'LazyRow(', '.verticalScroll(', '.horizontalScroll(',
+              'AndroidView(', 'WebView(', 'HorizontalPager(', 'VerticalPager(',
+              'Pager(', 'ScrollableTabRow(',
+          )
+          viewport_tokens = (
+              'Canvas(', 'InteractiveWorkbookEditor(', 'UnifiedStudyReaderScreen(',
+              'Scaffold(', 'ModalBottomSheet(', 'AlertDialog(', 'Dialog(',
+          )
+
+          rows = []
+          flagged = []
+          for path in sorted(ui.glob('*Screen.kt')):
+              source = path.read_text(encoding='utf-8')
+              scroll_backed = any(token in source for token in scroll_tokens)
+              viewport_managed = any(token in source for token in viewport_tokens)
+              full_size = 'fillMaxSize()' in source
+              content_score = sum(source.count(token) for token in (
+                  'Text(', 'Card(', 'Surface(', 'OutlinedTextField(', 'Button(',
+                  'ListItem(', 'SectionHeader(', 'Spacer(',
+              ))
+              fixed_height_count = len(re.findall(r'\.height\(\s*\d+(?:\.\d+)?\.dp\s*\)', source))
+              weighted_children = source.count('.weight(1f)')
+              needs_review = (
+                  not scroll_backed and
+                  not viewport_managed and
+                  full_size and
+                  (content_score >= 7 or fixed_height_count >= 2 or weighted_children >= 2)
+              )
+              status = 'REVIEW' if needs_review else ('SCROLL' if scroll_backed else ('VIEWPORT' if viewport_managed else 'SMALL'))
+              rows.append(
+                  f'{status}\t{path.name}\tcontent={content_score}\tfixedHeight={fixed_height_count}'
+                  f'\tweights={weighted_children}\tfillMaxSize={full_size}'
+              )
+              if needs_review:
+                  flagged.append(path.name)
+                  shutil.copy2(path, out / 'review-sources' / path.name)
+
+          family = (ui / 'FamilyHubScreen.kt').read_text(encoding='utf-8')
+          household = (ui / 'HouseholdScreen.kt').read_text(encoding='utf-8')
+          assert '.verticalScroll(householdScrollState)' in family
+          assert 'householdScrollState.animateScrollTo(householdScrollState.maxValue)' in family
+          assert 'Box(modifier.fillMaxSize()' not in household
+          assert 'modifier = Modifier.weight(1f),' not in family[family.index('HouseholdScreen('):family.index('HouseholdScreen(') + 500]
+
+          report = [
+              'MY STUDY COMPANION 0.15.9 RESPONSIVE APP AUDIT',
+              '',
+              'The Family Hub household page has one bounded vertical scroll owner, natural-height content,',
+              'live fold/window remeasurement, IME padding, and automatic invitation-code reveal.',
+              '',
+              f'Screens scanned: {len(rows)}',
+              f'Ordinary static screens requiring source review: {len(flagged)}',
+              '',
+              *rows,
+              '',
+              'FLAGGED=' + ','.join(flagged),
+          ]
+          (out / 'RESPONSIVE-APP-AUDIT.txt').write_text(chr(10).join(report) + chr(10), encoding='utf-8')
+          (out / 'FLAGGED.txt').write_text(chr(10).join(flagged) + (chr(10) if flagged else ''), encoding='utf-8')
+          PY
+
+      - name: Publish audit and review sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          PAYLOAD="$RUNNER_TEMP/msc-responsive-audit-payload"
+          TREE="$RUNNER_TEMP/msc-responsive-audit-publish"
+          rm -rf "$PAYLOAD" "$TREE"
+          mkdir -p "$PAYLOAD"
+          cp -a .msc-debug/0.15.9-responsive-app-audit "$PAYLOAD/"
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$TREE"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$TREE" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$TREE"
+              rm -rf .msc-debug/0.15.9-responsive-app-audit
+              mkdir -p .msc-debug
+              cp -a "$PAYLOAD/0.15.9-responsive-app-audit" .msc-debug/
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add .msc-debug/0.15.9-responsive-app-audit
+              git commit -m 'Publish 0.15.9 responsive app audit' || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$TREE" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$TREE" || true
+
+      - name: Publish final result
+        if: always()
+        shell: bash
+        env:
+          STATUS_RESULT: ${{ job.status }}
+        run: |
+          set -u
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$RUNNER_TEMP/msc-responsive-audit-final"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-responsive-audit-final" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-responsive-audit-final"
+              cat > MSC-0.15.9-RESPONSIVE-AUDIT-STATUS.txt <<EOF
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=${STATUS_RESULT}
+          source_commit=${GITHUB_SHA}
+          audit_path=.msc-debug/0.15.9-responsive-app-audit/RESPONSIVE-APP-AUDIT.txt
+          EOF
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add MSC-0.15.9-RESPONSIVE-AUDIT-STATUS.txt
+              git commit -m "Record responsive app audit ${GITHUB_RUN_ID} ${STATUS_RESULT}" || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-responsive-audit-final" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-responsive-audit-final" || true
