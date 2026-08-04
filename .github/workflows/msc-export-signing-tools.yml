@@ -30,16 +30,17 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'build-tools;36.0.0'
           TOOLS="$SDK_ROOT/build-tools/36.0.0"
-          mkdir -p android-signing-tools/lib
+          mkdir -p android-signing-tools/lib android-signing-tools/lib64
           cp "$TOOLS/apksigner" android-signing-tools/
           cp "$TOOLS/lib/apksigner.jar" android-signing-tools/lib/
+          cp "$TOOLS/lib64/libc++.so" android-signing-tools/lib64/
           cp "$TOOLS/zipalign" android-signing-tools/
           cp "$TOOLS/aapt" android-signing-tools/
           chmod +x android-signing-tools/apksigner android-signing-tools/zipalign android-signing-tools/aapt
-          sha256sum android-signing-tools/apksigner android-signing-tools/lib/apksigner.jar android-signing-tools/zipalign android-signing-tools/aapt > android-signing-tools/SHA256SUMS.txt
+          sha256sum android-signing-tools/apksigner android-signing-tools/lib/apksigner.jar android-signing-tools/lib64/libc++.so android-signing-tools/zipalign android-signing-tools/aapt > android-signing-tools/SHA256SUMS.txt
       - uses: actions/upload-artifact@v6
         with:
-          name: android-signing-tools-36.0.0
+          name: android-signing-tools-36.0.0-with-runtime
           path: android-signing-tools
           retention-days: 3
           if-no-files-found: error
@@ -51,11 +52,10 @@ jobs:
           cat > MSC-ANDROID-SIGNING-TOOLS-STATUS.txt <<EOF
           workflow_run_id=${GITHUB_RUN_ID}
           workflow_result=${{ job.status }}
+          artifact_name=android-signing-tools-36.0.0-with-runtime
           EOF
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add MSC-ANDROID-SIGNING-TOOLS-STATUS.txt
           git commit -m "Record Android signing tools run ${GITHUB_RUN_ID}" || exit 0
           git push origin HEAD:agent/msc-0.15.6-root-fix-ci
-
-# This comment intentionally triggers the exporter after the workflow exists on the branch.
