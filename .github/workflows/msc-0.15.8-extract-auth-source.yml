@@ -58,7 +58,7 @@ jobs:
           cp -R MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/. "$OUT/auth/"
           cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt "$OUT/companion/"
           cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt "$OUT/companion/"
-          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubModels.kt "$OUT/companion/" 2>/dev/null || true
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt "$OUT/companion/"
           cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt "$OUT/family/"
           find MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui -maxdepth 1 -type f \( -iname '*Profile*' -o -iname '*Account*' -o -iname '*Auth*' -o -iname 'MyStudyCompanionApp.kt' -o -iname 'FamilyHubScreen.kt' \) -exec cp {} "$OUT/ui/" \;
           find MyStudyCompanion/app/src/test/java/com/mystudycompanion/app -type f \( -path '*/auth/*' -o -iname '*StudyGroupAssignmentResolver*' -o -iname '*CompanionHub*' \) -exec cp {} "$OUT/tests/" \;
