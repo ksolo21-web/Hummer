@@ -3,4 +3,1369 @@ Prepared 0.15.8 for the installed Google credential dependency, persisted-age mi
 + bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
 Prepared migration that rejects legacy household-derived age guesses until verified.
 + bash .msc-build/build-0.15.12-family-vote-widgets.sh
-0.15.12 overlay insertion target not found
+PASS: verified 16 checksum-locked premium theme scenes.
+Prepared source-only 0.12.5 reconstruction driver; normalized 0 legacy identity gate(s).
+base.tar.xz: OK
+scene.tar.xz: OK
+semantic.tar.xz: OK
+watchtower.tar.xz: OK
+preparation.tar.xz: OK
+ai.tar.xz: OK
+ai-fix1.tar.xz: OK
+Applied Kotlin, Compose, graphics, Material 3, Glance, Tile, and complication fixes.
+Source validation passed: 140 Kotlin, 24 XML, 1 JSON, 2 TOML files.
+Applied My Study Companion 0.10.1 AI, refresh, startup, and contrast repairs.
+/tmp/companion-0.11.0-overlay.tar.xz: OK
+Applied Kotlin, Compose post-overlay, and Wear ProtoLayout Material 3 compatibility repairs.
+/tmp/connectivity-0.11.1.tar.xz: OK
+Applied JVM-safe JW Library URL and official meeting HTML parsing fixes.
+/tmp/source-traceability-0.12.0.patch: OK
+patching file CHANGELOG.md
+patching file app/build.gradle.kts
+patching file app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
+patching file app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt
+patching file app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilder.kt
+patching file app/src/main/java/com/mystudycompanion/app/ai/runtime/AiProviderRouter.kt
+patching file app/src/main/java/com/mystudycompanion/app/ai/runtime/GuidedOfflineStudyProvider.kt
+patching file app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
+patching file app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidatorTest.kt
+patching file app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilderTest.kt
+patching file app/src/test/java/com/mystudycompanion/app/ai/runtime/GuidedOfflineStudyProviderTest.kt
+patching file wear/build.gradle.kts
+/tmp/patch-0.12.1-hardening.py: OK
+Applied 0.12.1 paragraph-level grounding and exact JW Library citation-target hardening.
+/tmp/patch-0.12.2-complete-jw-links.py: OK
+Updated signed-content tests for exact JW Library target contract.
+Applied final multi-passage link and truthful cloud-readiness UI follow-up.
+Applied structural, compile-safe exact JW Finder and stale-family link gate.
+Separated exact JW link policy and enforced it across every signed spiritual content surface.
+Implemented authenticated household invitation and join client flow.
+.msc-build/patch-0.12.2-final-identities.py: OK
+Pinned final 0.12.2 phone and Wear identities after every overlay.
+Pinned the exact-link resolver test assertion imports after all overlays.
+/tmp/firebase-family-0.12.3-overlay.tar.xz: OK
+/tmp/firebase-family-0.12.4-overlay.tar.xz: OK
+/tmp/firebase-integrity-0.12.5-overlay.tar.xz: OK
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  474k    0  474k    0     0  8604k      0 --:--:-- --:--:-- --:--:-- 8630k
+Verified active week document 202026244, Jeremiah 20-21, and Jeremiah 20:7-18.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100    95  100    95    0     0    451      0 --:--:-- --:--:-- --:--:--   452
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:05 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:06 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:07 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:08 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:09 --:--:--     0100   199  100   199    0     0     21      0  0:00:09  0:00:09 --:--:--    48
+  0     0    0     0    0     0      0      0 --:--:--  0:00:10 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:11 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:12 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:13 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:14 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:15 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:16 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:17 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:18 --:--:--     0100  159k    0  159k    0     0   8871      0 --:--:--  0:00:18 --:--:-- 40626
+/tmp/msc-0130.tar.xz: OK
+/tmp/msc-0140-overlay.tar.xz: OK
+Applied compile-safe interactive workbook source and unit-test fixes.
+patching file .msc-build/firebase-rules-tests/rules.test.cjs
+patching file MyStudyCompanion/app/build.gradle.kts
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/AppContainer.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MainActivity.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderModels.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/WearSnapshotSync.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/navigation/AppNavigation.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/navigation/DeepLinkRouter.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/wear/PhoneWearMessageService.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/wear/WearDataContract.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/wear/WearSyncPublisher.kt
+patching file MyStudyCompanion/build.gradle.kts
+patching file MyStudyCompanion/firestore.rules
+patching file MyStudyCompanion/wear/build.gradle.kts
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/MainActivity.kt
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearActionSender.kt
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearDestination.kt
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearSnapshotStore.kt
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearStudySnapshot.kt
+patching file MyStudyCompanionWeb/app.js
+patching file MyStudyCompanionWeb/firebase-config.js
+patching file MyStudyCompanionWeb/firebase-sync.js
+patching file MyStudyCompanionWeb/firestore-rules.test.cjs
+patching file MyStudyCompanionWeb/firestore.rules
+patching file MyStudyCompanionWeb/index.html
+patching file MyStudyCompanionWeb/manifest.webmanifest
+patching file MyStudyCompanionWeb/reader.js
+patching file MyStudyCompanionWeb/styles.css
+patching file MyStudyCompanionWeb/sw.js
+Applied and validated My Study Companion 0.14.1 unified Study Reader overlay.
+Applied compile-safe Unified Study Reader persistence visibility and 2 supported study-book icon replacement(s).
+/tmp/msc-0141-unified-reader-controls.tar.xz: OK
+Preserved and unioned web Study Reader bookmarks during household pull-sync.
+Applied Unified Study Reader bookmarks, dictation, playback, and glasses controls.
+/tmp/msc-0141-complete-last-major.patch.xz: OK
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipReminderScheduler.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/push/NotificationChannels.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderModels.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderRepository.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MoreScreen.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt
+patching file MyStudyCompanion/app/src/main/res/drawable/ic_notification.xml
+patching file MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/family/FamilyWorshipReminderSchedulerTest.kt
+patching file MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/studyreader/UnifiedStudyReaderModelsTest.kt
+patching file MyStudyCompanion/backend/.env.example
+patching file MyStudyCompanion/backend/app/config.py
+patching file MyStudyCompanion/backend/app/main.py
+patching file MyStudyCompanion/backend/app/services/official_reader_service.py
+patching file MyStudyCompanion/backend/tests/test_official_reader_service.py
+patching file MyStudyCompanionWeb/.firebaserc
+patching file MyStudyCompanionWeb/README.md
+patching file MyStudyCompanionWeb/app.js
+patching file MyStudyCompanionWeb/firebase-config.js
+patching file MyStudyCompanionWeb/firebase-sync.js
+patching file MyStudyCompanionWeb/firebase.json
+patching file MyStudyCompanionWeb/index.html
+patching file MyStudyCompanionWeb/reader.js
+patching file MyStudyCompanionWeb/runtime-config.example.json
+patching file MyStudyCompanionWeb/study-library-merge.js
+patching file MyStudyCompanionWeb/study-library-merge.test.mjs
+patching file MyStudyCompanionWeb/styles.css
+patching file MyStudyCompanionWeb/sw.js
+patching file MyStudyCompanionWeb/wearable-bridge.js
+TAP version 13
+# Subtest: newer remote packet applies note and bookmark deletions
+ok 1 - newer remote packet applies note and bookmark deletions
+  ---
+  duration_ms: 1.548462
+  type: 'test'
+  ...
+# Subtest: newer local packet is preserved
+ok 2 - newer local packet is preserved
+  ---
+  duration_ms: 0.274725
+  type: 'test'
+  ...
+# Subtest: legacy local state without explicit revision accepts cloud packet
+ok 3 - legacy local state without explicit revision accepts cloud packet
+  ---
+  duration_ms: 0.300994
+  type: 'test'
+  ...
+# Subtest: touch creates a monotonic document revision
+ok 4 - touch creates a monotonic document revision
+  ---
+  duration_ms: 0.788508
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 62.899737
+Applied the complete My Study Companion 0.14.1 last-major-build acceptance layer.
+/tmp/msc-theme-gallery-text.patch.xz: OK
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/AppThemeMode.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/StudyTheme.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeArtwork.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeBackdrop.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/design/ThemeEmblem.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/SettingsScreen.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt
+patching file MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/design/AppThemeModeTest.kt
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearTheme.kt
+patching file MyStudyCompanion/wear/src/main/java/com/mystudycompanion/app/wear/WearThemeArtwork.kt
+patching file MyStudyCompanion/wear/src/test/java/com/mystudycompanion/app/wear/WearThemeTest.kt
+patching file MyStudyCompanionWeb/app.js
+Hunk #1 succeeded at 142 (offset 7 lines).
+patching file MyStudyCompanionWeb/appearance.js
+patching file MyStudyCompanionWeb/appearance.test.mjs
+patching file MyStudyCompanionWeb/index.html
+Hunk #3 succeeded at 151 (offset -53 lines).
+Hunk #4 FAILED at 264.
+1 out of 4 hunks FAILED -- saving rejects to file MyStudyCompanionWeb/index.html.rej
+patching file MyStudyCompanionWeb/styles.css
+Hunk #1 FAILED at 27.
+1 out of 1 hunk FAILED -- saving rejects to file MyStudyCompanionWeb/styles.css.rej
+patching file MyStudyCompanionWeb/sw.js
+Hunk #1 FAILED at 1.
+Hunk #2 FAILED at 11.
+2 out of 2 hunks FAILED -- saving rejects to file MyStudyCompanionWeb/sw.js.rej
+/tmp/msc-theme-gallery-web-override.tar.xz: OK
+/tmp/msc-theme-gallery-generator.py.xz: OK
+Generated 16 web theme assets; new 13 scenes are ready.
+Generated 16 original theme scenes for Android, Wear OS, and web.
+PASS: repaired the permanent PWA theme gallery, color wheel, and offline shell.
+TAP version 13
+# Subtest: all 23 permanent themes and automatic are present
+ok 1 - all 23 permanent themes and automatic are present
+  ---
+  duration_ms: 0.999925
+  type: 'test'
+  ...
+# Subtest: visual color wheel replaces manual hex fields
+ok 2 - visual color wheel replaces manual hex fields
+  ---
+  duration_ms: 0.336671
+  type: 'test'
+  ...
+# Subtest: newer remote packet applies note and bookmark deletions
+ok 3 - newer remote packet applies note and bookmark deletions
+  ---
+  duration_ms: 1.764888
+  type: 'test'
+  ...
+# Subtest: newer local packet is preserved
+ok 4 - newer local packet is preserved
+  ---
+  duration_ms: 0.412514
+  type: 'test'
+  ...
+# Subtest: legacy local state without explicit revision accepts cloud packet
+ok 5 - legacy local state without explicit revision accepts cloud packet
+  ---
+  duration_ms: 0.439324
+  type: 'test'
+  ...
+# Subtest: touch creates a monotonic document revision
+ok 6 - touch creates a monotonic document revision
+  ---
+  duration_ms: 1.31212
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 71.090487
+PASS: 23 permanent themes, 13 new illustrated themes, Android/Web color wheels, Wear scenery, widgets, and PWA cache are present.
+Applied My Study Companion 0.14.1 expanded theme gallery and visual color-wheel layer.
+/tmp/msc-live-release-completion-0.14.1.patch.xz: OK
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/AppContainer.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+patching file MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/family/FamilyWorshipPublicationValidatorTest.kt
+patching file MyStudyCompanion/backend/.env.example
+patching file MyStudyCompanion/backend/app/config.py
+patching file MyStudyCompanion/backend/app/main.py
+patching file MyStudyCompanion/backend/app/security/dependencies.py
+patching file MyStudyCompanion/backend/app/security/scheduler_oidc.py
+patching file MyStudyCompanion/backend/requirements.txt
+patching file MyStudyCompanion/backend/tests/test_scheduler_oidc.py
+PASS: Family Worship uses authenticated backend generation, signed synchronization, exact-plan validation, and Cloud Scheduler OIDC support.
+Applied My Study Companion 0.14.1 live connected release-completion layer.
+/tmp/msc-production-live-stack-0.14.1.patch.xz: OK
+patching file MyStudyCompanion/PRIVATE_SERVICE_DEPLOYMENT.md
+patching file MyStudyCompanion/backend/.env.example
+patching file MyStudyCompanion/backend/app/config.py
+patching file MyStudyCompanion/backend/app/main.py
+patching file MyStudyCompanion/backend/app/models.py
+patching file MyStudyCompanion/backend/app/repositories/firestore_repositories.py
+patching file MyStudyCompanion/backend/app/services/scheduled_family_worship_service.py
+patching file MyStudyCompanion/backend/firebase.json
+patching file MyStudyCompanion/backend/firestore.emulator.rules
+patching file MyStudyCompanion/backend/pyproject.toml
+patching file MyStudyCompanion/backend/requirements.txt
+patching file MyStudyCompanion/backend/tests/test_firestore_repositories.py
+patching file MyStudyCompanion/backend/tests/test_scheduled_family_worship_service.py
+patching file MyStudyCompanion/backend/tests/test_scheduler_oidc.py
+patching file MyStudyCompanionWeb/firebase.json
+patching file MyStudyCompanionWeb/runtime-config.example.json
+Applied persistent Firestore production storage, scheduled Family Worship generation, clean PWA packaging, stable /v1 backend routing, and production release gates.
+Corrected the Wear static-theme gate: Calm Light is validated through its intentional fallback palette.
+Restored the 0.13.0 Google sign-in lifecycle and preserved all 23 approved themes as static themes.
+PASS: 0.13.0 Google login behavior restored; all 23 themes preserved as polished static themes across phone, Fold, Wear, widgets, and web; no live themes.
+PASS: 13 approved robust static themes installed from Kaleb-approved artwork; Google sign-in code was not changed.
+PASS: approved theme finisher completed with a verified manifest.
+Legacy static-theme integration process code: 1
+Workbook-art payload SHA256: af82131a084af3dfbe7e9c5738293e0e6d604b49b1eec98c0ca0de53b6f6bf69
+PASS: workbook engine now creates real guided drawing pages and tappable color-by-number pages across Android, PDF, and PWA.
+PASS: real drawing pages and color-by-number pages installed in Android, printable PDF, and PWA.
+PASS: snapshotted the accepted nine themes without changing a byte.
+PASS: installed sixteen checksum-locked premium scenes on phone, Wear, and web.
+PASS: 0.14.2 theme registry contains 25 permanent themes plus Automatic across Android, Wear OS, widgets, and PWA.
+TAP version 13
+# Subtest: all 25 static themes and automatic are present
+ok 1 - all 25 static themes and automatic are present
+  ---
+  duration_ms: 0.978646
+  type: 'test'
+  ...
+# Subtest: themes are static and visual color controls remain
+ok 2 - themes are static and visual color controls remain
+  ---
+  duration_ms: 0.253054
+  type: 'test'
+  ...
+# Subtest: Google login restores persistence and handles popup and redirect results
+ok 3 - Google login restores persistence and handles popup and redirect results
+  ---
+  duration_ms: 0.154529
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 61.022503
+PASS: 0.14.2 checksum-locked full-scene assets and 25-theme registry installed over the verified 0.14.1 workbook baseline.
+PASS: installed sixteen checksum-locked premium scenes on phone, Wear, and web.
+PASS: protected nine themes restored exactly after premium scene installation.
+PASS: 16 rebuilt/new themes finalized as sharp full-scene art with no blurred preview filler.
+PASS: 0.14.2 reconstructed with real workbook pages and 25 permanent themes plus Automatic.
+Reconstructed My Study Companion 0.14.2 from the verified 0.14.1 baseline with real workbook pages, sharp static theme art, and Google sign-in preserved.
+/tmp/tmp.cVlMvVc59f.tar.xz: OK
+Applied complete My Study Companion 0.15.1 workbook, persistence, Z Flip, and child-profile repairs.
+/tmp/tmp.bNNVv0TvqS.tar.xz: OK
+Applied My Study Companion 0.15.2 Daily Text, automatic study-group, and ministry-coaching repairs.
+/tmp/tmp.1K8neEwShV.patch.xz: OK
+patching file MyStudyCompanion/app/build.gradle.kts
+patching file MyStudyCompanion/wear/build.gradle.kts
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/InteractiveWorkbookModels.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt
+patching file MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+patching file MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalogTest.kt
+Generated 16 professional workbook packs from stored app artwork.
+PASS: service worker cache upgraded and 98 workbook files precached.
+Applied My Study Companion 0.15.3 professional stored-illustration workbook repair.
+patched 0.15.4 web household parity
+Configured Firebase Hosting and Firestore rules as one synchronized deployment.
+TAP version 13
+# Subtest: all 25 static themes and automatic are present
+ok 1 - all 25 static themes and automatic are present
+  ---
+  duration_ms: 2.968337
+  type: 'test'
+  ...
+# Subtest: themes are static and visual color controls remain
+ok 2 - themes are static and visual color controls remain
+  ---
+  duration_ms: 0.272551
+  type: 'test'
+  ...
+# Subtest: Google login restores persistence and handles popup and redirect results
+ok 3 - Google login restores persistence and handles popup and redirect results
+  ---
+  duration_ms: 0.226364
+  type: 'test'
+  ...
+# Subtest: copied household codes normalize to the stored form
+ok 4 - copied household codes normalize to the stored form
+  ---
+  duration_ms: 0.800251
+  type: 'test'
+  ...
+# Subtest: newer remote packet applies note and bookmark deletions
+ok 5 - newer remote packet applies note and bookmark deletions
+  ---
+  duration_ms: 2.509216
+  type: 'test'
+  ...
+# Subtest: newer local packet is preserved
+ok 6 - newer local packet is preserved
+  ---
+  duration_ms: 0.388839
+  type: 'test'
+  ...
+# Subtest: legacy local state without explicit revision accepts cloud packet
+ok 7 - legacy local state without explicit revision accepts cloud packet
+  ---
+  duration_ms: 0.401293
+  type: 'test'
+  ...
+# Subtest: touch creates a monotonic document revision
+ok 8 - touch creates a monotonic document revision
+  ---
+  duration_ms: 1.77044
+  type: 'test'
+  ...
+# Subtest: PWA workbook uses stored professional assets and masks
+ok 9 - PWA workbook uses stored professional assets and masks
+  ---
+  duration_ms: 1.427637
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 124.8425
+Applied My Study Companion 0.15.4 PWA parity and household invitation repair.
+Patched My Study Companion 0.15.5 household cancellation safety.
+Updated PWA cache assertion for 0.15.5.
+Applied My Study Companion 0.15.5 household coroutine and invitation safety repair.
+PASS: Firebase Spark invitation and first-time linking rules are active.
+TAP version 13
+# Subtest: all 25 static themes and automatic are present
+ok 1 - all 25 static themes and automatic are present
+  ---
+  duration_ms: 2.726633
+  type: 'test'
+  ...
+# Subtest: themes are static and visual color controls remain
+ok 2 - themes are static and visual color controls remain
+  ---
+  duration_ms: 0.273894
+  type: 'test'
+  ...
+# Subtest: Google login restores persistence and handles popup and redirect results
+ok 3 - Google login restores persistence and handles popup and redirect results
+  ---
+  duration_ms: 0.225222
+  type: 'test'
+  ...
+# Subtest: copied household codes normalize to the stored form
+ok 4 - copied household codes normalize to the stored form
+  ---
+  duration_ms: 0.859852
+  type: 'test'
+  ...
+# Subtest: newer remote packet applies note and bookmark deletions
+ok 5 - newer remote packet applies note and bookmark deletions
+  ---
+  duration_ms: 3.080717
+  type: 'test'
+  ...
+# Subtest: newer local packet is preserved
+ok 6 - newer local packet is preserved
+  ---
+  duration_ms: 0.484098
+  type: 'test'
+  ...
+# Subtest: legacy local state without explicit revision accepts cloud packet
+ok 7 - legacy local state without explicit revision accepts cloud packet
+  ---
+  duration_ms: 0.435867
+  type: 'test'
+  ...
+# Subtest: touch creates a monotonic document revision
+ok 8 - touch creates a monotonic document revision
+  ---
+  duration_ms: 1.329082
+  type: 'test'
+  ...
+# Subtest: PWA workbook uses stored professional assets and masks
+ok 9 - PWA workbook uses stored professional assets and masks
+  ---
+  duration_ms: 1.499673
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 127.4276
+Applied My Study Companion 0.15.6 free Firebase Spark household invitation restoration.
+Applied My Study Companion 0.15.8 Google age verification and live Spark Firestore compatibility repair.
+Applied My Study Companion 0.15.9 adaptive scrolling and live fold/window resize repair.
+Applied My Study Companion 0.15.10 household pairing and family date crash recovery.
+Applied My Study Companion 0.15.11 on-device Family Worship generator.
+MyStudyCompanion/app/google-services.json: OK
+Collecting fastapi==0.128.2 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 1))
+  Downloading fastapi-0.128.2-py3-none-any.whl.metadata (30 kB)
+Collecting uvicorn==0.48.0 (from uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading uvicorn-0.48.0-py3-none-any.whl.metadata (6.7 kB)
+Collecting pydantic==2.13.4 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 3))
+  Downloading pydantic-2.13.4-py3-none-any.whl.metadata (109 kB)
+Collecting pydantic-settings==2.12.0 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 4))
+  Downloading pydantic_settings-2.12.0-py3-none-any.whl.metadata (3.4 kB)
+Collecting cryptography==46.0.4 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 5))
+  Downloading cryptography-46.0.4-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (5.7 kB)
+Collecting httpx==0.28.1 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 6))
+  Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Collecting PyJWT==2.10.1 (from PyJWT[crypto]==2.10.1->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 7))
+  Downloading PyJWT-2.10.1-py3-none-any.whl.metadata (4.0 kB)
+Collecting firebase-admin==7.1.0 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading firebase_admin-7.1.0-py3-none-any.whl.metadata (1.7 kB)
+Collecting google-auth<3,>=2.40 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 9))
+  Downloading google_auth-2.56.2-py3-none-any.whl.metadata (6.0 kB)
+Collecting google-cloud-firestore==2.28.0 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 10))
+  Downloading google_cloud_firestore-2.28.0-py3-none-any.whl.metadata (9.5 kB)
+Collecting mcp<2,>=1.27 (from -r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading mcp-1.29.0-py3-none-any.whl.metadata (9.3 kB)
+Collecting pytest==9.0.2 (from -r requirements-dev.txt (line 2))
+  Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+Collecting pytest-asyncio==1.3.0 (from -r requirements-dev.txt (line 3))
+  Downloading pytest_asyncio-1.3.0-py3-none-any.whl.metadata (4.1 kB)
+Collecting starlette<0.51.0,>=0.40.0 (from fastapi==0.128.2->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 1))
+  Downloading starlette-0.50.0-py3-none-any.whl.metadata (6.3 kB)
+Collecting typing-extensions>=4.8.0 (from fastapi==0.128.2->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 1))
+  Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting typing-inspection>=0.4.2 (from fastapi==0.128.2->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 1))
+  Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting annotated-doc>=0.0.2 (from fastapi==0.128.2->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 1))
+  Downloading annotated_doc-0.0.5-py3-none-any.whl.metadata (6.5 kB)
+Collecting click>=7.0 (from uvicorn==0.48.0->uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading click-8.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting h11>=0.8 (from uvicorn==0.48.0->uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting annotated-types>=0.6.0 (from pydantic==2.13.4->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 3))
+  Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.46.4 (from pydantic==2.13.4->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 3))
+  Downloading pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+Collecting python-dotenv>=0.21.0 (from pydantic-settings==2.12.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 4))
+  Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+Collecting cffi>=2.0.0 (from cryptography==46.0.4->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 5))
+  Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+Collecting anyio (from httpx==0.28.1->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 6))
+  Downloading anyio-4.14.2-py3-none-any.whl.metadata (4.6 kB)
+Collecting certifi (from httpx==0.28.1->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 6))
+  Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx==0.28.1->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 6))
+  Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx==0.28.1->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 6))
+  Downloading idna-3.18-py3-none-any.whl.metadata (6.1 kB)
+Collecting cachecontrol>=0.14.3 (from firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)
+Collecting google-api-core<3.0.0dev,>=2.25.1 (from google-api-core[grpc]<3.0.0dev,>=2.25.1; platform_python_implementation != "PyPy"->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading google_api_core-2.33.0-py3-none-any.whl.metadata (3.2 kB)
+Collecting google-cloud-storage>=3.1.1 (from firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading google_cloud_storage-3.13.0-py3-none-any.whl.metadata (15 kB)
+Collecting google-cloud-core<3.0.0,>=2.0.0 (from google-cloud-firestore==2.28.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 10))
+  Downloading google_cloud_core-2.6.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting grpcio<2.0.0,>=1.59.0 (from google-cloud-firestore==2.28.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 10))
+  Downloading grpcio-1.83.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.7 kB)
+Collecting proto-plus<2.0.0,>=1.26.1 (from google-cloud-firestore==2.28.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 10))
+  Downloading proto_plus-1.28.2-py3-none-any.whl.metadata (2.2 kB)
+Collecting protobuf<8.0.0,>=6.33.5 (from google-cloud-firestore==2.28.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 10))
+  Downloading protobuf-7.35.1-cp310-abi3-manylinux2014_x86_64.whl.metadata (595 bytes)
+Collecting iniconfig>=1.0.1 (from pytest==9.0.2->-r requirements-dev.txt (line 2))
+  Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+Requirement already satisfied: packaging>=22 in /opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages (from pytest==9.0.2->-r requirements-dev.txt (line 2)) (26.3)
+Collecting pluggy<2,>=1.5 (from pytest==9.0.2->-r requirements-dev.txt (line 2))
+  Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Collecting pygments>=2.7.2 (from pytest==9.0.2->-r requirements-dev.txt (line 2))
+  Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting h2<5,>=3 (from httpx[http2]==0.28.1->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading h2-4.4.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting httptools>=0.6.3 (from uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+Collecting pyyaml>=5.1 (from uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+Collecting uvloop>=0.15.1 (from uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (4.9 kB)
+Collecting watchfiles>=0.20 (from uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+Collecting websockets>=10.4 (from uvicorn[standard]==0.48.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 2))
+  Downloading websockets-17.0.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.3 kB)
+Collecting pyasn1-modules>=0.2.1 (from google-auth<3,>=2.40->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 9))
+  Downloading pyasn1_modules-0.4.2-py3-none-any.whl.metadata (3.5 kB)
+Collecting httpx-sse>=0.4 (from mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading httpx_sse-0.4.3-py3-none-any.whl.metadata (9.7 kB)
+Collecting jsonschema>=4.20.0 (from mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting python-multipart>=0.0.9 (from mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading python_multipart-0.0.32-py3-none-any.whl.metadata (2.1 kB)
+Collecting sse-starlette>=1.6.1 (from mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading sse_starlette-3.4.6-py3-none-any.whl.metadata (15 kB)
+Collecting googleapis-common-protos<2.0.0,>=1.63.2 (from google-api-core<3.0.0dev,>=2.25.1->google-api-core[grpc]<3.0.0dev,>=2.25.1; platform_python_implementation != "PyPy"->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading googleapis_common_protos-1.75.0-py3-none-any.whl.metadata (8.6 kB)
+Collecting requests<3.0.0,>=2.33.0 (from google-api-core<3.0.0dev,>=2.25.1->google-api-core[grpc]<3.0.0dev,>=2.25.1; platform_python_implementation != "PyPy"->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+Collecting grpcio-status<2.0.0,>=1.41.0 (from google-api-core[grpc]<3.0.0dev,>=2.25.1; platform_python_implementation != "PyPy"->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading grpcio_status-1.83.0-py3-none-any.whl.metadata (1.2 kB)
+Collecting hyperframe<7,>=6.1 (from h2<5,>=3->httpx[http2]==0.28.1->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading hyperframe-6.1.0-py3-none-any.whl.metadata (4.3 kB)
+Collecting hpack<5,>=4.2 (from h2<5,>=3->httpx[http2]==0.28.1->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading hpack-4.2.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting charset_normalizer<4,>=2 (from requests<3.0.0,>=2.33.0->google-api-core<3.0.0dev,>=2.25.1->google-api-core[grpc]<3.0.0dev,>=2.25.1; platform_python_implementation != "PyPy"->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading charset_normalizer-3.4.9-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (41 kB)
+Collecting urllib3<3,>=1.26 (from requests<3.0.0,>=2.33.0->google-api-core<3.0.0dev,>=2.25.1->google-api-core[grpc]<3.0.0dev,>=2.25.1; platform_python_implementation != "PyPy"->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+Collecting msgpack<2.0.0,>=0.5.2 (from cachecontrol>=0.14.3->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading msgpack-1.2.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.3 kB)
+Collecting pycparser (from cffi>=2.0.0->cryptography==46.0.4->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 5))
+  Downloading pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+Collecting google-resumable-media<3.0.0,>=2.7.2 (from google-cloud-storage>=3.1.1->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading google_resumable_media-2.10.0-py3-none-any.whl.metadata (2.2 kB)
+Collecting google-crc32c<2.0.0,>=1.6.0 (from google-cloud-storage>=3.1.1->firebase-admin==7.1.0->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 8))
+  Downloading google_crc32c-1.8.0-cp312-cp312-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl.metadata (1.7 kB)
+Collecting attrs>=22.2.0 (from jsonschema>=4.20.0->mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=4.20.0->mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema>=4.20.0->mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.25.0 (from jsonschema>=4.20.0->mcp<2,>=1.27->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 11))
+  Downloading rpds_py-2026.6.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+Collecting pyasn1<0.7.0,>=0.6.1 (from pyasn1-modules>=0.2.1->google-auth<3,>=2.40->-r /home/runner/work/Hummer/Hummer/MyStudyCompanion/backend/requirements.txt (line 9))
+  Downloading pyasn1-0.6.4-py3-none-any.whl.metadata (8.4 kB)
+Downloading fastapi-0.128.2-py3-none-any.whl (104 kB)
+Downloading uvicorn-0.48.0-py3-none-any.whl (71 kB)
+Downloading pydantic-2.13.4-py3-none-any.whl (472 kB)
+Downloading pydantic_settings-2.12.0-py3-none-any.whl (51 kB)
+Downloading cryptography-46.0.4-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 21.0 MB/s  0:00:00
+Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Downloading PyJWT-2.10.1-py3-none-any.whl (22 kB)
+Downloading firebase_admin-7.1.0-py3-none-any.whl (137 kB)
+Downloading google_cloud_firestore-2.28.0-py3-none-any.whl (431 kB)
+Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+Downloading pytest_asyncio-1.3.0-py3-none-any.whl (15 kB)
+Downloading pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 130.1 MB/s  0:00:00
+Downloading google_auth-2.56.2-py3-none-any.whl (258 kB)
+Downloading mcp-1.29.0-py3-none-any.whl (223 kB)
+Downloading google_api_core-2.33.0-py3-none-any.whl (176 kB)
+Downloading google_cloud_core-2.6.0-py3-none-any.whl (29 kB)
+Downloading googleapis_common_protos-1.75.0-py3-none-any.whl (300 kB)
+Downloading grpcio-1.83.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (7.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.0/7.0 MB 105.6 MB/s  0:00:00
+Downloading grpcio_status-1.83.0-py3-none-any.whl (14 kB)
+Downloading h2-4.4.1-py3-none-any.whl (62 kB)
+Downloading hpack-4.2.0-py3-none-any.whl (34 kB)
+Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+Downloading hyperframe-6.1.0-py3-none-any.whl (13 kB)
+Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Downloading proto_plus-1.28.2-py3-none-any.whl (50 kB)
+Downloading protobuf-7.35.1-cp310-abi3-manylinux2014_x86_64.whl (327 kB)
+Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+Downloading charset_normalizer-3.4.9-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (224 kB)
+Downloading idna-3.18-py3-none-any.whl (65 kB)
+Downloading starlette-0.50.0-py3-none-any.whl (74 kB)
+Downloading anyio-4.14.2-py3-none-any.whl (125 kB)
+Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Downloading urllib3-2.7.0-py3-none-any.whl (131 kB)
+Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)
+Downloading msgpack-1.2.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (419 kB)
+Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)
+Downloading cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+Downloading click-8.4.2-py3-none-any.whl (119 kB)
+Downloading google_cloud_storage-3.13.0-py3-none-any.whl (341 kB)
+Downloading google_crc32c-1.8.0-cp312-cp312-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (33 kB)
+Downloading google_resumable_media-2.10.0-py3-none-any.whl (81 kB)
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+Downloading httpx_sse-0.4.3-py3-none-any.whl (9.0 kB)
+Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+Downloading jsonschema-4.26.0-py3-none-any.whl (90 kB)
+Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+Downloading pyasn1_modules-0.4.2-py3-none-any.whl (181 kB)
+Downloading pyasn1-0.6.4-py3-none-any.whl (84 kB)
+Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 220.3 MB/s  0:00:00
+Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+Downloading python_multipart-0.0.32-py3-none-any.whl (30 kB)
+Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 155.1 MB/s  0:00:00
+Downloading referencing-0.37.0-py3-none-any.whl (26 kB)
+Downloading rpds_py-2026.6.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (366 kB)
+Downloading sse_starlette-3.4.6-py3-none-any.whl (16 kB)
+Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+Downloading uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 277.2 MB/s  0:00:00
+Downloading watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+Downloading websockets-17.0.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (220 kB)
+Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+Installing collected packages: websockets, uvloop, urllib3, typing-extensions, rpds-py, pyyaml, python-multipart, python-dotenv, PyJWT, pygments, pycparser, pyasn1, protobuf, pluggy, msgpack, iniconfig, idna, hyperframe, httpx-sse, httptools, hpack, h11, google-crc32c, click, charset_normalizer, certifi, attrs, annotated-types, annotated-doc, uvicorn, typing-inspection, requests, referencing, pytest, pydantic-core, pyasn1-modules, proto-plus, httpcore, h2, grpcio, googleapis-common-protos, google-resumable-media, cffi, anyio, watchfiles, starlette, pytest-asyncio, pydantic, jsonschema-specifications, httpx, grpcio-status, cryptography, cachecontrol, sse-starlette, pydantic-settings, jsonschema, google-auth, fastapi, mcp, google-api-core, google-cloud-core, google-cloud-storage, google-cloud-firestore, firebase-admin
+
+Successfully installed PyJWT-2.10.1 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.14.2 attrs-26.1.0 cachecontrol-0.14.4 certifi-2026.7.22 cffi-2.1.1 charset_normalizer-3.4.9 click-8.4.2 cryptography-46.0.4 fastapi-0.128.2 firebase-admin-7.1.0 google-api-core-2.33.0 google-auth-2.56.2 google-cloud-core-2.6.0 google-cloud-firestore-2.28.0 google-cloud-storage-3.13.0 google-crc32c-1.8.0 google-resumable-media-2.10.0 googleapis-common-protos-1.75.0 grpcio-1.83.0 grpcio-status-1.83.0 h11-0.16.0 h2-4.4.1 hpack-4.2.0 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 httpx-sse-0.4.3 hyperframe-6.1.0 idna-3.18 iniconfig-2.3.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 mcp-1.29.0 msgpack-1.2.1 pluggy-1.6.0 proto-plus-1.28.2 protobuf-7.35.1 pyasn1-0.6.4 pyasn1-modules-0.4.2 pycparser-3.0 pydantic-2.13.4 pydantic-core-2.46.4 pydantic-settings-2.12.0 pygments-2.20.0 pytest-9.0.2 pytest-asyncio-1.3.0 python-dotenv-1.2.2 python-multipart-0.0.32 pyyaml-6.0.3 referencing-0.37.0 requests-2.34.2 rpds-py-2026.6.3 sse-starlette-3.4.6 starlette-0.50.0 typing-extensions-4.16.0 typing-inspection-0.4.2 urllib3-2.7.0 uvicorn-0.48.0 uvloop-0.22.1 watchfiles-1.2.0 websockets-17.0.1
+.......s...........................................                      [100%]
+50 passed, 1 skipped in 0.88s
+TAP version 13
+# Subtest: all 25 static themes and automatic are present
+ok 1 - all 25 static themes and automatic are present
+  ---
+  duration_ms: 2.318507
+  type: 'test'
+  ...
+# Subtest: themes are static and visual color controls remain
+ok 2 - themes are static and visual color controls remain
+  ---
+  duration_ms: 0.307026
+  type: 'test'
+  ...
+# Subtest: Google login restores persistence and handles popup and redirect results
+ok 3 - Google login restores persistence and handles popup and redirect results
+  ---
+  duration_ms: 0.235131
+  type: 'test'
+  ...
+# Subtest: copied household codes normalize to the stored form
+ok 4 - copied household codes normalize to the stored form
+  ---
+  duration_ms: 0.8108
+  type: 'test'
+  ...
+# Subtest: newer remote packet applies note and bookmark deletions
+ok 5 - newer remote packet applies note and bookmark deletions
+  ---
+  duration_ms: 2.55463
+  type: 'test'
+  ...
+# Subtest: newer local packet is preserved
+ok 6 - newer local packet is preserved
+  ---
+  duration_ms: 0.422392
+  type: 'test'
+  ...
+# Subtest: legacy local state without explicit revision accepts cloud packet
+ok 7 - legacy local state without explicit revision accepts cloud packet
+  ---
+  duration_ms: 0.381185
+  type: 'test'
+  ...
+# Subtest: touch creates a monotonic document revision
+ok 8 - touch creates a monotonic document revision
+  ---
+  duration_ms: 1.192686
+  type: 'test'
+  ...
+# Subtest: PWA workbook uses stored professional assets and masks
+ok 9 - PWA workbook uses stored professional assets and masks
+  ---
+  duration_ms: 1.641418
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 124.826909
+
+added 87 packages in 12s
+
+3 packages are looking for funding
+  run `npm fund` for details
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm warn deprecated json-ptr@3.1.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+npm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+[36m[1mi  emulators:[22m[39m Starting emulators: firestore
+[36m[1mi  emulators:[22m[39m Detected demo project ID "demo-my-study-companion", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+[33m[1m⚠ [22m[39m It appears you are running in a CI environment. You can avoid downloading the Firestore Emulator repeatedly by caching the /home/runner/.cache/firebase/emulators directory.
+[36m[1mi  firestore:[22m[39m downloading cloud-firestore-emulator-v1.20.2.jar...
+
+[36m[1mi  firestore:[22m[39m Firestore Emulator logging to [1mfirestore-debug.log[22m
+[32m[1m✔  firestore:[22m[39m Firestore Emulator UI websocket is running on 9150.
+[36m[1mi [22m[39m Running script: [1mNODE_PATH=/home/runner/work/_temp/msc-rules-deps/node_modules node firestore-rules.test.cjs[22m
+[2026-08-04T23:20:18.695Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59005 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L114, false for 'create' @ L449, false for 'update' @ L125, false for 'update' @ L449
+PASS: unauthenticated household creation is denied
+PASS: signed-in owner can atomically create household identity and board
+[2026-08-04T23:20:19.165Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59008 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L114:24 for 'create' @ L114, false for 'create' @ L449, evaluation error at L125:24 for 'update' @ L125, false for 'update' @ L449, evaluation error at L141:26 for 'create' @ L141, false for 'create' @ L449, evaluation error at L170:26 for 'update' @ L170, false for 'update' @ L449, evaluation error at L98:24 for 'create' @ L98, false for 'create' @ L449, evaluation error at L100:24 for 'update' @ L100, false for 'update' @ L449, evaluation error at L204:26 for 'create' @ L204, false for 'create' @ L449, evaluation error at L217:26 for 'update' @ L217, false for 'update' @ L449, false for 'create' @ L204, false for 'create' @ L449, false for 'create' @ L141, false for 'create' @ L449
+PASS: an account already linked to one household cannot create another
+PASS: owner can create a 24-hour invitation
+[2026-08-04T23:20:19.528Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5900e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L422:24 for 'update' @ L422, false for 'update' @ L449, evaluation error at L141:26 for 'create' @ L141, false for 'create' @ L449, evaluation error at L170:26 for 'update' @ L170, false for 'update' @ L449, evaluation error at L98:24 for 'create' @ L98, false for 'create' @ L449, evaluation error at L100:24 for 'update' @ L100, false for 'update' @ L449, false for 'create' @ L98, false for 'create' @ L449, false for 'create' @ L141, false for 'create' @ L449, false for 'update' @ L422, false for 'update' @ L449
+PASS: member can consume an active invitation exactly once
+[2026-08-04T23:20:19.698Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59012 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L422:24 for 'update' @ L422, false for 'update' @ L449, evaluation error at L141:26 for 'create' @ L141, false for 'create' @ L449, evaluation error at L170:26 for 'update' @ L170, false for 'update' @ L449, evaluation error at L98:24 for 'create' @ L98, false for 'create' @ L449, evaluation error at L100:24 for 'update' @ L100, false for 'update' @ L449, false for 'update' @ L422, false for 'update' @ L449, false for 'update' @ L100, false for 'update' @ L449
+PASS: an account cannot join a second household while linked to the first
+[2026-08-04T23:20:19.850Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59016 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L422:24 for 'update' @ L422, false for 'update' @ L449, false for 'update' @ L422, false for 'update' @ L449
+PASS: organizer cannot retarget an invitation to another household
+[2026-08-04T23:20:19.968Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5901a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L100:24 for 'update' @ L100, false for 'update' @ L449, false for 'update' @ L100, false for 'update' @ L449
+PASS: member cannot switch the immutable user link to another household
+[2026-08-04T23:20:20.051Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5901c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L170:26 for 'update' @ L170, false for 'update' @ L449, false for 'update' @ L170, false for 'update' @ L449
+PASS: member cannot elevate their own household role
+PASS: owner can promote another member to organizer
+[2026-08-04T23:20:20.210Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59020 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L217:26 for 'update' @ L217, false for 'update' @ L449, false for 'update' @ L217, false for 'update' @ L449
+PASS: ordinary member cannot overwrite organizer board settings
+[2026-08-04T23:20:20.329Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59023 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L232:26 for 'create' @ L232, false for 'create' @ L449, evaluation error at L254:26 for 'update' @ L254, false for 'update' @ L449, false for 'create' @ L232, false for 'create' @ L449
+PASS: only official JW links can be synchronized with family ideas
+[2026-08-04T23:20:20.425Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59026 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L254:26 for 'update' @ L254, false for 'update' @ L449, false for 'update' @ L254, false for 'update' @ L449
+PASS: another member cannot edit an idea but organizer can mark it used
+[2026-08-04T23:20:20.553Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5902a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L294:26 for 'create' @ L294, false for 'create' @ L449, false for 'update' @ L304, false for 'update' @ L449, false for 'create' @ L294, false for 'create' @ L449
+[2026-08-04T23:20:20.573Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5902b error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L294:26 for 'create' @ L294, false for 'create' @ L449, false for 'update' @ L304, false for 'update' @ L449, false for 'update' @ L304, false for 'update' @ L449
+PASS: vote documents require the deterministic identity and cannot be duplicated
+[2026-08-04T23:20:20.663Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5902d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L294:26 for 'create' @ L294, false for 'create' @ L449, false for 'update' @ L304, false for 'update' @ L449, false for 'create' @ L294, false for 'create' @ L449
+PASS: votes for nonexistent ideas are denied
+[2026-08-04T23:20:20.751Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5902f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L311, false for 'create' @ L449, false for 'update' @ L311, false for 'update' @ L449
+PASS: member can write only their own progress document
+[2026-08-04T23:20:20.828Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59031 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L332, false for 'create' @ L449, false for 'update' @ L332, false for 'update' @ L449
+PASS: member can synchronize only workbook pages owned by their account
+[2026-08-04T23:20:20.894Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59033 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L332:36 for 'create' @ L332, false for 'create' @ L449, evaluation error at L332:36 for 'update' @ L332, false for 'update' @ L449, false for 'create' @ L332, false for 'create' @ L449
+[2026-08-04T23:20:20.923Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59034 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L332:36 for 'create' @ L332, false for 'create' @ L449, evaluation error at L332:36 for 'update' @ L332, false for 'update' @ L449, false for 'create' @ L332, false for 'create' @ L449
+PASS: workbook page documents reject injected fields and oversized drawings
+PASS: household members can read shared workbook progress but outsiders cannot
+[2026-08-04T23:20:21.184Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5903a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L366, false for 'create' @ L449, false for 'update' @ L366, false for 'update' @ L449
+PASS: member can synchronize only their own official study material
+[2026-08-04T23:20:21.252Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5903c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L366:36 for 'create' @ L366, false for 'create' @ L449, evaluation error at L366:36 for 'update' @ L366, false for 'update' @ L449, false for 'create' @ L366, false for 'create' @ L449
+[2026-08-04T23:20:21.268Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5903d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L366:36 for 'create' @ L366, false for 'create' @ L449, evaluation error at L366:36 for 'update' @ L366, false for 'update' @ L449, false for 'create' @ L366, false for 'create' @ L449
+[2026-08-04T23:20:21.303Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5903e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L366:36 for 'create' @ L366, false for 'create' @ L449, evaluation error at L366:36 for 'update' @ L366, false for 'update' @ L449, false for 'create' @ L366, false for 'create' @ L449
+PASS: study materials reject nonofficial sources, injected fields, and oversized payloads
+PASS: study material notes are private to the owning account
+[2026-08-04T23:20:21.514Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59045 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L390:34 for 'create' @ L390, false for 'create' @ L449, evaluation error at L390:34 for 'update' @ L390, false for 'update' @ L449, false for 'create' @ L390, false for 'create' @ L449
+PASS: ordinary member cannot publish Family Worship but owner can
+[2026-08-04T23:20:21.596Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59048 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L204, false for 'create' @ L449, false for 'update' @ L217, false for 'update' @ L449
+[2026-08-04T23:20:21.610Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59049 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L232:26 for 'create' @ L232, false for 'create' @ L449, evaluation error at L254:26 for 'update' @ L254, false for 'update' @ L449, false for 'create' @ L232, false for 'create' @ L449
+PASS: unknown documents and extra synchronized fields are denied
+PASS: signed-in users cannot list invitation documents
+[2026-08-04T23:20:21.717Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5904d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L137, false for 'delete' @ L449
+[2026-08-04T23:20:21.723Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5904e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L199, false for 'delete' @ L449
+[2026-08-04T23:20:21.734Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a5904f error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L110, false for 'delete' @ L449
+[2026-08-04T23:20:21.740Z]  @firebase/firestore: Firestore (12.17.0): GrpcConnection RPC 'Write' stream 0x17a59050 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'delete' @ L445, false for 'delete' @ L449
+PASS: household, membership, user-link, and invitation deletion are disabled
+PASS: 26 Firestore authorization, integrity, and abuse tests completed.
+[32m[1m✔ [22m[39m Script exited successfully (code 0)
+[36m[1mi  emulators:[22m[39m Shutting down emulators.
+[36m[1mi  firestore:[22m[39m Stopping Firestore Emulator
+[36m[1mi  hub:[22m[39m Stopping emulator hub
+[36m[1mi  logging:[22m[39m Stopping Logging Emulator
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :applyMscPostOverlayCompatibility
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:checkDebugAarMetadata
+> Task :app:processDebugNavigationResources
+> Task :app:generateDebugResValues
+> Task :app:compileDebugNavigationResources
+> Task :app:processDebugGoogleServices
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :wear:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:javaPreCompileDebug
+> Task :wear:preBuild UP-TO-DATE
+> Task :wear:preDebugBuild UP-TO-DATE
+> Task :wear:checkDebugAarMetadata
+> Task :wear:processDebugNavigationResources
+> Task :wear:compileDebugNavigationResources
+> Task :wear:generateDebugResValues
+> Task :wear:mapDebugSourceSetPaths
+> Task :wear:generateDebugResources
+> Task :app:processDebugResources
+> Task :wear:mergeDebugResources
+> Task :wear:packageDebugResources
+> Task :wear:createDebugCompatibleScreenManifests
+> Task :wear:extractDeepLinksDebug
+> Task :wear:parseDebugLocalResources
+> Task :wear:processDebugMainManifest
+> Task :wear:processDebugManifest
+> Task :wear:preDebugUnitTestBuild UP-TO-DATE
+> Task :wear:javaPreCompileDebug
+> Task :wear:processDebugManifestForPackage
+> Task :wear:javaPreCompileDebugUnitTest
+> Task :wear:processDebugResources
+> Task :app:kspDebugKotlin
+> Task :wear:compileDebugKotlin
+> Task :wear:compileDebugJavaWithJavac NO-SOURCE
+> Task :wear:processDebugJavaRes
+> Task :wear:bundleDebugClassesToRuntimeJar
+> Task :wear:bundleDebugClassesToCompileJar
+> Task :wear:compileDebugUnitTestKotlin
+> Task :wear:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :wear:processDebugUnitTestJavaRes
+> Task :wear:testDebugUnitTest
+> Task :app:compileDebugKotlin
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MyStudyCompanionApplication.kt:43:41 'val token: Task<String!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:47:10 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:56:10 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:57:48 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:69:10 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:70:60 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:75:54 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/BackendHttpClient.kt:112:64 Condition is always 'true'.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/TrustedContentKeyStore.kt:26:9 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/push/StudyFirebaseMessagingService.kt:9:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AccountScreen.kt:156:37 'val Icons.Outlined.Logout: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Logout.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt:238:41 'val Icons.Outlined.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Send.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt:408:48 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:152:13 'fun ScrollableTabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., edgePadding: Dp = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryScrollableTabRow and SecondaryScrollableTabRow tab variants.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:158:13 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:314:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:338:41 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:350:41 'val Icons.Outlined.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Send.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:360:41 'val Icons.Outlined.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.OpenInNew.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:472:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:473:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:475:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:476:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:634:49 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:997:42 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:1002:123 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/DailyFieldServicePointerCard.kt:142:41 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt:215:53 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt:96:13 'fun ScrollableTabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., edgePadding: Dp = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryScrollableTabRow and SecondaryScrollableTabRow tab variants.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt:102:13 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt:297:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt:317:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:490:35 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:663:45 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:799:41 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:906:54 'val Icons.Outlined.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Article.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:906:82 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:276:57 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:283:57 'val Icons.Outlined.ArrowForward: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowForward.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:975:141 'val Icons.Outlined.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Undo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:976:141 'val Icons.Outlined.Redo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Redo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:1160:45 'val Icons.Outlined.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Undo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:1168:45 'val Icons.Outlined.Redo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Redo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:96:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:106:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:382:49 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/NotesScreen.kt:171:53 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:193:45 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:329:41 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:367:62 'val Icons.Outlined.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Article.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:367:90 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:526:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:109:64 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:425:49 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:472:49 'val Icons.Outlined.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.OpenInNew.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:531:49 'val Icons.Outlined.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.VolumeUp.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:634:41 'val Icons.Outlined.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.VolumeUp.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:kspDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1785885626917.json
+
+BUILD SUCCESSFUL in 1m 25s
+54 actionable tasks: 54 executed
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:prePrivateAlphaBuild UP-TO-DATE
+> Task :app:mergePrivateAlphaJniLibFolders
+> Task :app:mergePrivateAlphaNativeLibs
+> Task :app:checkPrivateAlphaDuplicateClasses
+> Task :app:buildKotlinToolingMetadata
+> Task :applyMscPostOverlayCompatibility
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generatePrivateAlphaBuildConfig
+
+> Task :app:stripPrivateAlphaDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, liblitertlm_jni.so. Run with --info option to learn more.
+
+> Task :app:checkPrivateAlphaAarMetadata
+> Task :app:extractPrivateAlphaNativeSymbolTables
+> Task :app:processPrivateAlphaNavigationResources
+> Task :app:mergePrivateAlphaNativeDebugMetadata NO-SOURCE
+> Task :app:generatePrivateAlphaResValues
+> Task :app:compilePrivateAlphaNavigationResources
+> Task :app:processPrivateAlphaGoogleServices
+> Task :app:mapPrivateAlphaSourceSetPaths
+> Task :app:generatePrivateAlphaResources
+> Task :app:packagePrivateAlphaResources
+> Task :app:createPrivateAlphaCompatibleScreenManifests
+> Task :app:extractDeepLinksPrivateAlpha
+> Task :app:parsePrivateAlphaLocalResources
+> Task :app:mergePrivateAlphaResources
+> Task :app:processPrivateAlphaMainManifest
+> Task :app:processPrivateAlphaManifest
+> Task :app:desugarPrivateAlphaFileDependencies
+> Task :app:mergePrivateAlphaStartupProfile
+> Task :app:javaPreCompilePrivateAlpha
+> Task :app:processPrivateAlphaManifestForPackage
+> Task :app:mergePrivateAlphaArtProfile
+> Task :app:mergePrivateAlphaShaders
+> Task :app:compilePrivateAlphaShaders NO-SOURCE
+> Task :app:generatePrivateAlphaAssets UP-TO-DATE
+> Task :app:mergePrivateAlphaAssets
+> Task :app:compressPrivateAlphaAssets
+> Task :app:extractPrivateAlphaVersionControlInfo
+> Task :app:extractProguardFiles
+> Task :app:collectPrivateAlphaDependencies
+> Task :app:processPrivateAlphaResources
+> Task :app:sdkPrivateAlphaDependencyData
+> Task :app:validateSigningPrivateAlpha
+> Task :app:verifyPrivateSigning
+> Task :app:writePrivateAlphaAppMetadata
+> Task :app:writePrivateAlphaSigningConfigVersions
+> Task :wear:preBuild UP-TO-DATE
+> Task :wear:prePrivateAlphaBuild UP-TO-DATE
+> Task :wear:mergePrivateAlphaJniLibFolders
+> Task :wear:mergePrivateAlphaNativeLibs
+> Task :app:optimizePrivateAlphaResources
+
+> Task :wear:stripPrivateAlphaDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so. Run with --info option to learn more.
+
+> Task :wear:checkPrivateAlphaDuplicateClasses
+> Task :wear:extractPrivateAlphaNativeSymbolTables
+> Task :wear:mergePrivateAlphaNativeDebugMetadata NO-SOURCE
+> Task :wear:buildKotlinToolingMetadata
+> Task :wear:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :wear:checkPrivateAlphaAarMetadata
+> Task :wear:processPrivateAlphaNavigationResources
+> Task :wear:compilePrivateAlphaNavigationResources
+> Task :wear:generatePrivateAlphaResValues
+> Task :wear:mapPrivateAlphaSourceSetPaths
+> Task :wear:generatePrivateAlphaResources
+> Task :wear:packagePrivateAlphaResources
+> Task :wear:parsePrivateAlphaLocalResources
+> Task :wear:createPrivateAlphaCompatibleScreenManifests
+> Task :wear:extractDeepLinksPrivateAlpha
+> Task :wear:mergePrivateAlphaResources
+> Task :wear:processPrivateAlphaMainManifest
+> Task :wear:processPrivateAlphaManifest
+> Task :wear:javaPreCompilePrivateAlpha
+> Task :wear:processPrivateAlphaManifestForPackage
+> Task :wear:desugarPrivateAlphaFileDependencies
+> Task :wear:mergePrivateAlphaStartupProfile
+> Task :wear:processPrivateAlphaResources
+> Task :wear:mergeExtDexPrivateAlpha
+> Task :wear:mergePrivateAlphaArtProfile
+> Task :wear:mergePrivateAlphaShaders
+> Task :wear:compilePrivateAlphaShaders NO-SOURCE
+> Task :wear:generatePrivateAlphaAssets UP-TO-DATE
+> Task :app:mergeExtDexPrivateAlpha
+> Task :wear:mergePrivateAlphaAssets
+> Task :wear:compressPrivateAlphaAssets
+> Task :wear:extractPrivateAlphaVersionControlInfo
+> Task :wear:extractProguardFiles
+> Task :wear:collectPrivateAlphaDependencies
+> Task :wear:sdkPrivateAlphaDependencyData
+> Task :wear:validateSigningPrivateAlpha
+> Task :wear:verifyWearPrivateSigning
+> Task :wear:writePrivateAlphaAppMetadata
+> Task :wear:writePrivateAlphaSigningConfigVersions
+> Task :wear:optimizePrivateAlphaResources
+> Task :app:kspPrivateAlphaKotlin
+> Task :wear:compilePrivateAlphaKotlin
+> Task :wear:compilePrivateAlphaJavaWithJavac NO-SOURCE
+> Task :wear:dexBuilderPrivateAlpha
+> Task :wear:mergePrivateAlphaGlobalSynthetics
+> Task :wear:generatePrivateAlphaLintVitalReportModel
+> Task :wear:processPrivateAlphaJavaRes
+> Task :wear:mergeDexPrivateAlpha
+> Task :app:compilePrivateAlphaKotlin
+> Task :wear:mergePrivateAlphaJavaResource
+> Task :wear:compilePrivateAlphaArtProfile
+> Task :wear:lintVitalAnalyzePrivateAlpha
+> Task :wear:lintVitalReportPrivateAlpha
+> Task :wear:lintVitalPrivateAlpha
+> Task :wear:packagePrivateAlpha
+> Task :wear:createPrivateAlphaApkListingFileRedirect
+> Task :wear:assemblePrivateAlpha
+
+> Task :app:compilePrivateAlphaKotlin
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MyStudyCompanionApplication.kt:43:41 'val token: Task<String!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:47:10 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:56:10 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:57:48 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:69:10 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:70:60 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt:75:54 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/BackendHttpClient.kt:112:64 Condition is always 'true'.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/TrustedContentKeyStore.kt:26:9 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/push/StudyFirebaseMessagingService.kt:9:18 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AccountScreen.kt:156:37 'val Icons.Outlined.Logout: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Logout.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt:238:41 'val Icons.Outlined.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Send.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt:408:48 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:152:13 'fun ScrollableTabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., edgePadding: Dp = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryScrollableTabRow and SecondaryScrollableTabRow tab variants.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:158:13 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:314:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:338:41 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:350:41 'val Icons.Outlined.Send: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Send.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:360:41 'val Icons.Outlined.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.OpenInNew.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:472:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:473:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:475:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:476:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:634:49 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:997:42 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt:1002:123 'val Icons.Outlined.LibraryBooks: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.LibraryBooks.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/DailyFieldServicePointerCard.kt:142:41 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt:215:53 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt:96:13 'fun ScrollableTabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., edgePadding: Dp = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryScrollableTabRow and SecondaryScrollableTabRow tab variants.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt:102:13 'fun TabRow(selectedTabIndex: Int, modifier: Modifier = ..., containerColor: Color = ..., contentColor: Color = ..., indicator: ComposableFunction1<List<TabPosition>, Unit> = ..., divider: ComposableFunction0<Unit> = ..., tabs: ComposableFunction0<Unit>): Unit' is deprecated. Replaced with PrimaryTabRow and SecondaryTabRow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt:297:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyWorshipScreen.kt:317:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:490:35 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:663:45 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:799:41 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:906:54 'val Icons.Outlined.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Article.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/HomeScreen.kt:906:82 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:276:57 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:283:57 'val Icons.Outlined.ArrowForward: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowForward.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:975:141 'val Icons.Outlined.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Undo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:976:141 'val Icons.Outlined.Redo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Redo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:1160:45 'val Icons.Outlined.Undo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Undo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt:1168:45 'val Icons.Outlined.Redo: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Redo.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:96:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:106:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:382:49 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/NotesScreen.kt:171:53 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:193:45 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:329:41 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:367:62 'val Icons.Outlined.Article: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Article.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:367:90 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/StudyScreen.kt:526:37 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:109:64 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:425:49 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:472:49 'val Icons.Outlined.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.OpenInNew.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:531:49 'val Icons.Outlined.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.VolumeUp.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/UnifiedStudyReaderScreen.kt:634:41 'val Icons.Outlined.VolumeUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.VolumeUp.
+
+> Task :app:compilePrivateAlphaJavaWithJavac
+> Task :app:dexBuilderPrivateAlpha
+> Task :app:mergePrivateAlphaGlobalSynthetics
+> Task :app:generatePrivateAlphaLintVitalReportModel
+> Task :app:processPrivateAlphaJavaRes
+> Task :app:mergePrivateAlphaJavaResource
+> Task :app:mergeDexPrivateAlpha
+> Task :app:compilePrivateAlphaArtProfile
+> Task :app:lintVitalAnalyzePrivateAlpha
+> Task :app:lintVitalReportPrivateAlpha
+> Task :app:lintVitalPrivateAlpha
+> Task :app:packagePrivateAlpha
+> Task :app:createPrivateAlphaApkListingFileRedirect
+> Task :app:assemblePrivateAlpha
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1785885712470.json
+
+BUILD SUCCESSFUL in 2m 37s
+107 actionable tasks: 107 executed
+MyStudyCompanion/app/build/generated/source/buildConfig/privateAlpha/com/mystudycompanion/app/BuildConfig.java:  public static final String GOOGLE_WEB_CLIENT_ID = "949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com";
+PASS: configured 0.15.11 phone and Wear APKs built and verified.
+Applied My Study Companion 0.15.12 family-vote and widget repair.
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :applyMscPostOverlayCompatibility
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:mergeDebugResources
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+> Task :app:kspDebugKotlin
+
+> Task :app:compileDebugKotlin
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MyStudyCompanionApplication.kt:43:41 'val token: Task<String!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/BackendHttpClient.kt:112:64 Condition is always 'true'.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/TrustedContentKeyStore.kt:26:9 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AccountScreen.kt:156:37 'val Icons.Outlined.Logout: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Logout.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:96:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:106:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:390:49 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt:100:17 'fun setRemoteAdapter(p0: Int, p1: Intent!): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt:108:21 'fun notifyAppWidgetViewDataChanged(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:kspDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :app:testDebugUnitTest
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1785885872139.json
+
+BUILD SUCCESSFUL in 57s
+30 actionable tasks: 22 executed, 8 up-to-date
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:prePrivateAlphaBuild UP-TO-DATE
+> Task :app:mergePrivateAlphaJniLibFolders UP-TO-DATE
+> Task :app:mergePrivateAlphaNativeLibs UP-TO-DATE
+> Task :app:stripPrivateAlphaDebugSymbols UP-TO-DATE
+> Task :app:extractPrivateAlphaNativeSymbolTables UP-TO-DATE
+> Task :app:mergePrivateAlphaNativeDebugMetadata NO-SOURCE
+> Task :app:checkPrivateAlphaDuplicateClasses UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :applyMscPostOverlayCompatibility
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generatePrivateAlphaBuildConfig
+> Task :app:checkPrivateAlphaAarMetadata UP-TO-DATE
+> Task :app:processPrivateAlphaNavigationResources
+> Task :app:compilePrivateAlphaNavigationResources UP-TO-DATE
+> Task :app:generatePrivateAlphaResValues UP-TO-DATE
+> Task :app:processPrivateAlphaGoogleServices UP-TO-DATE
+> Task :app:mapPrivateAlphaSourceSetPaths
+> Task :app:generatePrivateAlphaResources
+> Task :app:packagePrivateAlphaResources
+> Task :app:mergePrivateAlphaResources
+> Task :app:createPrivateAlphaCompatibleScreenManifests
+> Task :app:extractDeepLinksPrivateAlpha UP-TO-DATE
+> Task :app:parsePrivateAlphaLocalResources
+> Task :app:processPrivateAlphaMainManifest
+> Task :app:processPrivateAlphaManifest
+> Task :app:javaPreCompilePrivateAlpha UP-TO-DATE
+> Task :app:processPrivateAlphaManifestForPackage
+> Task :app:desugarPrivateAlphaFileDependencies UP-TO-DATE
+> Task :app:mergePrivateAlphaStartupProfile UP-TO-DATE
+> Task :app:mergeExtDexPrivateAlpha UP-TO-DATE
+> Task :app:mergePrivateAlphaArtProfile UP-TO-DATE
+> Task :app:mergePrivateAlphaShaders UP-TO-DATE
+> Task :app:compilePrivateAlphaShaders NO-SOURCE
+> Task :app:generatePrivateAlphaAssets UP-TO-DATE
+> Task :app:mergePrivateAlphaAssets UP-TO-DATE
+> Task :app:compressPrivateAlphaAssets UP-TO-DATE
+> Task :app:extractPrivateAlphaVersionControlInfo UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:collectPrivateAlphaDependencies UP-TO-DATE
+> Task :app:sdkPrivateAlphaDependencyData UP-TO-DATE
+> Task :app:validateSigningPrivateAlpha UP-TO-DATE
+> Task :app:verifyPrivateSigning
+> Task :app:writePrivateAlphaAppMetadata UP-TO-DATE
+> Task :app:writePrivateAlphaSigningConfigVersions UP-TO-DATE
+> Task :wear:preBuild UP-TO-DATE
+> Task :wear:prePrivateAlphaBuild UP-TO-DATE
+> Task :wear:mergePrivateAlphaJniLibFolders UP-TO-DATE
+> Task :wear:mergePrivateAlphaNativeLibs UP-TO-DATE
+> Task :wear:stripPrivateAlphaDebugSymbols UP-TO-DATE
+> Task :wear:extractPrivateAlphaNativeSymbolTables UP-TO-DATE
+> Task :wear:mergePrivateAlphaNativeDebugMetadata NO-SOURCE
+> Task :wear:checkPrivateAlphaDuplicateClasses UP-TO-DATE
+> Task :wear:buildKotlinToolingMetadata UP-TO-DATE
+> Task :wear:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :wear:checkPrivateAlphaAarMetadata UP-TO-DATE
+> Task :wear:processPrivateAlphaNavigationResources UP-TO-DATE
+> Task :wear:compilePrivateAlphaNavigationResources UP-TO-DATE
+> Task :wear:generatePrivateAlphaResValues UP-TO-DATE
+> Task :wear:mapPrivateAlphaSourceSetPaths UP-TO-DATE
+> Task :wear:generatePrivateAlphaResources UP-TO-DATE
+> Task :wear:mergePrivateAlphaResources UP-TO-DATE
+> Task :wear:packagePrivateAlphaResources UP-TO-DATE
+> Task :wear:parsePrivateAlphaLocalResources UP-TO-DATE
+> Task :wear:createPrivateAlphaCompatibleScreenManifests
+> Task :wear:extractDeepLinksPrivateAlpha UP-TO-DATE
+> Task :app:processPrivateAlphaResources
+> Task :wear:processPrivateAlphaMainManifest
+> Task :wear:processPrivateAlphaManifest
+> Task :wear:javaPreCompilePrivateAlpha UP-TO-DATE
+> Task :wear:processPrivateAlphaManifestForPackage
+> Task :wear:desugarPrivateAlphaFileDependencies UP-TO-DATE
+> Task :wear:mergePrivateAlphaStartupProfile UP-TO-DATE
+> Task :wear:mergeExtDexPrivateAlpha UP-TO-DATE
+> Task :app:optimizePrivateAlphaResources
+> Task :wear:mergePrivateAlphaArtProfile UP-TO-DATE
+> Task :wear:mergePrivateAlphaShaders UP-TO-DATE
+> Task :wear:compilePrivateAlphaShaders NO-SOURCE
+> Task :wear:generatePrivateAlphaAssets UP-TO-DATE
+> Task :wear:mergePrivateAlphaAssets UP-TO-DATE
+> Task :wear:compressPrivateAlphaAssets UP-TO-DATE
+> Task :wear:extractPrivateAlphaVersionControlInfo UP-TO-DATE
+> Task :wear:extractProguardFiles UP-TO-DATE
+> Task :wear:collectPrivateAlphaDependencies UP-TO-DATE
+> Task :wear:sdkPrivateAlphaDependencyData UP-TO-DATE
+> Task :wear:validateSigningPrivateAlpha UP-TO-DATE
+> Task :wear:verifyWearPrivateSigning
+> Task :wear:writePrivateAlphaAppMetadata UP-TO-DATE
+> Task :wear:writePrivateAlphaSigningConfigVersions UP-TO-DATE
+> Task :wear:processPrivateAlphaResources
+> Task :wear:compilePrivateAlphaKotlin UP-TO-DATE
+> Task :wear:compilePrivateAlphaJavaWithJavac NO-SOURCE
+> Task :wear:dexBuilderPrivateAlpha UP-TO-DATE
+> Task :wear:mergeDexPrivateAlpha UP-TO-DATE
+> Task :wear:mergePrivateAlphaGlobalSynthetics UP-TO-DATE
+> Task :wear:compilePrivateAlphaArtProfile UP-TO-DATE
+> Task :wear:generatePrivateAlphaLintVitalReportModel
+> Task :wear:processPrivateAlphaJavaRes UP-TO-DATE
+> Task :wear:mergePrivateAlphaJavaResource UP-TO-DATE
+> Task :wear:optimizePrivateAlphaResources
+> Task :app:kspPrivateAlphaKotlin
+> Task :wear:lintVitalAnalyzePrivateAlpha
+> Task :wear:lintVitalReportPrivateAlpha
+> Task :wear:lintVitalPrivateAlpha
+> Task :wear:packagePrivateAlpha
+> Task :wear:createPrivateAlphaApkListingFileRedirect
+> Task :wear:assemblePrivateAlpha
+
+> Task :app:compilePrivateAlphaKotlin
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/MyStudyCompanionApplication.kt:43:41 'val token: Task<String!>' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/BackendHttpClient.kt:112:64 Condition is always 'true'.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/TrustedContentKeyStore.kt:26:9 Redundant creation of Json format. Creating instances for each usage can be slow.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AccountScreen.kt:156:37 'val Icons.Outlined.Logout: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.Logout.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:96:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:106:60 'val Icons.Outlined.MenuBook: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.MenuBook.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:390:49 'val Icons.Outlined.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.ArrowBack.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt:100:17 'fun setRemoteAdapter(p0: Int, p1: Intent!): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/Hummer/Hummer/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt:108:21 'fun notifyAppWidgetViewDataChanged(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:compilePrivateAlphaJavaWithJavac
+> Task :app:dexBuilderPrivateAlpha
+> Task :app:mergePrivateAlphaGlobalSynthetics UP-TO-DATE
+> Task :app:generatePrivateAlphaLintVitalReportModel
+> Task :app:processPrivateAlphaJavaRes
+> Task :app:mergePrivateAlphaJavaResource
+> Task :app:mergeDexPrivateAlpha
+> Task :app:compilePrivateAlphaArtProfile
+> Task :app:lintVitalAnalyzePrivateAlpha
+> Task :app:lintVitalReportPrivateAlpha
+> Task :app:lintVitalPrivateAlpha
+> Task :app:packagePrivateAlpha
+> Task :app:createPrivateAlphaApkListingFileRedirect
+> Task :app:assemblePrivateAlpha
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1785885929938.json
+
+BUILD SUCCESSFUL in 1m 34s
+107 actionable tasks: 42 executed, 65 up-to-date
+PASS: configured 0.15.12 phone and Wear APKs built and verified.
