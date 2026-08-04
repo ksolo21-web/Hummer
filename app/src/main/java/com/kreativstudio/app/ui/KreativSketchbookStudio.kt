@@ -90,8 +90,9 @@ import com.kreativstudio.app.ui.theme.KreativTheme
 import kotlinx.coroutines.delay
 
 /**
- * Canvas-first, professional mobile studio. The drawing view is measured to the
- * exact rectangle between two fixed bars; it is never enlarged behind them.
+ * A canvas-first studio inspired by the speed and restraint of a dedicated
+ * sketchbook: full-screen artwork, compact floating controls, and no permanent
+ * panels stealing the drawing area.
  */
 @Composable
 fun KreativSketchbookStudioHost(viewModel: KreativViewModel, activity: Activity) {
@@ -106,20 +107,20 @@ fun KreativSketchbookStudioHost(viewModel: KreativViewModel, activity: Activity)
 
     KreativTheme(settings) {
         Box(Modifier.fillMaxSize().background(Color(0xFF101014))) {
-            ProfessionalStudio(viewModel, activity, settings)
+            CanvasFirstStudio(viewModel, activity, settings)
             SnackbarHost(
                 hostState = snackbar,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 82.dp),
+                    .padding(bottom = 104.dp),
             )
         }
     }
 }
 
 @Composable
-private fun ProfessionalStudio(
+private fun CanvasFirstStudio(
     viewModel: KreativViewModel,
     activity: Activity,
     settings: AppSettings,
@@ -127,8 +128,11 @@ private fun ProfessionalStudio(
     val project = viewModel.currentProject ?: return
     val context = LocalContext.current
     val window = rememberKreativWindowState(activity)
+    val expanded = window.widthDp >= 600
+    val railOnLeft = !settings.leftHanded
     val controller = rememberAdaptiveCanvasController()
-    var cleanCanvas by remember { mutableStateOf(false) }
+
+    var hudVisible by remember { mutableStateOf(true) }
     var controlsOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
     var textPoint by remember { mutableStateOf<StrokePoint?>(null) }
@@ -143,69 +147,83 @@ private fun ProfessionalStudio(
         ActivityResultContracts.CreateDocument("image/png"),
     ) { uri -> if (uri != null) viewModel.exportPng(uri) }
 
-    LaunchedEffect(window.signature, cleanCanvas) {
-        delay(100)
+    val viewport = when {
+        !hudVisible -> CanvasViewportInsets(8.dp, 8.dp, 8.dp, 8.dp)
+        expanded && railOnLeft -> CanvasViewportInsets(86.dp, 76.dp, 24.dp, 88.dp)
+        expanded -> CanvasViewportInsets(24.dp, 76.dp, 86.dp, 88.dp)
+        else -> CanvasViewportInsets(16.dp, 72.dp, 16.dp, 126.dp)
+    }
+
+    LaunchedEffect(window.signature, hudVisible, railOnLeft, expanded) {
+        delay(120)
         controller.fit()
     }
 
-    if (cleanCanvas) {
-        Box(Modifier.fillMaxSize().background(Color(0xFF101014))) {
-            AdaptiveCanvasArea(
-                viewModel = viewModel,
-                project = project,
-                controller = controller,
-                modifier = Modifier.fillMaxSize(),
-                onTextPlacement = { textPoint = it },
-            )
-            Surface(
-                modifier = Modifier
-                    .align(if (settings.leftHanded) Alignment.CenterEnd else Alignment.CenterStart)
-                    .padding(10.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = .92f),
-                tonalElevation = 8.dp,
-            ) {
-                IconButton(onClick = { cleanCanvas = false }) {
-                    Icon(Icons.Default.Visibility, "Show studio controls")
-                }
-            }
-        }
-    } else {
-        Column(Modifier.fillMaxSize()) {
-            StudioTopBar(
+    Box(Modifier.fillMaxSize().background(Color(0xFF101014))) {
+        AdaptiveCanvasArea(
+            viewModel = viewModel,
+            project = project,
+            controller = controller,
+            modifier = Modifier.fillMaxSize(),
+            viewportInsets = viewport,
+            onTextPlacement = { textPoint = it },
+        )
+
+        if (hudVisible) {
+            FloatingTopBar(
                 project = project,
                 busy = viewModel.isBusy,
+                compact = !expanded,
                 onBack = { viewModel.navigate(StudioScreen.HOME) },
                 onRename = { renameOpen = true },
                 onUndo = viewModel::undo,
                 onRedo = viewModel::redo,
-                onSave = viewModel::saveNow,
-                onSync = viewModel::syncCurrentProject,
                 onFit = controller::fit,
                 onRotate = { controller.rotate() },
-                onReference = {
-                    addReference.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*"))
-                },
-                onCleanCanvas = { cleanCanvas = true },
                 onMore = { controlsOpen = true },
             )
 
-            AdaptiveCanvasArea(
-                viewModel = viewModel,
-                project = project,
-                controller = controller,
+            if (expanded) {
+                VerticalToolRail(
+                    viewModel = viewModel,
+                    modifier = Modifier
+                        .align(if (railOnLeft) Alignment.CenterStart else Alignment.CenterEnd)
+                        .padding(horizontal = 10.dp),
+                )
+                BrushPuck(
+                    viewModel = viewModel,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 10.dp),
+                    onMore = { controlsOpen = true },
+                    onHide = { hudVisible = false },
+                )
+            } else {
+                CompactToolDock(
+                    viewModel = viewModel,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(8.dp),
+                    onMore = { controlsOpen = true },
+                    onHide = { hudVisible = false },
+                )
+            }
+        } else {
+            Surface(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(Color(0xFF101014)),
-                onTextPlacement = { textPoint = it },
-            )
-
-            BrushDock(
-                viewModel = viewModel,
-                singleRow = window.widthDp >= 600,
-                onMore = { controlsOpen = true },
-            )
+                    .align(if (railOnLeft) Alignment.TopStart else Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(10.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = .94f),
+                tonalElevation = 8.dp,
+            ) {
+                IconButton(onClick = { hudVisible = true }) {
+                    Icon(Icons.Default.Visibility, "Show canvas controls")
+                }
+            }
         }
     }
 
@@ -218,13 +236,15 @@ private fun ProfessionalStudio(
                 onReference = {
                     addReference.launch(arrayOf("image/*", "application/pdf", "video/*", "audio/*"))
                 },
+                onSave = viewModel::saveNow,
+                onSync = viewModel::syncCurrentProject,
                 onExportProject = {
                     exportProject.launch("${project.title.fileSafe()}.kreativ.json")
                 },
                 onExportPng = { exportPng.launch("${project.title.fileSafe()}.png") },
                 onCleanCanvas = {
                     controlsOpen = false
-                    cleanCanvas = true
+                    hudVisible = false
                 },
             )
         }
@@ -262,9 +282,9 @@ private fun ProfessionalStudio(
         var title by remember(project.id) { mutableStateOf(project.title) }
         AlertDialog(
             onDismissRequest = { renameOpen = false },
-            title = { Text("Rename project") },
+            title = { Text("Rename artwork") },
             text = {
-                OutlinedTextField(title, { title = it }, label = { Text("Project title") })
+                OutlinedTextField(title, { title = it }, label = { Text("Artwork title") })
             },
             confirmButton = {
                 Button(onClick = {
@@ -280,28 +300,30 @@ private fun ProfessionalStudio(
 }
 
 @Composable
-private fun StudioTopBar(
+private fun FloatingTopBar(
     project: KreativProject,
     busy: Boolean,
+    compact: Boolean,
     onBack: () -> Unit,
     onRename: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
-    onSave: () -> Unit,
-    onSync: () -> Unit,
     onFit: () -> Unit,
     onRotate: () -> Unit,
-    onReference: () -> Unit,
-    onCleanCanvas: () -> Unit,
     onMore: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = .96f),
+        tonalElevation = 10.dp,
+        shadowElevation = 8.dp,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(64.dp),
+            modifier = Modifier.height(54.dp).padding(horizontal = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -309,46 +331,178 @@ private fun StudioTopBar(
             }
             Column(
                 modifier = Modifier
-                    .widthIn(min = 128.dp, max = 220.dp)
+                    .widthIn(min = if (compact) 78.dp else 140.dp, max = if (compact) 126.dp else 250.dp)
                     .clickable(onClick = onRename)
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 6.dp),
             ) {
                 Text(
                     project.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (!compact) {
+                    Text(
+                        "${project.widthPx} × ${project.heightPx}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            if (busy) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(4.dp))
+            }
+            ActionIcon(Icons.AutoMirrored.Filled.Undo, "Undo", onUndo)
+            ActionIcon(Icons.AutoMirrored.Filled.Redo, "Redo", onRedo)
+            ActionIcon(Icons.Default.Refresh, "Fit artwork", onFit)
+            if (!compact) ActionIcon(Icons.AutoMirrored.Filled.RotateRight, "Rotate canvas", onRotate)
+            ActionIcon(Icons.Default.MoreHoriz, "Studio controls", onMore)
+        }
+    }
+}
+
+@Composable
+private fun VerticalToolRail(viewModel: KreativViewModel, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = .96f),
+        tonalElevation = 10.dp,
+        shadowElevation = 8.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            railTools.forEach { tool -> ToolIconButton(viewModel, tool) }
+        }
+    }
+}
+
+@Composable
+private fun CompactToolDock(
+    viewModel: KreativViewModel,
+    modifier: Modifier = Modifier,
+    onMore: () -> Unit,
+    onHide: () -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = .97f),
+        tonalElevation = 10.dp,
+        shadowElevation = 8.dp,
+    ) {
+        Column(Modifier.padding(vertical = 5.dp)) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                items(railTools, key = { it.name }) { tool ->
+                    ToolIconButton(viewModel, tool)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ColorDot(viewModel.activeColorArgb, onMore)
                 Text(
-                    "${project.widthPx} × ${project.heightPx}",
+                    viewModel.activeTool.displayName(),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                SizeStepper(viewModel)
+                ActionIcon(Icons.Default.MoreHoriz, "More controls", onMore)
+                ActionIcon(Icons.Default.VisibilityOff, "Hide controls", onHide)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrushPuck(
+    viewModel: KreativViewModel,
+    modifier: Modifier = Modifier,
+    onMore: () -> Unit,
+    onHide: () -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = .97f),
+        tonalElevation = 10.dp,
+        shadowElevation = 8.dp,
+    ) {
+        Row(
+            modifier = Modifier.height(58.dp).padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ColorDot(viewModel.activeColorArgb, onMore)
+            Column(Modifier.widthIn(min = 96.dp, max = 160.dp)) {
+                Text(viewModel.activeTool.displayName(), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "Opacity ${(viewModel.brushOpacity * 100).toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            LazyRow(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                contentPadding = PaddingValues(horizontal = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                item { ActionIcon(Icons.AutoMirrored.Filled.Undo, "Undo", onUndo) }
-                item { ActionIcon(Icons.AutoMirrored.Filled.Redo, "Redo", onRedo) }
-                item { ActionIcon(Icons.Default.Save, "Save", onSave) }
-                item {
-                    IconButton(onClick = onSync, enabled = !busy) {
-                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else Icon(Icons.Default.CloudSync, "Sync")
-                    }
-                }
-                item { ActionIcon(Icons.Default.Refresh, "Frame canvas", onFit) }
-                item { ActionIcon(Icons.AutoMirrored.Filled.RotateRight, "Rotate canvas", onRotate) }
-                item { ActionIcon(Icons.Default.PhotoLibrary, "Add reference", onReference) }
-                item { ActionIcon(Icons.Default.VisibilityOff, "Clean canvas", onCleanCanvas) }
-                item { ActionIcon(Icons.Default.MoreHoriz, "More controls", onMore) }
-            }
+            SizeStepper(viewModel)
+            ActionIcon(Icons.Default.MoreHoriz, "More controls", onMore)
+            ActionIcon(Icons.Default.VisibilityOff, "Hide controls", onHide)
         }
     }
-    HorizontalDivider()
+}
+
+@Composable
+private fun SizeStepper(viewModel: KreativViewModel) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(
+                onClick = { viewModel.brushWidth = (viewModel.brushWidth - 2f).coerceAtLeast(1f) },
+                contentPadding = PaddingValues(horizontal = 9.dp),
+            ) { Text("−") }
+            Text(
+                "${viewModel.brushWidth.toInt()} px",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.widthIn(min = 46.dp),
+                maxLines = 1,
+            )
+            TextButton(
+                onClick = { viewModel.brushWidth = (viewModel.brushWidth + 2f).coerceAtMost(180f) },
+                contentPadding = PaddingValues(horizontal = 9.dp),
+            ) { Text("+") }
+        }
+    }
+}
+
+@Composable
+private fun ToolIconButton(viewModel: KreativViewModel, tool: ToolType) {
+    val selected = viewModel.activeTool == tool
+    Surface(
+        modifier = Modifier.size(46.dp),
+        shape = CircleShape,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+    ) {
+        IconButton(onClick = { viewModel.activeTool = tool }) {
+            Icon(
+                imageVector = tool.icon(),
+                contentDescription = tool.displayName(),
+                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
 }
 
 @Composable
@@ -361,89 +515,12 @@ private fun ActionIcon(
 }
 
 @Composable
-private fun BrushDock(
-    viewModel: KreativViewModel,
-    singleRow: Boolean,
-    onMore: () -> Unit,
-) {
-    HorizontalDivider()
+private fun ColorDot(argb: Long, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp,
-    ) {
-        if (singleRow) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ColorDot(viewModel.activeColorArgb)
-                ToolStrip(viewModel, Modifier.weight(1f))
-                Text("${viewModel.brushWidth.toInt()} px")
-                Slider(
-                    value = viewModel.brushWidth,
-                    onValueChange = { viewModel.brushWidth = it },
-                    valueRange = 1f..180f,
-                    modifier = Modifier.width(180.dp),
-                )
-                ActionIcon(Icons.Default.MoreHoriz, "Controls", onMore)
-            }
-        } else {
-            Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                ToolStrip(viewModel, Modifier.fillMaxWidth())
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ColorDot(viewModel.activeColorArgb)
-                    Text("${viewModel.brushWidth.toInt()} px")
-                    Slider(
-                        value = viewModel.brushWidth,
-                        onValueChange = { viewModel.brushWidth = it },
-                        valueRange = 1f..180f,
-                        modifier = Modifier.weight(1f),
-                    )
-                    ActionIcon(Icons.Default.MoreHoriz, "Controls", onMore)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ToolStrip(viewModel: KreativViewModel, modifier: Modifier) {
-    LazyRow(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items(quickTools, key = { it.name }) { tool ->
-            FilterChip(
-                selected = viewModel.activeTool == tool,
-                onClick = { viewModel.activeTool = tool },
-                label = { Text(tool.name.lowercase().replaceFirstChar(Char::uppercase)) },
-                leadingIcon = {
-                    Icon(
-                        if (tool == ToolType.TEXT) Icons.Default.TextFields else Icons.Default.Edit,
-                        null,
-                        Modifier.size(17.dp),
-                    )
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColorDot(argb: Long) {
-    Surface(
-        modifier = Modifier.size(31.dp),
+        modifier = Modifier.size(34.dp).clickable(onClick = onClick),
         shape = CircleShape,
         color = Color(argb),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
     ) {}
 }
 
@@ -453,6 +530,8 @@ private fun StudioControlsSheet(
     project: KreativProject,
     settings: AppSettings,
     onReference: () -> Unit,
+    onSave: () -> Unit,
+    onSync: () -> Unit,
     onExportProject: () -> Unit,
     onExportPng: () -> Unit,
     onCleanCanvas: () -> Unit,
@@ -464,20 +543,39 @@ private fun StudioControlsSheet(
             .imePadding()
             .navigationBarsPadding(),
         contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        item { Text("Studio controls", style = MaterialTheme.typography.headlineMedium) }
+        item {
+            Text("Studio controls", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "Keep the canvas clear. Open only the controls you need.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onCleanCanvas, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.VisibilityOff, null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Clean canvas")
+                    Text("Canvas only")
                 }
                 OutlinedButton(onClick = onReference, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.PhotoLibrary, null)
                     Spacer(Modifier.width(6.dp))
                     Text("Reference")
+                }
+            }
+        }
+        item {
+            Text("Tools", style = MaterialTheme.typography.titleLarge)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(allTools, key = { it.name }) { tool ->
+                    FilterChip(
+                        selected = viewModel.activeTool == tool,
+                        onClick = { viewModel.activeTool = tool },
+                        label = { Text(tool.displayName()) },
+                        leadingIcon = { Icon(tool.icon(), null, Modifier.size(18.dp)) },
+                    )
                 }
             }
         }
@@ -488,7 +586,7 @@ private fun StudioControlsSheet(
                     val selected = viewModel.activeColorArgb == value
                     Surface(
                         modifier = Modifier
-                            .size(if (selected) 46.dp else 40.dp)
+                            .size(if (selected) 48.dp else 42.dp)
                             .clickable { viewModel.activeColorArgb = value },
                         shape = CircleShape,
                         color = Color(value),
@@ -503,10 +601,24 @@ private fun StudioControlsSheet(
         }
         item {
             Text("Brush response", style = MaterialTheme.typography.titleLarge)
+            Text("Size ${viewModel.brushWidth.toInt()} px")
+            Slider(
+                value = viewModel.brushWidth,
+                onValueChange = { viewModel.brushWidth = it },
+                valueRange = 1f..180f,
+            )
             Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
-            Slider(viewModel.brushOpacity, { viewModel.brushOpacity = it }, valueRange = .05f..1f)
+            Slider(
+                value = viewModel.brushOpacity,
+                onValueChange = { viewModel.brushOpacity = it },
+                valueRange = .05f..1f,
+            )
             Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(viewModel.stabilization, { viewModel.stabilization = it }, valueRange = 0f..0.95f)
+            Slider(
+                value = viewModel.stabilization,
+                onValueChange = { viewModel.stabilization = it },
+                valueRange = 0f...95f,
+            )
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -530,6 +642,21 @@ private fun StudioControlsSheet(
             }
             SettingToggle("Palm rejection", settings.palmRejectionEnabled) { enabled ->
                 viewModel.updateSettings { it.copy(palmRejectionEnabled = enabled) }
+            }
+        }
+        item {
+            Text("Project", style = MaterialTheme.typography.titleLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onSave, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Save, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Save")
+                }
+                OutlinedButton(onClick = onSync, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.CloudSync, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Sync")
+                }
             }
         }
         item {
@@ -587,19 +714,48 @@ private fun SettingToggle(label: String, checked: Boolean, onCheckedChange: (Boo
     }
 }
 
-private val quickTools = listOf(
-    ToolType.PEN,
+private val railTools = listOf(
     ToolType.PENCIL,
+    ToolType.PEN,
+    ToolType.ERASER,
+    ToolType.SELECT,
+    ToolType.LINE,
+    ToolType.RECTANGLE,
+    ToolType.ELLIPSE,
+    ToolType.TEXT,
+)
+
+private val allTools = listOf(
+    ToolType.PENCIL,
+    ToolType.PEN,
     ToolType.WATERCOLOR,
     ToolType.CHARCOAL,
     ToolType.MARKER,
     ToolType.ERASER,
+    ToolType.SMUDGE,
+    ToolType.FILL,
+    ToolType.SELECT,
     ToolType.LINE,
     ToolType.RECTANGLE,
     ToolType.ELLIPSE,
-    ToolType.SELECT,
+    ToolType.TRIANGLE,
+    ToolType.POLYGON,
+    ToolType.STAR,
+    ToolType.ARC,
+    ToolType.ARROW,
     ToolType.TEXT,
 )
+
+private fun ToolType.displayName(): String = name.lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
+
+private fun ToolType.icon() = when (this) {
+    ToolType.ERASER -> Icons.Default.Delete
+    ToolType.TEXT -> Icons.Default.TextFields
+    ToolType.SELECT -> Icons.Default.MoreHoriz
+    ToolType.LINE, ToolType.RECTANGLE, ToolType.ELLIPSE, ToolType.TRIANGLE,
+    ToolType.POLYGON, ToolType.STAR, ToolType.ARC, ToolType.ARROW -> Icons.Default.Add
+    else -> Icons.Default.Edit
+}
 
 private val palette = listOf(
     0xFF17121FL,
