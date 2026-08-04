@@ -1,0 +1,10 @@
+source_commit=fd710cc900af016a11354dec5d2b8b542f3da521
+workflow_run_id=30906811062
+workflow_result=success
+free_invite_source=passed
+google_sign_in=passed
+existing_features=passed
+pwa_and_firestore_rules=passed
+android_and_wear_apks=passed
+architecture=firebase_spark_free_only
+paid_cloud_run_dependency=absent
