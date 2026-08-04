@@ -1,0 +1,22 @@
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt:1167:                    ageSource = if (organizer) ProfileAgeSource.PRIVATE_OWNER else ProfileAgeSource.UNCONFIRMED,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:23:    MINOR_UNKNOWN,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:54:                    age < 0 -> AccountAgeGroup.UNKNOWN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:62:                "LESS_THAN_EIGHTEEN" -> AccountAgeGroup.MINOR_UNKNOWN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:64:                else -> AccountAgeGroup.UNKNOWN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:89:    val ageGroup: AccountAgeGroup = AccountAgeGroup.UNKNOWN,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt:112:    fun confirmProfileAge(ageGroup: AgeGroup) {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:20:    UNCONFIRMED,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:59:    val ageSource: ProfileAgeSource = ProfileAgeSource.UNCONFIRMED,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:67:    val needsAgeConfirmation: Boolean
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:76:    val ageSource: ProfileAgeSource = ProfileAgeSource.UNCONFIRMED,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt:57:        if (stored != null && stored.ageSource != ProfileAgeSource.UNCONFIRMED) {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt:69:            AccountAgeGroup.MINOR_UNKNOWN -> stored?.ageGroup?.takeIf { it != AgeGroup.ADULT } ?: AgeGroup.PRETEEN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt:70:            AccountAgeGroup.UNKNOWN -> when {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt:81:            AccountAgeSource.UNAVAILABLE -> stored?.ageSource ?: ProfileAgeSource.UNCONFIRMED
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt:90:        ageSource = ageSource.takeUnless { it == ProfileAgeSource.UNCONFIRMED }
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/auth/AuthModelsTest.kt:46:        assertEquals(AccountAgeGroup.MINOR_UNKNOWN, hints.ageGroup)
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolverTest.kt:25:            ageGroup = AccountAgeGroup.UNKNOWN,
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolverTest.kt:54:            ageGroup = AccountAgeGroup.MINOR_UNKNOWN,
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolverTest.kt:75:            ageSource = ProfileAgeSource.UNCONFIRMED,
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolverTest.kt:77:        assertFalse(profile.needsAgeConfirmation)
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolverTest.kt:93:        ageSource = if (ageGroup == AccountAgeGroup.MINOR_UNKNOWN) {
