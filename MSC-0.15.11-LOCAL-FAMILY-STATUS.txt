@@ -1,0 +1,4 @@
+source_commit=1d4aced746cd954339c519a9f49b973b566b52b1
+workflow_run_id=30952440419
+workflow_result=in_progress
+artifact_name=msc-0.15.11-local-family-generator-configured-ci
