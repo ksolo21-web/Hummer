@@ -25,10 +25,10 @@ def replace(old: str, new: str, label: str, count: int | None = None) -> None:
     text = text.replace(old, new)
 
 replace(
-    "'bash .msc-build/apply-0.15.11-local-family-generator.sh\\\\n',",
-    "'bash .msc-build/apply-0.15.11-local-family-generator.sh\\\\n'\n"
-    "    'bash .msc-build/apply-0.15.12-family-vote-widgets.sh\\\\n'\n"
-    "    'bash .msc-build/apply-0.15.12-widget-compile-fix.sh\\\\n',",
+    "'bash .msc-build/apply-0.15.11-local-family-generator.sh\\n',",
+    "'bash .msc-build/apply-0.15.11-local-family-generator.sh\\n'\n"
+    "    'bash .msc-build/apply-0.15.12-family-vote-widgets.sh\\n'\n"
+    "    'bash .msc-build/apply-0.15.12-widget-compile-fix.sh\\n',",
     "0.15.12 overlay insertion",
     1,
 )
