@@ -6,7 +6,7 @@ on:
       - agent/msc-0.15.6-root-fix-ci
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: msc-0156-free-invite-fix
@@ -56,6 +56,7 @@ jobs:
           bash .msc-build/apply-0.15.4-web-household-parity.sh
           bash .msc-build/apply-0.15.5-household-cancellation.sh
           bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          touch .ci-free-invite-source-passed
       - name: Verify Google sign-in was preserved
         shell: bash
         run: |
@@ -71,6 +72,7 @@ jobs:
           grep -R -Fq 'AccountProvider.GOOGLE' MyStudyCompanion/app/src/main/java
           grep -R -Eq 'GoogleSignIn|GoogleAuthProvider|CredentialManager|GoogleIdTokenCredential|GetGoogleIdOption' MyStudyCompanion/app/src/main/java
           grep -R -Eq 'signInWithCredential|FirebaseAuth' MyStudyCompanion/app/src/main/java
+          touch .ci-google-signin-passed
           echo 'PASS: Google sign-in lifecycle remains present on web and Android.'
       - name: Test existing backend features
         shell: bash
@@ -80,6 +82,8 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements-dev.txt
           python -m compileall -q app tests
           python -m pytest -q
+          cd ../..
+          touch .ci-existing-features-passed
       - name: Test PWA and Firebase Spark rules
         shell: bash
         run: |
@@ -91,12 +95,17 @@ jobs:
           DEPS="$RUNNER_TEMP/msc-rules-deps"
           npm install --prefix "$DEPS" --no-save firebase @firebase/rules-unit-testing
           (cd MyStudyCompanionWeb && NODE_PATH="$DEPS/node_modules" npx --yes firebase-tools@15.1.0 emulators:exec --only firestore --project demo-my-study-companion "NODE_PATH=$DEPS/node_modules node firestore-rules.test.cjs")
+          touch .ci-pwa-rules-passed
       - name: Compile and test Android and Wear
         shell: bash
         run: |
           set -euo pipefail
           cd MyStudyCompanion
           gradle --no-daemon --stacktrace :app:testDebugUnitTest :wear:testDebugUnitTest :app:assembleDebug :wear:assembleDebug
+          cd ..
+          test -s MyStudyCompanion/app/build/outputs/apk/debug/app-debug.apk
+          test -s MyStudyCompanion/wear/build/outputs/apk/debug/wear-debug.apk
+          touch .ci-android-wear-passed
       - name: Upload free invitation validation APKs
         uses: actions/upload-artifact@v6
         with:
@@ -109,3 +118,28 @@ jobs:
             MyStudyCompanionWeb/firebase-sync.js
           retention-days: 7
           if-no-files-found: error
+      - name: Record deterministic CI result
+        if: always()
+        shell: bash
+        env:
+          JOB_RESULT: ${{ job.status }}
+        run: |
+          set -u
+          passed() { test -f "$1" && printf 'passed' || printf 'failed_or_not_reached'; }
+          cat > MSC-0.15.6-FREE-INVITE-CI-STATUS.txt <<EOF
+          source_commit=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=${JOB_RESULT}
+          free_invite_source=$(passed .ci-free-invite-source-passed)
+          google_sign_in=$(passed .ci-google-signin-passed)
+          existing_features=$(passed .ci-existing-features-passed)
+          pwa_and_firestore_rules=$(passed .ci-pwa-rules-passed)
+          android_and_wear_apks=$(passed .ci-android-wear-passed)
+          architecture=firebase_spark_free_only
+          paid_cloud_run_dependency=absent
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MSC-0.15.6-FREE-INVITE-CI-STATUS.txt
+          git commit -m "Record free invite CI result for ${GITHUB_SHA}" || exit 0
+          git push origin HEAD:agent/msc-0.15.6-root-fix-ci
