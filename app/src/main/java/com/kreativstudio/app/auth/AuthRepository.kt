@@ -37,10 +37,13 @@ class AuthRepository(
             "This KREATIV build is missing its registered Firebase/OAuth configuration."
         }
 
+        // Start with the standard account chooser. This is the most reliable path on
+        // Samsung/foldable devices and avoids the explicit Sign in with Google sheet
+        // reporting a false cancellation before the account picker is shown.
         val result = try {
-            requestExplicitGoogleSignIn(activity)
-        } catch (error: NoCredentialException) {
             requestAnyGoogleAccount(activity)
+        } catch (error: NoCredentialException) {
+            requestExplicitGoogleSignIn(activity)
         } catch (error: GetCredentialCancellationException) {
             throw IllegalStateException("Google sign-in was cancelled.", error)
         }
@@ -71,16 +74,6 @@ class AuthRepository(
         throw error
     }
 
-    private suspend fun requestExplicitGoogleSignIn(activity: Activity) = credentialManager.getCredential(
-        context = activity,
-        request = GetCredentialRequest.Builder()
-            .addCredentialOption(
-                GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-                    .build(),
-            )
-            .build(),
-    )
-
     private suspend fun requestAnyGoogleAccount(activity: Activity) = credentialManager.getCredential(
         context = activity,
         request = GetCredentialRequest.Builder()
@@ -89,6 +82,16 @@ class AuthRepository(
                     .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
                     .setFilterByAuthorizedAccounts(false)
                     .setAutoSelectEnabled(false)
+                    .build(),
+            )
+            .build(),
+    )
+
+    private suspend fun requestExplicitGoogleSignIn(activity: Activity) = credentialManager.getCredential(
+        context = activity,
+        request = GetCredentialRequest.Builder()
+            .addCredentialOption(
+                GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID)
                     .build(),
             )
             .build(),
