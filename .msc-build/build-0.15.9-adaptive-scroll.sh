@@ -4,8 +4,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-DRIVER="$(mktemp)"
+DRIVER=".msc-build/build-0.15.9-generated.sh"
 cp .msc-build/build-0.15.8-google-age-free-invite.sh "$DRIVER"
+trap 'rm -f "$DRIVER"' EXIT
 
 python3 - "$DRIVER" <<'PY'
 from pathlib import Path
@@ -106,4 +107,3 @@ PY
 
 chmod +x "$DRIVER"
 bash "$DRIVER"
-rm -f "$DRIVER"
