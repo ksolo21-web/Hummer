@@ -27,22 +27,27 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
       - name: Check out workbook payload
         uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-0140-overlay-payload
           path: workbook-payload
           persist-credentials: false
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
+
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -64,15 +69,21 @@ jobs:
         run: |
           set -euo pipefail
           SIGNING_DIR="$RUNNER_TEMP/msc-01512-packaging"
+          SIGNING_PASSWORD="$(openssl rand -hex 24)"
+          SIGNING_ALIAS='msc-01512-packaging'
+          echo "::add-mask::$SIGNING_PASSWORD"
           mkdir -p "$SIGNING_DIR"
           keytool -genkeypair -noprompt \
             -keystore "$SIGNING_DIR/packaging.jks" \
-            -storepass 'msc-01512-packaging-only' \
-            -keypass 'msc-01512-packaging-only' \
-            -alias 'msc-01512-packaging' \
+            -storepass "$SIGNING_PASSWORD" \
+            -keypass "$SIGNING_PASSWORD" \
+            -alias "$SIGNING_ALIAS" \
             -keyalg RSA -keysize 3072 -validity 2 \
             -dname 'CN=My Study Companion 0.15.12 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
           echo "store_file=$SIGNING_DIR/packaging.jks" >> "$GITHUB_OUTPUT"
+          echo "store_password=$SIGNING_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "key_alias=$SIGNING_ALIAS" >> "$GITHUB_OUTPUT"
+          echo "key_password=$SIGNING_PASSWORD" >> "$GITHUB_OUTPUT"
 
       - name: Build and verify 0.15.12
         id: build
@@ -80,19 +91,23 @@ jobs:
         shell: bash
         env:
           MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
-          MSC_RELEASE_STORE_PASSWORD: msc-01512-packaging-only
-          MSC_RELEASE_KEY_ALIAS: msc-01512-packaging
-          MSC_RELEASE_KEY_PASSWORD: msc-01512-packaging-only
+          MSC_RELEASE_STORE_PASSWORD: ${{ steps.signer.outputs.store_password }}
+          MSC_RELEASE_KEY_ALIAS: ${{ steps.signer.outputs.key_alias }}
+          MSC_RELEASE_KEY_PASSWORD: ${{ steps.signer.outputs.key_password }}
         run: |
           set +e
-          mkdir -p release-0.15.12/metadata
+          BUILD_LOG_DIR="$RUNNER_TEMP/msc-01512-build-log"
+          BUILD_LOG="$BUILD_LOG_DIR/CI-BUILD.log"
+          mkdir -p "$BUILD_LOG_DIR"
           {
             set -x
             bash .msc-build/prepare-0.15.8-google-credential-compat.sh
             bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
             bash .msc-build/build-0.15.12-family-vote-widgets.sh
-          } > release-0.15.12/metadata/CI-BUILD.log 2>&1
+          } > "$BUILD_LOG" 2>&1
           result=$?
+          mkdir -p release-0.15.12/metadata
+          cp "$BUILD_LOG" release-0.15.12/metadata/CI-BUILD.log
           echo "$result" > release-0.15.12/metadata/CI-EXIT-CODE.txt
           tail -n 250 release-0.15.12/metadata/CI-BUILD.log
           exit "$result"
@@ -111,6 +126,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -f release-0.15.12/metadata/CI-BUILD.log
+          test -f release-0.15.12/metadata/CI-EXIT-CODE.txt
           cp release-0.15.12/metadata/CI-BUILD.log MSC-0.15.12-CI-BUILD.log
           cp release-0.15.12/metadata/CI-EXIT-CODE.txt MSC-0.15.12-CI-EXIT-CODE.txt
           git config user.name 'github-actions[bot]'
