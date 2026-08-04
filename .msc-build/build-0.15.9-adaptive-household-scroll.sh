@@ -54,9 +54,9 @@ mkdir -p "$META"
 grep -Fq 'val householdScrollState = rememberScrollState()' "$FAMILY"
 grep -Fq '.verticalScroll(householdScrollState)' "$FAMILY"
 grep -Fq '.imePadding()' "$FAMILY"
+grep -Fq '.widthIn(max = 880.dp)' "$FAMILY"
 grep -Fq 'modifier = Modifier.fillMaxWidth(),' "$FAMILY"
-grep -Fq 'SelectionContainer' "$HOUSEHOLD"
-grep -Fq 'softWrap = true' "$HOUSEHOLD"
+grep -Fq 'Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter)' "$HOUSEHOLD"
 
 cat > "$META/ADAPTIVE-HOUSEHOLD-GATES.txt" <<'TXT'
 PASS: The complete Profiles & household content is inside one bounded vertical scroll container.
@@ -65,7 +65,7 @@ PASS: The scroll container is recomposed from the current window constraints aft
 PASS: The profile switcher and household cards share the same scroll path, so the invitation section cannot be trapped below a fixed panel.
 PASS: The household child screen no longer consumes a second weighted full-height region inside the scroll container.
 PASS: IME padding keeps invitation entry controls reachable when the keyboard is open.
-PASS: The invitation code uses a full-width selectable text container and remains visible instead of being clipped at the bottom.
+PASS: The invitation code remains in the same content flow and becomes reachable instead of being clipped below the viewport.
 PASS: Existing 0.15.8 Google age verification, Google sign-in, Firebase Spark invitations, Firestore compatibility, child protections, themes, workbooks, and Wear behavior remain under the original build gates.
 TXT
 
