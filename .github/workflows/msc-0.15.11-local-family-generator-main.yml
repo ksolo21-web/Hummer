@@ -155,3 +155,5 @@ jobs:
           git push origin HEAD:agent/msc-0.15.11-local-family-generator
           cd "$GITHUB_WORKSPACE"
           git worktree remove --force "$STATUS_TREE"
+
+# Retry after repairing the nested generated build driver.
