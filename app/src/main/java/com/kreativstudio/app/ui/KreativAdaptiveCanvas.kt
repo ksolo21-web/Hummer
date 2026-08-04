@@ -15,10 +15,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kreativstudio.app.model.KreativProject
 import com.kreativstudio.app.model.StrokePoint
 import com.kreativstudio.app.ui.canvas.KreativCanvasView
+
+data class CanvasViewportInsets(
+    val left: Dp = 0.dp,
+    val top: Dp = 0.dp,
+    val right: Dp = 0.dp,
+    val bottom: Dp = 0.dp,
+)
 
 class AdaptiveCanvasController internal constructor() {
     internal var frame: AdaptiveCanvasFrame? = null
@@ -41,10 +51,16 @@ fun AdaptiveCanvasArea(
     project: KreativProject,
     controller: AdaptiveCanvasController,
     modifier: Modifier = Modifier,
+    viewportInsets: CanvasViewportInsets = CanvasViewportInsets(),
     onTextPlacement: (StrokePoint) -> Unit,
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
     val settings by viewModel.settings.collectAsState()
+    val density = LocalDensity.current
+    val leftPx = with(density) { viewportInsets.left.toPx() }
+    val topPx = with(density) { viewportInsets.top.toPx() }
+    val rightPx = with(density) { viewportInsets.right.toPx() }
+    val bottomPx = with(density) { viewportInsets.bottom.toPx() }
 
     Box(modifier) {
         AndroidView(
@@ -75,6 +91,7 @@ fun AdaptiveCanvasArea(
                     frame.canvasView.palmRejectionEnabled = settings.palmRejectionEnabled
                     frame.canvasView.shapeSnapEnabled = settings.shapeSnapEnabled
                     frame.canvasView.replayProgress = viewModel.replayProgress
+                    frame.canvasView.setViewportInsets(leftPx, topPx, rightPx, bottomPx)
                     frame.canvasView.invalidate()
                 }.onFailure(frame::reportFailure)
             },
@@ -97,19 +114,13 @@ internal class AdaptiveCanvasFrame(context: Context) : FrameLayout(context) {
     init {
         clipChildren = true
         clipToPadding = true
-        addView(
-            canvasView,
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
-        )
+        addView(canvasView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         setWillNotDraw(false)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0 && oldw > 0 && oldh > 0 && (w != oldw || h != oldh)) {
-            // The drawing view now receives the exact measured workspace. Refit only
-            // after Compose has finished the Fold, rotation, keyboard, or split-screen
-            // layout so no part of the page is hidden beyond the real viewport.
             post { canvasView.resetView() }
         }
     }
