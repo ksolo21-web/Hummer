@@ -1,0 +1,113 @@
+name: KREATIV Cloud Authorization Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/kreativ-studio-v0.1
+    paths:
+      - '.github/workflows/kreativ-cloud-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+jobs:
+  inspect-live-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: my-study-companion-private
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate protected configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GCP_PROJECT_ID GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT; do
+            test -n "${!name:-}" || { echo "Missing $name" >&2; exit 1; }
+          done
+
+      - id: auth
+        name: Authenticate with Google Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Read deployed Firebase Rules releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p cloud-diagnostic
+          ACCESS_TOKEN="$(gcloud auth print-access-token)"
+          export ACCESS_TOKEN
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import urllib.request
+
+          project = os.environ['GCP_PROJECT_ID']
+          token = os.environ['ACCESS_TOKEN']
+          root = pathlib.Path('cloud-diagnostic')
+
+          def get_json(url: str):
+              request = urllib.request.Request(
+                  url,
+                  headers={'Authorization': f'Bearer {token}'},
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+          releases = get_json(
+              f'https://firebaserules.googleapis.com/v1/projects/{project}/releases?pageSize=100'
+          ).get('releases', [])
+          summary = []
+          for index, release in enumerate(releases):
+              name = release.get('name', '')
+              if 'cloud.firestore' not in name and 'firebase.storage' not in name:
+                  continue
+              ruleset_name = release.get('rulesetName')
+              ruleset = get_json(f'https://firebaserules.googleapis.com/v1/{ruleset_name}')
+              files = ruleset.get('source', {}).get('files', [])
+              service = 'firestore' if 'cloud.firestore' in name else 'storage'
+              for file_index, file_data in enumerate(files):
+                  suffix = pathlib.Path(file_data.get('name', 'rules')).name
+                  output = root / f'{service}-{index}-{file_index}-{suffix}'
+                  output.write_text(file_data.get('content', ''), encoding='utf-8')
+              joined = '\n'.join(file_data.get('content', '') for file_data in files)
+              summary.append({
+                  'release': name,
+                  'ruleset': ruleset_name,
+                  'fileCount': len(files),
+                  'allowsKreativNamespace': '/kreativ/' in joined or 'kreativProjects' in joined,
+                  'allowsOwnedUserTree': 'match /users/{userId}/{document=**}' in joined,
+                  'containsUsersCollection': 'match /users/' in joined,
+              })
+
+          (root / 'summary.json').write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          if not summary:
+              raise SystemExit('No Firestore or Storage Firebase Rules releases were found.')
+          print(json.dumps(summary, indent=2, sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kreativ-live-firebase-rules-diagnostic
+          path: cloud-diagnostic
+          retention-days: 3
+          if-no-files-found: error
