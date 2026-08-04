@@ -32,6 +32,32 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Publish run ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$RUNNER_TEMP/msc-responsive-export-status"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-responsive-export-status" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-responsive-export-status"
+              cat > MSC-0.15.8-RESPONSIVE-SOURCE-STATUS.txt <<EOF
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=in_progress
+          source_commit=${GITHUB_SHA}
+          EOF
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add MSC-0.15.8-RESPONSIVE-SOURCE-STATUS.txt
+              git commit -m "Record responsive source export ${GITHUB_RUN_ID} in progress" || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-responsive-export-status" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-responsive-export-status" || true
+
       - name: Reconstruct exact 0.15.8 V3 source
         shell: bash
         run: |
@@ -75,3 +101,33 @@ jobs:
           git commit -m 'Export exact 0.15.8 responsive UI source' || exit 0
           git pull --rebase origin agent/msc-0.15.6-root-fix-ci
           git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+
+      - name: Publish final result
+        if: always()
+        shell: bash
+        env:
+          STATUS_RESULT: ${{ job.status }}
+        run: |
+          set -u
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$RUNNER_TEMP/msc-responsive-export-final"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-responsive-export-final" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-responsive-export-final"
+              cat > MSC-0.15.8-RESPONSIVE-SOURCE-STATUS.txt <<EOF
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=${STATUS_RESULT}
+          source_commit=${GITHUB_SHA}
+          export_path=.msc-debug/0.15.8-responsive-source
+          EOF
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add MSC-0.15.8-RESPONSIVE-SOURCE-STATUS.txt
+              git commit -m "Record responsive source export ${GITHUB_RUN_ID} ${STATUS_RESULT}" || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-responsive-export-final" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-responsive-export-final" || true
