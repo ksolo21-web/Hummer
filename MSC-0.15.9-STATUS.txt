@@ -1,9 +1,4 @@
-source_commit=225cbc70176d625473fa01eb7cfe5c71e30020be
-workflow_run_id=30940789824
-workflow_result=cancelled
+source_commit=e44ab2061f21a734112730cfde2f7336ff4f565a
+workflow_run_id=30940824686
+workflow_result=in_progress
 artifact_name=msc-0.15.9-adaptive-household-scroll-configured-ci
-phone_version_code=42
-wear_version_code=360159001
-google_age_fix=preserved
-spark_invites=preserved
-adaptive_household_scroll=enabled
