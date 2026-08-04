@@ -3,6 +3,8 @@ package com.kreativstudio.app.ui
 import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,7 +16,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -78,7 +82,11 @@ fun KreativAppStable(viewModel: KreativViewModel, activity: Activity) {
 
     KreativTheme(settings) {
         val signedIn = user
-        if (signedIn != null && viewModel.screen == StudioScreen.STUDIO) {
+        if (
+            signedIn != null &&
+            viewModel.screen == StudioScreen.STUDIO &&
+            viewModel.currentProject != null
+        ) {
             KreativFullscreenStudioHost(viewModel)
         } else {
             StableChrome(
@@ -113,7 +121,8 @@ private fun StableChrome(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .windowInsetsPadding(WindowInsets.safeDrawing),
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .imePadding(),
         ) {
             if (user == null) {
                 StableWelcomeScreen(
@@ -124,7 +133,7 @@ private fun StableChrome(
                     onGuest = viewModel::useGuestStudio,
                 )
             } else {
-                StableAppShell(viewModel, user)
+                StableAppShell(viewModel, user, activity)
             }
         }
     }
@@ -138,8 +147,8 @@ private fun StableWelcomeScreen(
     onOliviaPreview: () -> Unit,
     onGuest: () -> Unit,
 ) {
-    Box(
-        Modifier
+    BoxWithConstraints(
+        modifier = Modifier
             .fillMaxSize()
             .background(
                 GradientBrush.radialGradient(
@@ -154,19 +163,24 @@ private fun StableWelcomeScreen(
         contentAlignment = Alignment.Center,
     ) {
         ElevatedCard(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 760.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxHeight),
             shape = RoundedCornerShape(30.dp),
         ) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                if (maxWidth >= 760.dp) {
+                val wideEnough = maxWidth >= 760.dp
+                val tallEnough = maxHeight >= 620.dp
+                if (wideEnough && tallEnough) {
                     Row(
                         Modifier.fillMaxSize().padding(26.dp),
                         horizontalArrangement = Arrangement.spacedBy(26.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StableWelcomeArtwork(Modifier.weight(1f))
+                        StableWelcomeArtwork(Modifier.weight(1f).fillMaxHeight())
                         StableWelcomeCopy(
                             modifier = Modifier.weight(1f),
+                            scrollable = true,
                             busy = busy,
                             googleConfigured = googleConfigured,
                             onGoogle = onGoogle,
@@ -181,10 +195,17 @@ private fun StableWelcomeScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        item { StableWelcomeArtwork(Modifier.fillMaxWidth()) }
+                        item {
+                            StableWelcomeArtwork(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 280.dp),
+                            )
+                        }
                         item {
                             StableWelcomeCopy(
                                 modifier = Modifier.fillMaxWidth(),
+                                scrollable = false,
                                 busy = busy,
                                 googleConfigured = googleConfigured,
                                 onGoogle = onGoogle,
@@ -212,6 +233,7 @@ private fun StableWelcomeArtwork(modifier: Modifier) {
 @Composable
 private fun StableWelcomeCopy(
     modifier: Modifier,
+    scrollable: Boolean,
     busy: Boolean,
     googleConfigured: Boolean,
     onGoogle: () -> Unit,
@@ -219,7 +241,15 @@ private fun StableWelcomeCopy(
     onGuest: () -> Unit,
 ) {
     val tokens = LocalKreativTokens.current
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    val scrollModifier = if (scrollable) {
+        Modifier.verticalScroll(rememberScrollState())
+    } else {
+        Modifier
+    }
+    Column(
+        modifier = modifier.then(scrollModifier),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
         Text("KREATIV Studio", style = MaterialTheme.typography.displayMedium)
         Text("Draw. Paint. Learn. Master.", style = MaterialTheme.typography.titleLarge, color = tokens.gold)
         Text(
@@ -271,39 +301,52 @@ private val stableNavItems = listOf(
 )
 
 @Composable
-private fun StableAppShell(viewModel: KreativViewModel, user: AppUser) {
+private fun StableAppShell(
+    viewModel: KreativViewModel,
+    user: AppUser,
+    activity: Activity,
+) {
     val settings by viewModel.settings.collectAsState()
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val useRail = maxWidth >= 1200.dp && !settings.focusMode
-        if (useRail) {
-            Row(Modifier.fillMaxSize()) {
-                NavigationRail(
-                    modifier = Modifier.fillMaxHeight(),
-                    header = {
-                        Image(
-                            painter = painterResource(R.drawable.kreativ_icon_source),
-                            contentDescription = null,
-                            modifier = Modifier.padding(10.dp).size(58.dp).clip(CircleShape),
-                        )
-                    },
-                ) {
-                    stableNavItems.forEach { item ->
-                        NavigationRailItem(
-                            selected = viewModel.screen == item.screen,
-                            onClick = { viewModel.navigate(item.screen) },
-                            icon = { Icon(item.icon, null) },
-                            label = { Text(item.label) },
-                            alwaysShowLabel = true,
-                        )
+    val windowState = rememberKreativWindowState(activity)
+
+    key(windowState.signature, settings.focusMode) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val useRail =
+                !settings.focusMode &&
+                windowState.isExpanded &&
+                !windowState.isTabletop &&
+                !windowState.isBookPosture
+
+            if (useRail) {
+                Row(Modifier.fillMaxSize()) {
+                    NavigationRail(
+                        modifier = Modifier.fillMaxHeight(),
+                        header = {
+                            Image(
+                                painter = painterResource(R.drawable.kreativ_icon_source),
+                                contentDescription = null,
+                                modifier = Modifier.padding(10.dp).size(58.dp).clip(CircleShape),
+                            )
+                        },
+                    ) {
+                        stableNavItems.forEach { item ->
+                            NavigationRailItem(
+                                selected = viewModel.screen == item.screen,
+                                onClick = { viewModel.navigate(item.screen) },
+                                icon = { Icon(item.icon, null) },
+                                label = { Text(item.label) },
+                                alwaysShowLabel = true,
+                            )
+                        }
                     }
+                    VerticalDivider(Modifier.fillMaxHeight())
+                    StableScreenHost(viewModel, user, Modifier.weight(1f))
                 }
-                VerticalDivider(Modifier.fillMaxHeight())
-                StableScreenHost(viewModel, user, Modifier.weight(1f))
-            }
-        } else {
-            Column(Modifier.fillMaxSize()) {
-                StableScreenHost(viewModel, user, Modifier.weight(1f))
-                if (!settings.focusMode) StableBottomNavigation(viewModel)
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    StableScreenHost(viewModel, user, Modifier.weight(1f))
+                    if (!settings.focusMode) StableBottomNavigation(viewModel)
+                }
             }
         }
     }
@@ -315,11 +358,11 @@ private fun StableScreenHost(
     user: AppUser,
     modifier: Modifier,
 ) {
-    Box(modifier) {
+    Box(modifier.fillMaxSize().imePadding()) {
         key(viewModel.screen) {
             when (viewModel.screen) {
                 StudioScreen.HOME -> HomeScreen(viewModel, user)
-                StudioScreen.STUDIO -> Unit
+                StudioScreen.STUDIO -> EmptyStudioRecovery(viewModel)
                 StudioScreen.LESSONS -> LessonsScreen(viewModel)
                 StudioScreen.GALLERY -> GalleryScreen(viewModel)
                 StudioScreen.MENTOR -> KreativMentorExperience(viewModel)
@@ -330,29 +373,118 @@ private fun StableScreenHost(
 }
 
 @Composable
-private fun StableBottomNavigation(viewModel: KreativViewModel) {
-    Surface(tonalElevation = 5.dp) {
-        LazyRow(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(stableNavItems, key = { it.screen }) { item ->
-                val selected = viewModel.screen == item.screen
-                TextButton(
-                    onClick = { viewModel.navigate(item.screen) },
-                    modifier = Modifier.width(104.dp),
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+private fun EmptyStudioRecovery(viewModel: KreativViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item { Spacer(Modifier.height(24.dp)) }
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(item.icon, null, modifier = Modifier.size(21.dp))
-                        Text(item.label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+                    Icon(Icons.Default.Brush, null, modifier = Modifier.size(54.dp))
+                    Text(
+                        "No canvas is open",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        "Create a new canvas or return to the Atelier. This screen remains scrollable and keeps navigation available on every phone size.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                    Button(
+                        onClick = { viewModel.createProject("New Artwork") },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Create canvas")
+                    }
+                    TextButton(
+                        onClick = { viewModel.navigate(StudioScreen.HOME) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Back to Atelier")
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StableBottomNavigation(viewModel: KreativViewModel) {
+    Surface(tonalElevation = 5.dp) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 660.dp) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    stableNavItems.forEach { item ->
+                        StableNavButton(
+                            item = item,
+                            selected = viewModel.screen == item.screen,
+                            onClick = { viewModel.navigate(item.screen) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            } else {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(stableNavItems, key = { it.screen }) { item ->
+                        StableNavButton(
+                            item = item,
+                            selected = viewModel.screen == item.screen,
+                            onClick = { viewModel.navigate(item.screen) },
+                            modifier = Modifier.width(98.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StableNavButton(
+    item: StableNavItem,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+            contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(item.icon, null, modifier = Modifier.size(21.dp))
+            Text(
+                item.label,
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
         }
     }
 }
