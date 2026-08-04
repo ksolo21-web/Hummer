@@ -19,6 +19,24 @@ class PrimaryRoutesTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
+    fun studioTabWithoutOpenProjectShowsRecoveryUi() {
+        composeRule.waitUntilAtLeastOneExists(
+            hasText("Open Olivia's private preview"),
+            timeoutMillis = 15_000,
+        )
+        composeRule.onNodeWithText("Open Olivia's private preview").performScrollTo().performClick()
+        composeRule.waitUntilAtLeastOneExists(hasText("Studio"), timeoutMillis = 15_000)
+
+        composeRule.onNodeWithText("Studio").performClick()
+        composeRule.waitUntilAtLeastOneExists(hasText("No canvas is open"), timeoutMillis = 15_000)
+        composeRule.waitUntilAtLeastOneExists(hasText("Create canvas"), timeoutMillis = 15_000)
+        composeRule.waitUntilAtLeastOneExists(hasText("Back to Atelier"), timeoutMillis = 15_000)
+
+        composeRule.onNodeWithText("Back to Atelier").performClick()
+        composeRule.waitUntilAtLeastOneExists(hasText("New canvas"), timeoutMillis = 15_000)
+    }
+
+    @Test
     fun mentorLessonAndNewCanvasRoutesStayOpen() {
         composeRule.waitUntilAtLeastOneExists(
             hasText("Open Olivia's private preview"),
