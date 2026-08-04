@@ -78,7 +78,8 @@ for path in sorted(ui.glob('*Screen.kt')):
 
 report = Path('release-0.15.9/metadata/RESPONSIVE-SCREEN-AUDIT.txt')
 report.parent.mkdir(parents=True, exist_ok=True)
-report.write_text('\n'.join(rows) + '\n', encoding='utf-8')
+separator = chr(10)
+report.write_text(separator.join(rows) + separator, encoding='utf-8')
 
 # The reported regression must be covered explicitly. Other screens are retained
 # rather than blindly nested in a second scroll container, which would break
