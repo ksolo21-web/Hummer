@@ -1,0 +1,4 @@
+source_commit=12a5d3349053575c99ff032417cb243e86b33dc4
+workflow_run_id=30940320558
+workflow_result=in_progress
+artifact_name=msc-0.15.9-adaptive-household-scroll-configured-ci
