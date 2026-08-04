@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: msc-0159-responsive-final
@@ -48,6 +48,29 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+
+      - name: Publish isolated run ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS_TREE="$RUNNER_TEMP/msc-0159-responsive-status"
+          rm -rf "$STATUS_TREE"
+          git fetch origin agent/msc-0.15.9-responsive-final
+          git worktree add --detach "$STATUS_TREE" origin/agent/msc-0.15.9-responsive-final
+          cd "$STATUS_TREE"
+          cat > MSC-0.15.9-RESPONSIVE-FINAL-STATUS.txt <<EOF
+          source_commit=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=in_progress
+          artifact_name=msc-0.15.9-responsive-final-configured-ci
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MSC-0.15.9-RESPONSIVE-FINAL-STATUS.txt
+          git commit -m "Record isolated 0.15.9 responsive run ${GITHUB_RUN_ID}"
+          git push origin HEAD:agent/msc-0.15.9-responsive-final
+          cd "$GITHUB_WORKSPACE"
+          git worktree remove --force "$STATUS_TREE"
 
       - name: Install deterministic toolchains
         shell: bash
@@ -97,4 +120,37 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-# Registered isolated responsive release workflow.
+      - name: Publish isolated final result
+        if: always()
+        shell: bash
+        env:
+          STATUS_RESULT: ${{ job.status }}
+        run: |
+          set -u
+          STATUS_TREE="$RUNNER_TEMP/msc-0159-responsive-final"
+          rm -rf "$STATUS_TREE"
+          git fetch origin agent/msc-0.15.9-responsive-final
+          git worktree add --detach "$STATUS_TREE" origin/agent/msc-0.15.9-responsive-final
+          cd "$STATUS_TREE"
+          cat > MSC-0.15.9-RESPONSIVE-FINAL-STATUS.txt <<EOF
+          source_commit=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=${STATUS_RESULT}
+          artifact_name=msc-0.15.9-responsive-final-configured-ci
+          package=com.mystudycompanion.app
+          phone_version_code=42
+          wear_version_code=360159001
+          adaptive_scroll=family_household_complete_page
+          live_fold_resize=enabled
+          invitation_auto_reveal=enabled
+          google_sign_in=preserved
+          google_age_gate=preserved
+          architecture=firebase_spark_free_only
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MSC-0.15.9-RESPONSIVE-FINAL-STATUS.txt
+          git commit -m "Record isolated 0.15.9 responsive ${GITHUB_RUN_ID} ${STATUS_RESULT}" || true
+          git push origin HEAD:agent/msc-0.15.9-responsive-final
+          cd "$GITHUB_WORKSPACE"
+          git worktree remove --force "$STATUS_TREE"
