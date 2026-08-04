@@ -8,8 +8,10 @@ on:
       - .github/workflows/msc-0.15.9-adaptive-scroll-v5.yml
       - .msc-build/prepare-0.15.9-narrow-layout-gate.sh
       - .msc-build/prepare-0.15.9-audit-newline.sh
+      - .msc-build/prepare-0.15.9-account-driver.sh
       - .msc-build/run-0.15.9-adaptive-scroll.sh
       - .msc-build/apply-0.15.9-adaptive-scroll.sh
+      - .msc-build/apply-0.15.9-account-scroll.sh
       - .msc-build/build-0.15.9-adaptive-scroll.sh
   workflow_dispatch:
 
@@ -113,6 +115,7 @@ jobs:
           bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
           bash .msc-build/prepare-0.15.9-narrow-layout-gate.sh
           bash .msc-build/prepare-0.15.9-audit-newline.sh
+          bash .msc-build/prepare-0.15.9-account-driver.sh
           bash .msc-build/run-0.15.9-adaptive-scroll.sh
 
       - name: Upload configured APKs and proof
@@ -144,9 +147,10 @@ jobs:
           package=com.mystudycompanion.app
           phone_version_code=42
           wear_version_code=360159001
-          adaptive_scroll=family_household_complete_page
+          adaptive_scroll=family_household_and_account
           live_fold_resize=enabled
           invitation_auto_reveal=enabled
+          ordinary_screen_audit=complete
           google_sign_in=preserved
           google_age_gate=preserved
           architecture=firebase_spark_free_only
