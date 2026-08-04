@@ -152,3 +152,5 @@ jobs:
           }
           publish_status
           git worktree remove --force "$RUNNER_TEMP/msc-status-final" || true
+
+# Trigger after this workflow exists on the branch.
