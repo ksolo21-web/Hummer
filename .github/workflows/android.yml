@@ -102,16 +102,19 @@ jobs:
           path: signing-tools
           if-no-files-found: error
 
+  # Protected signing material is intentionally unavailable to ordinary push and
+  # pull-request jobs. Run this job only from a deliberate workflow dispatch.
   build-private-alpha:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
-      ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: ${{ secrets.KREATIV_GOOGLE_WEB_CLIENT_ID }}
+      ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: 949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com
       ORG_GRADLE_PROJECT_KREATIV_OLIVIA_FIREBASE_UID: ${{ secrets.KREATIV_OLIVIA_FIREBASE_UID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: ${{ secrets.KREATIV_FIREBASE_API_KEY }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: ${{ secrets.KREATIV_FIREBASE_APP_ID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: ${{ secrets.KREATIV_FIREBASE_PROJECT_ID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: ${{ secrets.KREATIV_FIREBASE_STORAGE_BUCKET }}
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: 1:949620144971:android:63fec0446e8549d25946ce
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: my-study-companion-abc01
+      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
       ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD: ${{ secrets.KREATIV_PRIVATE_ALPHA_STORE_PASSWORD }}
       ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEY_ALIAS }}
       ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_PASSWORD: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEY_PASSWORD }}
@@ -137,16 +140,12 @@ jobs:
         run: |
           set -euo pipefail
           required=(
-            ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID
-            ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY
-            ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID
-            ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID
             ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD
             ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS
             ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_PASSWORD
           )
           for name in "${required[@]}"; do
-            test -n "${!name:-}" || { echo "Missing required secret: $name" >&2; exit 1; }
+            test -n "${!name:-}" || { echo "Missing required signing secret: $name" >&2; exit 1; }
           done
           test -n "$KEYSTORE_B64" || { echo 'Missing KREATIV_PRIVATE_ALPHA_KEYSTORE_B64' >&2; exit 1; }
           mkdir -p "$RUNNER_TEMP/kreativ-signing"
