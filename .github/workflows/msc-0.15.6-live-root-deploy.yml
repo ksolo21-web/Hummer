@@ -56,6 +56,12 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Set up JDK 21 for current Firebase CLI
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Reconstruct and retest exact 0.15.6 release
         shell: bash
         run: |
@@ -71,7 +77,8 @@ jobs:
 
           cd MyStudyCompanion/backend
           python -m pip install --disable-pip-version-check -r requirements-dev.txt
-          python -m pytest -q tests/test_household_invitation_root_fix.py tests/test_household_api.py
+          python -m compileall -q app tests
+          python -m pytest -q
           cd ../..
 
           while IFS= read -r file; do node --check "$file"; done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
@@ -159,6 +166,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          java -version
           npm install --global firebase-tools@15.1.0
           cd MyStudyCompanionWeb
           firebase deploy \
