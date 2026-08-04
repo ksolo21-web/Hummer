@@ -153,4 +153,4 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           git worktree remove --force "$STATUS_TREE"
 
-# Retry after preserving the generated driver's repository-relative root.
+# Trigger after precise adaptive source-gate repair.
