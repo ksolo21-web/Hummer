@@ -1,4 +1,13 @@
-source_commit=0b285767a07a926e5f9db84a585aeafea15b13df
-workflow_run_id=30942515665
-workflow_result=in_progress
+source_commit=fc8333bd3d9250ad1aaa8b9a90a775411be6a990
+workflow_run_id=30942446301
+workflow_result=cancelled
 artifact_name=msc-0.15.9-responsive-final-configured-ci
+package=com.mystudycompanion.app
+phone_version_code=42
+wear_version_code=360159001
+adaptive_scroll=family_household_complete_page
+live_fold_resize=enabled
+invitation_auto_reveal=enabled
+google_sign_in=preserved
+google_age_gate=preserved
+architecture=firebase_spark_free_only
