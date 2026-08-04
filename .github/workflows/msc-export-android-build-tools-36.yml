@@ -1,0 +1,37 @@
+name: My Study Companion Export Android Build Tools 36
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+
+permissions:
+  contents: read
+
+jobs:
+  export-signing-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Package official Android Build Tools 36.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;36.0.0"
+          test -x "$SDK_ROOT/build-tools/36.0.0/apksigner"
+          test -x "$SDK_ROOT/build-tools/36.0.0/zipalign"
+          tar -czf android-build-tools-36.0.0-signing.tar.gz -C "$SDK_ROOT/build-tools" 36.0.0
+          sha256sum android-build-tools-36.0.0-signing.tar.gz > android-build-tools-36.0.0-signing.sha256
+      - uses: actions/upload-artifact@v6
+        with:
+          name: android-build-tools-36.0.0-signing
+          path: |
+            android-build-tools-36.0.0-signing.tar.gz
+            android-build-tools-36.0.0-signing.sha256
+          retention-days: 1
+          if-no-files-found: error
