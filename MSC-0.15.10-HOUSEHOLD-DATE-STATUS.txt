@@ -1,0 +1,4 @@
+source_commit=2e2d33a34c88832ea39308024442734a3eaae6f2
+workflow_run_id=30949399476
+workflow_result=in_progress
+artifact_name=msc-0.15.10-household-date-recovery-configured-ci
