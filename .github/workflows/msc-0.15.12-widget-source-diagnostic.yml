@@ -1,0 +1,63 @@
+name: My Study Companion 0.15.12 Widget Source Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.12-vote-widget-fix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconstruct-widget-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Reconstruct current Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+          bash .msc-build/apply-0.15.10-household-date-recovery.sh
+          bash .msc-build/apply-0.15.11-local-family-generator.sh
+
+      - name: Collect widget and family voting source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/msc-widget-source"
+          mkdir -p "$OUT"
+          cp -a MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget "$OUT/widget"
+          cp MyStudyCompanion/app/src/main/AndroidManifest.xml "$OUT/AndroidManifest.xml"
+          cp MyStudyCompanion/app/build.gradle.kts "$OUT/app-build.gradle.kts"
+          mkdir -p "$OUT/res"
+          cp -a MyStudyCompanion/app/src/main/res/xml "$OUT/res/xml"
+          find MyStudyCompanion/app/src/main/res -maxdepth 2 -type f \( -iname '*widget*' -o -iname '*preview*' \) -print0 | while IFS= read -r -d '' file; do
+            rel="${file#MyStudyCompanion/app/src/main/res/}"
+            mkdir -p "$OUT/res/$(dirname "$rel")"
+            cp "$file" "$OUT/res/$rel"
+          done
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt "$OUT/CompanionHubRepository.kt"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt "$OUT/FamilyWorshipOrganizerRepository.kt"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt "$OUT/CompanionHubScreen.kt"
+          find "$OUT" -type f -print | sort > "$OUT/FILES.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msc-0.15.12-widget-source-diagnostic
+          path: ${{ runner.temp }}/msc-widget-source
+          retention-days: 7
+          if-no-files-found: error
