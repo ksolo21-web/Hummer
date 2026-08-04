@@ -1,0 +1,6 @@
+workflow_run_id=30944899523
+workflow_result=success
+screens_scanned=15
+unresolved_ordinary_screens=0
+family_household_scroll=verified
+account_scroll=verified
