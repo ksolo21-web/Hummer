@@ -57,3 +57,5 @@ jobs:
           git add MSC-ANDROID-SIGNING-TOOLS-STATUS.txt
           git commit -m "Record Android signing tools run ${GITHUB_RUN_ID}" || exit 0
           git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+
+# This comment intentionally triggers the exporter after the workflow exists on the branch.
