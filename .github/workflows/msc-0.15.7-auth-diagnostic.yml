@@ -1,0 +1,81 @@
+name: My Study Companion Auth Provision Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+    paths:
+      - .github/workflows/msc-0.15.7-auth-diagnostic.yml
+      - .msc-build/**
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-auth-provisioning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install reconstruction dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+      - name: Reconstruct exact 0.15.6 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+      - name: Collect auth provisioning source and build inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p auth-diagnostic/files
+          grep -R -n -E 'Account service is not provisioned|firebaseConfigured|FIREBASE_CONFIGURED|default_web_client_id|WEB_CLIENT_ID|GoogleSignInCoordinator|AuthCapabilities|AccountAgeGroup|AccountAgeSource|google-services' MyStudyCompanion > auth-diagnostic/auth-grep.txt || true
+          find MyStudyCompanion -type f \( -name 'google-services.json' -o -name 'strings.xml' -o -name 'AndroidManifest.xml' -o -name 'build.gradle.kts' -o -name 'gradle.properties' \) -print | sort > auth-diagnostic/config-files.txt
+          for path in \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/HybridAuthRepository.kt \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/GoogleSignInCoordinator.kt \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AccountScreen.kt \
+            MyStudyCompanion/app/build.gradle.kts \
+            MyStudyCompanion/build.gradle.kts \
+            MyStudyCompanion/settings.gradle.kts \
+            MyStudyCompanion/gradle.properties \
+            MyStudyCompanion/app/src/main/AndroidManifest.xml; do
+            if test -f "$path"; then
+              mkdir -p "auth-diagnostic/files/$(dirname "$path")"
+              cp "$path" "auth-diagnostic/files/$path"
+            fi
+          done
+          while IFS= read -r path; do
+            test -f "$path" || continue
+            mkdir -p "auth-diagnostic/files/$(dirname "$path")"
+            cp "$path" "auth-diagnostic/files/$path"
+          done < auth-diagnostic/config-files.txt
+          tar -czf auth-diagnostic-source.tar.gz auth-diagnostic
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-auth-provision-diagnostic
+          path: auth-diagnostic-source.tar.gz
+          retention-days: 3
+          if-no-files-found: error
