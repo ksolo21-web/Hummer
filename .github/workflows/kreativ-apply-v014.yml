@@ -1,0 +1,49 @@
+name: Apply KREATIV 0.1.4 Repair
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ agent/kreativ-studio-v0.1 ]
+    paths:
+      - '.kreativ-build/apply-v0.1.4-ui-fix.py'
+      - '.github/workflows/kreativ-apply-v014.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kreativ-apply-v014
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/kreativ-studio-v0.1
+          fetch-depth: 0
+      - name: Apply deterministic source repair
+        run: python .kreativ-build/apply-v0.1.4-ui-fix.py
+      - name: Validate patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          grep -Fq 'versionName = "0.1.4"' app/build.gradle.kts
+          grep -Fq 'Select / Move • object moved' app/src/main/java/com/kreativstudio/app/ui/canvas/KreativCanvasView.kt
+          grep -Fq 'ToolType.PEN -> Icons.Default.BorderColor' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
+          grep -Fq 'ToolType.SELECT -> Icons.Default.SelectAll' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
+      - name: Commit repaired app source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'Repair already applied.'
+            exit 0
+          fi
+          git config user.name 'KREATIV Build Agent'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app VERSION
+          git commit -m 'Fix Select Move guidance and distinct tool controls in 0.1.4'
+          git push origin HEAD:agent/kreativ-studio-v0.1
