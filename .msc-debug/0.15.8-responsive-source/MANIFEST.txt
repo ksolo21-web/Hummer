@@ -1,0 +1,6 @@
+.msc-debug/0.15.8-responsive-source/MANIFEST.txt
+.msc-debug/0.15.8-responsive-source/adaptive/AdaptiveLayoutSpec.kt
+.msc-debug/0.15.8-responsive-source/ui/CompanionHubScreen.kt
+.msc-debug/0.15.8-responsive-source/ui/FamilyHubScreen.kt
+.msc-debug/0.15.8-responsive-source/ui/HouseholdScreen.kt
+.msc-debug/0.15.8-responsive-source/ui/MyStudyCompanionApp.kt
