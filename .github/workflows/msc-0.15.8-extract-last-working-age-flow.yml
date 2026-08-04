@@ -1,0 +1,61 @@
+name: My Study Companion 0.15.8 Extract Last Working Age Flow
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+    paths:
+      - .github/workflows/msc-0.15.8-extract-last-working-age-flow.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: msc-0158-extract-last-working-age-flow
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/msc-0.15.6-root-fix-ci
+          fetch-depth: 0
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Reconstruct through last working 0.15.1 age flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+      - name: Publish exact 0.15.1 age-flow source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=.msc-debug/0.15.1-last-working-age-flow
+          rm -rf "$OUT"
+          mkdir -p "$OUT/auth" "$OUT/companion" "$OUT/ui" "$OUT/tests"
+          cp -R MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/. "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt "$OUT/companion/" 2>/dev/null || true
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt "$OUT/companion/" 2>/dev/null || true
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt "$OUT/ui/"
+          find MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui -maxdepth 1 -type f \( -iname '*Profile*' -o -iname '*Account*' -o -iname '*Auth*' \) -exec cp {} "$OUT/ui/" \;
+          find MyStudyCompanion/app/src/test/java/com/mystudycompanion/app -type f \( -path '*/auth/*' -o -iname '*StudyGroupAssignmentResolver*' -o -iname '*CompanionHub*' \) -exec cp {} "$OUT/tests/" \;
+          find "$OUT" -type f -printf '%P\n' | sort > "$OUT/FILES.txt"
+          grep -R -n -E 'ProfileAgeSetupScreen|needsAgeConfirmation|confirmProfileAge|UNCONFIRMED|AccountAgeGroup.UNKNOWN|MINOR_UNKNOWN' MyStudyCompanion/app/src/main/java MyStudyCompanion/app/src/test > "$OUT/AGE-FLOW-MATCHES.txt" || true
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT"
+          git commit -m 'Publish exact last-working 0.15.1 age verification source' || exit 0
+          git push origin HEAD:agent/msc-0.15.6-root-fix-ci
