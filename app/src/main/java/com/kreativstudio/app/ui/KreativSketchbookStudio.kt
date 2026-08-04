@@ -88,6 +88,13 @@ import com.kreativstudio.app.model.ToolType
 import com.kreativstudio.app.ui.theme.KreativTheme
 import kotlinx.coroutines.delay
 
+private val HudSurface = Color(0xF217131E)
+private val HudSurfaceVariant = Color(0xFF2A2235)
+private val HudOnSurface = Color(0xFFFFFBFF)
+private val HudMuted = Color(0xFFE0D7E8)
+private val HudSelected = Color(0xFF6F4FC7)
+private val HudOutline = Color(0xFFB69FD5)
+
 /**
  * A canvas-first studio inspired by the speed and restraint of a dedicated
  * sketchbook: full-screen artwork, compact floating controls, and no permanent
@@ -216,11 +223,14 @@ private fun CanvasFirstStudio(
                     .statusBarsPadding()
                     .padding(10.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = .94f),
+                color = HudSurface,
+                contentColor = HudOnSurface,
+                border = BorderStroke(1.dp, HudOutline.copy(alpha = .62f)),
                 tonalElevation = 8.dp,
+                shadowElevation = 8.dp,
             ) {
                 IconButton(onClick = { hudVisible = true }) {
-                    Icon(Icons.Default.Visibility, "Show canvas controls")
+                    Icon(Icons.Default.Visibility, "Show canvas controls", tint = HudOnSurface)
                 }
             }
         }
@@ -317,16 +327,18 @@ private fun FloatingTopBar(
             .statusBarsPadding()
             .padding(horizontal = 8.dp, vertical = 6.dp),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = .96f),
+        color = HudSurface,
+        contentColor = HudOnSurface,
+        border = BorderStroke(1.dp, HudOutline.copy(alpha = .58f)),
         tonalElevation = 10.dp,
-        shadowElevation = 8.dp,
+        shadowElevation = 10.dp,
     ) {
         Row(
             modifier = Modifier.height(54.dp).padding(horizontal = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Atelier")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to Atelier", tint = HudOnSurface)
             }
             Column(
                 modifier = Modifier
@@ -337,6 +349,7 @@ private fun FloatingTopBar(
                 Text(
                     project.title,
                     style = MaterialTheme.typography.titleSmall,
+                    color = HudOnSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -344,13 +357,17 @@ private fun FloatingTopBar(
                     Text(
                         "${project.widthPx} × ${project.heightPx}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = HudMuted,
                     )
                 }
             }
             Spacer(Modifier.weight(1f))
             if (busy) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = HudOnSurface,
+                    strokeWidth = 2.dp,
+                )
                 Spacer(Modifier.width(4.dp))
             }
             ActionIcon(Icons.AutoMirrored.Filled.Undo, "Undo", onUndo)
@@ -367,9 +384,11 @@ private fun VerticalToolRail(viewModel: KreativViewModel, modifier: Modifier = M
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = .96f),
+        color = HudSurface,
+        contentColor = HudOnSurface,
+        border = BorderStroke(1.dp, HudOutline.copy(alpha = .58f)),
         tonalElevation = 10.dp,
-        shadowElevation = 8.dp,
+        shadowElevation = 10.dp,
     ) {
         Column(
             modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
@@ -390,9 +409,11 @@ private fun CompactToolDock(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = .97f),
+        color = HudSurface,
+        contentColor = HudOnSurface,
+        border = BorderStroke(1.dp, HudOutline.copy(alpha = .58f)),
         tonalElevation = 10.dp,
-        shadowElevation = 8.dp,
+        shadowElevation = 10.dp,
     ) {
         Column(Modifier.padding(vertical = 5.dp)) {
             LazyRow(
@@ -413,6 +434,7 @@ private fun CompactToolDock(
                 Text(
                     viewModel.activeTool.displayName(),
                     style = MaterialTheme.typography.labelLarge,
+                    color = HudOnSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -435,9 +457,11 @@ private fun BrushPuck(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = .97f),
+        color = HudSurface,
+        contentColor = HudOnSurface,
+        border = BorderStroke(1.dp, HudOutline.copy(alpha = .58f)),
         tonalElevation = 10.dp,
-        shadowElevation = 8.dp,
+        shadowElevation = 10.dp,
     ) {
         Row(
             modifier = Modifier.height(58.dp).padding(horizontal = 10.dp),
@@ -446,11 +470,15 @@ private fun BrushPuck(
         ) {
             ColorDot(viewModel.activeColorArgb, onMore)
             Column(Modifier.widthIn(min = 96.dp, max = 160.dp)) {
-                Text(viewModel.activeTool.displayName(), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    viewModel.activeTool.displayName(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = HudOnSurface,
+                )
                 Text(
                     "Opacity ${(viewModel.brushOpacity * 100).toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = HudMuted,
                 )
             }
             SizeStepper(viewModel)
@@ -464,23 +492,26 @@ private fun BrushPuck(
 private fun SizeStepper(viewModel: KreativViewModel) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = HudSurfaceVariant,
+        contentColor = HudOnSurface,
+        border = BorderStroke(1.dp, HudOutline.copy(alpha = .42f)),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(
                 onClick = { viewModel.brushWidth = (viewModel.brushWidth - 2f).coerceAtLeast(1f) },
                 contentPadding = PaddingValues(horizontal = 9.dp),
-            ) { Text("−") }
+            ) { Text("−", color = HudOnSurface) }
             Text(
                 "${viewModel.brushWidth.toInt()} px",
                 style = MaterialTheme.typography.labelMedium,
+                color = HudOnSurface,
                 modifier = Modifier.widthIn(min = 46.dp),
                 maxLines = 1,
             )
             TextButton(
                 onClick = { viewModel.brushWidth = (viewModel.brushWidth + 2f).coerceAtMost(180f) },
                 contentPadding = PaddingValues(horizontal = 9.dp),
-            ) { Text("+") }
+            ) { Text("+", color = HudOnSurface) }
         }
     }
 }
@@ -491,14 +522,15 @@ private fun ToolIconButton(viewModel: KreativViewModel, tool: ToolType) {
     Surface(
         modifier = Modifier.size(46.dp),
         shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        color = if (selected) HudSelected else Color.Transparent,
+        contentColor = HudOnSurface,
+        border = if (selected) BorderStroke(1.dp, HudOutline.copy(alpha = .7f)) else null,
     ) {
         IconButton(onClick = { viewModel.activeTool = tool }) {
             Icon(
                 imageVector = tool.icon(),
                 contentDescription = tool.displayName(),
-                tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurface,
+                tint = HudOnSurface,
             )
         }
     }
@@ -510,7 +542,9 @@ private fun ActionIcon(
     description: String,
     action: () -> Unit,
 ) {
-    IconButton(onClick = action) { Icon(image, description) }
+    IconButton(onClick = action) {
+        Icon(image, description, tint = HudOnSurface)
+    }
 }
 
 @Composable
@@ -519,7 +553,7 @@ private fun ColorDot(argb: Long, onClick: () -> Unit) {
         modifier = Modifier.size(34.dp).clickable(onClick = onClick),
         shape = CircleShape,
         color = Color(argb),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(2.dp, HudOutline),
     ) {}
 }
 
