@@ -25,10 +25,12 @@ def replace(old: str, new: str, label: str, count: int | None = None) -> None:
         raise SystemExit(f'{label} expected {count}, found {found}')
     text = text.replace(old, new)
 
+# This script edits the source of the 0.15.10 build driver. The doubled
+# backslashes below intentionally match the literal \n escapes in that source.
 replace(
-    'bash .msc-build/apply-0.15.10-household-date-recovery.sh\n',
-    'bash .msc-build/apply-0.15.10-household-date-recovery.sh\n'
-    'bash .msc-build/apply-0.15.11-local-family-generator.sh\n',
+    'bash .msc-build/apply-0.15.10-household-date-recovery.sh\\n',
+    'bash .msc-build/apply-0.15.10-household-date-recovery.sh\\n'
+    '    \'bash .msc-build/apply-0.15.11-local-family-generator.sh\\n\'',
     'local generator overlay insertion',
     1,
 )
@@ -80,10 +82,10 @@ AUDIT
 replace(anchor, local_gates, 'local generator source gates', 1)
 
 replace(
-    'PASS: missing private-service configuration is handled in-page and cannot crash the app.\n',
-    'PASS: missing private-service configuration is handled in-page and cannot crash the app.\n'
-    'PASS: Family Worship now generates on-device when the private HTTPS service is unavailable.\n'
-    'PASS: generated plans use direct NWT scripture targets, are stored locally, and sync through the household Firestore record.\n',
+    'PASS: missing private-service configuration is handled in-page and cannot crash the app.\\n',
+    'PASS: missing private-service configuration is handled in-page and cannot crash the app.\\n'
+    "    'PASS: Family Worship now generates on-device when the private HTTPS service is unavailable.\\n'\n"
+    "    'PASS: generated plans use direct NWT scripture targets, are stored locally, and sync through the household Firestore record.\\n'",
     'release gate additions',
     1,
 )
