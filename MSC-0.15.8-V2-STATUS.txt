@@ -1,8 +1,3 @@
-source_commit=cafe7f2fe3da4042e301c7199b1cd9f6179d69f9
-workflow_run_id=30927350013
-workflow_result=success
-artifact_name=msc-0.15.8-google-age-free-invite-configured-ci-v2
-architecture=firebase_spark_free_only
-google_sign_in=preserved
-unresolved_age=blocked_until_google_or_user_confirmation
-household_member_writes=live_rules_compatible
+source_commit=a492c46fde88550745ff3cd5248213fdb39705e9
+workflow_run_id=30928717262
+workflow_result=in_progress
