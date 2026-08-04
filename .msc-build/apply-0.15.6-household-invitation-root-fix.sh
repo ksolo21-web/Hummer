@@ -19,6 +19,47 @@ xz --decompress --stdout "$PATCH_XZ" > "$PATCH_FILE"
   patch -p1 --forward --batch < "$PATCH_FILE"
 )
 
+# Correct the backend error-detail parser after the binary overlay is applied.
+# The initial patch accidentally emitted JavaScript-style regex escapes into a
+# Kotlin string literal, which prevented Android compilation. Replace the whole
+# method deterministically so all release workflows reconstruct identical code.
+python3 - "$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/BackendApi.kt" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding='utf-8')
+start = text.index('    private fun requireSuccess(')
+end = text.index('\n    companion object', start)
+method = '''    private fun requireSuccess(response: BackendResponse, operation: String) {
+        if (response.statusCode !in 200..299) {
+            val detail = Regex("\\\"detail\\\"\\\\s*:\\\\s*\\\"([^\\\"]+)\\\"")
+                .find(response.body)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.replace("\\\\n", " ")
+                ?.replace("\\\\\\\"", "\\\"")
+                ?.trim()
+                .orEmpty()
+            val safeDetail = detail.ifBlank {
+                response.body.take(240).replace(Regex("[\\\\r\\\\n]+"), " ").trim()
+            }
+            throw BackendProtocolException(
+                safeDetail.ifBlank { "The $operation failed with status ${response.statusCode}." },
+            )
+        }
+    }
+'''
+path.write_text(text[:start] + method + text[end:], encoding='utf-8')
+
+fixed = path.read_text(encoding='utf-8')
+assert 'Regex("\\\"detail\\\"\\\\s*:\\\\s*\\\"([^\\\"]+)\\\"")' in fixed
+assert '?.replace("\\\\\\\"", "\\\"")' in fixed
+assert 'Regex("[\\\\r\\\\n]+")' in fixed
+assert 'Regex("\\\"detail\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")' not in fixed
+print('PASS: corrected Kotlin backend error-detail parser escaping.')
+PY
+
 APP="$ROOT/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app"
 BACKEND="$ROOT/MyStudyCompanion/backend"
 WEB="$ROOT/MyStudyCompanionWeb"
