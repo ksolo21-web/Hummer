@@ -1,4 +1,16 @@
 source_commit=e7804b1a77eec314eec36c8e819b1faaeac0f403
 workflow_run_id=30952832981
-workflow_result=in_progress
+workflow_result=success
 artifact_name=msc-0.15.11-local-family-generator-configured-ci
+package=com.mystudycompanion.app
+phone_version_code=44
+wear_version_code=360161001
+on_device_family_generator=enabled
+backend_required_for_family_generation=false
+direct_nwt_links=enabled
+household_firestore_publish=enabled
+household_pairing_recovery=preserved
+stable_date_picker=preserved
+adaptive_scroll=preserved
+google_sign_in=preserved
+architecture=firebase_spark_free_only
