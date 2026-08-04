@@ -91,16 +91,36 @@ jobs:
           grep -R -n 'fun HouseholdScreen' "$OUT/ui" > "$OUT/HOUSEHOLD-LOCATION.txt"
           grep -R -n 'verticalScroll\|LazyColumn\|BoxWithConstraints' "$OUT/ui" > "$OUT/SCROLL-AUDIT.txt" || true
 
-      - name: Commit exported source
+      - name: Publish exported source from clean worktree
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .msc-debug/0.15.8-responsive-source
-          git commit -m 'Export exact 0.15.8 responsive UI source' || exit 0
-          git pull --rebase origin agent/msc-0.15.6-root-fix-ci
-          git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+          EXPORT_TMP="$RUNNER_TEMP/msc-responsive-export-payload"
+          PUBLISH_TREE="$RUNNER_TEMP/msc-responsive-export-publish"
+          rm -rf "$EXPORT_TMP" "$PUBLISH_TREE"
+          mkdir -p "$EXPORT_TMP"
+          cp -a .msc-debug/0.15.8-responsive-source "$EXPORT_TMP/"
+
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$PUBLISH_TREE"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$PUBLISH_TREE" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$PUBLISH_TREE"
+              rm -rf .msc-debug/0.15.8-responsive-source
+              mkdir -p .msc-debug
+              cp -a "$EXPORT_TMP/0.15.8-responsive-source" .msc-debug/
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add .msc-debug/0.15.8-responsive-source
+              git commit -m 'Export exact 0.15.8 responsive UI source' || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$PUBLISH_TREE" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$PUBLISH_TREE" || true
+          test -f "$EXPORT_TMP/0.15.8-responsive-source/ui/HouseholdScreen.kt"
 
       - name: Publish final result
         if: always()
