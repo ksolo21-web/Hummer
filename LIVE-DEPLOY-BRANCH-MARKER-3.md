@@ -1,0 +1,1 @@
+Protected live deployment branch marker. No credentials are stored here.
