@@ -1,0 +1,94 @@
+name: My Study Companion 0.15.6 Root Fix CI Push
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-0156-root-fix-ci-push
+  cancel-in-progress: true
+
+jobs:
+  root-fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      - name: Reconstruct exact 0.15.6 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+      - name: Test server-authoritative invitation transactions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion/backend
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          python -m compileall -q app tests
+          python -m pytest -q
+          docker build --tag my-study-companion-backend:0.15.6 .
+      - name: Test PWA and Firestore rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do node --check "$file"; done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
+          mapfile -t TESTS < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.test.mjs' -print | sort)
+          node --test "${TESTS[@]}"
+          DEPS="$RUNNER_TEMP/msc-rules-deps"
+          npm install --prefix "$DEPS" --no-save firebase @firebase/rules-unit-testing
+          (cd MyStudyCompanionWeb && NODE_PATH="$DEPS/node_modules" npx --yes firebase-tools@15.1.0 emulators:exec --only firestore --project demo-my-study-companion "NODE_PATH=$DEPS/node_modules node firestore-rules.test.cjs")
+      - name: Compile and test Android and Wear
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace :app:testDebugUnitTest :wear:testDebugUnitTest :app:assembleDebug :wear:assembleDebug
+      - name: Upload root-fix validation APKs
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.6-root-fix-ci-validation
+          path: |
+            MyStudyCompanion/app/build/outputs/apk/debug/*.apk
+            MyStudyCompanion/wear/build/outputs/apk/debug/*.apk
+            MyStudyCompanion/backend/app/services/household_invitation_service.py
+            MyStudyCompanion/firestore.rules
+          retention-days: 3
+          if-no-files-found: error
