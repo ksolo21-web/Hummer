@@ -1,0 +1,4 @@
+run_id=30910161581
+head_sha=c6a99a6c3090a6dc661e8f6427c419a4adf4e140
+artifact=KREATIV-Studio-v0.1.4-ready-for-registered-signing
+status=running
