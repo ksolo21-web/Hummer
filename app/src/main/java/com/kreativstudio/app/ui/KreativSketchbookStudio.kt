@@ -36,19 +36,35 @@ import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.BorderColor
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.ChangeHistory
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FormatColorFill
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.HorizontalRule
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Pentagon
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Rectangle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -471,16 +487,18 @@ private fun BrushPuck(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ColorDot(viewModel.activeColorArgb, onMore)
-            Column(Modifier.widthIn(min = 96.dp, max = 160.dp)) {
+            Column(Modifier.widthIn(min = 96.dp, max = 190.dp)) {
                 Text(
                     viewModel.activeTool.displayName(),
                     style = MaterialTheme.typography.labelLarge,
                     color = HudOnSurface,
                 )
                 Text(
-                    "Opacity ${(viewModel.brushOpacity * 100).toInt()}%",
+                    viewModel.activeTool.hudHint(viewModel.brushOpacity),
                     style = MaterialTheme.typography.labelSmall,
                     color = HudMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             SizeStepper(viewModel)
@@ -531,7 +549,14 @@ private fun ToolIconButton(viewModel: KreativViewModel, tool: ToolType) {
             HudOutline.copy(alpha = if (selected) .82f else .46f),
         ),
     ) {
-        IconButton(onClick = { viewModel.activeTool = tool }) {
+        IconButton(
+            onClick = {
+                viewModel.activeTool = tool
+                if (tool == ToolType.SELECT) {
+                    viewModel.showMessage("Select / Move: tap a visible stroke, shape, or text, then drag it.")
+                }
+            },
+        ) {
             Icon(
                 imageVector = tool.icon(),
                 contentDescription = tool.displayName(),
@@ -792,15 +817,37 @@ private val allTools = listOf(
     ToolType.TEXT,
 )
 
-private fun ToolType.displayName(): String = name.lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
+private fun ToolType.displayName(): String = when (this) {
+    ToolType.SELECT -> "Select / Move"
+    else -> name.lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
+}
+
+private fun ToolType.hudHint(opacity: Float): String = when (this) {
+    ToolType.SELECT -> "Tap an object • drag to move"
+    ToolType.ERASER -> "Drag across marks to erase"
+    ToolType.TEXT -> "Tap canvas to place text"
+    else -> "Opacity ${(opacity * 100).toInt()}%"
+}
 
 private fun ToolType.icon() = when (this) {
-    ToolType.ERASER -> Icons.Default.Delete
+    ToolType.PENCIL -> Icons.Default.Edit
+    ToolType.PEN -> Icons.Default.BorderColor
+    ToolType.WATERCOLOR -> Icons.Default.WaterDrop
+    ToolType.CHARCOAL -> Icons.Default.Gesture
+    ToolType.MARKER -> Icons.Default.Brush
+    ToolType.ERASER -> Icons.Default.CleaningServices
+    ToolType.SMUDGE -> Icons.Default.BlurOn
+    ToolType.FILL -> Icons.Default.FormatColorFill
+    ToolType.SELECT -> Icons.Default.SelectAll
+    ToolType.LINE -> Icons.Default.HorizontalRule
+    ToolType.RECTANGLE -> Icons.Default.Rectangle
+    ToolType.ELLIPSE -> Icons.Default.Circle
+    ToolType.TRIANGLE -> Icons.Default.ChangeHistory
+    ToolType.POLYGON -> Icons.Default.Pentagon
+    ToolType.STAR -> Icons.Default.Star
+    ToolType.ARC -> Icons.Default.Timeline
+    ToolType.ARROW -> Icons.Default.ArrowForward
     ToolType.TEXT -> Icons.Default.TextFields
-    ToolType.SELECT -> Icons.Default.MoreHoriz
-    ToolType.LINE, ToolType.RECTANGLE, ToolType.ELLIPSE, ToolType.TRIANGLE,
-    ToolType.POLYGON, ToolType.STAR, ToolType.ARC, ToolType.ARROW -> Icons.Default.Add
-    else -> Icons.Default.Edit
 }
 
 private val palette = listOf(
