@@ -1,0 +1,1 @@
+Verified run 30869641399 passed; live deployment remains blocked only by missing Google Workload Identity provider authorization.
