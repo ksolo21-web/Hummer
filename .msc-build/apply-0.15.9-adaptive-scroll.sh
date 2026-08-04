@@ -6,6 +6,7 @@ cd "$ROOT"
 
 python3 - <<'PY'
 from pathlib import Path
+import re
 
 root = Path('MyStudyCompanion')
 ui = root / 'app/src/main/java/com/mystudycompanion/app/ui'
@@ -20,6 +21,28 @@ def replace_exact(path: Path, old: str, new: str, label: str) -> None:
     if old not in text:
         raise SystemExit(f'{label} target not found in {path}')
     path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+
+def set_identity(path: Path, code: int, name: str, label: str) -> None:
+    text = path.read_text(encoding='utf-8')
+    text, code_count = re.subn(
+        r'versionCode\s*=\s*\d+',
+        f'versionCode = {code}',
+        text,
+        count=1,
+    )
+    text, name_count = re.subn(
+        r'versionName\s*=\s*"[^"]+"',
+        f'versionName = "{name}"',
+        text,
+        count=1,
+    )
+    if code_count != 1 or name_count != 1:
+        raise SystemExit(
+            f'{label} identity target mismatch in {path}: '
+            f'versionCode={code_count}, versionName={name_count}'
+        )
+    path.write_text(text, encoding='utf-8')
 
 # Family Hub: one real scroll owner for the complete Profiles & household page.
 replace_exact(
@@ -155,20 +178,19 @@ replace_exact(
     'Household natural-height adaptive width',
 )
 
-# New canonical update identity. No auth, Firebase, invitation, profile, or rules logic is changed.
-replace_exact(app_gradle, 'versionCode = 41', 'versionCode = 42', 'phone version code')
-replace_exact(
+# New canonical update identity. Match the reconstructed Gradle formatting rather
+# than assuming one literal value or whitespace layout.
+set_identity(
     app_gradle,
-    'versionName = "0.15.8-private-alpha-google-age-free-invite"',
-    'versionName = "0.15.9-private-alpha-adaptive-scroll"',
-    'phone version name',
+    42,
+    '0.15.9-private-alpha-adaptive-scroll',
+    'phone',
 )
-replace_exact(wear_gradle, 'versionCode = 360158001', 'versionCode = 360159001', 'Wear version code')
-replace_exact(
+set_identity(
     wear_gradle,
-    'versionName = "0.15.8-wear-private-alpha-google-age-free-invite"',
-    'versionName = "0.15.9-wear-private-alpha-adaptive-scroll"',
-    'Wear version name',
+    360159001,
+    '0.15.9-wear-private-alpha-adaptive-scroll',
+    'Wear',
 )
 
 # Static contract: the screen owns exactly one vertical scroll region and does not
