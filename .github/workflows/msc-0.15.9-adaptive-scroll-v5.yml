@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/msc-0.15.9-adaptive-scroll-v5.yml
       - .msc-build/prepare-0.15.9-narrow-layout-gate.sh
+      - .msc-build/prepare-0.15.9-audit-newline.sh
       - .msc-build/run-0.15.9-adaptive-scroll.sh
       - .msc-build/apply-0.15.9-adaptive-scroll.sh
       - .msc-build/build-0.15.9-adaptive-scroll.sh
@@ -111,6 +112,7 @@ jobs:
           bash .msc-build/prepare-0.15.8-google-credential-compat.sh
           bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
           bash .msc-build/prepare-0.15.9-narrow-layout-gate.sh
+          bash .msc-build/prepare-0.15.9-audit-newline.sh
           bash .msc-build/run-0.15.9-adaptive-scroll.sh
 
       - name: Upload configured APKs and proof
