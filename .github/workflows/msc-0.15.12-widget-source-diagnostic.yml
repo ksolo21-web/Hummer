@@ -12,16 +12,27 @@ permissions:
 jobs:
   reconstruct-widget-source:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
       - name: Reconstruct current Android source
         shell: bash
         run: |
           set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
           bash .msc-build/reconstruct-current-source-0.14.1.sh
           bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
           bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
@@ -39,6 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           OUT="$RUNNER_TEMP/msc-widget-source"
+          rm -rf "$OUT"
           mkdir -p "$OUT"
           cp -a MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget "$OUT/widget"
           cp MyStudyCompanion/app/src/main/AndroidManifest.xml "$OUT/AndroidManifest.xml"
