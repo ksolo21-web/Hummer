@@ -4,20 +4,15 @@ on:
   workflow_dispatch:
   push:
     branches: [ agent/kreativ-studio-v0.1 ]
-    paths:
-      - 'app/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'gradle.properties'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - 'firebase/**'
-      - 'firebase.json'
-      - '.github/workflows/kreativ-source-export.yml'
+  pull_request:
+    branches: [ main ]
 
 permissions:
   contents: read
+
+concurrency:
+  group: kreativ-source-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   snapshot:
