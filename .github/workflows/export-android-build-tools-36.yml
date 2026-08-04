@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/msc-0.15.6-root-fix-ci
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
 
 permissions:
   contents: read
