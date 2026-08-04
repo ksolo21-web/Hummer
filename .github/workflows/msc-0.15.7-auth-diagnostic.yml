@@ -9,7 +9,7 @@ on:
       - .msc-build/**
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   diagnose-auth-provisioning:
@@ -51,27 +51,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p auth-diagnostic/files
-          grep -R -n -E 'Account service is not provisioned|firebaseConfigured|FIREBASE_CONFIGURED|default_web_client_id|WEB_CLIENT_ID|GoogleSignInCoordinator|AuthCapabilities|AccountAgeGroup|AccountAgeSource|google-services' MyStudyCompanion > auth-diagnostic/auth-grep.txt || true
+          grep -R -n -E 'Account service is not provisioned|firebaseConfigured|FIREBASE_CONFIGURED|default_web_client_id|WEB_CLIENT_ID|GoogleSignInCoordinator|AuthCapabilities|AccountAgeGroup|AccountAgeSource|GoogleProfileHints|resolve.*Age|google-services' MyStudyCompanion > auth-diagnostic/auth-grep.txt || true
           find MyStudyCompanion -type f \( -name 'google-services.json' -o -name 'strings.xml' -o -name 'AndroidManifest.xml' -o -name 'build.gradle.kts' -o -name 'gradle.properties' \) -print | sort > auth-diagnostic/config-files.txt
-          for path in \
-            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/HybridAuthRepository.kt \
-            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/GoogleSignInCoordinator.kt \
-            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AccountScreen.kt \
-            MyStudyCompanion/app/build.gradle.kts \
-            MyStudyCompanion/build.gradle.kts \
-            MyStudyCompanion/settings.gradle.kts \
-            MyStudyCompanion/gradle.properties \
-            MyStudyCompanion/app/src/main/AndroidManifest.xml; do
-            if test -f "$path"; then
-              mkdir -p "auth-diagnostic/files/$(dirname "$path")"
-              cp "$path" "auth-diagnostic/files/$path"
-            fi
-          done
-          while IFS= read -r path; do
+          find MyStudyCompanion/app/src -type f \( -path '*/auth/*' -o -iname '*Profile*Test*' -o -iname '*Age*Test*' -o -iname '*Auth*Test*' \) -print | sort > auth-diagnostic/auth-files.txt
+          cat auth-diagnostic/config-files.txt auth-diagnostic/auth-files.txt | sort -u | while IFS= read -r path; do
             test -f "$path" || continue
             mkdir -p "auth-diagnostic/files/$(dirname "$path")"
             cp "$path" "auth-diagnostic/files/$path"
-          done < auth-diagnostic/config-files.txt
+          done
           tar -czf auth-diagnostic-source.tar.gz auth-diagnostic
       - uses: actions/upload-artifact@v6
         with:
@@ -79,3 +66,18 @@ jobs:
           path: auth-diagnostic-source.tar.gz
           retention-days: 3
           if-no-files-found: error
+      - name: Record diagnostic run ID
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          cat > MSC-0.15.7-AUTH-DIAGNOSTIC-STATUS.txt <<EOF
+          source_commit=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=${{ job.status }}
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MSC-0.15.7-AUTH-DIAGNOSTIC-STATUS.txt
+          git commit -m "Record auth diagnostic run ${GITHUB_RUN_ID}" || exit 0
+          git push origin HEAD:agent/msc-0.15.6-root-fix-ci
