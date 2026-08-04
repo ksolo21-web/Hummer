@@ -1,0 +1,5 @@
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt:462:    suspend fun createHouseholdInvitation() {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt:520:    suspend fun joinHousehold(invitationCode: String) {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt:1260:        const val INVITATIONS = "householdInvites"
+MyStudyCompanion/firestore.rules:25:      return /databases/$(database)/documents/householdInvites/$(code);
+MyStudyCompanion/firestore.rules:396:    match /householdInvites/{code} {

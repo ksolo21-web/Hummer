@@ -4,6 +4,9 @@ auth/AuthRepository.kt
 auth/FirebaseAuthHeaders.kt
 auth/GoogleSignInCoordinator.kt
 companion/CompanionHubRepository.kt
+family/FamilyWorshipOrganizerRepository.kt
+rules/android-firestore.rules
+rules/web-firestore.rules
 tests/AuthModelsTest.kt
 ui/AccountScreen.kt
 ui/AuthScreen.kt
