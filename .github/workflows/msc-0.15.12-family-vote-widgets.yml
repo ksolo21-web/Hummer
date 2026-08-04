@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: msc-01512-family-vote-widgets
@@ -75,6 +75,8 @@ jobs:
           echo "store_file=$SIGNING_DIR/packaging.jks" >> "$GITHUB_OUTPUT"
 
       - name: Build and verify 0.15.12
+        id: build
+        continue-on-error: true
         shell: bash
         env:
           MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
@@ -91,6 +93,7 @@ jobs:
             bash .msc-build/build-0.15.12-family-vote-widgets.sh
           } > release-0.15.12/metadata/CI-BUILD.log 2>&1
           result=$?
+          echo "$result" > release-0.15.12/metadata/CI-EXIT-CODE.txt
           tail -n 250 release-0.15.12/metadata/CI-BUILD.log
           exit "$result"
 
@@ -102,3 +105,22 @@ jobs:
           path: release-0.15.12
           retention-days: 14
           if-no-files-found: error
+
+      - name: Publish build diagnostic to branch
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp release-0.15.12/metadata/CI-BUILD.log MSC-0.15.12-CI-BUILD.log
+          cp release-0.15.12/metadata/CI-EXIT-CODE.txt MSC-0.15.12-CI-EXIT-CODE.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add MSC-0.15.12-CI-BUILD.log MSC-0.15.12-CI-EXIT-CODE.txt
+          git commit -m "Record 0.15.12 build diagnostic ${GITHUB_RUN_ID}" || true
+          git push origin HEAD:agent/msc-0.15.12-family-vote-widgets
+
+      - name: Enforce successful build
+        if: always()
+        shell: bash
+        run: |
+          test "$(cat release-0.15.12/metadata/CI-EXIT-CODE.txt)" = "0"
