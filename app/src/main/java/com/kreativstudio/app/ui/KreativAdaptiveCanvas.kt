@@ -22,6 +22,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.kreativstudio.app.model.KreativProject
 import com.kreativstudio.app.model.StrokePoint
 import com.kreativstudio.app.ui.canvas.KreativCanvasView
+import kotlin.math.roundToInt
 
 data class CanvasViewportInsets(
     val left: Dp = 0.dp,
@@ -91,7 +92,7 @@ fun AdaptiveCanvasArea(
                     frame.canvasView.palmRejectionEnabled = settings.palmRejectionEnabled
                     frame.canvasView.shapeSnapEnabled = settings.shapeSnapEnabled
                     frame.canvasView.replayProgress = viewModel.replayProgress
-                    frame.canvasView.setViewportInsets(leftPx, topPx, rightPx, bottomPx)
+                    frame.setViewportInsets(leftPx, topPx, rightPx, bottomPx)
                     frame.canvasView.invalidate()
                 }.onFailure(frame::reportFailure)
             },
@@ -116,6 +117,23 @@ internal class AdaptiveCanvasFrame(context: Context) : FrameLayout(context) {
         clipToPadding = true
         addView(canvasView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         setWillNotDraw(false)
+    }
+
+    fun setViewportInsets(left: Float, top: Float, right: Float, bottom: Float) {
+        val nextLeft = left.roundToInt().coerceAtLeast(0)
+        val nextTop = top.roundToInt().coerceAtLeast(0)
+        val nextRight = right.roundToInt().coerceAtLeast(0)
+        val nextBottom = bottom.roundToInt().coerceAtLeast(0)
+        val params = canvasView.layoutParams as LayoutParams
+        if (
+            params.leftMargin == nextLeft &&
+            params.topMargin == nextTop &&
+            params.rightMargin == nextRight &&
+            params.bottomMargin == nextBottom
+        ) return
+        params.setMargins(nextLeft, nextTop, nextRight, nextBottom)
+        canvasView.layoutParams = params
+        post { canvasView.resetView() }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
