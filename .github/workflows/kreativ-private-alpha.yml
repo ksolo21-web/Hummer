@@ -2,9 +2,18 @@ name: KREATIV Studio Private Alpha
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ agent/kreativ-studio-v0.1 ]
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/kreativ-private-alpha.yml'
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: kreativ-private-alpha-${{ github.sha }}
@@ -39,7 +48,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -118,3 +127,14 @@ jobs:
           path: private-alpha
           retention-days: 14
           if-no-files-found: error
+
+      - name: Report private-alpha run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          gh issue comment 27 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Private-alpha run ${GITHUB_RUN_ID} · status: ${JOB_STATUS} · commit: ${GITHUB_SHA}"
