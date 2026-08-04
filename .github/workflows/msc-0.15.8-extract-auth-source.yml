@@ -1,0 +1,71 @@
+name: My Study Companion 0.15.8 Extract Auth Source
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+    paths:
+      - .github/workflows/msc-0.15.8-extract-auth-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: msc-0158-extract-auth-source
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/msc-0.15.6-root-fix-ci
+          fetch-depth: 0
+
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Reconstruct exact 0.15.7 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+
+      - name: Commit exact diagnostic source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=.msc-debug/0.15.7-auth-household-source
+          rm -rf "$OUT"
+          mkdir -p "$OUT/auth" "$OUT/companion" "$OUT/family" "$OUT/ui" "$OUT/rules"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/GoogleSignInCoordinator.kt "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthRepository.kt "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt "$OUT/companion/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt "$OUT/family/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt "$OUT/ui/"
+          cp MyStudyCompanion/firestore.rules "$OUT/rules/android-firestore.rules"
+          cp MyStudyCompanionWeb/firestore.rules "$OUT/rules/web-firestore.rules"
+          cp MyStudyCompanionWeb/firebase-sync.js "$OUT/"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$OUT"
+          git commit -m 'Publish exact 0.15.7 auth and household source snapshot' || exit 0
+          git push origin HEAD:agent/msc-0.15.6-root-fix-ci
