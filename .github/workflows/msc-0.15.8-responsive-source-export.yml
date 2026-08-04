@@ -88,7 +88,7 @@ jobs:
           while IFS= read -r file; do cp "$file" "$OUT/ui/"; done < <(grep -R -l --include='*.kt' 'fun ProfileSwitcher' "$UIROOT")
           cp -a "$UIROOT/adaptive/." "$OUT/adaptive/"
           find "$OUT" -type f -print | sort > "$OUT/MANIFEST.txt"
-          grep -R -n 'fun HouseholdScreen' "$OUT" > "$OUT/HOUSEHOLD-LOCATION.txt"
+          grep -R -n 'fun HouseholdScreen' "$OUT/ui" > "$OUT/HOUSEHOLD-LOCATION.txt"
           grep -R -n 'verticalScroll\|LazyColumn\|BoxWithConstraints' "$OUT/ui" > "$OUT/SCROLL-AUDIT.txt" || true
 
       - name: Commit exported source
