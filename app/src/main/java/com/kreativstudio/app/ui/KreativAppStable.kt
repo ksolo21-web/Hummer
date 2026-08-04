@@ -310,7 +310,7 @@ private fun StableAppShell(
     val windowState = rememberKreativWindowState(activity)
 
     key(windowState.signature, settings.focusMode) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
             val useRail =
                 !settings.focusMode &&
                 windowState.isExpanded &&
