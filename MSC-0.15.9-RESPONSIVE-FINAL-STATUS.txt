@@ -1,5 +1,5 @@
-source_commit=0b285767a07a926e5f9db84a585aeafea15b13df
-workflow_run_id=30942515665
+source_commit=10b4c0946dbf59753809b106c4e3d75621c97bd5
+workflow_run_id=30941790017
 workflow_result=failure
 artifact_name=msc-0.15.9-responsive-final-configured-ci
 package=com.mystudycompanion.app
