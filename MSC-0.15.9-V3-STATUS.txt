@@ -1,3 +1,13 @@
 source_commit=1c1ea4505fe6ba7823b047aa89da17d45602db84
 workflow_run_id=30941603845
-workflow_result=in_progress
+workflow_result=failure
+artifact_name=msc-0.15.9-adaptive-scroll-configured-ci-v3
+package=com.mystudycompanion.app
+phone_version_code=42
+wear_version_code=360159001
+adaptive_scroll=family_household_complete_page
+live_fold_resize=enabled
+invitation_auto_reveal=enabled
+google_sign_in=preserved
+google_age_gate=preserved
+architecture=firebase_spark_free_only
