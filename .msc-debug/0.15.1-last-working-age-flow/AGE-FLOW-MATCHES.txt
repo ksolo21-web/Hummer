@@ -1,0 +1,20 @@
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/ProfileAgeSetupScreen.kt:30:fun ProfileAgeSetupScreen(
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:222:    if (companionState.profile.needsAgeConfirmation) {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:223:        ProfileAgeSetupScreen(
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:225:            minorOnly = account.ageGroup == AccountAgeGroup.MINOR_UNKNOWN,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt:226:            onSelected = companionHubRepository::confirmProfileAge,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:23:    MINOR_UNKNOWN,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:54:                    age < 0 -> AccountAgeGroup.UNKNOWN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:62:                "LESS_THAN_EIGHTEEN" -> AccountAgeGroup.MINOR_UNKNOWN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:64:                else -> AccountAgeGroup.UNKNOWN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt:89:    val ageGroup: AccountAgeGroup = AccountAgeGroup.UNKNOWN,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt:93:            AccountAgeGroup.MINOR_UNKNOWN -> existing?.ageGroup?.takeIf { it != AgeGroup.ADULT } ?: AgeGroup.PRETEEN
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt:94:            AccountAgeGroup.UNKNOWN -> existing?.ageGroup ?: AgeGroup.ADULT
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt:101:            AccountAgeSource.UNAVAILABLE -> existing?.ageSource ?: ProfileAgeSource.UNCONFIRMED
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt:129:    fun confirmProfileAge(ageGroup: AgeGroup) {
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:19:    UNCONFIRMED,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:58:    val ageSource: ProfileAgeSource = ProfileAgeSource.UNCONFIRMED,
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:66:    val needsAgeConfirmation: Boolean
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:67:        get() = ageSource == ProfileAgeSource.UNCONFIRMED ||
+MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt:76:    val ageSource: ProfileAgeSource = ProfileAgeSource.UNCONFIRMED,
+MyStudyCompanion/app/src/test/java/com/mystudycompanion/app/auth/AuthModelsTest.kt:46:        assertEquals(AccountAgeGroup.MINOR_UNKNOWN, hints.ageGroup)
