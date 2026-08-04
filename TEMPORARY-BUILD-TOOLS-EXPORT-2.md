@@ -1,0 +1,1 @@
+The workflow exports only public Android SDK signing utilities. Private signing material remains local and is never uploaded.
