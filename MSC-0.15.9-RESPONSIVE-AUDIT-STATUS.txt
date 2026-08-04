@@ -1,3 +1,4 @@
 workflow_run_id=30943933114
-workflow_result=in_progress
+workflow_result=success
 source_commit=585080da3297fca739ee94d815c3b7c418374b11
+audit_path=.msc-debug/0.15.9-responsive-app-audit/RESPONSIVE-APP-AUDIT.txt
