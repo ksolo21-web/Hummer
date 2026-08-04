@@ -65,8 +65,10 @@ jobs:
           cp MyStudyCompanion/firestore.rules "$OUT/rules/android-firestore.rules"
           cp MyStudyCompanionWeb/firestore.rules "$OUT/rules/web-firestore.rules"
           cp MyStudyCompanionWeb/firebase-sync.js "$OUT/"
+          find "$OUT" -type f -printf '%P\n' | sort > "$OUT/FILES.txt"
+          grep -R -n -E 'needsAgeConfirmation|confirmProfileAge|ProfileAgeSetupScreen|UNCONFIRMED|MINOR_UNKNOWN|AccountAgeGroup.UNKNOWN' MyStudyCompanion/app/src/main/java MyStudyCompanion/app/src/test > "$OUT/AGE-FLOW-MATCHES.txt" || true
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "$OUT"
-          git commit -m 'Expand exact 0.15.7 auth, age, profile, and household source snapshot' || exit 0
+          git commit -m 'Publish complete 0.15.7 age-flow diagnostic snapshot' || exit 0
           git push origin HEAD:agent/msc-0.15.6-root-fix-ci
