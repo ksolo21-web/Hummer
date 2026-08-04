@@ -108,6 +108,43 @@ jobs:
           MSC_RELEASE_KEY_PASSWORD: msc-0157-packaging-only
         run: bash .msc-build/build-0.15.7-auth-restored-free-invite.sh
 
+      - name: Publish exact reconstructed auth and household source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/msc-auth-source"
+          rm -rf "$OUT"
+          mkdir -p "$OUT/auth" "$OUT/companion" "$OUT/family" "$OUT/ui" "$OUT/rules"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthModels.kt "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/GoogleSignInCoordinator.kt "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/AuthRepository.kt "$OUT/auth/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt "$OUT/companion/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt "$OUT/family/"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt "$OUT/ui/"
+          cp MyStudyCompanion/firestore.rules "$OUT/rules/android-firestore.rules"
+          cp MyStudyCompanionWeb/firestore.rules "$OUT/rules/web-firestore.rules"
+          cp MyStudyCompanionWeb/firebase-sync.js "$OUT/"
+
+          for attempt in 1 2 3 4; do
+            rm -rf "$RUNNER_TEMP/msc-source-publish"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-source-publish" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-source-publish"
+              rm -rf .msc-debug/0.15.7-auth-household-source
+              mkdir -p .msc-debug/0.15.7-auth-household-source
+              cp -R "$OUT"/. .msc-debug/0.15.7-auth-household-source/
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add .msc-debug/0.15.7-auth-household-source
+              git commit -m 'Publish exact 0.15.7 auth and household source snapshot' || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-source-publish" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-source-publish" || true
+
       - name: Upload configured APKs and proof
         uses: actions/upload-artifact@v6
         with:
@@ -152,5 +189,3 @@ jobs:
           }
           publish_status
           git worktree remove --force "$RUNNER_TEMP/msc-status-final" || true
-
-# Trigger after this workflow exists on the branch.
