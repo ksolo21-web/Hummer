@@ -1,4 +1,15 @@
 source_commit=45741b017d9dcb961aedb8e2e16c51d6a644d5e2
 workflow_run_id=30949646814
-workflow_result=in_progress
+workflow_result=success
 artifact_name=msc-0.15.10-household-date-recovery-configured-ci
+package=com.mystudycompanion.app
+phone_version_code=43
+wear_version_code=360160001
+household_pairing_recovery=enabled
+stale_user_link_replacement=enabled
+permission_error_isolation=enabled
+stable_date_picker=enabled
+uncaught_generate_failure=removed
+adaptive_scroll=preserved
+google_sign_in=preserved
+architecture=firebase_spark_free_only
