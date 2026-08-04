@@ -1,0 +1,6 @@
++ bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+Prepared 0.15.8 for the installed Google credential dependency, persisted-age migration, and multidex APK verification.
++ bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+Prepared migration that rejects legacy household-derived age guesses until verified.
++ bash .msc-build/build-0.15.12-family-vote-widgets.sh
+0.15.12 overlay insertion target not found
