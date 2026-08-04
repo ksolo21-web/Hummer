@@ -152,3 +152,5 @@ jobs:
           git push origin HEAD:agent/msc-0.15.9-responsive-final
           cd "$GITHUB_WORKSPACE"
           git worktree remove --force "$STATUS_TREE"
+
+# Retry after preserving the generated driver's repository-relative root.
