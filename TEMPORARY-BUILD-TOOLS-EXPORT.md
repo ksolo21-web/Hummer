@@ -1,0 +1,1 @@
+Temporary CI-only branch used to export official Android Build Tools 36.0.0 for offline release signing. No signing key or credential is stored on this branch.
