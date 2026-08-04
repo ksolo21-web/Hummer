@@ -43,6 +43,14 @@ if old_gate not in build_text:
     raise SystemExit('0.15.8 credential source gate was not found')
 build_text = build_text.replace(old_gate, new_gate, 1)
 
+old_age_gate = "grep -Fq 'return AgeGroup.PRETEEN to ProfileAgeSource.UNCONFIRMED' \"$COMPANION/StudyGroupAssignmentResolver.kt\""
+new_age_gate = """grep -Fq 'val storedWasSelfVerified' \"$COMPANION/StudyGroupAssignmentResolver.kt\"
+grep -Fq 'return (stored?.ageGroup ?: AgeGroup.PRETEEN) to ProfileAgeSource.UNCONFIRMED' \"$COMPANION/StudyGroupAssignmentResolver.kt\"
+! sed -n '/fun resolveAge(/,/private fun FamilyMemberProfile/p' \"$COMPANION/StudyGroupAssignmentResolver.kt\" | grep -Fq 'ProfileAgeSource.HOUSEHOLD_PROFILE'"""
+if old_age_gate not in build_text:
+    raise SystemExit('0.15.8 legacy age source gate was not found')
+build_text = build_text.replace(old_age_gate, new_age_gate, 1)
+
 old_dex = '''# Verify the finished APK contains the restored age-screen text, not just source.
 unzip -p "$PHONE_APK" classes.dex > release-0.15.8/metadata/classes.dex
 strings release-0.15.8/metadata/classes.dex > release-0.15.8/metadata/PHONE-DEX-STRINGS.txt
@@ -64,5 +72,5 @@ if old_dex not in build_text:
     raise SystemExit('0.15.8 finished-APK DEX gate was not found')
 build_path.write_text(build_text.replace(old_dex, new_dex, 1), encoding='utf-8')
 
-print('Prepared 0.15.8 for the installed Google credential dependency and multidex APK verification.')
+print('Prepared 0.15.8 for the installed Google credential dependency, persisted-age migration, and multidex APK verification.')
 PY
