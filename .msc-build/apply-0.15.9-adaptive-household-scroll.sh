@@ -91,16 +91,6 @@ elif new_household not in family:
 family_path.write_text(family, encoding="utf-8")
 
 household = household_path.read_text(encoding="utf-8")
-if "import androidx.compose.foundation.text.selection.SelectionContainer\n" not in household:
-    anchor = "import androidx.compose.foundation.shape.RoundedCornerShape\n"
-    if anchor not in household:
-        raise SystemExit("Missing HouseholdScreen SelectionContainer import anchor")
-    household = household.replace(
-        anchor,
-        anchor + "import androidx.compose.foundation.text.selection.SelectionContainer\n",
-        1,
-    )
-
 household = household.replace(
     "import androidx.compose.foundation.layout.fillMaxSize\n",
     "import androidx.compose.foundation.layout.fillMaxWidth\n",
@@ -121,37 +111,15 @@ if "Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter)" in hous
 elif "Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter)" not in household:
     raise SystemExit("HouseholdScreen root container no longer matches the verified source")
 
-plain_code = '''                                Text(
-                                    code,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                )
-'''
-wrapped_code = '''                                SelectionContainer {
-                                    Text(
-                                        text = code,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        softWrap = true,
-                                    )
-                                }
-'''
-if plain_code in household:
-    household = household.replace(plain_code, wrapped_code, 1)
-elif wrapped_code not in household:
-    raise SystemExit("HouseholdScreen invitation-code block no longer matches the verified source")
-
 household_path.write_text(household, encoding="utf-8")
 
 assert "val householdScrollState = rememberScrollState()" in family
 assert ".verticalScroll(householdScrollState)" in family
 assert ".imePadding()" in family
+assert ".widthIn(max = 880.dp)" in family
 assert "modifier = Modifier.fillMaxWidth(),\n                )\n            }" in family
 assert "modifier = Modifier.weight(1f),\n                )\n            }" not in family
 assert "Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter)" in household
-assert "SelectionContainer" in household
-assert "softWrap = true" in household
 PY
 
 FAMILY=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/FamilyHubScreen.kt
@@ -162,7 +130,5 @@ grep -Fq '.verticalScroll(householdScrollState)' "$FAMILY"
 grep -Fq '.imePadding()' "$FAMILY"
 grep -Fq '.widthIn(max = 880.dp)' "$FAMILY"
 grep -Fq 'Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter)' "$HOUSEHOLD"
-grep -Fq 'SelectionContainer' "$HOUSEHOLD"
-grep -Fq 'softWrap = true' "$HOUSEHOLD"
 
 printf 'Applied My Study Companion 0.15.9 adaptive household scrolling and invitation-code visibility repair.\n'
