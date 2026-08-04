@@ -1,0 +1,77 @@
+name: My Study Companion 0.15.8 Responsive Source Export
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+    paths:
+      - .github/workflows/msc-0.15.8-responsive-source-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: msc-0158-responsive-source-export
+  cancel-in-progress: true
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Reconstruct exact 0.15.8 V3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+
+      - name: Collect exact responsive UI sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=.msc-debug/0.15.8-responsive-source
+          rm -rf "$OUT"
+          mkdir -p "$OUT/ui" "$OUT/adaptive"
+          UIROOT=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui
+          cp "$UIROOT/FamilyHubScreen.kt" "$OUT/ui/"
+          cp "$UIROOT/MyStudyCompanionApp.kt" "$OUT/ui/"
+          while IFS= read -r file; do cp "$file" "$OUT/ui/"; done < <(grep -R -l --include='*.kt' 'fun HouseholdScreen' "$UIROOT")
+          while IFS= read -r file; do cp "$file" "$OUT/ui/"; done < <(grep -R -l --include='*.kt' 'fun ProfileSwitcher' "$UIROOT")
+          cp -a "$UIROOT/adaptive/." "$OUT/adaptive/"
+          find "$OUT" -type f -print | sort > "$OUT/MANIFEST.txt"
+          grep -R -n 'fun HouseholdScreen' "$OUT" > "$OUT/HOUSEHOLD-LOCATION.txt"
+          grep -R -n 'verticalScroll\|LazyColumn\|BoxWithConstraints' "$OUT/ui" > "$OUT/SCROLL-AUDIT.txt" || true
+
+      - name: Commit exported source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .msc-debug/0.15.8-responsive-source
+          git commit -m 'Export exact 0.15.8 responsive UI source' || exit 0
+          git pull --rebase origin agent/msc-0.15.6-root-fix-ci
+          git push origin HEAD:agent/msc-0.15.6-root-fix-ci
