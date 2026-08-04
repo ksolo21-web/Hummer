@@ -1,0 +1,40 @@
+name: My Study Companion 0.15.6 Cloud Deployment Readiness
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: my-study-companion-abc01
+  WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+
+jobs:
+  verify-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Authenticate with repository-restricted Google identity
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          version: '>= 523.0.0'
+      - name: Verify deployment resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)'
+          gcloud iam service-accounts describe "$DEPLOY_SERVICE_ACCOUNT" --project "$PROJECT_ID" --format='value(email)'
+          gcloud artifacts repositories describe msc-containers --project "$PROJECT_ID" --location us-central1 --format='value(name)'
+          gcloud iam service-accounts describe msc-backend-runtime@my-study-companion-abc01.iam.gserviceaccount.com --project "$PROJECT_ID" --format='value(email)'
