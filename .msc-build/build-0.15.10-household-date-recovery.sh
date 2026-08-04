@@ -79,21 +79,23 @@ assert 'DatePickerDialog(' in worship
 assert 'rememberDatePickerState' not in worship
 assert 'familyHouseholdActionErrorForDisplay' in family
 assert 'Refresh household access' in household
-assert '), SetOptions.merge())\n                transaction.update(resolvedInviteRef' not in family
-assert '), SetOptions.merge())\n            batch.set(boardRef' not in family
+join_section = family.split('suspend fun joinHousehold(', 1)[1].split('suspend fun generateAndSend(', 1)[0]
+create_section = family.split('suspend fun createHousehold(', 1)[1].split('suspend fun createHouseholdInvitation()', 1)[0]
+assert 'SetOptions.merge()' not in join_section
+assert 'SetOptions.merge()' not in create_section
 
 audit = Path('release-0.15.10/metadata/HOUSEHOLD-DATE-RECOVERY-AUDIT.txt')
 audit.parent.mkdir(parents=True, exist_ok=True)
-audit.write_text(
-    'PASS: household user links are replacement writes, removing stale forbidden fields.\n'
-    'PASS: invitation collisions retry, while permission failures are surfaced immediately.\n'
-    'PASS: optional listener permission errors no longer poison the complete Family UI.\n'
-    'PASS: household access has an explicit refresh action.\n'
-    'PASS: the family date selector uses the stable Android platform dialog.\n'
-    'PASS: invalid persisted dates and unavailable backend services remain in-page errors.\n'
-    'PASS: 0.15.9 adaptive scrolling remains active.\n',
-    encoding='utf-8',
-)
+lines = [
+    'PASS: household user links are replacement writes, removing stale forbidden fields.',
+    'PASS: invitation collisions retry, while permission failures are surfaced immediately.',
+    'PASS: optional listener permission errors no longer poison the complete Family UI.',
+    'PASS: household access has an explicit refresh action.',
+    'PASS: the family date selector uses the stable Android platform dialog.',
+    'PASS: invalid persisted dates and unavailable backend services remain in-page errors.',
+    'PASS: 0.15.9 adaptive scrolling remains active.',
+]
+audit.write_text(chr(10).join(lines) + chr(10), encoding='utf-8')
 AUDIT
 """
 replace(anchor, recovery_gates, 'recovery source gates', 1)
