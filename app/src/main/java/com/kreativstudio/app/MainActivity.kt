@@ -24,13 +24,16 @@ class MainActivity : ComponentActivity() {
                 vm.screen == StudioScreen.STUDIO && vm.currentProject?.lessonId != null -> {
                     KreativLessonWorkspaceHost(viewModel = vm, activity = this)
                 }
-                vm.screen == StudioScreen.STUDIO -> {
+                vm.screen == StudioScreen.STUDIO && vm.currentProject != null -> {
                     KreativSketchbookStudioHost(viewModel = vm, activity = this)
                 }
                 vm.screen == StudioScreen.MENTOR -> {
                     KreativMentorV2Host(viewModel = vm, activity = this)
                 }
                 else -> {
+                    // Keep the normal application chrome active when Studio is selected
+                    // without an open project. KreativAppStable then presents its explicit
+                    // no-canvas recovery screen instead of routing into an empty canvas host.
                     KreativAppStable(viewModel = vm, activity = this)
                 }
             }
