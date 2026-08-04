@@ -156,4 +156,4 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           git worktree remove --force "$STATUS_TREE"
 
-# Retry after repairing the nested generated build driver.
+# Retry after simplifying the build chaining and moving final gates outside the nested driver.
