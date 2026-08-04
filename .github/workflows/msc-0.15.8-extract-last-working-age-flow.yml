@@ -39,21 +39,25 @@ jobs:
           python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
           bash .msc-build/reconstruct-current-source-0.14.1.sh
           bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
-      - name: Publish exact 0.15.1 age-flow source
+      - name: Publish exact 0.15.1 age and invitation source
         shell: bash
         run: |
           set -euo pipefail
           OUT="$RUNNER_TEMP/msc-0151-age-source"
           rm -rf "$OUT"
-          mkdir -p "$OUT/auth" "$OUT/companion" "$OUT/ui" "$OUT/tests"
+          mkdir -p "$OUT/auth" "$OUT/companion" "$OUT/family" "$OUT/ui" "$OUT/tests" "$OUT/rules"
           cp -R MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/auth/. "$OUT/auth/"
           cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/StudyGroupAssignmentResolver.kt "$OUT/companion/" 2>/dev/null || true
           cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt "$OUT/companion/" 2>/dev/null || true
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt "$OUT/family/"
           cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt "$OUT/ui/"
           find MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui -maxdepth 1 -type f \( -iname '*Profile*' -o -iname '*Account*' -o -iname '*Auth*' \) -exec cp {} "$OUT/ui/" \;
-          find MyStudyCompanion/app/src/test/java/com/mystudycompanion/app -type f \( -path '*/auth/*' -o -iname '*StudyGroupAssignmentResolver*' -o -iname '*CompanionHub*' \) -exec cp {} "$OUT/tests/" \;
+          find MyStudyCompanion/app/src/test/java/com/mystudycompanion/app -type f \( -path '*/auth/*' -o -iname '*StudyGroupAssignmentResolver*' -o -iname '*CompanionHub*' -o -iname '*FamilyWorshipOrganizer*' \) -exec cp {} "$OUT/tests/" \;
+          cp MyStudyCompanion/firestore.rules "$OUT/rules/android-firestore.rules"
+          cp MyStudyCompanionWeb/firestore.rules "$OUT/rules/web-firestore.rules"
           find "$OUT" -type f -printf '%P\n' | sort > "$OUT/FILES.txt"
           grep -R -n -E 'ProfileAgeSetupScreen|needsAgeConfirmation|confirmProfileAge|UNCONFIRMED|AccountAgeGroup.UNKNOWN|MINOR_UNKNOWN' MyStudyCompanion/app/src/main/java MyStudyCompanion/app/src/test > "$OUT/AGE-FLOW-MATCHES.txt" || true
+          grep -R -n -E 'householdInvites|createHouseholdInvitation|joinHousehold|FIELD_AGE_SOURCE|ageSource' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family MyStudyCompanion/firestore.rules > "$OUT/INVITE-RULE-MATCHES.txt" || true
 
           for attempt in 1 2 3 4 5; do
             rm -rf "$RUNNER_TEMP/msc-0151-publish"
@@ -67,7 +71,7 @@ jobs:
               git config user.name 'github-actions[bot]'
               git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
               git add .msc-debug/0.15.1-last-working-age-flow
-              git commit -m 'Publish exact last-working 0.15.1 age verification source' || true
+              git commit -m 'Publish exact last-working 0.15.1 age and invitation source' || true
               git push origin HEAD:agent/msc-0.15.6-root-fix-ci
             ) && exit 0
             git worktree remove --force "$RUNNER_TEMP/msc-0151-publish" || true
