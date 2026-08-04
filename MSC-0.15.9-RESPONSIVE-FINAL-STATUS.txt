@@ -1,0 +1,4 @@
+source_commit=5400206687cd1daefd2d05f7910f171323dadff0
+workflow_run_id=30941312295
+workflow_result=in_progress
+artifact_name=msc-0.15.9-responsive-final-configured-ci
