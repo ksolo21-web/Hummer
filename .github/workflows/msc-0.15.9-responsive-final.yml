@@ -96,3 +96,5 @@ jobs:
           path: release-0.15.9
           retention-days: 14
           if-no-files-found: error
+
+# Registered isolated responsive release workflow.
