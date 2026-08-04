@@ -1,5 +1,5 @@
-source_commit=813e3504984ef8a2f1d8b576b0accfa2dd8a2b8e
-workflow_run_id=30943273575
+source_commit=6ec4642520222d9c7ac6690430a0d3fe4e219fcc
+workflow_run_id=30943369384
 workflow_result=cancelled
 artifact_name=msc-0.15.9-responsive-final-configured-ci
 package=com.mystudycompanion.app
