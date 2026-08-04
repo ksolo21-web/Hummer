@@ -1,7 +1,3 @@
-source_commit=18720654e68d7ce7d84f7dd4900f07300142756e
-workflow_run_id=30912400329
-workflow_result=success
-artifact_name=msc-0.15.7-auth-restored-free-invite-configured-ci-v2
-architecture=firebase_spark_free_only
-google_sign_in=finished_apk_gated
-child_age_safety=unit_and_source_gated
+source_commit=d4b8afb07dc82c2b9cbcda3458fd2e2477aa0a62
+workflow_run_id=30923975138
+workflow_result=in_progress
