@@ -1,0 +1,1 @@
+This branch exists only to run the protected 0.15.6 live root deployment workflow after Google Cloud Workload Identity authorization is ready.
