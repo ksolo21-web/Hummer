@@ -153,3 +153,5 @@ jobs:
             sleep $((attempt * 2))
           done
           git worktree remove --force "$RUNNER_TEMP/msc-0159-final" || true
+
+# Trigger after workflow registration.
