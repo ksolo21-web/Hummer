@@ -6,6 +6,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -37,17 +38,7 @@ class AuthRepository(
             "This KREATIV build is missing its registered Firebase/OAuth configuration."
         }
 
-        // Start with the standard account chooser. This is the most reliable path on
-        // Samsung/foldable devices and avoids the explicit Sign in with Google sheet
-        // reporting a false cancellation before the account picker is shown.
-        val result = try {
-            requestAnyGoogleAccount(activity)
-        } catch (error: NoCredentialException) {
-            requestExplicitGoogleSignIn(activity)
-        } catch (error: GetCredentialCancellationException) {
-            throw IllegalStateException("Google sign-in was cancelled.", error)
-        }
-
+        val result = requestGoogleCredential(activity)
         val credential = result.credential
         check(
             credential is CustomCredential &&
@@ -67,11 +58,46 @@ class AuthRepository(
             "configuration" in message.lowercase()
         ) {
             throw IllegalStateException(
-                "Google rejected this APK's package or signing certificate. Register com.kreativstudio.app and this APK's SHA-1/SHA-256 in Firebase, then rebuild with that registered signer.",
+                "Google rejected this APK's registered package or signing certificate. Install the authenticated KREATIV private-alpha build signed with the Firebase-registered key.",
                 error,
             )
         }
         throw error
+    }
+
+    private suspend fun requestGoogleCredential(activity: Activity): GetCredentialResponse {
+        return try {
+            requestAnyGoogleAccount(activity)
+        } catch (first: NoCredentialException) {
+            requestExplicitAfterReset(activity, first)
+        } catch (first: GetCredentialCancellationException) {
+            // Some Samsung/foldable builds report a false cancellation while the
+            // standard chooser is switching surfaces. Clear stale chooser state and
+            // retry through the explicit Google button before treating it as final.
+            requestExplicitAfterReset(activity, first)
+        }
+    }
+
+    private suspend fun requestExplicitAfterReset(
+        activity: Activity,
+        firstFailure: Throwable,
+    ): GetCredentialResponse {
+        runCatching {
+            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+        }
+        return try {
+            requestExplicitGoogleSignIn(activity)
+        } catch (cancelled: GetCredentialCancellationException) {
+            throw IllegalStateException("Google sign-in was cancelled.", cancelled)
+        } catch (noCredential: NoCredentialException) {
+            throw IllegalStateException(
+                "No Google account credential was available. Confirm Google Play services is current and try again.",
+                noCredential,
+            )
+        } catch (secondFailure: Throwable) {
+            secondFailure.addSuppressed(firstFailure)
+            throw secondFailure
+        }
     }
 
     private suspend fun requestAnyGoogleAccount(activity: Activity) = credentialManager.getCredential(
