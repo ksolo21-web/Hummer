@@ -1,0 +1,270 @@
+name: My Study Companion 0.15.6 Household Invitation Root Fix
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0156-invitation-root-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_VERSION: 0.15.6
+  WEB_CACHE_VERSION: msc-web-v0156-household-invitation-root-v1
+
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    steps:
+      - name: Check out exact repair head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook baseline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install reconstruction dependencies and Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct the complete synchronized 0.15.6 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+
+      - name: Verify server-authoritative invitation architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVICE=MyStudyCompanion/backend/app/services/household_invitation_service.py
+          MAIN=MyStudyCompanion/backend/app/main.py
+          REPOSITORY=MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+          RULES=MyStudyCompanion/firestore.rules
+          WEB_RULES=MyStudyCompanionWeb/firestore.rules
+
+          grep -Fq 'class HouseholdInvitationService' "$SERVICE"
+          grep -Fq 'Firebase Admin performs these writes outside client security rules' "$SERVICE"
+          grep -Fq '@app.post("/v1/household/invitations"' "$MAIN"
+          grep -Fq '@app.post("/v1/household/invitations/validate"' "$MAIN"
+          grep -Fq '@app.post("/v1/household/join"' "$MAIN"
+          grep -Fq 'backendApi.createHouseholdInvitation' "$REPOSITORY"
+          grep -Fq 'backendApi.joinHousehold' "$REPOSITORY"
+          grep -Fq 'allow read, write: if false;' "$RULES"
+          grep -Fq 'allow read, write: if false;' "$WEB_RULES"
+          grep -Fq 'versionCode = 39' MyStudyCompanion/app/build.gradle.kts
+          grep -Fq 'versionCode = 360156001' MyStudyCompanion/wear/build.gradle.kts
+          grep -Fq "$WEB_CACHE_VERSION" MyStudyCompanionWeb/sw.js
+
+      - name: Run complete backend transaction and API tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion/backend
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          python -m compileall -q app tests
+          python -m pytest -q
+
+      - name: Build the deployable Cloud Run backend container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag my-study-companion-backend:0.15.6 MyStudyCompanion/backend
+          docker image inspect my-study-companion-backend:0.15.6 --format '{{.Id}}' > backend-image-id.txt
+
+      - name: Run PWA tests and Firestore security-rules emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do node --check "$file"; done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
+          mapfile -t WEB_TESTS < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.test.mjs' -print | sort)
+          node --test "${WEB_TESTS[@]}"
+
+          RULES_DEPS="$RUNNER_TEMP/msc-rules-deps"
+          npm install --prefix "$RULES_DEPS" --no-save firebase @firebase/rules-unit-testing
+          (
+            cd MyStudyCompanionWeb
+            NODE_PATH="$RULES_DEPS/node_modules" npx --yes firebase-tools@15.1.0 emulators:exec \
+              --only firestore \
+              --project demo-my-study-companion \
+              "NODE_PATH=$RULES_DEPS/node_modules node firestore-rules.test.cjs"
+          )
+
+      - name: Run Android and Wear tests and debug compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            :app:testDebugUnitTest \
+            :wear:testDebugUnitTest \
+            :app:compileDebugKotlin \
+            :wear:compileDebugKotlin \
+            :app:assembleDebug \
+            :wear:assembleDebug
+
+      - name: Install verified Firebase configuration
+        id: firebase
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' | sha256sum -c -
+          WEB_CLIENT_ID="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          clients={item['client_info']['android_client_info']['package_name']:item for item in data['client']}
+          canonical=clients['com.mystudycompanion.app']
+          android=[item for item in canonical['oauth_client'] if item['client_type']==1]
+          web=[item for item in canonical['oauth_client'] if item['client_type']==3]
+          assert android[0]['android_info']['certificate_hash']=='1997d421d177215a44f9651ce53dbaec152fbc49'
+          print(web[0]['client_id'])
+          PY
+          )"
+          echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo 'backend_base_url=https://my-study-companion-abc01.web.app/' >> "$GITHUB_OUTPUT"
+
+      - name: Create disposable CI packaging signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-0156-packaging"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/packaging.jks" \
+            -storepass 'msc-0156-packaging-only' \
+            -keypass 'msc-0156-packaging-only' \
+            -alias 'msc-0156-packaging' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion 0.15.6 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/packaging.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Build canonical private-alpha phone and Wear APKs
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-0156-packaging-only
+          MSC_RELEASE_KEY_ALIAS: msc-0156-packaging
+          MSC_RELEASE_KEY_PASSWORD: msc-0156-packaging-only
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.firebase.outputs.web_client_id }}
+          MSC_BACKEND_BASE_URL: ${{ steps.firebase.outputs.backend_base_url }}
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanion
+          gradle --no-daemon --stacktrace \
+            -PMSC_LOCAL_OWNER_MODE=true \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            -PMSC_BACKEND_BASE_URL="$MSC_BACKEND_BASE_URL" \
+            :app:assemblePrivateAlpha :wear:assemblePrivateAlpha
+
+      - name: Package synchronized Android Wear PWA and backend release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-0.15.6/{phone,wear,web,backend,metadata,generated-assets}
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('MyStudyCompanionWeb/release-manifest.json').write_text(json.dumps({
+            'release':'0.15.6',
+            'commit':os.environ['GITHUB_SHA'],
+            'serviceWorkerCache':'msc-web-v0156-household-invitation-root-v1',
+            'workbookManifest':'assets/workbook/manifest.json',
+            'releaseTrain':['android','wear','web','backend'],
+            'repair':'server-authoritative-household-invitation-root-fix'
+          },indent=2,sort_keys=True)+'\n')
+          PY
+          (cd MyStudyCompanionWeb && zip -q -r ../release-0.15.6/web/MyStudyCompanionWeb-0.15.6-PWA.zip . \
+            -x '*.DS_Store' '__pycache__/*' '*.pyc' '*.orig' '*.rej' '*.test.mjs')
+          tar -czf release-0.15.6/backend/MyStudyCompanionBackend-0.15.6.tar.gz \
+            -C MyStudyCompanion backend firestore.rules
+          cp backend-image-id.txt release-0.15.6/metadata/BACKEND-IMAGE-ID.txt
+          cp MyStudyCompanion/firestore.rules release-0.15.6/metadata/FIRESTORE-RULES.txt
+          cp MyStudyCompanionWeb/release-manifest.json release-0.15.6/metadata/WEB-RELEASE-MANIFEST.json
+          cp -a MyStudyCompanion/app/src/main/assets/workbook/. release-0.15.6/generated-assets/
+
+      - name: Verify package identities signatures alignment and parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
+          PHONE_SOURCE="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          WEAR_SOURCE="$(find MyStudyCompanion/wear/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          PHONE_APK='release-0.15.6/phone/MyStudyCompanion-phone-0.15.6-ci.apk'
+          WEAR_APK='release-0.15.6/wear/MyStudyCompanion-wear-0.15.6-ci.apk'
+          cp "$PHONE_SOURCE" "$PHONE_APK"
+          cp "$WEAR_SOURCE" "$WEAR_APK"
+
+          "$AAPT" dump badging "$PHONE_APK" > release-0.15.6/metadata/PHONE-IDENTITY.txt
+          "$AAPT" dump badging "$WEAR_APK" > release-0.15.6/metadata/WEAR-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='39'" release-0.15.6/metadata/PHONE-IDENTITY.txt
+          grep -q "versionName='0.15.6-private-alpha-household-invitation-root-fix'" release-0.15.6/metadata/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='360156001'" release-0.15.6/metadata/WEAR-IDENTITY.txt
+          grep -q "versionName='0.15.6-wear-private-alpha-household-invitation-root-fix'" release-0.15.6/metadata/WEAR-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs "$PHONE_APK" > release-0.15.6/metadata/PHONE-CI-SIGNATURE.txt
+          "$APKSIGNER" verify --verbose --print-certs "$WEAR_APK" > release-0.15.6/metadata/WEAR-CI-SIGNATURE.txt
+          "$ZIPALIGN" -c -P 16 -v 4 "$PHONE_APK" > release-0.15.6/metadata/PHONE-ZIPALIGN.txt
+          "$ZIPALIGN" -c -P 16 -v 4 "$WEAR_APK" > release-0.15.6/metadata/WEAR-ZIPALIGN.txt
+          diff -ru MyStudyCompanion/app/src/main/assets/workbook MyStudyCompanionWeb/assets/workbook
+          sha256sum \
+            "$PHONE_APK" \
+            "$WEAR_APK" \
+            release-0.15.6/web/MyStudyCompanionWeb-0.15.6-PWA.zip \
+            release-0.15.6/backend/MyStudyCompanionBackend-0.15.6.tar.gz \
+            > release-0.15.6/metadata/CI-SHA256SUMS.txt
+
+      - name: Upload canonical synchronized 0.15.6 package
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.6-household-invitation-root-fix-package
+          path: release-0.15.6
+          retention-days: 14
+          if-no-files-found: error

@@ -1,0 +1,247 @@
+name: My Study Companion 0.15.4 Web Parity and Live Deploy
+
+on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0154-web-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RELEASE_VERSION: 0.15.4
+  WEB_CACHE_VERSION: msc-web-v0154-professional-workbook-household-v1
+  GCP_PROJECT_ID: my-study-companion-abc01
+  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+
+jobs:
+  verify-web-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out exact release head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook baseline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic workbook dependencies
+        shell: bash
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+
+      - name: Reconstruct synchronized Android Wear and web source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+
+      - name: Verify PWA behavior household repair and professional assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do node --check "$file"; done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
+          mapfile -t TESTS < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.test.mjs' -print | sort)
+          node --test "${TESTS[@]}"
+          grep -Fq 'loadProfessionalWorkbookAsset' MyStudyCompanionWeb/workbook.js
+          grep -Fq 'professionalPrintData' MyStudyCompanionWeb/workbook.js
+          grep -Fq 'regionMaskData' MyStudyCompanionWeb/workbook.js
+          grep -Fq 'validateHouseholdInvitation' MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'householdInvitationLookupCandidates' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt
+          grep -Fq "$WEB_CACHE_VERSION" MyStudyCompanionWeb/sw.js
+          ! grep -R -Eq 'msc-web-v0151|msc-web-v0152|msc-web-v0153-professional-workbook-assets-v1' MyStudyCompanionWeb/sw.js
+          ! find MyStudyCompanionWeb -type f \( -name '*.orig' -o -name '*.rej' -o -name '*.tmp' \) -print -quit | grep -q .
+          diff -ru MyStudyCompanion/app/src/main/assets/workbook MyStudyCompanionWeb/assets/workbook
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          android=Path('MyStudyCompanion/app/src/main/assets/workbook')
+          web=Path('MyStudyCompanionWeb/assets/workbook')
+          manifest=json.loads((web/'manifest.json').read_text())
+          assert manifest==json.loads((android/'manifest.json').read_text())
+          assert len(manifest['assets'])==16
+          assert all(35<=len(item['regions'])<=70 for item in manifest['assets'])
+          assert all(len(item['differences'])==5 for item in manifest['assets'])
+          af=sorted(p.relative_to(android) for p in android.rglob('*') if p.is_file())
+          wf=sorted(p.relative_to(web) for p in web.rglob('*') if p.is_file())
+          assert af==wf
+          for rel in af:
+              assert hashlib.sha256((android/rel).read_bytes()).digest()==hashlib.sha256((web/rel).read_bytes()).digest(), rel
+          print(f'PASS: {len(af)} professional workbook files match Android and PWA byte-for-byte.')
+          PY
+
+      - name: Package verified PWA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-0.15.4/web release-0.15.4/metadata
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          release={'release':'0.15.4','commit':os.environ['GITHUB_SHA'],'serviceWorkerCache':'msc-web-v0154-professional-workbook-household-v1','workbookManifest':'assets/workbook/manifest.json','releaseTrain':['android','wear','web']}
+          Path('MyStudyCompanionWeb/release-manifest.json').write_text(json.dumps(release,indent=2,sort_keys=True)+'\n')
+          PY
+          (cd MyStudyCompanionWeb && zip -q -r ../release-0.15.4/web/MyStudyCompanionWeb-0.15.4-PWA.zip . -x '*.DS_Store' '__pycache__/*' '*.pyc' '*.orig' '*.rej' '*.test.mjs')
+          sha256sum release-0.15.4/web/MyStudyCompanionWeb-0.15.4-PWA.zip > release-0.15.4/metadata/WEB-SHA256SUMS.txt
+          cp MyStudyCompanionWeb/release-manifest.json release-0.15.4/metadata/
+          cp MyStudyCompanionWeb/assets/workbook/manifest.json release-0.15.4/metadata/WORKBOOK-MANIFEST.json
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.4-verified-pwa
+          path: release-0.15.4
+          retention-days: 14
+          if-no-files-found: error
+
+  deploy-firebase-hosting-and-rules:
+    needs: verify-web-parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: my-study-companion-private
+    steps:
+      - name: Check out exact verified release head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Check out checksum-locked workbook baseline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Reconstruct exact verified web release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          diff -ru MyStudyCompanion/app/src/main/assets/workbook MyStudyCompanionWeb/assets/workbook
+
+      - name: Authenticate without a stored service-account key
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Resolve the existing Firebase Web app and generate runtime config
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global firebase-tools@15.1.0
+          firebase apps:list web --project "$GCP_PROJECT_ID" --json > /tmp/firebase-web-apps.json
+          WEB_APP_ID="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          payload=json.loads(Path('/tmp/firebase-web-apps.json').read_text())
+          result=payload.get('result',payload)
+          if isinstance(result,dict):
+              result=result.get('apps',result.get('result',[]))
+          apps=result if isinstance(result,list) else []
+          apps=[item for item in apps if str(item.get('platform','WEB')).upper()=='WEB']
+          if not apps: raise SystemExit('No Firebase Web app exists in the project.')
+          preferred=next((item for item in apps if 'study companion' in str(item.get('displayName','')).lower()),apps[0])
+          print(preferred['appId'])
+          PY
+          )"
+          test -n "$WEB_APP_ID"
+          firebase apps:sdkconfig web "$WEB_APP_ID" --project "$GCP_PROJECT_ID" --out /tmp/firebase-web-sdk-config.json --non-interactive
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          firebase=json.loads(Path('/tmp/firebase-web-sdk-config.json').read_text())
+          for key in ('apiKey','authDomain','projectId','appId'): assert firebase.get(key), key
+          runtime={'firebase':firebase,'backendBaseUrl':f"https://{firebase['projectId']}.web.app/",'officialContentEndpoint':'/v1/official/read','release':'0.15.4','buildCommit':os.environ['GITHUB_SHA'],'serviceWorkerCache':'msc-web-v0154-professional-workbook-household-v1','releaseTrain':['android','wear','web']}
+          Path('MyStudyCompanionWeb/runtime-config.json').write_text(json.dumps(runtime,indent=2,sort_keys=True)+'\n')
+          Path('MyStudyCompanionWeb/release-manifest.json').write_text(json.dumps({'release':'0.15.4','commit':os.environ['GITHUB_SHA'],'serviceWorkerCache':'msc-web-v0154-professional-workbook-household-v1','workbookManifest':'assets/workbook/manifest.json','releaseTrain':['android','wear','web']},indent=2,sort_keys=True)+'\n')
+          PY
+
+      - name: Deploy live PWA and repaired Firestore rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd MyStudyCompanionWeb
+          firebase deploy --project "$GCP_PROJECT_ID" --only hosting,firestore:rules --non-interactive --message "My Study Companion 0.15.4 synchronized web and household repair"
+
+      - name: Verify live release
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="https://${GCP_PROJECT_ID}.web.app"
+          for file in runtime-config.json release-manifest.json sw.js workbook.js firebase-sync.js assets/workbook/manifest.json; do
+            curl --fail --silent --show-error --retry 10 --retry-all-errors "$BASE_URL/$file" > "live-${file//\//_}"
+          done
+          grep -Fq "$WEB_CACHE_VERSION" live-sw.js
+          grep -Fq 'loadProfessionalWorkbookAsset' live-workbook.js
+          grep -Fq 'professionalPrintData' live-workbook.js
+          grep -Fq 'validateHouseholdInvitation' live-firebase-sync.js
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          runtime=json.loads(Path('live-runtime-config.json').read_text())
+          release=json.loads(Path('live-release-manifest.json').read_text())
+          workbook=json.loads(Path('live-assets_workbook_manifest.json').read_text())
+          assert runtime['release']=='0.15.4'
+          assert runtime['serviceWorkerCache']=='msc-web-v0154-professional-workbook-household-v1'
+          assert release['release']=='0.15.4'
+          assert len(workbook['assets'])==16
+          assert all(35<=len(item['regions'])<=70 and len(item['differences'])==5 for item in workbook['assets'])
+          Path('MSC-0.15.4-WEB-DEPLOYMENT-STATUS.txt').write_text(f"release=0.15.4\ncommit={os.environ['GITHUB_SHA']}\nurl=https://{os.environ['GCP_PROJECT_ID']}.web.app\nverification=passed\n")
+          PY
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.4-live-web-deployment-status
+          path: |
+            MSC-0.15.4-WEB-DEPLOYMENT-STATUS.txt
+            live-runtime-config.json
+            live-release-manifest.json
+            live-sw.js
+            live-workbook.js
+            live-firebase-sync.js
+            live-assets_workbook_manifest.json
+          retention-days: 30
+          if-no-files-found: error

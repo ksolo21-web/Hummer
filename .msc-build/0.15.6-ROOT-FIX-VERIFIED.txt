@@ -1,0 +1,10 @@
+My Study Companion 0.15.6 server-authoritative household invitation root fix
+
+Verified source commit: 6f53f1b41c30039f52ad203e0a74efd8b8bc5079
+Root-fix run: 30869641399 — PASS
+Artifact: 8877637992
+Artifact digest: sha256:2324e42cbc3b66b374f671daa6cd370d5910e9695f85cc8c8c7f042b6a864273
+
+Backend atomic invitation tests, deployable Cloud Run container, PWA tests, Firestore Rules Emulator, Android, Wear, canonical APK packaging, identities, and 16 KiB alignment passed.
+
+Live readiness run 30871195404 failed at Google Workload Identity authentication with invalid_target because the project owner has not created/enabled the repository-restricted pool/provider. Run .msc-build/bootstrap-msc-0.15.6-root-deploy.sh once in Google Cloud Shell, then rerun .github/workflows/msc-0.15.6-live-root-deploy.yml.

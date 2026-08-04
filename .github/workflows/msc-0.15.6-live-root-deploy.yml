@@ -1,0 +1,228 @@
+name: My Study Companion 0.15.6 Live Root Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_ROOT_FIX to publish backend, rules, and PWA
+        required: true
+        default: VERIFY_ONLY
+        type: string
+  push:
+    branches:
+      - agent/msc-0.15.6-live-deploy
+
+concurrency:
+  group: msc-0156-live-root-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: my-study-companion-abc01
+  PROJECT_NUMBER: '949620144971'
+  REGION: us-central1
+  SERVICE_NAME: my-study-companion-private
+  ARTIFACT_REPOSITORY: msc-containers
+  RUNTIME_SERVICE_ACCOUNT: msc-backend-runtime@my-study-companion-abc01.iam.gserviceaccount.com
+  DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+  WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  WEB_CACHE_VERSION: msc-web-v0156-household-invitation-root-v1
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'push' || inputs.confirmation == 'DEPLOY_ROOT_FIX' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: my-study-companion-private
+    steps:
+      - name: Check out exact approved source
+        uses: actions/checkout@v6
+
+      - name: Check out checksum-locked workbook baseline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Reconstruct and retest exact 0.15.6 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+
+          cd MyStudyCompanion/backend
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          python -m pytest -q tests/test_household_invitation_root_fix.py tests/test_household_api.py
+          cd ../..
+
+          while IFS= read -r file; do node --check "$file"; done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
+          grep -Fq "$WEB_CACHE_VERSION" MyStudyCompanionWeb/sw.js
+          grep -Fq 'allow read, write: if false;' MyStudyCompanion/firestore.rules
+          grep -Fq 'allow read, write: if false;' MyStudyCompanionWeb/firestore.rules
+
+      - name: Authenticate with repository-restricted Workload Identity
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Build and publish the tested backend image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/my-study-companion-backend:${GITHUB_SHA}"
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build --tag "$IMAGE" MyStudyCompanion/backend
+          docker push "$IMAGE"
+          echo "uri=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy server-authoritative invitation backend
+        id: run
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run deploy "$SERVICE_NAME" \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --platform managed \
+            --image "${{ steps.image.outputs.uri }}" \
+            --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+            --port 8080 \
+            --min-instances 0 \
+            --max-instances 3 \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 180 \
+            --concurrency 40 \
+            --allow-unauthenticated \
+            --update-env-vars "MSC_ENV=development,MSC_PERSISTENCE_BACKEND=firestore,MSC_FIREBASE_PROJECT_NUMBER=${PROJECT_NUMBER},MSC_FIREBASE_PROJECT_ID=${PROJECT_ID},MSC_REQUIRE_USER_AUTH=true,MSC_REQUIRE_APP_CHECK=false,MSC_ALLOWED_ORIGINS=https://${PROJECT_ID}.web.app\,https://${PROJECT_ID}.firebaseapp.com,MSC_MINIMUM_PHONE_VERSION_CODE=39,MSC_MINIMUM_WEAR_VERSION_CODE=360156001,MSC_TIMEZONE=America/Detroit" \
+            --quiet
+          URL="$(gcloud run services describe "$SERVICE_NAME" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
+          test -n "$URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Generate live Firebase runtime metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          project = os.environ['PROJECT_ID']
+          runtime = {
+              'backendBaseUrl': f'https://{project}.web.app/',
+              'release': '0.15.6',
+              'buildCommit': os.environ['GITHUB_SHA'],
+              'serviceWorkerCache': os.environ['WEB_CACHE_VERSION'],
+              'releaseTrain': ['android', 'wear', 'web', 'backend'],
+              'householdInvitationArchitecture': 'server-authoritative-atomic-redemption',
+          }
+          Path('MyStudyCompanionWeb/runtime-config.json').write_text(json.dumps(runtime, indent=2, sort_keys=True) + '\n')
+          Path('MyStudyCompanionWeb/release-manifest.json').write_text(json.dumps({
+              'release': '0.15.6',
+              'commit': os.environ['GITHUB_SHA'],
+              'serviceWorkerCache': os.environ['WEB_CACHE_VERSION'],
+              'workbookManifest': 'assets/workbook/manifest.json',
+              'releaseTrain': ['android', 'wear', 'web', 'backend'],
+              'repair': 'server-authoritative-household-invitation-root-fix',
+          }, indent=2, sort_keys=True) + '\n')
+          PY
+
+      - name: Deploy Firestore rules and synchronized PWA
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global firebase-tools@15.1.0
+          cd MyStudyCompanionWeb
+          firebase deploy \
+            --project "$PROJECT_ID" \
+            --only firestore:rules,hosting \
+            --non-interactive \
+            --message "My Study Companion 0.15.6 server-authoritative household invitation root fix"
+
+      - name: Verify the live root fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_URL='${{ steps.run.outputs.url }}'
+          HOST_URL="https://${PROJECT_ID}.web.app"
+
+          curl --fail --silent --show-error --retry 10 --retry-all-errors "$RUN_URL/health" > live-cloud-run-health.json
+          curl --fail --silent --show-error --retry 10 --retry-all-errors "$HOST_URL/health" > live-hosting-health.json
+          curl --fail --silent --show-error --retry 10 --retry-all-errors "$HOST_URL/release-manifest.json" > live-release.json
+          curl --fail --silent --show-error --retry 10 --retry-all-errors "$HOST_URL/runtime-config.json" > live-runtime.json
+          curl --fail --silent --show-error --retry 10 --retry-all-errors "$HOST_URL/sw.js" > live-sw.js
+
+          STATUS="$(curl --silent --output unauthenticated-invitation-response.json --write-out '%{http_code}' \
+            --request POST --header 'Content-Type: application/json' \
+            --data '{"householdId":"unauthorized-test"}' \
+            "$HOST_URL/v1/household/invitations")"
+          test "$STATUS" = '401'
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          cloud = json.loads(Path('live-cloud-run-health.json').read_text())
+          hosted = json.loads(Path('live-hosting-health.json').read_text())
+          release = json.loads(Path('live-release.json').read_text())
+          runtime = json.loads(Path('live-runtime.json').read_text())
+          assert cloud['persistenceBackend'] == 'firestore'
+          assert hosted['persistenceBackend'] == 'firestore'
+          assert release['release'] == '0.15.6'
+          assert runtime['release'] == '0.15.6'
+          assert runtime['householdInvitationArchitecture'] == 'server-authoritative-atomic-redemption'
+          assert release['serviceWorkerCache'] == 'msc-web-v0156-household-invitation-root-v1'
+          PY
+          grep -Fq "$WEB_CACHE_VERSION" live-sw.js
+
+          cat > MSC-0.15.6-LIVE-ROOT-DEPLOYMENT.txt <<EOF
+          release=0.15.6
+          commit=${GITHUB_SHA}
+          cloud_run_url=${RUN_URL}
+          hosting_url=${HOST_URL}
+          persistence=firestore
+          unauthenticated_invitation_status=${STATUS}
+          verification=passed
+          EOF
+
+      - name: Upload live deployment evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.6-live-root-deployment-evidence
+          path: |
+            MSC-0.15.6-LIVE-ROOT-DEPLOYMENT.txt
+            live-cloud-run-health.json
+            live-hosting-health.json
+            live-release.json
+            live-runtime.json
+            live-sw.js
+            unauthenticated-invitation-response.json
+          retention-days: 30
+          if-no-files-found: error

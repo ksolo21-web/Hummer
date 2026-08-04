@@ -1,0 +1,1 @@
+The application-side root fix is complete and privately signed; live operation awaits one-time project-owner Workload Identity bootstrap.
