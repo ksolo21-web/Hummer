@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
@@ -56,6 +56,22 @@ jobs:
           bash .msc-build/apply-0.15.4-web-household-parity.sh
           bash .msc-build/apply-0.15.5-household-cancellation.sh
           bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+      - name: Verify Google sign-in was preserved
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH=MyStudyCompanionWeb/firebase-sync.js
+          grep -Fq 'browserLocalPersistence' "$AUTH"
+          grep -Fq 'getRedirectResult' "$AUTH"
+          grep -Fq 'GoogleAuthProvider' "$AUTH"
+          grep -Fq 'signInWithPopup' "$AUTH"
+          grep -Fq 'auth/popup-blocked' "$AUTH"
+          grep -Fq 'signInWithRedirect' "$AUTH"
+          grep -Fq 'onAuthStateChanged' "$AUTH"
+          grep -R -Fq 'AccountProvider.GOOGLE' MyStudyCompanion/app/src/main/java
+          grep -R -Eq 'GoogleSignIn|GoogleAuthProvider|CredentialManager|GoogleIdTokenCredential|GetGoogleIdOption' MyStudyCompanion/app/src/main/java
+          grep -R -Eq 'signInWithCredential|FirebaseAuth' MyStudyCompanion/app/src/main/java
+          echo 'PASS: Google sign-in lifecycle remains present on web and Android.'
       - name: Test existing backend features
         shell: bash
         run: |
@@ -68,6 +84,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          java -version
           while IFS= read -r file; do node --check "$file"; done < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.js' -print | sort)
           mapfile -t TESTS < <(find MyStudyCompanionWeb -maxdepth 1 -type f -name '*.test.mjs' -print | sort)
           node --test "${TESTS[@]}"
