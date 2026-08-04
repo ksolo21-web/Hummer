@@ -57,7 +57,6 @@ grep -Fq 'widthIn(max = minOf(layoutSpec.contentMaxWidthDp, 1_120).dp)' \"$UI/Ho
 
 python3 - <<'AUDIT'
 from pathlib import Path
-import re
 
 ui = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui')
 rows = []
@@ -70,7 +69,10 @@ for path in sorted(ui.glob('*Screen.kt')):
     viewport_managed = any(token in source for token in (
         'Canvas(', 'InteractiveWorkbookEditor(', 'UnifiedStudyReaderScreen',
     ))
-    has_static_full_page = bool(re.search(r'(Column|Box)\s*\([^\n]*fillMaxSize|Modifier\.fillMaxSize\(\)', source))
+    has_static_full_page = (
+        'Modifier.fillMaxSize()' in source or
+        '.fillMaxSize()' in source
+    )
     status = 'scroll-backed' if scroll_backed else ('viewport-managed' if viewport_managed else 'review')
     rows.append(f'{path.name}\t{status}\tstatic-full-page={has_static_full_page}')
 
