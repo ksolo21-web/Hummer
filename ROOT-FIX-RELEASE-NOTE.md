@@ -1,0 +1,1 @@
+See PR #22 and .msc-build/0.15.6-ROOT-FIX-VERIFIED.txt for the verified server-authoritative invitation repair and live deployment authorization boundary.
