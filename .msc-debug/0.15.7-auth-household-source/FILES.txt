@@ -4,7 +4,6 @@ auth/AuthRepository.kt
 auth/FirebaseAuthHeaders.kt
 auth/GoogleSignInCoordinator.kt
 companion/CompanionHubRepository.kt
-companion/CompanionModels.kt
 companion/StudyGroupAssignmentResolver.kt
 family/FamilyWorshipOrganizerRepository.kt
 firebase-sync.js
