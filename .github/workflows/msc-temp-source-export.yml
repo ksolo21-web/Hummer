@@ -1,6 +1,9 @@
 name: My Study Companion Temporary Source Export
 
 on:
+  pull_request:
+    branches:
+      - agent/my-study-companion-0141-auth-theme-repair
   workflow_dispatch:
 
 permissions:
@@ -11,7 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out exact PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/checkout@v6
         with:
           ref: agent/my-study-companion-0140-overlay-payload
@@ -37,7 +43,7 @@ jobs:
           sha256sum msc-current-reconstructed-source.tar.gz > msc-current-reconstructed-source.sha256
       - uses: actions/upload-artifact@v6
         with:
-          name: msc-current-reconstructed-source-${{ github.sha }}
+          name: msc-current-reconstructed-source-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             msc-current-reconstructed-source.tar.gz
             msc-current-reconstructed-source.sha256
