@@ -1,0 +1,3 @@
+workflow_run_id=30927962648
+workflow_result=success
+artifact_name=msc-android-build-tools-36-linux
