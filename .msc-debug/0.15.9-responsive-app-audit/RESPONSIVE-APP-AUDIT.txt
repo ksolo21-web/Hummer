@@ -1,0 +1,25 @@
+MY STUDY COMPANION 0.15.9 RESPONSIVE APP AUDIT
+
+The Family Hub household page has one bounded vertical scroll owner, natural-height content,
+live fold/window remeasurement, IME padding, and automatic invitation-code reveal.
+
+Screens scanned: 15
+Ordinary static screens requiring source review: 1
+
+REVIEW	AccountScreen.kt	content=20	fixedHeight=1	weights=1	fillMaxSize=True
+SCROLL	AiStudyScreen.kt	content=62	fixedHeight=0	weights=5	fillMaxSize=True
+SCROLL	AuthScreen.kt	content=16	fixedHeight=2	weights=2	fillMaxSize=True
+SMALL	ComingSoonScreen.kt	content=2	fixedHeight=0	weights=0	fillMaxSize=True
+SCROLL	CompanionHubScreen.kt	content=218	fixedHeight=8	weights=10	fillMaxSize=True
+SCROLL	FamilyHubScreen.kt	content=2	fixedHeight=0	weights=3	fillMaxSize=True
+SCROLL	FamilyWorshipScreen.kt	content=74	fixedHeight=0	weights=4	fillMaxSize=True
+SCROLL	HomeScreen.kt	content=99	fixedHeight=7	weights=15	fillMaxSize=True
+SMALL	HouseholdScreen.kt	content=35	fixedHeight=0	weights=1	fillMaxSize=False
+SCROLL	MoreScreen.kt	content=9	fixedHeight=0	weights=0	fillMaxSize=True
+SCROLL	NotesScreen.kt	content=33	fixedHeight=0	weights=4	fillMaxSize=True
+SCROLL	ProfileAgeSetupScreen.kt	content=10	fixedHeight=0	weights=0	fillMaxSize=True
+SCROLL	SettingsScreen.kt	content=89	fixedHeight=3	weights=4	fillMaxSize=True
+SCROLL	StudyScreen.kt	content=73	fixedHeight=1	weights=6	fillMaxSize=True
+SCROLL	UnifiedStudyReaderScreen.kt	content=74	fixedHeight=0	weights=2	fillMaxSize=True
+
+FLAGGED=AccountScreen.kt
