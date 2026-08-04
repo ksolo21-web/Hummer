@@ -55,5 +55,14 @@ class PrimaryRoutesTest {
             hasContentDescription("Back to Atelier"),
             timeoutMillis = 20_000,
         )
+        composeRule.waitUntilAtLeastOneExists(hasContentDescription("Pencil"), timeoutMillis = 10_000)
+        composeRule.waitUntilAtLeastOneExists(hasContentDescription("Pen"), timeoutMillis = 10_000)
+        composeRule.waitUntilAtLeastOneExists(hasContentDescription("Select / Move"), timeoutMillis = 10_000)
+        composeRule.onNodeWithContentDescription("Select / Move").performClick()
+        composeRule.waitUntilAtLeastOneExists(hasText("Select / Move"), timeoutMillis = 10_000)
+        composeRule.waitUntilAtLeastOneExists(
+            hasText("Select / Move • tap an object"),
+            timeoutMillis = 10_000,
+        )
     }
 }

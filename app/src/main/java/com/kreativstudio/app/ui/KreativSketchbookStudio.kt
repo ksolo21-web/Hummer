@@ -444,20 +444,35 @@ private fun CompactToolDock(
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 10.dp),
+                modifier = Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ColorDot(viewModel.activeColorArgb, onMore)
-                Text(
-                    viewModel.activeTool.displayName(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = HudOnSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                SizeStepper(viewModel)
+                if (viewModel.activeTool.showsColorControl()) {
+                    ColorDot(viewModel.activeColorArgb, onMore)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        viewModel.activeTool.displayName(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = HudOnSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        viewModel.activeTool.hudHint(
+                            opacity = viewModel.brushOpacity,
+                            inputStatus = viewModel.inputStatus,
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = HudMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (viewModel.activeTool.usesSizeControl()) {
+                    SizeStepper(viewModel)
+                }
                 ActionIcon(Icons.Default.MoreHoriz, "More controls", onMore)
                 ActionIcon(Icons.Default.VisibilityOff, "Hide controls", onHide)
             }
@@ -482,26 +497,33 @@ private fun BrushPuck(
         shadowElevation = 14.dp,
     ) {
         Row(
-            modifier = Modifier.height(58.dp).padding(horizontal = 10.dp),
+            modifier = Modifier.height(62.dp).padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ColorDot(viewModel.activeColorArgb, onMore)
-            Column(Modifier.widthIn(min = 96.dp, max = 190.dp)) {
+            if (viewModel.activeTool.showsColorControl()) {
+                ColorDot(viewModel.activeColorArgb, onMore)
+            }
+            Column(Modifier.widthIn(min = 150.dp, max = 260.dp)) {
                 Text(
                     viewModel.activeTool.displayName(),
                     style = MaterialTheme.typography.labelLarge,
                     color = HudOnSurface,
                 )
                 Text(
-                    viewModel.activeTool.hudHint(viewModel.brushOpacity),
+                    viewModel.activeTool.hudHint(
+                        opacity = viewModel.brushOpacity,
+                        inputStatus = viewModel.inputStatus,
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = HudMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            SizeStepper(viewModel)
+            if (viewModel.activeTool.usesSizeControl()) {
+                SizeStepper(viewModel)
+            }
             ActionIcon(Icons.Default.MoreHoriz, "More controls", onMore)
             ActionIcon(Icons.Default.VisibilityOff, "Hide controls", onHide)
         }
@@ -550,12 +572,7 @@ private fun ToolIconButton(viewModel: KreativViewModel, tool: ToolType) {
         ),
     ) {
         IconButton(
-            onClick = {
-                viewModel.activeTool = tool
-                if (tool == ToolType.SELECT) {
-                    viewModel.showMessage("Select / Move: tap a visible stroke, shape, or text, then drag it.")
-                }
-            },
+            onClick = { activateTool(viewModel, tool) },
         ) {
             Icon(
                 imageVector = tool.icon(),
@@ -643,53 +660,65 @@ private fun StudioControlsSheet(
                 items(allTools, key = { it.name }) { tool ->
                     FilterChip(
                         selected = viewModel.activeTool == tool,
-                        onClick = { viewModel.activeTool = tool },
+                        onClick = { activateTool(viewModel, tool) },
                         label = { Text(tool.displayName()) },
                         leadingIcon = { Icon(tool.icon(), null, Modifier.size(18.dp)) },
                     )
                 }
             }
         }
-        item {
-            Text("Color", style = MaterialTheme.typography.titleLarge)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(palette) { value ->
-                    val selected = viewModel.activeColorArgb == value
-                    Surface(
-                        modifier = Modifier
-                            .size(if (selected) 48.dp else 42.dp)
-                            .clickable { viewModel.activeColorArgb = value },
-                        shape = CircleShape,
-                        color = Color(value),
-                        border = BorderStroke(
-                            if (selected) 3.dp else 1.dp,
-                            if (selected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.outline,
-                        ),
-                    ) {}
+        if (viewModel.activeTool.showsColorControl()) {
+            item {
+                Text("Color", style = MaterialTheme.typography.titleLarge)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(palette) { value ->
+                        val selected = viewModel.activeColorArgb == value
+                        Surface(
+                            modifier = Modifier
+                                .size(if (selected) 48.dp else 42.dp)
+                                .clickable { viewModel.activeColorArgb = value },
+                            shape = CircleShape,
+                            color = Color(value),
+                            border = BorderStroke(
+                                if (selected) 3.dp else 1.dp,
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline,
+                            ),
+                        ) {}
+                    }
                 }
             }
         }
-        item {
-            Text("Brush response", style = MaterialTheme.typography.titleLarge)
-            Text("Size ${viewModel.brushWidth.toInt()} px")
-            Slider(
-                value = viewModel.brushWidth,
-                onValueChange = { viewModel.brushWidth = it },
-                valueRange = 1f..180f,
-            )
-            Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
-            Slider(
-                value = viewModel.brushOpacity,
-                onValueChange = { viewModel.brushOpacity = it },
-                valueRange = .05f..1f,
-            )
-            Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
-            Slider(
-                value = viewModel.stabilization,
-                onValueChange = { viewModel.stabilization = it },
-                valueRange = 0f..0.95f,
-            )
+        if (viewModel.activeTool.usesSizeControl()) {
+            item {
+                Text("Brush response", style = MaterialTheme.typography.titleLarge)
+                Text("Size ${viewModel.brushWidth.toInt()} px")
+                Slider(
+                    value = viewModel.brushWidth,
+                    onValueChange = { viewModel.brushWidth = it },
+                    valueRange = 1f..180f,
+                )
+                Text("Opacity ${(viewModel.brushOpacity * 100).toInt()}%")
+                Slider(
+                    value = viewModel.brushOpacity,
+                    onValueChange = { viewModel.brushOpacity = it },
+                    valueRange = .05f..1f,
+                )
+                Text("Stabilization ${(viewModel.stabilization * 100).toInt()}%")
+                Slider(
+                    value = viewModel.stabilization,
+                    onValueChange = { viewModel.stabilization = it },
+                    valueRange = 0f..0.95f,
+                )
+            }
+        } else if (viewModel.activeTool == ToolType.SELECT) {
+            item {
+                Text("Select / Move", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Tap a visible, unlocked stroke, shape, or text object. A gold dashed box confirms the selection; drag it to move the object.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -822,12 +851,40 @@ private fun ToolType.displayName(): String = when (this) {
     else -> name.lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
 }
 
-private fun ToolType.hudHint(opacity: Float): String = when (this) {
-    ToolType.SELECT -> "Tap an object • drag to move"
+private fun activateTool(viewModel: KreativViewModel, tool: ToolType) {
+    viewModel.activeTool = tool
+    viewModel.inputStatus = tool.initialInputStatus()
+    if (tool == ToolType.SELECT) {
+        viewModel.showMessage("Select / Move: tap a visible, unlocked object, then drag it.")
+    }
+}
+
+private fun ToolType.initialInputStatus(): String = when (this) {
+    ToolType.SELECT -> "Select / Move • tap an object"
+    ToolType.ERASER -> "Eraser • drag across marks"
+    ToolType.TEXT -> "Text • tap the canvas"
+    ToolType.FILL -> "Fill • tap the canvas"
+    else -> "${displayName()} • ready"
+}
+
+private fun ToolType.hudHint(opacity: Float, inputStatus: String): String = when (this) {
+    ToolType.SELECT -> inputStatus.takeIf { it.startsWith("Select") }
+        ?: "Select / Move • tap an object"
     ToolType.ERASER -> "Drag across marks to erase"
     ToolType.TEXT -> "Tap canvas to place text"
+    ToolType.FILL -> "Tap canvas to fill the background"
     else -> "Opacity ${(opacity * 100).toInt()}%"
 }
+
+private fun ToolType.showsColorControl(): Boolean = this !in setOf(
+    ToolType.SELECT,
+    ToolType.ERASER,
+)
+
+private fun ToolType.usesSizeControl(): Boolean = this !in setOf(
+    ToolType.SELECT,
+    ToolType.FILL,
+)
 
 private fun ToolType.icon() = when (this) {
     ToolType.PENCIL -> Icons.Default.Edit

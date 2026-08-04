@@ -236,7 +236,10 @@ class KreativCanvasView @JvmOverloads constructor(
                 }
                 if (activeTool == ToolType.SELECT) {
                     beginSelection(event)
-                    onInputStatus(if (selectedElementId == null) "Select • tap an object" else "Select • drag to move")
+                    onInputStatus(
+                        if (selectedElementId == null) "Select / Move • no object here"
+                        else "Select / Move • selected • drag to move",
+                    )
                     invalidate()
                     return true
                 }
@@ -426,9 +429,17 @@ class KreativCanvasView @JvmOverloads constructor(
         updateSelection(event)
         val original = selectionOriginal
         val updated = selectionPreview
-        if (original != null && updated != null && updated.points != original.points) {
+        val moved = original != null && updated != null && updated.points != original.points
+        if (moved && updated != null) {
             onElementTransformed(updated)
         }
+        onInputStatus(
+            when {
+                updated == null -> "Select / Move • tap a visible, unlocked object"
+                moved -> "Select / Move • object moved"
+                else -> "Select / Move • object selected • drag to move"
+            },
+        )
         selectionOriginal = null
         selectionAnchor = null
         selectionPreview = updated
