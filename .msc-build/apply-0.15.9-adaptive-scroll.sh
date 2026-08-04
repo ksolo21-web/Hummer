@@ -19,6 +19,12 @@ def replace_exact(path: Path, old: str, new: str, label: str) -> None:
         raise SystemExit(f'{label} target not found in {path}')
     path.write_text(text.replace(old, new, 1), encoding='utf-8')
 
+
+def require(condition: bool, label: str) -> None:
+    if not condition:
+        raise SystemExit(f'0.15.9 adaptive gate failed: {label}')
+
+
 # Family Hub: one real scroll owner for the complete Profiles & household page.
 replace_exact(
     family,
@@ -158,15 +164,40 @@ replace_exact(
 # overlay to whichever older version code the reconstructed source currently has.
 
 # Static contract: exactly one household vertical scroll region, with no nested
-# full-height HouseholdScreen that can clip invitation content.
+# full-height HouseholdScreen that can clip invitation content. These gates inspect
+# the exact household call instead of rejecting unrelated weighted controls later
+# in FamilyHubScreen.
 family_text = family.read_text(encoding='utf-8')
 household_text = household.read_text(encoding='utf-8')
-assert '.verticalScroll(householdScrollState)' in family_text
-assert 'modifier = Modifier.weight(1f),' not in family_text[family_text.index('FamilyHubSection.HOUSEHOLD'):]
-assert 'Box(modifier.fillMaxSize()' not in household_text
-assert 'widthIn(max = minOf(layoutSpec.contentMaxWidthDp, 1_120).dp)' in household_text
-assert 'organizerState.invitationCode' in family_text
-assert 'withFrameNanos' in family_text
+new_household_call = '''                HouseholdScreen(
+                    account = account,
+                    organizerRepository = organizerRepository,
+                    layoutSpec = layoutSpec,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+'''
+old_household_call = '''                HouseholdScreen(
+                    account = account,
+                    organizerRepository = organizerRepository,
+                    layoutSpec = layoutSpec,
+                    modifier = Modifier.weight(1f),
+                )
+'''
+require('.verticalScroll(householdScrollState)' in family_text, 'household parent is not vertically scrollable')
+require('.imePadding()' in family_text, 'household parent does not avoid the keyboard')
+require(new_household_call in family_text, 'HouseholdScreen is not measured at natural full width')
+require(old_household_call not in family_text, 'legacy weighted HouseholdScreen call is still present')
+require('Box(modifier.fillMaxSize()' not in household_text, 'HouseholdScreen still forces full viewport height')
+require(
+    'widthIn(max = minOf(layoutSpec.contentMaxWidthDp, 1_120).dp)' in household_text,
+    'HouseholdScreen adaptive maximum width is missing',
+)
+require('organizerState.invitationCode' in family_text, 'invitation-code state is not observed')
+require('withFrameNanos' in family_text, 'post-remeasure invitation reveal is missing')
+require(
+    'householdScrollState.animateScrollTo(householdScrollState.maxValue)' in family_text,
+    'new invitation codes are not automatically revealed',
+)
 
 print('Applied My Study Companion 0.15.9 adaptive scrolling and live fold/window resize repair.')
 PY
