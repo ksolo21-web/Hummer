@@ -11,8 +11,6 @@ root = Path('MyStudyCompanion')
 ui = root / 'app/src/main/java/com/mystudycompanion/app/ui'
 family = ui / 'FamilyHubScreen.kt'
 household = ui / 'HouseholdScreen.kt'
-app_gradle = root / 'app/build.gradle.kts'
-wear_gradle = root / 'wear/build.gradle.kts'
 
 
 def replace_exact(path: Path, old: str, new: str, label: str) -> None:
@@ -77,8 +75,8 @@ replace_exact(
     '            FamilyHubSection.entries[sectionIndex] == FamilyHubSection.HOUSEHOLD &&\n'
     '            organizerState.invitationCode != null\n'
     '        ) {\n'
-    '            // Wait for the invitation card and any fold/unfold remeasure to finish,\n'
-    '            // then reveal the complete code instead of leaving it below the viewport.\n'
+    '            // Wait for invitation content and fold/window remeasurement, then\n'
+    '            // reveal the complete code instead of leaving it below the viewport.\n'
     '            withFrameNanos { }\n'
     '            withFrameNanos { }\n'
     '            householdScrollState.animateScrollTo(householdScrollState.maxValue)\n'
@@ -133,7 +131,7 @@ replace_exact(
     'Family Hub household scroll container',
 )
 
-# Household content must measure to its natural height inside the parent scroll owner.
+# Household content measures to natural height inside the parent scroll owner.
 replace_exact(
     household,
     'import androidx.compose.foundation.layout.fillMaxSize\n',
@@ -155,24 +153,12 @@ replace_exact(
     'Household natural-height adaptive width',
 )
 
-# New canonical update identity. No auth, Firebase, invitation, profile, or rules logic is changed.
-replace_exact(app_gradle, 'versionCode = 41', 'versionCode = 42', 'phone version code')
-replace_exact(
-    app_gradle,
-    'versionName = "0.15.8-private-alpha-google-age-free-invite"',
-    'versionName = "0.15.9-private-alpha-adaptive-scroll"',
-    'phone version name',
-)
-replace_exact(wear_gradle, 'versionCode = 360158001', 'versionCode = 360159001', 'Wear version code')
-replace_exact(
-    wear_gradle,
-    'versionName = "0.15.8-wear-private-alpha-google-age-free-invite"',
-    'versionName = "0.15.9-wear-private-alpha-adaptive-scroll"',
-    'Wear version name',
-)
+# Version identity is pinned later by the generated 0.15.9 build driver after all
+# reconstruction overlays. Keeping identity changes there avoids coupling this UI
+# overlay to whichever older version code the reconstructed source currently has.
 
-# Static contract: the screen owns exactly one vertical scroll region and does not
-# constrain HouseholdScreen with a second weight/fillMaxSize combination.
+# Static contract: exactly one household vertical scroll region, with no nested
+# full-height HouseholdScreen that can clip invitation content.
 family_text = family.read_text(encoding='utf-8')
 household_text = household.read_text(encoding='utf-8')
 assert '.verticalScroll(householdScrollState)' in family_text
