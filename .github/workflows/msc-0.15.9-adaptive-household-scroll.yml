@@ -1,0 +1,93 @@
+name: My Study Companion 0.15.9 Adaptive Household Scroll
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.6-root-fix-ci
+    paths:
+      - .github/workflows/msc-0.15.9-adaptive-household-scroll.yml
+      - .msc-build/apply-0.15.9-adaptive-household-scroll.sh
+      - .msc-build/build-0.15.9-adaptive-household-scroll.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-0159-adaptive-household-scroll
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+
+      - name: Create disposable CI packaging signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-0159-packaging"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/packaging.jks" \
+            -storepass 'msc-0159-packaging-only' \
+            -keypass 'msc-0159-packaging-only' \
+            -alias 'msc-0159-packaging' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion 0.15.9 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/packaging.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Build and verify adaptive 0.15.9
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-0159-packaging-only
+          MSC_RELEASE_KEY_ALIAS: msc-0159-packaging
+          MSC_RELEASE_KEY_PASSWORD: msc-0159-packaging-only
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/build-0.15.9-adaptive-household-scroll.sh
+
+      - name: Upload configured APKs and proof
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.9-adaptive-household-scroll-configured-ci
+          path: release-0.15.9
+          retention-days: 14
+          if-no-files-found: error
