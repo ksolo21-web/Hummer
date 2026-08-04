@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: msc-0159-adaptive-household-scroll
@@ -43,6 +43,33 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+
+      - name: Publish run ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$RUNNER_TEMP/msc-0159-status"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-0159-status" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-0159-status"
+              cat > MSC-0.15.9-STATUS.txt <<EOF
+          source_commit=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=in_progress
+          artifact_name=msc-0.15.9-adaptive-household-scroll-configured-ci
+          EOF
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add MSC-0.15.9-STATUS.txt
+              git commit -m "Record 0.15.9 adaptive run ${GITHUB_RUN_ID} in progress" || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-0159-status" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-0159-status" || true
 
       - name: Install deterministic toolchains
         shell: bash
@@ -91,3 +118,38 @@ jobs:
           path: release-0.15.9
           retention-days: 14
           if-no-files-found: error
+
+      - name: Publish final result
+        if: always()
+        shell: bash
+        env:
+          STATUS_RESULT: ${{ job.status }}
+        run: |
+          set -u
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$RUNNER_TEMP/msc-0159-final"
+            git fetch origin agent/msc-0.15.6-root-fix-ci
+            git worktree add --detach "$RUNNER_TEMP/msc-0159-final" origin/agent/msc-0.15.6-root-fix-ci
+            (
+              cd "$RUNNER_TEMP/msc-0159-final"
+              cat > MSC-0.15.9-STATUS.txt <<EOF
+          source_commit=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          workflow_result=${STATUS_RESULT}
+          artifact_name=msc-0.15.9-adaptive-household-scroll-configured-ci
+          phone_version_code=42
+          wear_version_code=360159001
+          google_age_fix=preserved
+          spark_invites=preserved
+          adaptive_household_scroll=enabled
+          EOF
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              git add MSC-0.15.9-STATUS.txt
+              git commit -m "Record 0.15.9 adaptive final ${GITHUB_RUN_ID} ${STATUS_RESULT}" || true
+              git push origin HEAD:agent/msc-0.15.6-root-fix-ci
+            ) && break
+            git worktree remove --force "$RUNNER_TEMP/msc-0159-final" || true
+            sleep $((attempt * 2))
+          done
+          git worktree remove --force "$RUNNER_TEMP/msc-0159-final" || true
