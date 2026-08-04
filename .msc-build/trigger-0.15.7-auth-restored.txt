@@ -1,0 +1,1 @@
+Trigger the configured 0.15.7 Google sign-in, child-safety, and free-invitation build after the workflow file is present on the branch.
