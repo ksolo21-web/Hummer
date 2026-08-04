@@ -153,4 +153,4 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           git worktree remove --force "$STATUS_TREE"
 
-# Trigger after precise adaptive source-gate repair.
+# Trigger after repairing the generated responsive audit.
