@@ -82,12 +82,20 @@ jobs:
           MSC_RELEASE_KEY_ALIAS: msc-01512-packaging
           MSC_RELEASE_KEY_PASSWORD: msc-01512-packaging-only
         run: |
-          set -euo pipefail
-          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
-          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
-          bash .msc-build/build-0.15.12-family-vote-widgets.sh
+          set +e
+          mkdir -p release-0.15.12/metadata
+          {
+            set -x
+            bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+            bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+            bash .msc-build/build-0.15.12-family-vote-widgets.sh
+          } > release-0.15.12/metadata/CI-BUILD.log 2>&1
+          result=$?
+          tail -n 250 release-0.15.12/metadata/CI-BUILD.log
+          exit "$result"
 
       - name: Upload APKs and verification proof
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: msc-0.15.12-family-vote-widgets-configured-ci
