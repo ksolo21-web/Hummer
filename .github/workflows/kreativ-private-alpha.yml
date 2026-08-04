@@ -108,19 +108,19 @@ jobs:
           APK="$(find app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
           test -f "$APK"
           mkdir -p private-alpha
-          cp "$APK" private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk
-          "$AAPT" dump badging private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/IDENTITY.txt
+          cp "$APK" private-alpha/KREATIV-Studio-0.1.5-private-alpha.apk
+          "$AAPT" dump badging private-alpha/KREATIV-Studio-0.1.5-private-alpha.apk > private-alpha/IDENTITY.txt
           grep -q "package: name='com.kreativstudio.app'" private-alpha/IDENTITY.txt
-          grep -q "versionName='0.1.3-private-alpha'" private-alpha/IDENTITY.txt
-          "$APKSIGNER" verify --verbose --print-certs private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/SIGNATURE.txt
+          grep -q "versionName='0.1.5-private-alpha'" private-alpha/IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs private-alpha/KREATIV-Studio-0.1.5-private-alpha.apk > private-alpha/SIGNATURE.txt
           grep -Fqi '5c79a8f7529b0a93a269aab1676bae9bceb61459' private-alpha/SIGNATURE.txt
-          "$ZIPALIGN" -c -P 16 -v 4 private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/ZIPALIGN.txt
-          sha256sum private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/SHA256SUMS.txt
+          "$ZIPALIGN" -c -P 16 -v 4 private-alpha/KREATIV-Studio-0.1.5-private-alpha.apk > private-alpha/ZIPALIGN.txt
+          sha256sum private-alpha/KREATIV-Studio-0.1.5-private-alpha.apk > private-alpha/SHA256SUMS.txt
 
       - name: Upload authenticated private-alpha APK
         uses: actions/upload-artifact@v4
         with:
-          name: KREATIV-Studio-0.1.3-authenticated-private-alpha
+          name: KREATIV-Studio-0.1.5-authenticated-private-alpha
           path: private-alpha
           retention-days: 14
           if-no-files-found: error
