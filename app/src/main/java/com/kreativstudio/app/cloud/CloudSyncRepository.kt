@@ -3,6 +3,7 @@ package com.kreativstudio.app.cloud
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -11,6 +12,8 @@ import com.kreativstudio.app.model.KreativProject
 import com.kreativstudio.app.model.LessonProgress
 import com.kreativstudio.app.model.ProjectAttachment
 import com.kreativstudio.app.model.SyncState
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
@@ -23,12 +26,16 @@ class CloudSyncRepository(
     private val firebaseReady: Boolean,
 ) {
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
+    private val appCheckMutex = Mutex()
+
+    @Volatile
+    private var appCheckTokenReady = false
 
     val isConfigured: Boolean
         get() = firebaseReady && runCatching { FirebaseAuth.getInstance().currentUser != null }.getOrDefault(false)
 
     suspend fun upload(project: KreativProject): Result<KreativProject> = runCatching {
-        val userId = requireUserId()
+        val userId = requireCloudSession()
         val storage = FirebaseStorage.getInstance()
         val cloudAttachments = project.attachments.map { attachment ->
             backupAttachment(storage, userId, project.id, attachment)
@@ -60,7 +67,7 @@ class CloudSyncRepository(
     }
 
     suspend fun restoreProjects(): Result<List<KreativProject>> = runCatching {
-        val userId = requireUserId()
+        val userId = requireCloudSession()
         val snapshot = FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("projects")
@@ -86,7 +93,7 @@ class CloudSyncRepository(
         settings: AppSettings,
         progress: List<LessonProgress>,
     ): Result<Unit> = runCatching {
-        val userId = requireUserId()
+        val userId = requireCloudSession()
         FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("private").document("studioState")
@@ -102,7 +109,7 @@ class CloudSyncRepository(
     }
 
     suspend fun restoreUserState(): Result<CloudUserState?> = runCatching {
-        val userId = requireUserId()
+        val userId = requireCloudSession()
         val document = FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("private").document("studioState")
@@ -140,7 +147,6 @@ class CloudSyncRepository(
         }.getOrElse { attachment }
     }
 
-
     private suspend fun restoreAttachment(
         storage: FirebaseStorage,
         projectId: String,
@@ -164,6 +170,21 @@ class CloudSyncRepository(
             )
             attachment.copy(uri = localUri.toString())
         }.getOrElse { attachment }
+    }
+
+    private suspend fun requireCloudSession(): String {
+        val userId = requireUserId()
+        ensureFreshAppCheckToken()
+        return userId
+    }
+
+    private suspend fun ensureFreshAppCheckToken() {
+        if (appCheckTokenReady) return
+        appCheckMutex.withLock {
+            if (appCheckTokenReady) return@withLock
+            FirebaseAppCheck.getInstance().getAppCheckToken(true).await()
+            appCheckTokenReady = true
+        }
     }
 
     private fun requireUserId(): String {
