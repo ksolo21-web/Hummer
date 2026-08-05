@@ -1,4 +1,4 @@
-name: My Study Companion 0.15.17 Premium Interactive Paint
+name: My Study Companion 0.15.17 Safe Canonical Connected Release
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - agent/msc-0.15.15-ai-activity-rebuild
     paths:
       - .github/workflows/msc-0.15.17-premium-interactive-paint.yml
-      - .msc-build/0.15.17-interactive-paint.patch
+      - .msc-build/0.15.17-interactive-editor.part*.b64
       - .msc-build/0.15.17-premium-paint-generator.py.gz.b64
       - .msc-build/apply-0.15.17-premium-interactive-paint.sh
       - .msc-build/build-0.15.17-premium-interactive-paint.sh
@@ -14,15 +14,29 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
-  group: msc-01517-premium-interactive-paint
-  cancel-in-progress: false
+  group: msc-01517-safe-canonical-connected
+  cancel-in-progress: true
+
+env:
+  GCP_PROJECT_ID: my-study-companion-abc01
+  GCP_REGION: us-central1
+  CLOUD_RUN_SERVICE: my-study-companion-private
+  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+  GCP_RUNTIME_SERVICE_ACCOUNT: msc-backend-runtime@my-study-companion-abc01.iam.gserviceaccount.com
+  FIREBASE_PROJECT_NUMBER: '949620144971'
+  FIREBASE_ANDROID_APP_ID: 1:949620144971:android:617dfde7340cd0995946ce
+  EXPECTED_SIGNING_SHA1: 1997d421d177215a44f9651ce53dbaec152fbc49
+  EXPECTED_SIGNING_SHA256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
 
 jobs:
-  build-and-verify:
+  build-deploy-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 210
+    environment: my-study-companion-private
     steps:
       - name: Check out cumulative fix branch
         uses: actions/checkout@v6
@@ -78,105 +92,160 @@ jobs:
           test -x "$BUILD_TOOLS/zipalign"
           test -x "$BUILD_TOOLS/aapt"
 
-      - name: Prepare stable signer when available, isolated CI signer otherwise
+      - name: Require the permanent Firebase-registered signing identity
         id: signer
         shell: bash
         env:
-          KEYSTORE_B64: ${{ secrets.MSC_RELEASE_KEYSTORE_B64 || secrets.ANDROID_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.MSC_RELEASE_STORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.MSC_RELEASE_KEY_ALIAS || secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.MSC_RELEASE_KEY_PASSWORD || secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.MSC_SIGNING_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.MSC_SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MSC_SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MSC_SIGNING_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          SIGNING_DIR="$RUNNER_TEMP/msc-01517-signing"
+          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "SAFE RELEASE BLOCKED: canonical signing input $name is unavailable." >&2
+              echo 'No APK will be built or published with a replacement signer.' >&2
+              exit 1
+            fi
+          done
+          SIGNING_DIR="$RUNNER_TEMP/msc-01517-canonical-signing"
           mkdir -p "$SIGNING_DIR"
-          if [[ -n "$KEYSTORE_B64" && -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
-            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$SIGNING_DIR/release.jks"
-            keytool -list -keystore "$SIGNING_DIR/release.jks" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
-            MODE='protected stable signer'
-          else
-            STORE_PASSWORD='msc-01517-packaging-only'
-            KEY_PASSWORD='msc-01517-packaging-only'
-            KEY_ALIAS='msc-01517-packaging'
-            keytool -genkeypair -noprompt \
-              -keystore "$SIGNING_DIR/release.jks" \
-              -storepass "$STORE_PASSWORD" \
-              -keypass "$KEY_PASSWORD" \
-              -alias "$KEY_ALIAS" \
-              -keyalg RSA -keysize 3072 -validity 2 \
-              -dname 'CN=My Study Companion 0.15.17 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
-            MODE='isolated CI packaging signer'
-          fi
-          echo "store_file=$SIGNING_DIR/release.jks" >> "$GITHUB_OUTPUT"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$SIGNING_DIR/canonical.jks"
+          chmod 600 "$SIGNING_DIR/canonical.jks"
+          keytool -list -v \
+            -keystore "$SIGNING_DIR/canonical.jks" \
+            -storepass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            > "$SIGNING_DIR/keytool.txt"
+          ACTUAL_SHA1="$(sed -n 's/^[[:space:]]*SHA1: //p' "$SIGNING_DIR/keytool.txt" | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          ACTUAL_SHA256="$(sed -n 's/^[[:space:]]*SHA256: //p' "$SIGNING_DIR/keytool.txt" | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test "$ACTUAL_SHA1" = "$EXPECTED_SIGNING_SHA1"
+          test "$ACTUAL_SHA256" = "$EXPECTED_SIGNING_SHA256"
+          echo "store_file=$SIGNING_DIR/canonical.jks" >> "$GITHUB_OUTPUT"
           echo "store_password=$STORE_PASSWORD" >> "$GITHUB_OUTPUT"
           echo "key_alias=$KEY_ALIAS" >> "$GITHUB_OUTPUT"
           echo "key_password=$KEY_PASSWORD" >> "$GITHUB_OUTPUT"
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
 
-      - name: Strictly classify the candidate Smart Online endpoint
-        id: endpoint
+      - name: Reconstruct and test cumulative 0.15.17 source before deployment
+        shell: bash
+        env:
+          MSC_SMART_ONLINE_VALIDATED: 'true'
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/run-0.15.14-vote-persistence-fix.sh
+          bash .msc-build/apply-0.15.17-premium-interactive-paint.sh
+          python -m pip install --disable-pip-version-check \
+            -r MyStudyCompanion/backend/requirements.txt \
+            -r MyStudyCompanion/backend/requirements-dev.txt
+          (cd MyStudyCompanion/backend && python -m pytest -q)
+          for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
+          node --test MyStudyCompanionWeb/*.test.mjs
+
+      - name: Authenticate with the previously working Workload Identity path
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Verify runtime identity and existing server-side secrets
         shell: bash
         run: |
           set -euo pipefail
-          BASE_URL='https://my-study-companion-abc01.web.app'
-          STATUS="$(curl --silent --show-error --location --max-time 30 \
-            --output endpoint-health.txt --write-out '%{http_code}' "$BASE_URL/health" || true)"
-          export STATUS
-          python3 - <<'PY'
-          from __future__ import annotations
-          import json
-          import os
-          from pathlib import Path
+          gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
+          for secret in msc-admin-token msc-openai-api-key msc-content-signing-key; do
+            gcloud secrets describe "$secret" --project "$GCP_PROJECT_ID" >/dev/null
+          done
 
-          status = os.environ.get('STATUS', '')
-          body = Path('endpoint-health.txt').read_text(encoding='utf-8', errors='replace') if Path('endpoint-health.txt').exists() else ''
-          validated = False
-          reason = f'HTTP {status or "request failed"}'
-          payload = None
-          if status == '200':
-              try:
-                  payload = json.loads(body)
-              except json.JSONDecodeError:
-                  reason = 'HTTP 200 returned non-JSON content'
-              else:
-                  required = {
-                      'status': 'ok',
-                      'openAiConfigured': True,
-                      'appCheckRequired': True,
-                      'userAuthRequired': True,
-                      'persistenceBackend': 'firestore',
-                  }
-                  mismatches = [
-                      f'{key}={payload.get(key)!r}'
-                      for key, expected in required.items()
-                      if payload.get(key) != expected
-                  ]
-                  version = str(payload.get('version', ''))
-                  if version != '0.15.17':
-                      mismatches.append(f'version={version!r}')
-                  if mismatches:
-                      reason = 'health contract mismatch: ' + ', '.join(mismatches)
-                  else:
-                      validated = True
-                      reason = 'validated backend 0.15.17'
-          report = {
-              'url': 'https://my-study-companion-abc01.web.app',
-              'httpStatus': status,
-              'smartOnlineValidated': validated,
-              'reason': reason,
-              'parsedHealth': payload,
+      - id: deploy_backend
+        name: Deploy the real 0.15.17 Smart Online Cloud Run service
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          region: ${{ env.GCP_REGION }}
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          source: MyStudyCompanion/backend
+          env_vars_update_strategy: merge
+          secrets_update_strategy: merge
+          env_vars: |-
+            MSC_ENV=production
+            MSC_PERSISTENCE_BACKEND=firestore
+            MSC_DATABASE_PATH=/tmp/my-study-companion-local-fallback.sqlite3
+            MSC_CONTENT_SIGNING_KEY_PATH=/secrets/content-signing-key.pem
+            MSC_CONTENT_SIGNING_KEY_ID=msc-0-15-17
+            MSC_FIREBASE_PROJECT_NUMBER=${{ env.FIREBASE_PROJECT_NUMBER }}
+            MSC_FIREBASE_PROJECT_ID=${{ env.GCP_PROJECT_ID }}
+            MSC_FIREBASE_ANDROID_APP_ID=${{ env.FIREBASE_ANDROID_APP_ID }}
+            MSC_REQUIRE_APP_CHECK=true
+            MSC_REQUIRE_USER_AUTH=true
+            MSC_ALLOWED_ORIGINS=https://${{ env.GCP_PROJECT_ID }}.web.app,https://${{ env.GCP_PROJECT_ID }}.firebaseapp.com
+            MSC_HOUSEHOLD_ID=kaleb-family
+            MSC_OPENAI_MODEL=gpt-5.6
+            MSC_MAX_AI_REQUESTS_PER_HOUR=60
+            MSC_MINIMUM_PHONE_VERSION_CODE=50
+            MSC_MINIMUM_WEAR_VERSION_CODE=360167001
+            MSC_TIMEZONE=America/Detroit
+            MSC_OFFICIAL_READER_MAX_BYTES=2000000
+            MSC_OFFICIAL_READER_CACHE_SECONDS=300
+          secrets: |-
+            MSC_ADMIN_TOKEN=msc-admin-token:latest
+            MSC_OPENAI_API_KEY=msc-openai-api-key:latest
+            /secrets/content-signing-key.pem=msc-content-signing-key:latest
+          flags: >-
+            --allow-unauthenticated
+            --service-account=${{ env.GCP_RUNTIME_SERVICE_ACCOUNT }}
+            --execution-environment=gen2
+            --memory=1Gi
+            --cpu=2
+            --min=1
+            --max=3
+            --concurrency=30
+            --timeout=180s
+
+      - name: Verify the deployed backend contract before building Android
+        id: endpoint
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.deploy_backend.outputs.url }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVICE_URL"
+          [[ "$SERVICE_URL" == https://*.run.app ]] || {
+            echo "Refusing non-Cloud-Run backend URL: $SERVICE_URL" >&2
+            exit 1
           }
-          Path('endpoint-classification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
-          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output:
-              output.write('base_url=https://my-study-companion-abc01.web.app\n')
-              output.write(f'validated={str(validated).lower()}\n')
-              output.write(f'reason={reason}\n')
-          print(json.dumps(report, indent=2))
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --max-time 30 "$SERVICE_URL/health" | tee endpoint-health.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('endpoint-health.json').read_text(encoding='utf-8'))
+          expected = {
+              'status': 'ok',
+              'version': '0.15.17',
+              'openAiConfigured': True,
+              'signingKeyConfigured': True,
+              'appCheckRequired': True,
+              'userAuthRequired': True,
+              'persistenceBackend': 'firestore',
+          }
+          mismatches = [f'{key}={payload.get(key)!r}' for key, value in expected.items() if payload.get(key) != value]
+          if mismatches:
+              raise SystemExit('backend contract mismatch: ' + ', '.join(mismatches))
           PY
+          echo "base_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Build and verify cumulative 0.15.17
+      - name: Build the canonical connected phone and Wear APKs
         id: build
-        continue-on-error: true
         shell: bash
         env:
           MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
@@ -184,62 +253,71 @@ jobs:
           MSC_RELEASE_KEY_ALIAS: ${{ steps.signer.outputs.key_alias }}
           MSC_RELEASE_KEY_PASSWORD: ${{ steps.signer.outputs.key_password }}
           MSC_BACKEND_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
-          MSC_SMART_ONLINE_VALIDATED: ${{ steps.endpoint.outputs.validated }}
-        run: |
-          set +e
-          set -o pipefail
-          {
-            set -euxo pipefail
-            bash .msc-build/prepare-0.15.8-google-credential-compat.sh
-            bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
-            bash .msc-build/build-0.15.17-premium-interactive-paint.sh
-            cp endpoint-classification.json release-0.15.17/metadata/ENDPOINT-CLASSIFICATION.json
-            if [[ -s endpoint-health.txt ]]; then
-              cp endpoint-health.txt release-0.15.17/metadata/ENDPOINT-RAW-RESPONSE.txt
-            fi
-            printf '%s\n' \
-              "source_commit=${GITHUB_SHA}" \
-              "workflow_run=${GITHUB_RUN_ID}" \
-              "endpoint_classification=${{ steps.endpoint.outputs.reason }}" \
-              "signing_mode=${{ steps.signer.outputs.mode }}" \
-              >> release-0.15.17/metadata/BUILD-CONNECTION-MODE.txt
-          } 2>&1 | tee build-0.15.17.log
-          status=${PIPESTATUS[0]}
-          printf 'build_exit_status=%s\n' "$status" | tee -a build-0.15.17.log
-          exit "$status"
-
-      - name: Upload build diagnostics
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: msc-0.15.17-build-diagnostics
-          path: |
-            build-0.15.17.log
-            endpoint-classification.json
-            endpoint-health.txt
-          retention-days: 14
-          if-no-files-found: warn
-
-      - name: Re-verify downloaded-root checksum paths
-        if: steps.build.outcome == 'success'
-        shell: bash
+          MSC_SMART_ONLINE_VALIDATED: 'true'
         run: |
           set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/build-0.15.17-premium-interactive-paint.sh
+          cp endpoint-health.json release-0.15.17/metadata/DEPLOYED-BACKEND-HEALTH.json
+          printf '%s\n' \
+            "source_commit=${GITHUB_SHA}" \
+            "workflow_run=${GITHUB_RUN_ID}" \
+            "backend_url=${MSC_BACKEND_BASE_URL}" \
+            'signing_mode=canonical Firebase-registered signer' \
+            'smart_online_validated=true' \
+            > release-0.15.17/metadata/CANONICAL-CONNECTED-RELEASE.txt
+
+      - name: Prove install identity Google compatibility and cloud configuration
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.endpoint.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}/build-tools/36.0.0"
+          PHONE='release-0.15.17/phone/MyStudyCompanion-phone-0.15.17-premium-interactive-paint.apk'
+          WEAR='release-0.15.17/wear/MyStudyCompanion-wear-0.15.17-premium-interactive-paint.apk'
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$PHONE" > release-0.15.17/metadata/PHONE-SIGNING-CANONICAL.txt
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$WEAR" > release-0.15.17/metadata/WEAR-SIGNING-CANONICAL.txt
+          PHONE_SHA1="$(sed -n 's/^Signer #1 certificate SHA-1 digest: //p' release-0.15.17/metadata/PHONE-SIGNING-CANONICAL.txt | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          WEAR_SHA1="$(sed -n 's/^Signer #1 certificate SHA-1 digest: //p' release-0.15.17/metadata/WEAR-SIGNING-CANONICAL.txt | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test "$PHONE_SHA1" = "$EXPECTED_SIGNING_SHA1"
+          test "$WEAR_SHA1" = "$EXPECTED_SIGNING_SHA1"
+          grep -Fq "BACKEND_BASE_URL = \"$SERVICE_URL\"" MyStudyCompanion/app/build/generated/source/buildConfig/privateAlpha/com/mystudycompanion/app/BuildConfig.java
+          grep -Fq 'smart_online_validated=true' release-0.15.17/metadata/CANONICAL-CONNECTED-RELEASE.txt
+          ! grep -R -Fq 'signing_mode=isolated CI packaging signer' release-0.15.17
+          ! grep -R -Fq 'backend_url=https://my-study-companion-abc01.web.app' release-0.15.17
           cd release-0.15.17
           sha256sum -c metadata/SHA256SUMS-CI.txt
 
-      - name: Upload verified 0.15.17 APKs and evidence
-        if: steps.build.outcome == 'success'
+      - name: Upload only the safe canonical connected release
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.15.17-premium-interactive-paint
+          name: msc-0.15.17-safe-canonical-connected
           path: release-0.15.17
           retention-days: 14
           if-no-files-found: error
 
-      - name: Fail only after preserving diagnostics
-        if: steps.build.outcome == 'failure'
+      - name: Preserve diagnostics without publishing APKs on failure
+        if: failure()
         shell: bash
         run: |
-          echo 'The 0.15.17 build failed; diagnostics were preserved before failing the job.' >&2
-          exit 1
+          set -euo pipefail
+          mkdir -p safe-release-diagnostics
+          cp endpoint-health.json safe-release-diagnostics/ 2>/dev/null || true
+          cp -r MyStudyCompanion/app/build/reports safe-release-diagnostics/app-reports 2>/dev/null || true
+          cat > safe-release-diagnostics/STATUS.txt <<'EOF'
+          SAFE RELEASE BLOCKED.
+          No fallback signer is allowed.
+          No Firebase Hosting URL is accepted as the backend API.
+          No APK from this failed run is approved for installation.
+          EOF
+
+      - name: Upload safe-release diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.17-safe-release-blocked-diagnostics
+          path: safe-release-diagnostics
+          retention-days: 14
+          if-no-files-found: warn
