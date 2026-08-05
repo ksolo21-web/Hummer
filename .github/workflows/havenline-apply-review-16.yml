@@ -1,0 +1,32 @@
+name: HAVENLINE Review 16 Apply
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - .github/workflows/havenline-apply-review-16.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+      - run: python .github/scripts/havenline_visual_patch16.py
+      - run: |
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualAssets.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Runtime/HavenlineFurnace.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualPolish.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneGate.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineStudioRevision.cs
+          git commit -m "Replace HAVENLINE furnace billboard stack"
+          git push origin HEAD:havenline-unity-reference-rebuild
