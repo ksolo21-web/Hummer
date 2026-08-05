@@ -1,4 +1,4 @@
-name: My Study Companion 0.15.18 Connected Transport Build
+name: My Study Companion 0.15.18 Canonical Release Preparation
 
 on:
   push:
@@ -6,31 +6,25 @@ on:
       - agent/msc-0.15.15-ai-activity-rebuild
     paths:
       - .github/workflows/msc-0.15.18-connected-transport-build.yml
+      - .msc-build/package-0.15.18-connected-transport.sh
   workflow_dispatch:
+    inputs:
+      cloud_run_url:
+        description: Optional already-deployed and healthy Cloud Run .run.app base URL
+        required: false
+        type: string
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
-  group: msc-01518-connected-transport
+  group: msc-01518-canonical-preparation
   cancel-in-progress: true
 
-env:
-  GCP_PROJECT_ID: my-study-companion-abc01
-  GCP_REGION: us-central1
-  CLOUD_RUN_SERVICE: my-study-companion-private
-  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
-  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
-  GCP_RUNTIME_SERVICE_ACCOUNT: msc-backend-runtime@my-study-companion-abc01.iam.gserviceaccount.com
-  FIREBASE_PROJECT_NUMBER: '949620144971'
-  FIREBASE_ANDROID_APP_ID: 1:949620144971:android:617dfde7340cd0995946ce
-
 jobs:
-  build-deploy-and-package-transport:
+  build-tested-signing-input:
     runs-on: ubuntu-latest
     timeout-minutes: 240
-    environment: my-study-companion-private
     steps:
       - name: Check out cumulative repair branch
         uses: actions/checkout@v6
@@ -76,21 +70,27 @@ jobs:
           test -x "$SDK_ROOT/build-tools/36.0.0/zipalign"
           test -x "$SDK_ROOT/build-tools/36.0.0/aapt"
 
-      - name: Create transport-only CI signer
-        id: signer
+      - name: Create isolated non-release staging signer
         shell: bash
         run: |
           set -euo pipefail
-          SIGNING_DIR="$RUNNER_TEMP/msc-01518-transport-signing"
+          SIGNING_DIR="$RUNNER_TEMP/msc-01518-staging-signing"
           mkdir -p "$SIGNING_DIR"
+          PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$PASSWORD"
           keytool -genkeypair -noprompt \
-            -keystore "$SIGNING_DIR/transport.jks" \
-            -storepass 'msc-01518-transport-only' \
-            -keypass 'msc-01518-transport-only' \
-            -alias 'msc-01518-transport' \
+            -keystore "$SIGNING_DIR/staging.jks" \
+            -storepass "$PASSWORD" \
+            -keypass "$PASSWORD" \
+            -alias 'msc-01518-staging-not-release' \
             -keyalg RSA -keysize 3072 -validity 2 \
-            -dname 'CN=My Study Companion 0.15.18 Transport Only, OU=Must Be Canonically Re-signed, O=My Study Companion, C=US'
-          echo "store_file=$SIGNING_DIR/transport.jks" >> "$GITHUB_OUTPUT"
+            -dname 'CN=My Study Companion Signing Input Only, OU=Never Install, O=My Study Companion, C=US'
+          {
+            echo "MSC_RELEASE_STORE_FILE=$SIGNING_DIR/staging.jks"
+            echo "MSC_RELEASE_STORE_PASSWORD=$PASSWORD"
+            echo 'MSC_RELEASE_KEY_ALIAS=msc-01518-staging-not-release'
+            echo "MSC_RELEASE_KEY_PASSWORD=$PASSWORD"
+          } >> "$GITHUB_ENV"
 
       - name: Reconstruct the accepted cumulative source through 0.15.14
         shell: bash
@@ -114,7 +114,7 @@ jobs:
           bash .msc-build/apply-0.15.12-widget-compile-fix.sh
           bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
 
-      - name: Normalize the 0.15.14 release identity
+      - name: Normalize the accepted 0.15.14 release identity
         shell: bash
         run: |
           set -euo pipefail
@@ -133,15 +133,54 @@ jobs:
               path.write_text(text, encoding='utf-8')
           PY
 
+      - name: Validate optional existing Cloud Run endpoint
+        id: endpoint
+        shell: bash
+        env:
+          REQUESTED_URL: ${{ inputs.cloud_run_url }}
+        run: |
+          set -euo pipefail
+          URL="${REQUESTED_URL%/}"
+          if [[ -z "$URL" ]]; then
+            echo 'No Cloud Run endpoint was supplied. Firebase Auth, Google Sign-In, Firestore, App Check configuration, and local fallbacks remain enabled; Smart Online stays truth-gated.'
+            echo 'base_url=' >> "$GITHUB_OUTPUT"
+            echo 'smart_online_validated=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [[ "$URL" == https://*.run.app ]] || {
+            echo "Refusing non-Cloud-Run backend URL: $URL" >&2
+            exit 1
+          }
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --max-time 30 "$URL/health" | tee endpoint-health.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('endpoint-health.json').read_text(encoding='utf-8'))
+          expected = {
+              'status': 'ok',
+              'openAiConfigured': True,
+              'signingKeyConfigured': True,
+              'appCheckRequired': True,
+              'userAuthRequired': True,
+              'persistenceBackend': 'firestore',
+          }
+          bad = [f'{key}={payload.get(key)!r}' for key, value in expected.items() if payload.get(key) != value]
+          if bad:
+              raise SystemExit('Cloud Run health contract mismatch: ' + ', '.join(bad))
+          PY
+          echo "base_url=$URL" >> "$GITHUB_OUTPUT"
+          echo 'smart_online_validated=true' >> "$GITHUB_OUTPUT"
+
       - name: Apply cumulative 0.15.15 through responsive 0.15.18 widgets
         shell: bash
         env:
-          MSC_SMART_ONLINE_VALIDATED: 'true'
+          MSC_SMART_ONLINE_VALIDATED: ${{ steps.endpoint.outputs.smart_online_validated }}
         run: |
           set -euo pipefail
           bash .msc-build/apply-0.15.18-premium-widgets.sh
 
-      - name: Recover and verify the registered Google web client ID
+      - name: Restore and verify Firebase and Google OAuth configuration
         id: google
         shell: bash
         run: |
@@ -157,131 +196,29 @@ jobs:
           canonical = clients['com.mystudycompanion.app']
           android = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
           web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android) == 1
           assert android[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web) == 1
           assert web[0]['client_id'].endswith('.apps.googleusercontent.com')
           print(web[0]['client_id'])
           PY
           )"
           echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Authenticate with the previously working Workload Identity path
-        uses: google-github-actions/auth@v3
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
-
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          version: '>= 523.0.0'
-
-      - name: Verify runtime identity and existing server-side secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
-          for secret in msc-admin-token msc-openai-api-key msc-content-signing-key; do
-            gcloud secrets describe "$secret" --project "$GCP_PROJECT_ID" >/dev/null
-          done
-
-      - id: deploy_backend
-        name: Deploy the real 0.15.18 Smart Online Cloud Run service
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          region: ${{ env.GCP_REGION }}
-          service: ${{ env.CLOUD_RUN_SERVICE }}
-          source: MyStudyCompanion/backend
-          env_vars_update_strategy: merge
-          secrets_update_strategy: merge
-          env_vars: |-
-            MSC_ENV=production
-            MSC_PERSISTENCE_BACKEND=firestore
-            MSC_DATABASE_PATH=/tmp/my-study-companion-local-fallback.sqlite3
-            MSC_CONTENT_SIGNING_KEY_PATH=/secrets/content-signing-key.pem
-            MSC_CONTENT_SIGNING_KEY_ID=msc-0-15-18
-            MSC_FIREBASE_PROJECT_NUMBER=${{ env.FIREBASE_PROJECT_NUMBER }}
-            MSC_FIREBASE_PROJECT_ID=${{ env.GCP_PROJECT_ID }}
-            MSC_FIREBASE_ANDROID_APP_ID=${{ env.FIREBASE_ANDROID_APP_ID }}
-            MSC_REQUIRE_APP_CHECK=true
-            MSC_REQUIRE_USER_AUTH=true
-            MSC_ALLOWED_ORIGINS=https://${{ env.GCP_PROJECT_ID }}.web.app,https://${{ env.GCP_PROJECT_ID }}.firebaseapp.com
-            MSC_HOUSEHOLD_ID=kaleb-family
-            MSC_OPENAI_MODEL=gpt-5.6
-            MSC_MAX_AI_REQUESTS_PER_HOUR=60
-            MSC_MINIMUM_PHONE_VERSION_CODE=51
-            MSC_MINIMUM_WEAR_VERSION_CODE=360168001
-            MSC_TIMEZONE=America/Detroit
-            MSC_OFFICIAL_READER_MAX_BYTES=2000000
-            MSC_OFFICIAL_READER_CACHE_SECONDS=300
-          secrets: |-
-            MSC_ADMIN_TOKEN=msc-admin-token:latest
-            MSC_OPENAI_API_KEY=msc-openai-api-key:latest
-            /secrets/content-signing-key.pem=msc-content-signing-key:latest
-          flags: >-
-            --allow-unauthenticated
-            --service-account=${{ env.GCP_RUNTIME_SERVICE_ACCOUNT }}
-            --execution-environment=gen2
-            --memory=1Gi
-            --cpu=2
-            --min=1
-            --max=3
-            --concurrency=30
-            --timeout=180s
-
-      - name: Verify the deployed 0.15.18 backend contract
-        id: endpoint
+      - name: Build tested non-installable canonical signing inputs
         shell: bash
         env:
-          SERVICE_URL: ${{ steps.deploy_backend.outputs.url }}
-        run: |
-          set -euo pipefail
-          test -n "$SERVICE_URL"
-          [[ "$SERVICE_URL" == https://*.run.app ]] || {
-            echo "Refusing non-Cloud-Run backend URL: $SERVICE_URL" >&2
-            exit 1
-          }
-          curl --fail --silent --show-error --retry 10 --retry-all-errors \
-            --max-time 30 "$SERVICE_URL/health" | tee endpoint-health.json
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          payload = json.loads(Path('endpoint-health.json').read_text(encoding='utf-8'))
-          expected = {
-              'status': 'ok',
-              'version': '0.15.18',
-              'openAiConfigured': True,
-              'signingKeyConfigured': True,
-              'appCheckRequired': True,
-              'userAuthRequired': True,
-              'persistenceBackend': 'firestore',
-          }
-          bad = [f'{key}={payload.get(key)!r}' for key, value in expected.items() if payload.get(key) != value]
-          if bad:
-              raise SystemExit('backend contract mismatch: ' + ', '.join(bad))
-          PY
-          echo "base_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Build connected transport APKs for secure canonical re-signing
-        shell: bash
-        env:
-          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
-          MSC_RELEASE_STORE_PASSWORD: msc-01518-transport-only
-          MSC_RELEASE_KEY_ALIAS: msc-01518-transport
-          MSC_RELEASE_KEY_PASSWORD: msc-01518-transport-only
           MSC_BACKEND_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
           MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.google.outputs.web_client_id }}
-          MSC_SMART_ONLINE_VALIDATED: 'true'
+          MSC_SMART_ONLINE_VALIDATED: ${{ steps.endpoint.outputs.smart_online_validated }}
         run: |
           set -euo pipefail
           bash .msc-build/package-0.15.18-connected-transport.sh
 
-      - name: Upload connected transport package for secure local canonical signing
+      - name: Upload signing inputs only
         uses: actions/upload-artifact@v6
         with:
-          name: msc-0.15.18-connected-transport-for-canonical-resign
-          path: release-0.15.18-transport
+          name: msc-0.15.18-canonical-signing-input-NOT-INSTALLABLE
+          path: release-0.15.18-signing-input
           retention-days: 3
           if-no-files-found: error
