@@ -7,8 +7,11 @@ namespace Havenline
     /// Compact HUD: carried resources, one short objective and temporary contextual action
     /// feedback. The game world communicates progression instead of permanent dashboards.
     /// </summary>
+    [ExecuteAlways]
     public sealed class HavenlineHud : MonoBehaviour
     {
+        private const float FoldableAspectThreshold = 1.45f;
+
         [SerializeField] private Text resourceText;
         [SerializeField] private Text objectiveText;
         [SerializeField] private Text contextualText;
@@ -22,6 +25,8 @@ namespace Havenline
         private string lastLabel = string.Empty;
         private float lastProgress = -1f;
         private float statusVisibleUntil;
+        private float lastLayoutAspect = -1f;
+        private bool foldableTopLayout;
 
         public void Configure(
             Text resources,
@@ -41,10 +46,18 @@ namespace Havenline
             contextualProgress = progress;
             player = controlledPlayer;
             director = gameDirector;
+            lastLayoutAspect = -1f;
+            ApplyAdaptiveTopLayout();
         }
 
         private void OnEnable()
         {
+            Canvas.preWillRenderCanvases -= ApplyAdaptiveTopLayout;
+            Canvas.preWillRenderCanvases += ApplyAdaptiveTopLayout;
+            ApplyAdaptiveTopLayout();
+
+            if (!Application.isPlaying)
+                return;
             if (player != null && player.AutomaticActions != null)
                 player.AutomaticActions.ContextChanged += HandleContext;
             if (director != null && director.Furnace != null)
@@ -53,6 +66,9 @@ namespace Havenline
 
         private void Start()
         {
+            if (!Application.isPlaying)
+                return;
+
             if (player != null && player.AutomaticActions != null)
             {
                 player.AutomaticActions.ContextChanged -= HandleContext;
@@ -73,15 +89,31 @@ namespace Havenline
 
         private void OnDisable()
         {
+            Canvas.preWillRenderCanvases -= ApplyAdaptiveTopLayout;
+            if (!Application.isPlaying)
+                return;
             if (player != null && player.AutomaticActions != null)
                 player.AutomaticActions.ContextChanged -= HandleContext;
             if (director != null && director.Furnace != null)
                 director.Furnace.LevelChanged -= HandleFurnaceLevel;
         }
 
+        private void OnRectTransformDimensionsChange()
+        {
+            lastLayoutAspect = -1f;
+            ApplyAdaptiveTopLayout();
+        }
+
+        private void OnValidate()
+        {
+            lastLayoutAspect = -1f;
+            ApplyAdaptiveTopLayout();
+        }
+
         private void Update()
         {
-            if (player == null || director == null || director.Furnace == null)
+            ApplyAdaptiveTopLayout();
+            if (!Application.isPlaying || player == null || director == null || director.Furnace == null)
                 return;
 
             var inventory = player.Inventory;
@@ -89,8 +121,11 @@ namespace Havenline
             {
                 resourceText.text = inventory.Total == 0
                     ? string.Empty
-                    : $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}   " +
-                      $"METAL {inventory[ResourceKind.Metal]}   {inventory.Total}/{inventory.Capacity}";
+                    : foldableTopLayout
+                        ? $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}\n" +
+                          $"METAL {inventory[ResourceKind.Metal]}   {inventory.Total}/{inventory.Capacity}"
+                        : $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}   " +
+                          $"METAL {inventory[ResourceKind.Metal]}   {inventory.Total}/{inventory.Capacity}";
                 resourceText.gameObject.SetActive(inventory.Total > 0);
             }
 
@@ -127,6 +162,53 @@ namespace Havenline
             }
         }
 
+        private void ApplyAdaptiveTopLayout()
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null)
+                return;
+
+            var pixelRect = canvas.pixelRect;
+            var width = pixelRect.width;
+            var height = pixelRect.height;
+            if (width <= 1f || height <= 1f)
+            {
+                var rootRect = canvas.transform as RectTransform;
+                if (rootRect == null || rootRect.rect.width <= 1f || rootRect.rect.height <= 1f)
+                    return;
+                width = rootRect.rect.width;
+                height = rootRect.rect.height;
+            }
+
+            var aspect = width / height;
+            if (Mathf.Abs(lastLayoutAspect - aspect) < 0.0025f)
+                return;
+            lastLayoutAspect = aspect;
+            foldableTopLayout = aspect < FoldableAspectThreshold;
+
+            var resourcesPanel = PanelRectFor(resourceText);
+            var objectivePanel = PanelRectFor(objectiveText);
+            var furnacePanel = PanelRectFor(transientStatusText);
+            if (foldableTopLayout)
+            {
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(500f, 100f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(300f, 100f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -132f), new Vector2(620f, 84f));
+                ConfigureTopText(resourceText, 20, HorizontalWrapMode.Wrap);
+                ConfigureTopText(objectiveText, 21, HorizontalWrapMode.Wrap);
+                ConfigureTopText(transientStatusText, 20, HorizontalWrapMode.Wrap);
+            }
+            else
+            {
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(500f, 92f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(580f, 88f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(300f, 92f));
+                ConfigureTopText(resourceText, 24, HorizontalWrapMode.Overflow);
+                ConfigureTopText(objectiveText, 24, HorizontalWrapMode.Overflow);
+                ConfigureTopText(transientStatusText, 24, HorizontalWrapMode.Overflow);
+            }
+        }
+
         private void HandleContext(AutomaticActionKind action, string label, float progress)
         {
             lastAction = action;
@@ -141,6 +223,34 @@ namespace Havenline
             transientStatusText.text = $"FURNACE LEVEL {level} • WARMTH EXPANDED";
             SetPanelVisible(transientStatusText, true);
             statusVisibleUntil = Time.unscaledTime + 2.4f;
+        }
+
+        private static void SetTopRect(RectTransform rect, Vector2 anchor, Vector2 position, Vector2 size)
+        {
+            if (rect == null)
+                return;
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = anchor;
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+        }
+
+        private static void ConfigureTopText(Text text, int fontSize, HorizontalWrapMode wrapMode)
+        {
+            if (text == null)
+                return;
+            text.fontSize = fontSize;
+            text.horizontalOverflow = wrapMode;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.resizeTextForBestFit = false;
+        }
+
+        private static RectTransform PanelRectFor(Component component)
+        {
+            if (component == null || component.transform.parent == null)
+                return null;
+            return component.transform.parent as RectTransform;
         }
 
         private static void SetPanelVisible(Component component, bool visible)
