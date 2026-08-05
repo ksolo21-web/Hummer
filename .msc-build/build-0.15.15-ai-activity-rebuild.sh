@@ -56,6 +56,10 @@ PHONE="$RELEASE/phone/MyStudyCompanion-phone-0.15.15-configured-ci.apk"
 WEAR="$RELEASE/wear/MyStudyCompanion-wear-0.15.15-configured-ci.apk"
 cp "$PHONE_SOURCE" "$PHONE"
 cp "$WEAR_SOURCE" "$WEAR"
+cp MyStudyCompanion/build/reports/workbook/color-by-number-professional-contact-sheet.jpg \
+  "$RELEASE/metadata/COLOR-BY-NUMBER-VISUAL-REVIEW.jpg"
+cp MyStudyCompanion/app/src/main/assets/workbook/manifest.json \
+  "$RELEASE/metadata/WORKBOOK-MANIFEST.json"
 
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$PHONE" > "$RELEASE/metadata/PHONE-SIGNING-CI.txt"
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$WEAR" > "$RELEASE/metadata/WEAR-SIGNING-CI.txt"
@@ -80,31 +84,33 @@ cat > "$RELEASE/metadata/SMART-AI-AUDIT.txt" <<EOF
 PASS: Android routes Smart Online questions through the authenticated BackendApi instead of the old disconnected guided-response path.
 PASS: the APK contains the configured HTTPS backend endpoint: $MSC_BACKEND_BASE_URL
 PASS: OpenAI credentials remain server-side and do not appear in Android application source or packaged resources.
-PASS: the backend uses the OpenAI Responses API, model gpt-5.4 by default, app-managed recent conversation context, structured output, official-domain web search, and an answer-quality retry.
+PASS: the backend uses the OpenAI Responses API with the current gpt-5.6 flagship alias by default, app-managed recent conversation context, structured output, official-domain web search, and an answer-quality retry.
 PASS: provider-side response storage is disabled for study requests.
 PASS: Auto, Smart Online, and Private Offline modes are explicit in the UI; fallback is never disguised as a cloud answer.
 PASS: official-source citations are required and validated before the app accepts a Smart Online answer.
 EOF
 
 cat > "$RELEASE/metadata/ACTIVITY-REBUILD-AUDIT.txt" <<'EOF'
-PASS: all 16 color-by-number pages use curated illustrations rather than automatic photo segmentation.
-PASS: each page has 8-24 meaningful closed shapes and every tappable region contains at least 900 mask pixels.
+PASS: all 16 color-by-number pages preserve the stored professional illustration as the completed-picture reward instead of substituting primitive geometric drawings.
+PASS: each play page uses 14-20 connected edge-aware regions, every region contains at least 6,000 mask pixels, and each page uses at least five palette colors.
+PASS: number labels are placed at the deepest interior point of each region so they remain readable and away from borders.
 PASS: palettes show only colors used on the current page and display remaining-shape counts.
 PASS: color-by-number includes immediate feedback, progressive hints, visible progress, undo, redo, reset, and a completed-picture reveal.
 PASS: find-the-differences accepts taps on either picture, never exposes an answer list, marks discoveries on both pictures, and uses staged hints.
-PASS: printable PDF rendering uses the curated color-by-number line art and region data.
+PASS: printable PDF rendering uses the same verified color-by-number line art and region data.
+PASS: COLOR-BY-NUMBER-VISUAL-REVIEW.jpg is packaged for human inspection rather than relying on numeric checks alone.
 EOF
 
 cat > "$RELEASE/metadata/RESEARCH-DESIGN-NOTES.txt" <<'EOF'
-The activity redesign follows a guided-practice pattern: clear outcome feedback, retry without punishment, progressively stronger hints, limited visual choices, and challenge that can be completed without revealing the answer list. The color activity favors large semantically meaningful shapes over dense generated fragments, reducing motor precision demands while preserving visual discrimination and number-color matching.
+The activity redesign follows guided practice and accessible interaction principles: clear outcome feedback, retry without punishment, progressively stronger hints, limited visual choices, large touchable regions, and challenge that can be completed without revealing an answer list. The color activity now derives connected edge-aware regions from the app's professional stored artwork, removes tiny fragments, keeps the region count manageable, separates neighboring palette values, and uses the original illustration as the completion reward.
 
-The assistant redesign separates online and offline capabilities honestly. The online path uses a server-held API key, multi-turn conversation context, constrained official-source research, structured responses, citation validation, and quality rejection/retry. The offline path remains available but is labeled as a lower-capability private fallback.
+The assistant redesign separates online and offline capabilities honestly. The Smart Online path uses a server-held API key, GPT-5.6 through the Responses API, recent multi-turn context, constrained official-source research, structured responses, citation validation, substantive-answer checks, and an automatic quality retry. The offline path remains available but is labeled as a lower-capability private fallback.
 EOF
 
 cat > "$RELEASE/metadata/CUMULATIVE-PATCH-MANIFEST.txt" <<'EOF'
 APPLIED: every accepted cumulative patch through 0.15.14.
-APPLIED: 0.15.15 Smart Online conversational assistant and explicit private-offline fallback.
-APPLIED: 0.15.15 curated 16-page color-by-number replacement.
+APPLIED: 0.15.15 GPT-5.6 Smart Online conversational assistant and explicit private-offline fallback.
+APPLIED: 0.15.15 professional-source 16-page color-by-number replacement.
 APPLIED: 0.15.15 find-the-differences interaction replacement.
 EOF
 
