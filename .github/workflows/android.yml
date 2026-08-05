@@ -6,6 +6,9 @@ on:
     branches: [ main, agent/kreativ-studio-v0.1 ]
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: kreativ-android-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: true
@@ -15,29 +18,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      # Firebase Android client values are public application configuration, not server credentials.
-      # The private signing key remains outside the public repository.
+      # Firebase Android client values are public application configuration.
+      # This verification job never receives the private signing key and never
+      # publishes an installable APK.
       ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: 949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com
       ORG_GRADLE_PROJECT_KREATIV_OLIVIA_FIREBASE_UID: ${{ secrets.KREATIV_OLIVIA_FIREBASE_UID }}
       ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
       ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: 1:949620144971:android:63fec0446e8549d25946ce
       ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: my-study-companion-abc01
       ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK
-        run: yes | sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
-      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.4.1'
-      - name: Lint, unit tests, and configured debug APK
-        run: gradle --no-daemon lintDebug testDebugUnitTest assembleDebug
-      - name: Verify Firebase, professional canvas, lesson, and Mentor configuration
+
+      - name: Lint, unit tests, and compile verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon lintDebug testDebugUnitTest assembleDebug
+
+      - name: Verify Firebase, canvas, lesson, and Mentor configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -54,11 +75,16 @@ jobs:
           grep -Fq 'recordLessonAssessment' app/src/main/java/com/kreativstudio/app/ui/KreativLessonWorkspace.kt
           grep -Fq 'ToolType.SELECT -> Icons.Default.SelectAll' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
           grep -Fq 'ToolType.PEN -> Icons.Default.BorderColor' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
+
       - name: Enable KVM group access
+        shell: bash
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
       - name: Mentor, lesson, and new-canvas route smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -68,133 +94,37 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 900
           script: gradle --no-daemon connectedDebugAndroidTest
-      - name: Upload Android test diagnostics
+
+      - name: Upload test diagnostics only
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: KREATIV-Studio-v0.1.3-test-diagnostics
+          name: KREATIV-Studio-0.1.10-test-diagnostics
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
           if-no-files-found: ignore
-      - name: Upload configured debug APK
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: KREATIV-Studio-v0.1.3-configured-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-      - name: Package Android signing utilities
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p signing-tools/lib
-          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" signing-tools/
-          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" signing-tools/lib/
-          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" signing-tools/
-          chmod +x signing-tools/apksigner signing-tools/zipalign
-      - name: Upload Android signing utilities
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-build-tools-36-signing
-          path: signing-tools
-          if-no-files-found: error
+          retention-days: 7
 
-  # Protected signing material is intentionally unavailable to ordinary push and
-  # pull-request jobs. Run this job only from a deliberate workflow dispatch.
-  build-private-alpha:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
-    env:
-      ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: 949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com
-      ORG_GRADLE_PROJECT_KREATIV_OLIVIA_FIREBASE_UID: ${{ secrets.KREATIV_OLIVIA_FIREBASE_UID }}
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: 1:949620144971:android:63fec0446e8549d25946ce
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: my-study-companion-abc01
-      ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
-      ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD: ${{ secrets.KREATIV_PRIVATE_ALPHA_STORE_PASSWORD }}
-      ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEY_ALIAS }}
-      ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_PASSWORD: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEY_PASSWORD }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK
+      - name: Record distribution block
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.4.1'
-      - name: Restore registered KREATIV signer
-        shell: bash
-        env:
-          KEYSTORE_B64: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEYSTORE_B64 }}
-        run: |
-          set -euo pipefail
-          required=(
-            ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD
-            ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS
-            ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_PASSWORD
-          )
-          for name in "${required[@]}"; do
-            test -n "${!name:-}" || { echo "Missing required signing secret: $name" >&2; exit 1; }
-          done
-          test -n "$KEYSTORE_B64" || { echo 'Missing KREATIV_PRIVATE_ALPHA_KEYSTORE_B64' >&2; exit 1; }
-          mkdir -p "$RUNNER_TEMP/kreativ-signing"
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/kreativ-signing/kreativ-private-alpha.jks"
-          echo "ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_FILE=$RUNNER_TEMP/kreativ-signing/kreativ-private-alpha.jks" >> "$GITHUB_ENV"
-      - name: Verify registered signer identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          keytool -list -v \
-            -keystore "$ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_FILE" \
-            -storepass "$ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD" \
-            -alias "$ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS" > signer.txt
-          grep -Fq 'SHA1: 5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59' signer.txt
-          grep -Fq 'SHA256: 07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D' signer.txt
-      - name: Build authenticated private alpha
-        shell: bash
-        run: |
-          set -euo pipefail
-          gradle --no-daemon lintDebug testDebugUnitTest assemblePrivateAlpha
-          grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID" app/build/generated
-          grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID" app/build/generated
-          grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID" app/build/generated
-          grep -Fq 'ToolType.SELECT -> Icons.Default.SelectAll' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
-          grep -Fq 'ToolType.PEN -> Icons.Default.BorderColor' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
-          grep -Fq 'Select / Move: tap a visible stroke' app/src/main/java/com/kreativstudio/app/ui/KreativSketchbookStudio.kt
-      - name: Verify package, version, signature, and alignment
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
-          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
-          ZIPALIGN="$SDK_ROOT/build-tools/36.0.0/zipalign"
-          APK="$(find app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
-          test -f "$APK"
-          mkdir -p private-alpha
-          cp "$APK" private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk
-          "$AAPT" dump badging private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/IDENTITY.txt
-          grep -q "package: name='com.kreativstudio.app'" private-alpha/IDENTITY.txt
-          grep -q "versionName='0.1.3-private-alpha'" private-alpha/IDENTITY.txt
-          "$APKSIGNER" verify --verbose --print-certs private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/SIGNATURE.txt
-          grep -Fqi '5c79a8f7529b0a93a269aab1676bae9bceb61459' private-alpha/SIGNATURE.txt
-          "$ZIPALIGN" -c -P 16 -v 4 private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/ZIPALIGN.txt
-          sha256sum private-alpha/KREATIV-Studio-0.1.3-private-alpha.apk > private-alpha/SHA256SUMS.txt
-      - name: Upload authenticated private-alpha APK
+          mkdir -p dist
+          cat > dist/DISTRIBUTION-BLOCKED.txt <<EOF
+          Commit: $GITHUB_SHA
+          Result: source verification only.
+          No APK was published by this workflow.
+          The only authorized APK path is the dedicated authenticated private-alpha
+          workflow after live Firebase readiness and permanent signer verification.
+          EOF
+
+      - name: Upload distribution-gate evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: KREATIV-Studio-0.1.3-authenticated-private-alpha
-          path: private-alpha
-          retention-days: 14
+          name: KREATIV-Studio-0.1.10-distribution-gate
+          path: dist/DISTRIBUTION-BLOCKED.txt
           if-no-files-found: error
+          retention-days: 7
