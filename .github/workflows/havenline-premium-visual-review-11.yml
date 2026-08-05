@@ -1,0 +1,37 @@
+name: HAVENLINE Premium Visual Revision 11
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - .github/workflows/havenline-premium-visual-review-11.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+
+      - name: Apply furnace and shelter revision
+        run: python .github/scripts/havenline_visual_patch11.py
+
+      - name: Commit furnace and shelter revision
+        run: |
+          set -euo pipefail
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualAssets.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualPolish.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneGate.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineStudioRevision.cs
+          git commit -m "Author premium furnace progression and shelters"
+          git push origin HEAD:havenline-unity-reference-rebuild
