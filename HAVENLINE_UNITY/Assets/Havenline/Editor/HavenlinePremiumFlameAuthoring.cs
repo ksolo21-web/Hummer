@@ -33,21 +33,21 @@ namespace Havenline.Editor
                 new Vector3(-0.025f, 0.015f, -0.035f),
                 new Vector3(0.68f, 0.76f, 0.72f),
                 Quaternion.Euler(1f, 21f, -4f),
-                new Vector3(0.42f, 0.55f, 0.48f));
+                new Vector3(0.52f, 0.62f, 0.56f));
             CreateTonguePair(
                 root.transform,
                 "Left",
                 new Vector3(-0.30f, -0.105f, 0.045f),
                 new Vector3(0.50f, 0.56f, 0.58f),
                 Quaternion.Euler(-2f, -28f, -15f),
-                new Vector3(0.38f, 0.49f, 0.44f));
+                new Vector3(0.48f, 0.57f, 0.52f));
             CreateTonguePair(
                 root.transform,
                 "Right",
                 new Vector3(0.27f, -0.145f, 0.015f),
                 new Vector3(0.43f, 0.47f, 0.52f),
                 Quaternion.Euler(3f, 34f, 14f),
-                new Vector3(0.36f, 0.46f, 0.42f));
+                new Vector3(0.46f, 0.55f, 0.50f));
 
             return root.AddComponent<HavenlineFlamePulse>();
         }
@@ -74,7 +74,7 @@ namespace Havenline.Editor
                 "FlameTongue_" + suffix + "_Inner",
                 mesh,
                 HavenlinePremiumVisualAssets.FlameInnerMaterialPath,
-                localPosition + new Vector3(0.015f, -0.035f, 0.075f),
+                localPosition + new Vector3(0.015f, -0.040f, 0.125f),
                 Vector3.Scale(outerScale, innerScaleMultiplier),
                 localRotation * Quaternion.Euler(0f, 11f, 2f));
         }
