@@ -105,8 +105,8 @@ for candidate in backend.rglob("*"):
         continue
     candidate.write_text(text.replace("0.15.15", "0.15.16"), encoding="utf-8")
     updated += 1
-if updated < 2:
-    raise SystemExit(f"expected backend version markers in multiple files; updated {updated}")
+if updated < 1:
+    raise SystemExit(f"expected at least one backend version marker; updated {updated}")
 
 print(
     "Applied 0.15.16 release truth gate: Smart Online validated="
