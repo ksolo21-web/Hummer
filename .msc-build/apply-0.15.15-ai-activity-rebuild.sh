@@ -35,7 +35,9 @@ checks = {
         'recentAiMessages(13)',
     ],
     Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt'): [
-        'AiAssistantMode.SMART_ONLINE',
+        'AiAssistantMode.entries.forEach',
+        'selected = assistant.mode == mode',
+        'assistant.smartOnlineConfigured',
         'Continue the conversation',
     ],
     Path('MyStudyCompanion/backend/app/services/openai_study_service.py'): [
