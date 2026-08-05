@@ -1,13 +1,13 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 namespace Havenline
 {
     public sealed class HavenlineConstructionSite : HavenlineInteractable
     {
+        private static readonly float[] MinimumStageWorldHeights = { 0.72f, 1.02f, 1.22f };
+        private static readonly float[] MinimumStageWorldWidths = { 1.80f, 2.55f, 3.10f };
+
         [SerializeField] private string buildId = "barricade_north";
         [SerializeField] private int requiredWood = 8;
         [SerializeField] private int requiredStone = 3;
@@ -56,6 +56,7 @@ namespace Havenline
             constructionStages = stages ?? Array.Empty<GameObject>();
             completedStructure = completed;
             buildEffect = effect;
+            EnsureReadableConstructionStages();
             ApplyVisuals();
         }
 
@@ -70,6 +71,7 @@ namespace Havenline
                 deliveredWood = requiredWood;
                 deliveredStone = requiredStone;
             }
+            EnsureReadableConstructionStages();
             ApplyVisuals();
         }
 
@@ -128,6 +130,47 @@ namespace Havenline
             }
             HavenlineSave.MarkDirty();
             ApplyVisuals();
+        }
+
+        private void EnsureReadableConstructionStages()
+        {
+            for (var index = 0; index < constructionStages.Length; index++)
+            {
+                var stage = constructionStages[index];
+                if (stage == null || !TryGetRendererBounds(stage, out var bounds))
+                    continue;
+
+                var targetIndex = Mathf.Min(index, MinimumStageWorldHeights.Length - 1);
+                var heightScale = MinimumStageWorldHeights[targetIndex] /
+                                  Mathf.Max(0.0001f, bounds.size.y);
+                var widthScale = MinimumStageWorldWidths[targetIndex] /
+                                 Mathf.Max(0.0001f, Mathf.Max(bounds.size.x, bounds.size.z));
+                var requiredScale = Mathf.Max(1f, heightScale, widthScale);
+                if (requiredScale > 1.001f)
+                    stage.transform.localScale *= requiredScale;
+            }
+        }
+
+        private static bool TryGetRendererBounds(GameObject root, out Bounds bounds)
+        {
+            var renderers = root.GetComponentsInChildren<Renderer>(true);
+            bounds = default;
+            var initialized = false;
+            foreach (var renderer in renderers)
+            {
+                if (renderer == null)
+                    continue;
+                if (!initialized)
+                {
+                    bounds = renderer.bounds;
+                    initialized = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+            return initialized && bounds.size.sqrMagnitude > 0.000001f;
         }
 
         private void ApplyVisuals()
