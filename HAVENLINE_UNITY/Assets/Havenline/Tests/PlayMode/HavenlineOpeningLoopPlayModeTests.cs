@@ -42,17 +42,17 @@ namespace Havenline.Tests
         public IEnumerator NearbyTargetStartsAutomaticallyWithoutAnActionButton()
         {
             var floor = Create("Floor");
-            floor.transform.position = new Vector3(0f, -0.55f, 0f);
+            floor.transform.position = Reference.PlayerSpawn + new Vector3(0f, -0.58f, 0f);
             var floorCollider = floor.AddComponent<BoxCollider>();
             floorCollider.size = new Vector3(12f, 1f, 12f);
 
             var playerObject = Create("Player");
-            playerObject.transform.position = Vector3.zero;
+            playerObject.transform.position = Reference.PlayerSpawn;
             var player = playerObject.AddComponent<HavenlinePlayerController>();
             player.Configure(null, playerObject.transform, null);
 
             var targetObject = Create("AutomaticWoodTarget");
-            targetObject.transform.position = new Vector3(1f, 0f, 0f);
+            targetObject.transform.position = Reference.PlayerSpawn + new Vector3(1f, 0f, 0f);
             var target = targetObject.AddComponent<HavenlineTestAutomaticTarget>();
 
             yield return new WaitForSeconds(0.25f);
