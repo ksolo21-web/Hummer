@@ -65,6 +65,8 @@ namespace Havenline
     public sealed class EvidenceSnapshot
     {
         public string commit;
+        public string artVersion;
+        public string approvedBy;
         public bool sceneAuthored;
         public bool cameraContract;
         public bool movementContract;
@@ -74,7 +76,14 @@ namespace Havenline
         public bool furnaceContract;
         public bool helperContract;
         public bool defenseContract;
+        public bool premiumArtContract;
+        public bool animationContract;
+        public bool visualQualityContract;
+        public bool uiContract;
+        public bool audioContract;
+        public bool releaseCandidate;
         public string apkSha256;
+        public string[] validationFailures;
         public string[] proofFrames;
     }
 }
