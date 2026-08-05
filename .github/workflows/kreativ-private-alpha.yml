@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Check out release source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -92,13 +92,13 @@ jobs:
             --require-live-ready
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install Android SDK packages
         shell: bash
@@ -107,7 +107,7 @@ jobs:
           sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Restore and verify permanent signing identity
         shell: bash
@@ -187,7 +187,7 @@ jobs:
             > private-alpha/SHA256SUMS.txt
 
       - name: Upload authenticated private-alpha APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: KREATIV-Studio-0.1.10-authenticated-private-alpha
           path: private-alpha
