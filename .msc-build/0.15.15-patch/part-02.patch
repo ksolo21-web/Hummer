@@ -1,0 +1,179 @@
+d(s: Scene):
++    background(s,4,7)
++    s.polygon([(8,510),(180,380),(330,470),(504,330),(504,760),(8,760)],7,"valley",(270,590))
++    person(s,145,480,1.0,4,"David",facing=1)
++    s.ellipse((92,505,125,538),1,"sling stone",(108,522))
++    s.line_detail([(118,520),(175,445),(220,470)],5)
++    person(s,360,420,1.35,5,"Goliath",facing=-1)
++    s.ellipse((315,310,405,385),5,"Goliath helmet",(360,347))
++    s.ellipse((390,430,490,560),3,"Goliath shield",(440,495))
++    s.rectangle((300,420,415,500),5,"Goliath armor",(358,460),radius=18)
++
++
++def scene_daniel(s: Scene):
++    s.rectangle((8,8,504,760),5,"cave",(256,380),radius=34)
++    s.polygon([(155,8),(350,8),(430,500),(80,500)],8,"light",(255,250))
++    s.polygon([(8,570),(504,520),(504,760),(8,760)],7,"cave floor",(256,650))
++    person(s,255,470,1.05,4,"Daniel")
++    s.ellipse((45,500,190,650),7,"left lion body",(118,575))
++    s.ellipse((90,445,185,535),1,"left lion mane",(138,490))
++    s.ellipse((112,465,165,515),7,"left lion face",(139,490))
++    s.ellipse((320,510,470,660),7,"right lion body",(395,585))
++    s.ellipse((320,455,420,550),1,"right lion mane",(370,502))
++    s.ellipse((345,475,400,528),7,"right lion face",(372,502))
++
++
++def scene_storm(s: Scene):
++    s.rectangle((8,8,504,360),5,"storm sky",(256,180),radius=28)
++    s.polygon([(8,330),(504,300),(504,760),(8,760)],4,"rough sea",(256,600))
++    s.ellipse((35,60,210,170),5,"left cloud",(122,115))
++    s.ellipse((280,45,470,165),5,"right cloud",(375,105))
++    s.polygon([(80,430),(435,400),(390,575),(125,575)],1,"boat hull",(255,495))
++    s.rectangle((245,225,258,445),1,"mast",(251,335),radius=4)
++    s.polygon([(258,240),(258,410),(405,390)],7,"sail",(315,335))
++    person(s,180,470,.72,3,"disciple")
++    person(s,310,455,.76,8,"Jesus")
++    s.polygon([(20,620),(145,555),(255,655),(385,550),(504,625),(504,760),(8,760)],4,"waves",(256,680))
++
++
++def scene_samaritan(s: Scene):
++    background(s,4,7)
++    s.polygon([(185,760),(225,420),(310,420),(360,760)],7,"road",(270,610))
++    s.ellipse((235,470,390,610),1,"donkey body",(312,540))
++    s.ellipse((355,430,425,500),1,"donkey head",(390,465))
++    person(s,175,430,.9,3,"Samaritan")
++    person(s,315,470,.75,4,"injured man")
++    s.rectangle((270,455,345,520),8,"donkey pack",(308,488),radius=10)
++    s.rectangle((55,320,85,565),1,"tree trunk",(70,445),radius=8)
++    s.ellipse((20,245,135,370),6,"tree leaves",(78,308))
++
++
++def scene_lost_sheep(s: Scene):
++    background(s,4,6)
++    s.polygon([(8,540),(160,410),(300,500),(504,365),(504,760),(8,760)],6,"hills",(260,590))
++    person(s,155,480,.95,3,"shepherd")
++    s.line_detail([(210,390),(235,650)],8)
++    s.arc((190,360,245,430),190,355,width=8)
++    s.ellipse((280,470,455,620),7,"sheep wool",(368,545))
++    s.ellipse((385,500,455,565),5,"sheep face",(420,532))
++    s.rectangle((300,585,320,690),1,"left sheep leg",(310,635),radius=6)
++    s.rectangle((405,580,425,690),1,"right sheep leg",(415,635),radius=6)
++    s.ellipse((40,610,120,675),8,"flowers",(80,642))
++
++
++def scene_talents(s: Scene):
++    background(s,4,6)
++    s.polygon([(8,510),(504,460),(504,760),(8,760)],7,"field",(256,620))
++    person(s,160,470,.95,4,"worker")
++    s.ellipse((280,475,430,650),1,"money bag",(355,562))
++    s.rectangle((325,430,385,500),1,"bag tie",(355,465),radius=12)
++    s.ellipse((290,615,340,665),8,"coin one",(315,640))
++    s.ellipse((350,625,400,675),8,"coin two",(375,650))
++    s.ellipse((410,600,460,650),8,"coin three",(435,625))
++    s.rectangle((65,300,95,520),1,"tree trunk",(80,410),radius=8)
++    s.ellipse((20,220,145,355),6,"tree leaves",(82,288))
++
++
++def scene_prodigal(s: Scene):
++    background(s,4,7)
++    s.rectangle((315,265,485,485),7,"house",(400,375),radius=10)
++    s.polygon([(290,285),(400,190),(505,285)],3,"house roof",(400,250))
++    s.rectangle((375,365,425,485),1,"house door",(400,425),radius=7)
++    person(s,170,490,1.05,4,"father")
++    person(s,285,535,.78,3,"returning son")
++    s.line_detail([(205,455),(250,505),(300,480)],7)
++    s.rectangle((70,330,100,555),1,"tree trunk",(85,445),radius=8)
++    s.ellipse((20,250,150,385),6,"tree leaves",(85,318))
++
++
++def scene_builders(s: Scene):
++    s.rectangle((8,8,504,410),5,"rainy sky",(256,210),radius=28)
++    s.polygon([(8,380),(255,350),(255,760),(8,760)],7,"sand",(130,570))
++    s.polygon([(255,350),(504,400),(504,760),(255,760)],5,"rock",(385,580))
++    s.rectangle((45,330,215,520),7,"sand house walls",(130,425),radius=8)
++    s.polygon([(25,350),(130,255),(235,350)],3,"sand house roof",(130,315))
++    s.rectangle((300,315,470,510),7,"rock house walls",(385,412),radius=8)
++    s.polygon([(280,335),(385,240),(490,335)],4,"rock house roof",(385,300))
++    s.ellipse((45,60,220,165),5,"rain cloud one",(132,112))
++    s.ellipse((280,50,465,160),5,"rain cloud two",(372,105))
++    s.polygon([(20,590),(200,520),(250,620),(8,680)],4,"flood water",(110,610))
++
++
++def scene_armor(s: Scene):
++    background(s,4,7)
++    person(s,255,435,1.35,3,"soldier")
++    s.ellipse((195,245,315,325),5,"helmet",(255,282))
++    s.rectangle((185,390,325,510),5,"breastplate",(255,450),radius=25)
++    s.rectangle((185,500,325,535),1,"belt",(255,517),radius=8)
++    s.ellipse((335,390,485,585),4,"shield",(410,488))
++    s.rectangle((90,380,110,650),5,"sword",(100,515),radius=5)
++    s.polygon([(72,365),(128,365),(100,300)],8,"sword handle",(100,345))
++    s.rectangle((190,555,235,715),1,"left boot",(212,635),radius=12)
++    s.rectangle((275,555,320,715),1,"right boot",(297,635),radius=12)
++
++
++def scene_scripture(s: Scene):
++    s.rectangle((8,8,504,430),4,"night sky",(256,210),radius=28)
++    s.polygon([(8,405),(504,370),(504,760),(8,760)],5,"ground",(256,600))
++    s.polygon([(180,760),(225,420),(295,420),(345,760)],7,"path",(260,610))
++    s.rectangle((65,350,145,560),1,"lamp post",(105,455),radius=10)
++    s.ellipse((45,285,165,405),8,"lamp light",(105,345))
++    s.rectangle((75,315,135,385),5,"lamp frame",(105,350),radius=8)
++    s.rectangle((320,500,465,635),4,"Bible cover",(392,568),radius=14)
++    s.polygon([(325,515),(392,535),(392,620),(325,605)],8,"left Bible page",(360,570))
++    s.polygon([(392,535),(460,515),(460,605),(392,620)],8,"right Bible page",(425,570))
++    s.ellipse((52,77,86,111),8,"star one",(69,94))
++    s.ellipse((402,112,440,150),8,"star two",(421,131))
++
++
++def scene_animal(s: Scene):
++    background(s,4,7)
++    s.polygon([(8,500),(190,400),(350,470),(504,390),(504,760),(8,760)],7,"savanna",(260,590))
++    s.ellipse((105,380,385,620),7,"lion body",(245,500))
++    s.ellipse((280,330,455,505),1,"lion mane",(367,418))
++    s.ellipse((320,365,430,475),7,"lion face",(375,420))
++    s.detail_ellipse((346,391,364,409))
++    s.detail_ellipse((393,391,411,409))
++    s.rectangle((145,565,185,710),1,"front leg",(165,635),radius=12)
++    s.rectangle((295,560,335,710),1,"back leg",(315,635),radius=12)
++    s.rectangle((55,310,80,535),1,"tree trunk",(67,420),radius=8)
++    s.ellipse((15,230,145,365),6,"tree leaves",(80,298))
++
++
++def scene_faith(s: Scene):
++    s.rectangle((8,8,504,470),4,"sky",(256,225),radius=28)
++    s.polygon([(8,440),(190,350),(225,760),(8,760)],6,"left cliff",(100,590))
++    s.polygon([(320,390),(504,320),(504,760),(285,760)],6,"right cliff",(410,570))
++    s.rectangle((180,470,335,510),1,"bridge",(258,490),radius=8)
++    s.rectangle((190,455,202,570),1,"left bridge rope",(196,512),radius=3)
++    s.rectangle((315,445,327,560),1,"right bridge rope",(321,503),radius=3)
++    person(s,255,445,.72,3,"traveler")
++    s.rectangle((220,420,255,475),8,"backpack",(237,448),radius=8)
++    s.ellipse((390,85,470,165),8,"sun",(430,125))
++
++
++def scene_gratitude(s: Scene):
++    s.rectangle((8,8,504,760),7,"room",(256,380),radius=28)
++    s.rectangle((45,80,215,285),4,"window",(130,182),radius=12)
++    s.polygon([(45,230),(130,150),(215,230)],6,"window view",(130,210))
++    s.rectangle((55,470,455,650),1,"table",(255,560),radius=18)
++    s.rectangle((220,400,365,525),4,"Bible cover",(292,462),radius=12)
++    s.polygon([(225,410),(292,430),(292,510),(225,495)],8,"left Bible page",(258,460))
++    s.polygon([(292,430),(360,410),(360,495),(292,510)],8,"right Bible page",(326,460))
++    person(s,120,420,.65,3,"family member one")
++    person(s,420,420,.65,4,"family member two",facing=-1)
++    s.ellipse((90,620,175,700),8,"fruit bowl",(132,660))
++    s.ellipse((335,615,420,700),6,"plant",(378,658))
++
++SCENES = {
++    "creation": ("Creation", scene_creation),
++    "noahs-ark": ("Noah's Ark", scene_noah),
++    "jonah": ("Jonah and the Great Fish", scene_jonah),
++    "david-goliath": ("David and Goliath", scene_david),
++    "daniel-lions": ("Daniel in the Lions' Den", scene_daniel),
++    "jesus-storm": ("Jesus Calms the Storm", scene_storm),
++    "good-samaritan": ("The Good Samaritan", scene_samaritan),
++    "lost-sheep": ("The Lost Sheep", scene_lost_sheep),
++    "talents": ("The Talents", scene_talents),
++    "prodigal-son": ("The Prodigal Son", scene_prodigal),
++    "w
