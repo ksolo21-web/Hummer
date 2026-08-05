@@ -1,0 +1,49 @@
+name: My Study Companion 0.15.16 Source Snapshot
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.16-source-snapshot.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Reconstruct cumulative source
+        shell: bash
+        env:
+          MSC_SMART_ONLINE_VALIDATED: false
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/run-0.15.14-vote-persistence-fix.sh
+          bash .msc-build/apply-0.15.16-release-truth.sh
+          mkdir -p source-snapshot
+          cp --parents \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt \
+            MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/network/BackendApi.kt \
+            MyStudyCompanion/app/build.gradle.kts \
+            MyStudyCompanion/wear/build.gradle.kts \
+            MyStudyCompanion/backend/app/main.py \
+            MyStudyCompanion/backend/app/config.py \
+            MyStudyCompanion/app/src/main/assets/workbook/manifest.json \
+            source-snapshot/
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.16-source-snapshot
+          path: source-snapshot
+          retention-days: 1
+          if-no-files-found: error
