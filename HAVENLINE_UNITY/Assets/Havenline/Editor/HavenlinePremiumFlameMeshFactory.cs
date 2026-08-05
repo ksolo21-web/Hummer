@@ -47,7 +47,7 @@ namespace Havenline.Editor
                    throw new InvalidOperationException("HAVENLINE furnace ember mesh was not created.");
         }
 
-        private static Mesh CreateFlameTongueMesh()
+        internal static Mesh CreateFlameTongueMesh()
         {
             var outline = new[]
             {
@@ -121,7 +121,7 @@ namespace Havenline.Editor
             return mesh;
         }
 
-        private static Mesh CreateEmberMesh()
+        internal static Mesh CreateEmberMesh()
         {
             const int segments = 12;
             const int rings = 5;
