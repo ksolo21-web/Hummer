@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.25";
+        public const string Current = "0.1.0-device-test.26";
         public const string Purpose =
-            "Preserve the accepted volumetric furnace and adaptive HUD while enforcing readable world-space size and visible growth for every north and south barricade construction stage so unfinished defenses read as gameplay structures rather than stray punctuation.";
+            "Lock the Revision 25 accepted volumetric furnace, adaptive foldable HUD and readable barricade progression behind a strict blocked-or-approved production lifecycle, then authorize only the premium ARM64 device-test package while physical-device release acceptance remains separate.";
     }
 }
