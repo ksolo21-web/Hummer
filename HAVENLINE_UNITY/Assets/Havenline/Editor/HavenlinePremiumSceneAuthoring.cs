@@ -163,13 +163,7 @@ namespace Havenline.Editor
             collider.radius = 1.85f;
             collider.isTrigger = true;
 
-            var levelVisuals = new[]
-            {
-                InstantiateScaled(manifest.furnaceModel, root.transform, "FurnaceLevel1", 2.15f).gameObject,
-                InstantiateScaled(manifest.furnaceLevel2Model, root.transform, "FurnaceLevel2", 2.45f).gameObject,
-                InstantiateScaled(manifest.furnaceLevel3Model, root.transform, "FurnaceLevel3", 2.8f).gameObject,
-                InstantiateScaled(manifest.furnaceLevel4Model, root.transform, "FurnaceLevel4", 3.15f).gameObject
-            };
+            var levelVisuals = HavenlinePremiumFurnaceAuthoring.BuildStages(root.transform);
             for (var index = 0; index < levelVisuals.Length; index++)
                 levelVisuals[index].SetActive(index == 0);
 

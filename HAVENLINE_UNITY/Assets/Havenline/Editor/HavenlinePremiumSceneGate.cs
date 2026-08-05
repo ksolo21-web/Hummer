@@ -270,6 +270,59 @@ namespace Havenline.Editor
             RequireAtLeast<HavenlineResourceNode>(scene, 10, "resource nodes", failures);
             RequireAtLeast<HavenlineBarricade>(scene, 2, "barricades/defenses", failures);
 
+            var objects = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                .Select(transform => transform.gameObject)
+                .ToArray();
+
+            var minimumStageRenderers = new[] { 6, 10, 16, 20 };
+            for (var index = 0; index < minimumStageRenderers.Length; index++)
+            {
+                var stageName = $"FurnaceLevel{index + 1}";
+                var stage = objects.SingleOrDefault(item => item.name == stageName);
+                if (stage == null)
+                {
+                    failures.Add($"Shipping furnace is missing authored progression stage {index + 1}.");
+                    continue;
+                }
+                var stageRenderers = stage.GetComponentsInChildren<Renderer>(true);
+                if (stageRenderers.Length < minimumStageRenderers[index])
+                {
+                    failures.Add(
+                        $"Furnace stage {index + 1} is not visually complete: found {stageRenderers.Length} renderers; " +
+                        $"require at least {minimumStageRenderers[index]}.");
+                }
+                if (stageRenderers.Any(renderer =>
+                        !string.IsNullOrWhiteSpace(
+                            PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(renderer.gameObject))))
+                {
+                    failures.Add($"Furnace stage {index + 1} still depends on an imported prop prefab instead of authored machine parts.");
+                }
+            }
+
+            if (objects.Any(item => item.name.StartsWith("FurnacePremium", StringComparison.Ordinal)))
+                failures.Add("Decorative furnace overlays are prohibited; progression stages must own the complete furnace silhouette.");
+
+            foreach (var shelterName in new[] { "LeftPremiumShelter", "RightPremiumShelter" })
+            {
+                var shelter = objects.SingleOrDefault(item => item.name == shelterName);
+                if (shelter == null)
+                {
+                    failures.Add($"Shipping outpost is missing authored shelter: {shelterName}.");
+                    continue;
+                }
+                var shelterRenderers = shelter.GetComponentsInChildren<Renderer>(true).Length;
+                if (shelterRenderers < 8)
+                    failures.Add($"{shelterName} is not a complete multi-part shelter; found {shelterRenderers} renderers.");
+            }
+
+            foreach (var oldTentName in new[] { "StartingTent", "RescueShelter" })
+            {
+                var oldTent = objects.FirstOrDefault(item => item.name == oldTentName);
+                if (oldTent != null && oldTent.activeInHierarchy)
+                    failures.Add($"Superseded imported tent visual is still active: {oldTentName}.");
+            }
+
             var renderers = scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<Renderer>(true))
                 .ToArray();

@@ -52,7 +52,6 @@ namespace Havenline.Editor
             var dressing = RebuildDressing(scene);
             BuildLayeredGround(dressing.transform);
             BuildCampDetails(dressing.transform);
-            BuildFurnaceSilhouette(dressing.transform);
             BuildShelterSilhouettes(dressing.transform);
             TuneWorldLayout(objects);
             TuneLighting(objects, dressing.transform);
@@ -221,22 +220,53 @@ namespace Havenline.Editor
 
         private static void BuildShelter(Transform parent, string name, Vector3 position, float yaw, bool left)
         {
-            CreateMeshObject(parent, name + "Shell",
+            var root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = position;
+            root.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+
+            CreateMeshObject(root.transform, "FabricShell",
                 HavenlinePremiumVisualAssets.ShelterShellPath,
                 "Assets/Havenline/Art/Production/Materials/HAVENLINE_Blue.mat",
-                position, Vector3.one, Quaternion.Euler(0f, yaw, 0f));
-            CreateMeshObject(parent, name + "SnowCap",
-                HavenlinePremiumVisualAssets.ShelterShellPath,
+                Vector3.zero, Vector3.one, Quaternion.identity);
+            CreateMeshObject(root.transform, "SnowRoof",
+                HavenlinePremiumVisualAssets.ShelterSnowCapPath,
                 HavenlinePremiumVisualAssets.PaleSnowMaterialPath,
-                position + new Vector3(0f, 0.42f, 0f),
-                new Vector3(1.04f, 0.70f, 1.04f), Quaternion.Euler(0f, yaw, 0f));
-            var lanternPosition = position + new Vector3(left ? 1.35f : -1.35f, 0.72f, 1.35f);
-            CreateMeshObject(parent, name + "Lantern",
+                Vector3.zero, Vector3.one, Quaternion.identity);
+            CreateMeshObject(root.transform, "DoorFrame",
+                HavenlinePremiumVisualAssets.FurnaceBodyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Amber.mat",
+                new Vector3(0f, 0.12f, 1.71f), new Vector3(0.38f, 0.66f, 0.07f), Quaternion.identity);
+            CreateMeshObject(root.transform, "InsulatedDoor",
+                HavenlinePremiumVisualAssets.FurnaceBodyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Navy.mat",
+                new Vector3(0f, 0.20f, 1.83f), new Vector3(0.29f, 0.56f, 0.045f), Quaternion.identity);
+            CreateMeshObject(root.transform, "DoorAwning",
+                HavenlinePremiumVisualAssets.FurnaceHoodPath,
+                HavenlinePremiumVisualAssets.PaleSnowMaterialPath,
+                new Vector3(0f, 1.58f, 1.62f), new Vector3(0.36f, 0.12f, 0.44f),
+                Quaternion.Euler(-8f, 0f, 0f));
+            CreateMeshObject(root.transform, "EntryMat",
+                HavenlinePremiumVisualAssets.PathPatchPath,
+                HavenlinePremiumVisualAssets.SnowPathMaterialPath,
+                new Vector3(0f, 0.075f, 2.12f), new Vector3(0.86f, 1f, 0.82f), Quaternion.identity);
+
+            var lanternPosition = new Vector3(left ? 1.28f : -1.28f, 0.82f, 1.48f);
+            CreateMeshObject(root.transform, "Lantern",
                 HavenlinePremiumVisualAssets.FurnaceChimneyPath,
                 "Assets/Havenline/Art/Production/Materials/HAVENLINE_Amber.mat",
-                lanternPosition, new Vector3(0.22f, 0.28f, 0.22f), Quaternion.identity);
-            CreatePointLight(parent, name + "LanternLight", lanternPosition + Vector3.up * 0.15f,
+                lanternPosition, new Vector3(0.20f, 0.25f, 0.20f), Quaternion.identity);
+            CreatePointLight(root.transform, "LanternLight", lanternPosition + Vector3.up * 0.18f,
                 new Color(1f, 0.48f, 0.12f), 1.55f, 7.5f, false);
+
+            for (var side = -1; side <= 1; side += 2)
+            {
+                CreateMeshObject(root.transform, side < 0 ? "LeftGuyPost" : "RightGuyPost",
+                    HavenlinePremiumVisualAssets.FurnaceChimneyPath,
+                    "Assets/Havenline/Art/Production/Materials/HAVENLINE_Navy.mat",
+                    new Vector3(side * 1.82f, 0.04f, 1.36f),
+                    new Vector3(0.11f, 0.42f, 0.11f), Quaternion.Euler(0f, 0f, side * 7f));
+            }
         }
 
         private static void TuneWorldLayout(IReadOnlyCollection<GameObject> objects)
@@ -253,8 +283,8 @@ namespace Havenline.Editor
 
             var leftTent = objects.FirstOrDefault(item => item.name == "StartingTent");
             var rightTent = objects.FirstOrDefault(item => item.name == "RescueShelter");
-            if (leftTent != null) leftTent.transform.localScale *= 1.12f;
-            if (rightTent != null) rightTent.transform.localScale *= 1.12f;
+            if (leftTent != null) leftTent.SetActive(false);
+            if (rightTent != null) rightTent.SetActive(false);
         }
 
         private static void TuneTreeComposition(IReadOnlyCollection<GameObject> objects)

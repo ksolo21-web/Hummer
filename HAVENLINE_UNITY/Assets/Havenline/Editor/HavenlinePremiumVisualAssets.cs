@@ -16,6 +16,7 @@ namespace Havenline.Editor
         internal const string FurnaceHoodPath = Root + "/HAVENLINE_FurnaceHood.asset";
         internal const string FurnaceChimneyPath = Root + "/HAVENLINE_FurnaceChimney.asset";
         internal const string ShelterShellPath = Root + "/HAVENLINE_ShelterShell.asset";
+        internal const string ShelterSnowCapPath = Root + "/HAVENLINE_ShelterSnowCap.asset";
         internal const string PaleSnowMaterialPath =
             "Assets/Havenline/Art/Production/Materials/HAVENLINE_PaleSnow.mat";
         internal const string SnowPathMaterialPath =
@@ -24,10 +25,11 @@ namespace Havenline.Editor
             "Assets/Havenline/Art/Production/Materials/HAVENLINE_WarmSnow.mat";
 
         private static bool generating;
+        private static bool ensured;
 
         internal static void Ensure()
         {
-            if (generating)
+            if (ensured || generating)
                 return;
             generating = true;
             try
@@ -47,6 +49,8 @@ namespace Havenline.Editor
                     "HAVENLINE_FurnaceChimney", 0.82f, 0.82f, 1.55f, 0.16f));
                 CreateMeshIfMissing(ShelterShellPath, CreateTentMesh(
                     "HAVENLINE_ShelterShell", 3.9f, 2.65f, 3.3f));
+                CreateMeshIfMissing(ShelterSnowCapPath, CreateTentRoofCapMesh(
+                    "HAVENLINE_ShelterSnowCap", 3.9f, 2.65f, 3.3f, 0.72f));
                 CreateMaterialIfMissing(
                     PaleSnowMaterialPath,
                     new Color(0.965f, 0.985f, 1f, 1f),
@@ -63,6 +67,7 @@ namespace Havenline.Editor
                     0.34f,
                     "Assets/Havenline/Art/Production/Textures/HAVENLINE_Surface_05.png");
                 AssetDatabase.SaveAssets();
+                ensured = true;
             }
             finally
             {
@@ -240,6 +245,38 @@ namespace Havenline.Editor
             {
                 new(0f,0f), new(0.5f,1f), new(1f,0f),
                 new(0f,0f), new(0.5f,1f), new(1f,0f)
+            };
+            return BuildMesh(name, vertices, triangles, uv);
+        }
+
+        private static Mesh CreateTentRoofCapMesh(
+            string name,
+            float width,
+            float height,
+            float depth,
+            float coverage)
+        {
+            var halfWidth = width * 0.5f;
+            var halfDepth = depth * 0.5f + 0.055f;
+            var lowX = halfWidth * Mathf.Clamp01(coverage);
+            var lowY = height * (1f - Mathf.Clamp01(coverage)) + 0.08f;
+            var ridgeY = height + 0.13f;
+            var vertices = new List<Vector3>
+            {
+                new(-lowX, lowY, halfDepth), new(0f, ridgeY, halfDepth),
+                new(0f, ridgeY, -halfDepth), new(-lowX, lowY, -halfDepth),
+                new(0f, ridgeY, halfDepth), new(lowX, lowY, halfDepth),
+                new(lowX, lowY, -halfDepth), new(0f, ridgeY, -halfDepth)
+            };
+            var triangles = new List<int>
+            {
+                0,1,2, 0,2,3,
+                4,5,6, 4,6,7
+            };
+            var uv = new List<Vector2>
+            {
+                new(0f,0f), new(1f,0f), new(1f,1f), new(0f,1f),
+                new(0f,0f), new(1f,0f), new(1f,1f), new(0f,1f)
             };
             return BuildMesh(name, vertices, triangles, uv);
         }
