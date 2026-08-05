@@ -4,6 +4,6 @@ namespace Havenline.Editor
     {
         public const string Current = "0.1.0-review.9";
         public const string Purpose =
-            "Raise snow readability, give the furnace and shelters premium silhouettes, break tree symmetry and make the static HUD font layout-safe.";
+            "Validate pale snow, premium furnace and shelter silhouettes, asymmetric winter composition, static HUD typography and unchanged proof thresholds.";
     }
 }
