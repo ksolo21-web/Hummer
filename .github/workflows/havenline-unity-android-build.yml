@@ -1,6 +1,11 @@
 name: HAVENLINE Premium Android Build
 
 on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json'
   workflow_dispatch:
     inputs:
       mode:
@@ -21,7 +26,7 @@ concurrency:
 
 jobs:
   build-android:
-    name: Build and verify premium ARM64 ${{ inputs.mode }}
+    name: Build and verify premium ARM64 ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
 
@@ -75,7 +80,7 @@ jobs:
           unityVersion: 6000.3.18f1
           targetPlatform: Android
           androidExportType: androidPackage
-          buildMethod: ${{ inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineBuildPipeline.BuildVerifiedReleaseCandidate' || 'Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate' }}
+          buildMethod: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineBuildPipeline.BuildVerifiedReleaseCandidate' || 'Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate' }}
           allowDirtyBuild: true
           collectUnityLogs: true
           streamUnityLogs: true
@@ -84,7 +89,7 @@ jobs:
         id: verify
         shell: bash
         env:
-          BUILD_MODE: ${{ inputs.mode }}
+          BUILD_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}
         run: |
           set -euo pipefail
           if [ "$BUILD_MODE" = "verified_release" ]; then
@@ -143,11 +148,13 @@ jobs:
 
       - name: Write build summary
         shell: bash
+        env:
+          BUILD_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}
         run: |
           {
             echo '## HAVENLINE premium Android build'
             echo ''
-            echo '- Stage: `${{ inputs.mode }}`'
+            echo "- Stage: \`$BUILD_MODE\`"
             echo '- Unity: `6000.3.18f1`'
             echo '- ABI target: `ARM64`'
             echo '- Graphics APIs: `Vulkan`, `OpenGLES3` fallback'
@@ -160,7 +167,7 @@ jobs:
       - name: Upload verified premium HAVENLINE APK and proof
         uses: actions/upload-artifact@v4
         with:
-          name: HAVENLINE-Premium-${{ inputs.mode }}-ARM64-${{ github.run_number }}
+          name: HAVENLINE-Premium-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}-ARM64-${{ github.run_number }}
           if-no-files-found: error
           retention-days: 30
           path: |
