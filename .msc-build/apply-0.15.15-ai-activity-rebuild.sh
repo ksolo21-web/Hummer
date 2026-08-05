@@ -17,6 +17,22 @@ text = path.read_text(encoding='utf-8')
 if text.count('0.14.1') < 3:
     raise SystemExit('expected backend 0.14.1 version markers were not found')
 path.write_text(text.replace('0.14.1', '0.15.15'), encoding='utf-8')
+
+backend = Path('MyStudyCompanion/backend')
+updated = 0
+for candidate in backend.rglob('*'):
+    if not candidate.is_file():
+        continue
+    try:
+        candidate_text = candidate.read_text(encoding='utf-8')
+    except (UnicodeDecodeError, OSError):
+        continue
+    if 'gpt-5.4' not in candidate_text:
+        continue
+    candidate.write_text(candidate_text.replace('gpt-5.4', 'gpt-5.6'), encoding='utf-8')
+    updated += 1
+if updated < 2:
+    raise SystemExit(f'expected GPT-5.4 markers in at least config and bootstrap files; updated {updated}')
 PY
 
 python3 .msc-build/generate-0.15.15-professional-color-by-number.py
@@ -47,7 +63,7 @@ checks = {
         'The AI answer was generic or did not address the question',
     ],
     Path('MyStudyCompanion/backend/app/config.py'): [
-        'openai_model: str = "gpt-5.4"',
+        'openai_model: str = "gpt-5.6"',
     ],
     Path('MyStudyCompanion/backend/app/main.py'): [
         'version="0.15.15"',
@@ -91,6 +107,16 @@ for path in android_source.rglob('*'):
             continue
         if 'OPENAI_API_KEY' in text:
             missing.append(f'{path}: forbidden OPENAI_API_KEY marker is packaged in Android source')
+
+backend_root = Path('MyStudyCompanion/backend')
+for path in backend_root.rglob('*'):
+    if path.is_file():
+        try:
+            text = path.read_text(encoding='utf-8')
+        except (UnicodeDecodeError, OSError):
+            continue
+        if 'gpt-5.4' in text:
+            missing.append(f'{path}: stale GPT-5.4 default remains after the GPT-5.6 upgrade')
 
 manifest_path = Path('MyStudyCompanion/app/src/main/assets/workbook/manifest.json')
 try:
