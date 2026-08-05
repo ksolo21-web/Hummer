@@ -124,6 +124,11 @@ namespace Havenline
         }
     }
 
+    /// <summary>
+    /// Each physical stack position contains one visual option for every resource type.
+    /// Exactly one option is enabled per occupied slot, preventing mixed cargo from
+    /// intersecting while preserving the visible stacked-resource reference behavior.
+    /// </summary>
     public sealed class HavenlineCarryVisual : MonoBehaviour
     {
         [SerializeField] private GameObject[] woodSlots = Array.Empty<GameObject>();
@@ -141,18 +146,43 @@ namespace Havenline
 
         public void Apply(HavenlineInventorySnapshot snapshot, int total, int capacity)
         {
-            ApplySlots(woodSlots, snapshot.wood);
-            ApplySlots(stoneSlots, snapshot.stone);
-            ApplySlots(metalSlots, snapshot.metal);
-            ApplySlots(fuelSlots, snapshot.fuel);
+            var slotCount = Mathf.Min(
+                Mathf.Max(0, capacity),
+                Mathf.Max(
+                    Mathf.Max(woodSlots.Length, stoneSlots.Length),
+                    Mathf.Max(metalSlots.Length, fuelSlots.Length)));
+
+            var woodEnd = snapshot.wood;
+            var stoneEnd = woodEnd + snapshot.stone;
+            var metalEnd = stoneEnd + snapshot.metal;
+            var fuelEnd = metalEnd + snapshot.fuel;
+
+            for (var index = 0; index < slotCount; index++)
+            {
+                SetSlot(woodSlots, index, index < woodEnd);
+                SetSlot(stoneSlots, index, index >= woodEnd && index < stoneEnd);
+                SetSlot(metalSlots, index, index >= stoneEnd && index < metalEnd);
+                SetSlot(fuelSlots, index, index >= metalEnd && index < fuelEnd);
+            }
+
+            DisableRemaining(woodSlots, slotCount);
+            DisableRemaining(stoneSlots, slotCount);
+            DisableRemaining(metalSlots, slotCount);
+            DisableRemaining(fuelSlots, slotCount);
         }
 
-        private static void ApplySlots(IReadOnlyList<GameObject> slots, int visible)
+        private static void SetSlot(IReadOnlyList<GameObject> slots, int index, bool active)
         {
-            for (var index = 0; index < slots.Count; index++)
+            if (index < slots.Count && slots[index] != null)
+                slots[index].SetActive(active);
+        }
+
+        private static void DisableRemaining(IReadOnlyList<GameObject> slots, int start)
+        {
+            for (var index = start; index < slots.Count; index++)
             {
                 if (slots[index] != null)
-                    slots[index].SetActive(index < visible);
+                    slots[index].SetActive(false);
             }
         }
     }
@@ -259,6 +289,7 @@ namespace Havenline
 
         private CharacterController controller;
         private HavenlineInventory inventory;
+        private HavenlineInventory subscribedInventory;
         private HavenlineAutomaticActionController automaticActions;
         private Vector3 planarVelocity;
         private Vector3 lastSafePosition;
@@ -291,24 +322,30 @@ namespace Havenline
             if (controller == null)
                 controller = gameObject.AddComponent<CharacterController>();
 
-            inventory = GetComponent<HavenlineInventory>();
-            if (inventory == null)
-                inventory = gameObject.AddComponent<HavenlineInventory>();
+            var resolvedInventory = GetComponent<HavenlineInventory>();
+            if (resolvedInventory == null)
+                resolvedInventory = gameObject.AddComponent<HavenlineInventory>();
+
+            if (subscribedInventory != resolvedInventory)
+            {
+                if (subscribedInventory != null)
+                    subscribedInventory.Changed -= HandleInventoryChanged;
+
+                subscribedInventory = resolvedInventory;
+                subscribedInventory.Changed += HandleInventoryChanged;
+            }
+            inventory = resolvedInventory;
 
             automaticActions = GetComponent<HavenlineAutomaticActionController>();
             if (automaticActions == null)
                 automaticActions = gameObject.AddComponent<HavenlineAutomaticActionController>();
-
             automaticActions.Configure(this);
 
-            if (!initialized)
-            {
-                initialized = true;
-                lastSafePosition = Reference.PlayerSpawn;
-            }
+            if (initialized)
+                return;
 
-            inventory.Changed -= HandleInventoryChanged;
-            inventory.Changed += HandleInventoryChanged;
+            initialized = true;
+            lastSafePosition = Reference.PlayerSpawn;
         }
 
         private void Start()
@@ -322,15 +359,16 @@ namespace Havenline
 
         private void OnDestroy()
         {
-            if (inventory != null)
-                inventory.Changed -= HandleInventoryChanged;
+            if (subscribedInventory != null)
+                subscribedInventory.Changed -= HandleInventoryChanged;
         }
 
         private void Update()
         {
-            EnsureDependencies();
-            moveInput = input != null ? input.Move : Vector2.zero;
+            if (controller == null || inventory == null || automaticActions == null)
+                EnsureDependencies();
 
+            moveInput = input != null ? input.Move : Vector2.zero;
             var mainCamera = Camera.main;
             var forward = mainCamera != null
                 ? Vector3.ProjectOnPlane(mainCamera.transform.forward, Vector3.up).normalized
