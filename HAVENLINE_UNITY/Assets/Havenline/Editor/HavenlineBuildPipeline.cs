@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -23,18 +25,37 @@ namespace Havenline.Editor
         private const string CloseProof = "HAVENLINE-premium-close-camera.png";
         private const string EvidenceFile = "HAVENLINE-premium-evidence.json";
 
-        [Serializable]
-        private sealed class DeviceAcceptance
+        private static readonly string[] FingerprintRoots =
         {
-            public string sourceCommit;
-            public string artVersion;
-            public string deviceModel;
+            "Assets/Havenline",
+            "Packages",
+            "ProjectSettings"
+        };
+
+        [Serializable]
+        private sealed class DevicePerformanceProfile
+        {
             public int targetFrameRate;
             public float averageFps;
             public float p95FrameTimeMs;
             public float p99FrameTimeMs;
             public long peakMemoryBytes;
             public float sessionSeconds;
+            public string qualityTier;
+            public int width;
+            public int height;
+        }
+
+        [Serializable]
+        private sealed class DeviceAcceptance
+        {
+            public string sourceCommit;
+            public string sourceFingerprint;
+            public string artVersion;
+            public string deviceModel;
+            public string operatingSystem;
+            public DevicePerformanceProfile[] profiles = Array.Empty<DevicePerformanceProfile>();
+            public bool thermalPassed;
             public bool suspendResumePassed;
             public bool foldUnfoldPassed;
             public bool saveResumePassed;
@@ -47,11 +68,13 @@ namespace Havenline.Editor
         {
             ConfigurePlayer();
             var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
+            var fingerprint = ComputeSourceFingerprint();
+            ApplyBuildIdentity(fingerprint);
             AuthorValidateAndCapture(manifest);
             BuildAndVerify(DeviceTestApkPath);
             var sha = Sha256(DeviceTestApkPath);
             File.WriteAllText(DeviceTestApkPath + ".sha256", $"{sha}  {Path.GetFileName(DeviceTestApkPath)}\n");
-            WriteEvidence(sha, manifest, false, false, null);
+            WriteEvidence(sha, fingerprint, manifest, false, false, null);
             Debug.Log($"HAVENLINE premium device-test APK built: {DeviceTestApkPath} ({sha})");
         }
 
@@ -60,12 +83,14 @@ namespace Havenline.Editor
         {
             ConfigurePlayer();
             var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
-            var acceptance = RequireDeviceAcceptance(manifest);
+            var fingerprint = ComputeSourceFingerprint();
+            var acceptance = RequireDeviceAcceptance(manifest, fingerprint);
+            ApplyBuildIdentity(fingerprint);
             AuthorValidateAndCapture(manifest);
             BuildAndVerify(ReleaseApkPath);
             var sha = Sha256(ReleaseApkPath);
             File.WriteAllText(ReleaseApkPath + ".sha256", $"{sha}  {Path.GetFileName(ReleaseApkPath)}\n");
-            WriteEvidence(sha, manifest, true, true, acceptance);
+            WriteEvidence(sha, fingerprint, manifest, true, true, acceptance);
             Debug.Log($"HAVENLINE verified premium release candidate built: {ReleaseApkPath} ({sha})");
         }
 
@@ -74,9 +99,41 @@ namespace Havenline.Editor
         {
             ConfigurePlayer();
             var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
+            var fingerprint = ComputeSourceFingerprint();
+            ApplyBuildIdentity(fingerprint);
             AuthorValidateAndCapture(manifest);
-            WriteEvidence(string.Empty, manifest, false, false, null);
+            WriteEvidence(string.Empty, fingerprint, manifest, false, false, null);
         }
+
+        [MenuItem("HAVENLINE Premium/Write Physical Acceptance Template")]
+        public static void WritePhysicalAcceptanceTemplate()
+        {
+            var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
+            var fingerprint = ComputeSourceFingerprint();
+            var acceptance = new DeviceAcceptance
+            {
+                sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local",
+                sourceFingerprint = fingerprint,
+                artVersion = manifest.artVersion,
+                deviceModel = string.Empty,
+                operatingSystem = string.Empty,
+                profiles = new[]
+                {
+                    NewProfile(60, "Ultra"),
+                    NewProfile(90, "High"),
+                    NewProfile(120, "High")
+                }
+            };
+            Directory.CreateDirectory(Path.GetDirectoryName(AcceptancePath) ?? "Builds/Acceptance");
+            File.WriteAllText(AcceptancePath, JsonUtility.ToJson(acceptance, true) + "\n");
+            Debug.Log($"HAVENLINE physical acceptance template written: {AcceptancePath}");
+        }
+
+        private static DevicePerformanceProfile NewProfile(int target, string quality) => new()
+        {
+            targetFrameRate = target,
+            qualityTier = quality
+        };
 
         private static void AuthorValidateAndCapture(HavenlinePremiumBuildGate.ProductionArtManifest manifest)
         {
@@ -132,6 +189,12 @@ namespace Havenline.Editor
             QualitySettings.vSyncCount = 0;
         }
 
+        private static void ApplyBuildIdentity(string fingerprint)
+        {
+            var shortFingerprint = fingerprint.Length >= 12 ? fingerprint[..12] : fingerprint;
+            PlayerSettings.bundleVersion = $"0.1.0-{shortFingerprint}";
+        }
+
         private static void BuildAndVerify(string path)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? "Builds/Android");
@@ -152,12 +215,13 @@ namespace Havenline.Editor
         }
 
         private static DeviceAcceptance RequireDeviceAcceptance(
-            HavenlinePremiumBuildGate.ProductionArtManifest manifest)
+            HavenlinePremiumBuildGate.ProductionArtManifest manifest,
+            string expectedFingerprint)
         {
             if (!File.Exists(AcceptancePath))
                 throw new BuildFailedException(
                     $"Release-candidate promotion requires physical-device evidence at {AcceptancePath}. " +
-                    "Build the premium device-test APK and complete the sustained device pass first.");
+                    "Build and test the premium device package first.");
 
             DeviceAcceptance acceptance;
             try
@@ -170,29 +234,69 @@ namespace Havenline.Editor
             }
             if (acceptance == null)
                 throw new BuildFailedException("Device acceptance JSON is empty.");
-
-            var expectedCommit = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? acceptance.sourceCommit;
-            if (!string.Equals(acceptance.sourceCommit, expectedCommit, StringComparison.OrdinalIgnoreCase))
-                throw new BuildFailedException("Device acceptance was captured from a different source commit.");
+            if (!string.Equals(acceptance.sourceFingerprint, expectedFingerprint, StringComparison.OrdinalIgnoreCase))
+                throw new BuildFailedException("Physical evidence does not match the current runtime, settings and production-art fingerprint.");
             if (!string.Equals(acceptance.artVersion, manifest.artVersion, StringComparison.Ordinal))
                 throw new BuildFailedException("Device acceptance was captured with a different production-art version.");
-            if (acceptance.targetFrameRate is not (60 or 90 or 120))
-                throw new BuildFailedException("Device acceptance target must be 60, 90 or 120 FPS.");
+            if (string.IsNullOrWhiteSpace(acceptance.deviceModel) || string.IsNullOrWhiteSpace(acceptance.operatingSystem))
+                throw new BuildFailedException("Device acceptance is missing device or operating-system identity.");
 
-            var minimumAverage = acceptance.targetFrameRate * 0.90f;
-            var maximumP95 = 1000f / acceptance.targetFrameRate * 1.30f;
-            if (acceptance.averageFps < minimumAverage || acceptance.p95FrameTimeMs > maximumP95)
-                throw new BuildFailedException(
-                    $"Sustained performance failed: {acceptance.averageFps:0.0} FPS, " +
-                    $"P95 {acceptance.p95FrameTimeMs:0.0} ms at target {acceptance.targetFrameRate}.");
-            if (acceptance.sessionSeconds < 900f)
-                throw new BuildFailedException("Device acceptance requires at least a 15-minute sustained session.");
-            if (acceptance.peakMemoryBytes <= 0 || string.IsNullOrWhiteSpace(acceptance.deviceModel))
-                throw new BuildFailedException("Device acceptance is missing memory or device identity evidence.");
-            if (!acceptance.suspendResumePassed || !acceptance.foldUnfoldPassed ||
+            var profiles = acceptance.profiles ?? Array.Empty<DevicePerformanceProfile>();
+            var profile60 = RequireProfile(profiles, 60);
+            var profile90 = RequireProfile(profiles, 90);
+            var profile120 = RequireProfile(profiles, 120);
+            ValidateProfile(profile60, "Ultra");
+            ValidateProfile(profile90, "High");
+            ValidateProfile(profile120, "High");
+
+            if (!acceptance.thermalPassed || !acceptance.suspendResumePassed || !acceptance.foldUnfoldPassed ||
                 !acceptance.saveResumePassed || !acceptance.completeOpeningLoopPassed || !acceptance.noCrashPassed)
-                throw new BuildFailedException("One or more physical functional acceptance checks failed.");
+                throw new BuildFailedException("One or more physical functional, thermal or lifecycle acceptance checks failed.");
             return acceptance;
+        }
+
+        private static DevicePerformanceProfile RequireProfile(
+            IEnumerable<DevicePerformanceProfile> profiles,
+            int target)
+        {
+            var matches = profiles.Where(profile => profile != null && profile.targetFrameRate == target).ToArray();
+            if (matches.Length != 1)
+                throw new BuildFailedException($"Physical acceptance requires exactly one {target} FPS profile; found {matches.Length}.");
+            return matches[0];
+        }
+
+        private static void ValidateProfile(DevicePerformanceProfile profile, string minimumQuality)
+        {
+            var minimumAverage = profile.targetFrameRate * 0.95f;
+            var maximumP95 = 1000f / profile.targetFrameRate * 1.20f;
+            var maximumP99 = 1000f / profile.targetFrameRate * 1.45f;
+            if (profile.averageFps < minimumAverage ||
+                profile.p95FrameTimeMs > maximumP95 ||
+                profile.p99FrameTimeMs > maximumP99)
+            {
+                throw new BuildFailedException(
+                    $"{profile.targetFrameRate} FPS profile failed: average {profile.averageFps:0.0}, " +
+                    $"P95 {profile.p95FrameTimeMs:0.0} ms, P99 {profile.p99FrameTimeMs:0.0} ms.");
+            }
+            if (profile.sessionSeconds < 900f)
+                throw new BuildFailedException($"{profile.targetFrameRate} FPS profile requires at least a 15-minute sustained session.");
+            if (profile.peakMemoryBytes <= 0 || profile.width <= 0 || profile.height <= 0)
+                throw new BuildFailedException($"{profile.targetFrameRate} FPS profile is missing memory or resolution evidence.");
+            if (!MeetsQuality(profile.qualityTier, minimumQuality))
+                throw new BuildFailedException(
+                    $"{profile.targetFrameRate} FPS profile ran at {profile.qualityTier}; require at least {minimumQuality} quality.");
+        }
+
+        private static bool MeetsQuality(string actual, string minimum)
+        {
+            static int Rank(string value) => value?.Trim().ToLowerInvariant() switch
+            {
+                "ultra" => 3,
+                "high" => 2,
+                "balanced" => 1,
+                _ => 0
+            };
+            return Rank(actual) >= Rank(minimum);
         }
 
         private static void CapturePremiumFrames()
@@ -237,14 +341,17 @@ namespace Havenline.Editor
 
         private static void WriteEvidence(
             string apkSha,
+            string sourceFingerprint,
             HavenlinePremiumBuildGate.ProductionArtManifest manifest,
             bool releaseCandidate,
             bool performancePassed,
             DeviceAcceptance acceptance)
         {
+            var profile120 = acceptance?.profiles?.FirstOrDefault(profile => profile != null && profile.targetFrameRate == 120);
             var evidence = new EvidenceSnapshot
             {
                 commit = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local",
+                sourceFingerprint = sourceFingerprint,
                 artVersion = manifest.artVersion,
                 approvedBy = manifest.approvedBy,
                 sceneAuthored = File.Exists(Reference.ScenePath),
@@ -266,17 +373,17 @@ namespace Havenline.Editor
                 audioContract = true,
                 performanceContract = performancePassed,
                 releaseCandidate = releaseCandidate,
-                targetFrameRate = acceptance?.targetFrameRate ?? 0,
-                averageFps = acceptance?.averageFps ?? 0f,
-                p95FrameTimeMs = acceptance?.p95FrameTimeMs ?? 0f,
-                p99FrameTimeMs = acceptance?.p99FrameTimeMs ?? 0f,
-                peakMemoryBytes = acceptance?.peakMemoryBytes ?? 0L,
+                targetFrameRate = profile120?.targetFrameRate ?? 0,
+                averageFps = profile120?.averageFps ?? 0f,
+                p95FrameTimeMs = profile120?.p95FrameTimeMs ?? 0f,
+                p99FrameTimeMs = profile120?.p99FrameTimeMs ?? 0f,
+                peakMemoryBytes = profile120?.peakMemoryBytes ?? 0L,
                 deviceModel = acceptance?.deviceModel ?? string.Empty,
-                qualityTier = performancePassed ? "physically validated" : "pending physical device test",
+                qualityTier = profile120?.qualityTier ?? "pending physical device test",
                 apkSha256 = apkSha,
                 validationFailures = performancePassed
                     ? Array.Empty<string>()
-                    : new[] { "Physical 60/90/120 Hz sustained performance and device acceptance are not yet attached." },
+                    : new[] { "Physical 60, 90 and 120 FPS sustained performance and lifecycle acceptance are not yet attached." },
                 proofFrames = new[] { WideProof, CloseProof }
             };
 
@@ -284,6 +391,45 @@ namespace Havenline.Editor
             File.WriteAllText(
                 Path.Combine(ReviewDirectory, EvidenceFile),
                 JsonUtility.ToJson(evidence, true) + "\n");
+        }
+
+        private static string ComputeSourceFingerprint()
+        {
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var files = new List<string>();
+            foreach (var root in FingerprintRoots)
+            {
+                if (!Directory.Exists(root))
+                    continue;
+                files.AddRange(Directory.GetFiles(root, "*", SearchOption.AllDirectories));
+            }
+
+            foreach (var path in files
+                         .Select(path => path.Replace('\\', '/'))
+                         .Where(IncludeInFingerprint)
+                         .OrderBy(path => path, StringComparer.Ordinal))
+            {
+                hash.AppendData(Encoding.UTF8.GetBytes(path));
+                hash.AppendData(new byte[] { 0 });
+                using var stream = File.OpenRead(path);
+                var buffer = new byte[1024 * 128];
+                int read;
+                while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                    hash.AppendData(buffer, 0, read);
+                hash.AppendData(new byte[] { 0 });
+            }
+
+            return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+        }
+
+        private static bool IncludeInFingerprint(string path)
+        {
+            if (path.Contains("/Generated/", StringComparison.OrdinalIgnoreCase) ||
+                path.Contains("/Tests/", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith("/Scenes/FrozenOutpost.unity", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".DS_Store", StringComparison.OrdinalIgnoreCase))
+                return false;
+            return true;
         }
 
         private static string Sha256(string path)
