@@ -32,6 +32,7 @@ namespace Havenline.Tests
             Assert.That(new FileInfo(close).Length, Is.GreaterThan(100_000));
 
             ValidateTopHudCards();
+            ValidateConstructionStageReadability();
             ValidatePremiumProof(wide, "wide phone proof");
             ValidatePremiumProof(close, "close phone proof");
             ValidatePremiumProof(foldable, "foldable proof");
@@ -63,6 +64,67 @@ namespace Havenline.Tests
             Assert.That(context, Is.Not.Null);
             Assert.That(AssetDatabase.GetAssetPath(context.sprite), Does.Contain("HAVENLINE_UI_Panel.asset"),
                 "Context UI should retain the lighter standard overlay instead of using the heavy top card.");
+        }
+
+        private static void ValidateConstructionStageReadability()
+        {
+            var sites = SceneManager.GetActiveScene()
+                .GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<HavenlineConstructionSite>(true))
+                .OrderBy(site => site.BuildId, StringComparer.Ordinal)
+                .ToArray();
+            Assert.That(sites.Length, Is.EqualTo(2),
+                "The premium frozen outpost requires north and south barricade construction sites.");
+
+            var stageNames = new[] { "ConstructionStageA", "ConstructionStageB", "ConstructionStageC" };
+            var minimumHeights = new[] { 0.69f, 0.99f, 1.19f };
+            var minimumWidths = new[] { 1.75f, 2.50f, 3.05f };
+            foreach (var site in sites)
+            {
+                var previousHeight = 0f;
+                var previousWidth = 0f;
+                for (var index = 0; index < stageNames.Length; index++)
+                {
+                    var stage = site.GetComponentsInChildren<Transform>(true)
+                        .Select(transform => transform.gameObject)
+                        .SingleOrDefault(candidate => candidate.name == stageNames[index]);
+                    Assert.That(stage, Is.Not.Null, $"{site.BuildId} is missing {stageNames[index]}.");
+
+                    var bounds = RendererBounds(stage);
+                    var width = Mathf.Max(bounds.size.x, bounds.size.z);
+                    Assert.That(bounds.size.y, Is.GreaterThanOrEqualTo(minimumHeights[index]),
+                        $"{site.BuildId} {stageNames[index]} is too short and reads like punctuation from the gameplay camera.");
+                    Assert.That(width, Is.GreaterThanOrEqualTo(minimumWidths[index]),
+                        $"{site.BuildId} {stageNames[index]} is too narrow to read as a barricade under construction.");
+                    Assert.That(bounds.size.y, Is.GreaterThan(previousHeight + 0.12f),
+                        $"{site.BuildId} stage heights do not communicate visible construction growth.");
+                    Assert.That(width, Is.GreaterThan(previousWidth + 0.35f),
+                        $"{site.BuildId} stage widths do not communicate visible construction growth.");
+                    previousHeight = bounds.size.y;
+                    previousWidth = width;
+                }
+            }
+        }
+
+        private static Bounds RendererBounds(GameObject root)
+        {
+            var wasActive = root.activeSelf;
+            root.SetActive(true);
+            try
+            {
+                var renderers = root.GetComponentsInChildren<Renderer>(true);
+                Assert.That(renderers, Is.Not.Empty, root.name + " has no renderable construction geometry.");
+                var bounds = renderers[0].bounds;
+                for (var index = 1; index < renderers.Length; index++)
+                    bounds.Encapsulate(renderers[index].bounds);
+                Assert.That(bounds.size.sqrMagnitude, Is.GreaterThan(0.000001f),
+                    root.name + " has collapsed renderer bounds.");
+                return bounds;
+            }
+            finally
+            {
+                root.SetActive(wasActive);
+            }
         }
 
         private static void ValidatePremiumProof(string path, string label)
