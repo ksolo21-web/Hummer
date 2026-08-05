@@ -63,9 +63,10 @@ namespace Havenline
                 director.Furnace.LevelChanged -= HandleFurnaceLevel;
                 director.Furnace.LevelChanged += HandleFurnaceLevel;
             }
-            SetVisible(contextualText, false);
-            SetVisible(transientStatusText, false);
-            SetVisible(threatText, false);
+
+            SetPanelVisible(contextualText, false);
+            SetPanelVisible(transientStatusText, false);
+            SetPanelVisible(threatText, false);
             if (contextualProgress != null)
                 contextualProgress.gameObject.SetActive(false);
         }
@@ -96,26 +97,31 @@ namespace Havenline
             if (objectiveText != null)
                 objectiveText.text = director.Objective;
 
+            var showContext = lastAction != AutomaticActionKind.None;
             if (contextualText != null)
             {
                 contextualText.text = lastLabel;
-                contextualText.gameObject.SetActive(lastAction != AutomaticActionKind.None);
+                SetPanelVisible(contextualText, showContext);
             }
             if (contextualProgress != null)
             {
-                var showProgress = lastAction != AutomaticActionKind.None && lastProgress >= 0f;
+                var showProgress = showContext && lastProgress >= 0f;
                 contextualProgress.gameObject.SetActive(showProgress);
                 if (showProgress)
                     contextualProgress.fillAmount = Mathf.Clamp01(lastProgress);
             }
 
-            if (transientStatusText != null && transientStatusText.gameObject.activeSelf && Time.unscaledTime >= statusVisibleUntil)
-                transientStatusText.gameObject.SetActive(false);
+            if (transientStatusText != null &&
+                IsPanelVisible(transientStatusText) &&
+                Time.unscaledTime >= statusVisibleUntil)
+            {
+                SetPanelVisible(transientStatusText, false);
+            }
 
             if (threatText != null)
             {
                 var threatSoon = director.Furnace.Level >= 2 && director.WaveClock <= 8f;
-                threatText.gameObject.SetActive(threatSoon);
+                SetPanelVisible(threatText, threatSoon);
                 if (threatSoon)
                     threatText.text = $"WOLVES • {Mathf.CeilToInt(director.WaveClock)}";
             }
@@ -133,14 +139,30 @@ namespace Havenline
             if (transientStatusText == null)
                 return;
             transientStatusText.text = $"FURNACE LEVEL {level} • WARMTH EXPANDED";
-            transientStatusText.gameObject.SetActive(true);
+            SetPanelVisible(transientStatusText, true);
             statusVisibleUntil = Time.unscaledTime + 2.4f;
         }
 
-        private static void SetVisible(Component component, bool visible)
+        private static void SetPanelVisible(Component component, bool visible)
         {
-            if (component != null)
-                component.gameObject.SetActive(visible);
+            var panel = PanelFor(component);
+            if (panel != null)
+                panel.SetActive(visible);
+        }
+
+        private static bool IsPanelVisible(Component component)
+        {
+            var panel = PanelFor(component);
+            return panel != null && panel.activeSelf;
+        }
+
+        private static GameObject PanelFor(Component component)
+        {
+            if (component == null)
+                return null;
+            return component.transform.parent != null
+                ? component.transform.parent.gameObject
+                : component.gameObject;
         }
     }
 }
