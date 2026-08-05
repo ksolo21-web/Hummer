@@ -13,6 +13,7 @@ namespace Havenline
         [SerializeField] private Transform warmthRing;
         [SerializeField] private Light fireLight;
         [SerializeField] private ParticleSystem fireParticles;
+        [SerializeField] private HavenlineFlamePulse flameVisual;
         [SerializeField] private ParticleSystem depositEffect;
         [SerializeField] private GameObject[] levelVisuals = Array.Empty<GameObject>();
         [SerializeField] private Renderer[] heatedSnowRenderers = Array.Empty<Renderer>();
@@ -72,7 +73,8 @@ namespace Havenline
             ParticleSystem particles,
             ParticleSystem deliveryEffect,
             GameObject[] authoredLevelVisuals,
-            Renderer[] snowRenderers)
+            Renderer[] snowRenderers,
+            HavenlineFlamePulse authoredFlameVisual = null)
         {
             warmthRing = ring;
             fireLight = light;
@@ -80,6 +82,7 @@ namespace Havenline
             depositEffect = deliveryEffect;
             levelVisuals = authoredLevelVisuals ?? Array.Empty<GameObject>();
             heatedSnowRenderers = snowRenderers ?? Array.Empty<Renderer>();
+            flameVisual = authoredFlameVisual;
             if (Durability <= 0f)
                 Durability = maxDurability;
             ApplyVisuals();
@@ -203,16 +206,23 @@ namespace Havenline
 
             if (fireLight != null)
             {
-                fireLight.range = IsOperational ? 7f + Level * 2.4f : 2.5f;
-                fireLight.intensity = IsOperational ? 2.9f + Level * 1.35f : 0.18f;
+                fireLight.range = IsOperational ? 6.2f + Level * 1.65f : 2.5f;
+                fireLight.intensity = IsOperational ? 1.65f + Level * 0.72f : 0.18f;
             }
 
             if (fireParticles != null)
             {
                 var main = fireParticles.main;
-                main.startSizeMultiplier = IsOperational ? 0.72f + Level * 0.18f : 0.12f;
+                main.startSizeMultiplier = IsOperational ? 0.16f + Level * 0.035f : 0.04f;
                 var emission = fireParticles.emission;
-                emission.rateOverTimeMultiplier = IsOperational ? 18f + Level * 7f : 1f;
+                emission.rateOverTimeMultiplier = IsOperational ? 4f + Level * 3f : 0.5f;
+            }
+
+            if (flameVisual != null)
+            {
+                flameVisual.gameObject.SetActive(IsOperational);
+                if (IsOperational)
+                    flameVisual.Configure(0.88f + Level * 0.08f);
             }
 
             for (var index = 0; index < levelVisuals.Length; index++)

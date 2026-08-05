@@ -17,6 +17,13 @@ namespace Havenline.Editor
         internal const string FurnaceChimneyPath = Root + "/HAVENLINE_FurnaceChimney.asset";
         internal const string ShelterShellPath = Root + "/HAVENLINE_ShelterShell.asset";
         internal const string ShelterSnowCapPath = Root + "/HAVENLINE_ShelterSnowCap.asset";
+        internal const string FlameMeshPath = Root + "/HAVENLINE_FurnaceFlame.asset";
+        internal const string FlameOuterMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_FlameOuter.mat";
+        internal const string FlameInnerMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_FlameInner.mat";
+        internal const string ThawedSnowMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_ThawedSnow.mat";
         internal const string FurnaceDarkMaterialPath =
             "Assets/Havenline/Art/Production/Materials/HAVENLINE_FurnaceDark.mat";
         internal const string FurnaceSteelMaterialPath =
@@ -59,6 +66,20 @@ namespace Havenline.Editor
                     "HAVENLINE_ShelterShell", 3.9f, 2.65f, 3.3f));
                 CreateMeshIfMissing(ShelterSnowCapPath, CreateTentRoofCapMesh(
                     "HAVENLINE_ShelterSnowCap", 3.9f, 2.65f, 3.3f, 0.52f));
+                CreateMeshIfMissing(FlameMeshPath, CreateFlameMesh("HAVENLINE_FurnaceFlame", 10));
+                CreateEmissiveMaterial(
+                    FlameOuterMaterialPath,
+                    new Color(1f, 0.22f, 0.025f, 1f),
+                    new Color(4.2f, 0.48f, 0.035f, 1f));
+                CreateEmissiveMaterial(
+                    FlameInnerMaterialPath,
+                    new Color(1f, 0.72f, 0.08f, 1f),
+                    new Color(4.6f, 2.2f, 0.14f, 1f));
+                CreateMaterialIfMissing(
+                    ThawedSnowMaterialPath,
+                    new Color(0.72f, 0.79f, 0.76f, 1f),
+                    0.22f,
+                    string.Empty);
                 CreateMaterialIfMissing(
                     FurnaceDarkMaterialPath,
                     new Color(0.042f, 0.062f, 0.078f, 1f),
@@ -309,6 +330,61 @@ namespace Havenline.Editor
             return BuildMesh(name, vertices, triangles, uv);
         }
 
+        private static Mesh CreateFlameMesh(string name, int sides)
+        {
+            var ringHeights = new[] { 0f, 0.30f, 0.68f, 1.02f, 1.28f };
+            var ringRadii = new[] { 0.34f, 0.31f, 0.22f, 0.13f, 0.025f };
+            var offsets = new[]
+            {
+                Vector2.zero,
+                new Vector2(0.035f, -0.015f),
+                new Vector2(-0.045f, 0.025f),
+                new Vector2(0.055f, 0.01f),
+                new Vector2(-0.02f, 0f)
+            };
+            var vertices = new List<Vector3>();
+            var uv = new List<Vector2>();
+            for (var ring = 0; ring < ringHeights.Length; ring++)
+            {
+                for (var side = 0; side < sides; side++)
+                {
+                    var angle = side * Mathf.PI * 2f / sides + ring * 0.19f;
+                    vertices.Add(new Vector3(
+                        offsets[ring].x + Mathf.Cos(angle) * ringRadii[ring],
+                        ringHeights[ring],
+                        offsets[ring].y + Mathf.Sin(angle) * ringRadii[ring]));
+                    uv.Add(new Vector2(side / (float)sides, ring / (float)(ringHeights.Length - 1)));
+                }
+            }
+            var triangles = new List<int>();
+            for (var ring = 0; ring < ringHeights.Length - 1; ring++)
+            {
+                var lower = ring * sides;
+                var upper = (ring + 1) * sides;
+                for (var side = 0; side < sides; side++)
+                {
+                    var next = (side + 1) % sides;
+                    triangles.Add(lower + side);
+                    triangles.Add(upper + next);
+                    triangles.Add(upper + side);
+                    triangles.Add(lower + side);
+                    triangles.Add(lower + next);
+                    triangles.Add(upper + next);
+                }
+            }
+            var baseCenter = vertices.Count;
+            vertices.Add(Vector3.zero);
+            uv.Add(new Vector2(0.5f, 0.5f));
+            for (var side = 0; side < sides; side++)
+            {
+                var next = (side + 1) % sides;
+                triangles.Add(baseCenter);
+                triangles.Add(next);
+                triangles.Add(side);
+            }
+            return BuildMesh(name, vertices, triangles, uv);
+        }
+
         private static Mesh BuildMesh(
             string name,
             IReadOnlyList<Vector3> vertices,
@@ -331,6 +407,27 @@ namespace Havenline.Editor
             if (AssetDatabase.LoadAssetAtPath<Mesh>(path) != null)
                 AssetDatabase.DeleteAsset(path);
             AssetDatabase.CreateAsset(mesh, path);
+        }
+
+        private static void CreateEmissiveMaterial(string path, Color color, Color emission)
+        {
+            if (AssetDatabase.LoadAssetAtPath<Material>(path) != null)
+                AssetDatabase.DeleteAsset(path);
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            if (shader == null)
+                throw new InvalidOperationException("HAVENLINE furnace core could not find a lit shader.");
+            var material = new Material(shader)
+            {
+                name = System.IO.Path.GetFileNameWithoutExtension(path),
+                enableInstancing = true
+            };
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+            if (material.HasProperty("_Color")) material.SetColor("_Color", color);
+            if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", 0.16f);
+            if (material.HasProperty("_EmissionColor")) material.SetColor("_EmissionColor", emission);
+            material.EnableKeyword("_EMISSION");
+            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            AssetDatabase.CreateAsset(material, path);
         }
 
         private static void CreateMaterialIfMissing(

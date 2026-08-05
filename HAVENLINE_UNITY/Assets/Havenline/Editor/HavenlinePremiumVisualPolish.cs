@@ -149,9 +149,9 @@ namespace Havenline.Editor
                 parent,
                 "FurnaceWarmSnow",
                 HavenlinePremiumVisualAssets.WarmPatchPath,
-                HavenlinePremiumVisualAssets.WarmSnowMaterialPath,
+                HavenlinePremiumVisualAssets.ThawedSnowMaterialPath,
                 new Vector3(0f, 0.092f, 0.25f),
-                new Vector3(3.25f, 1f, 2.55f),
+                new Vector3(2.45f, 1f, 1.68f),
                 Quaternion.identity);
         }
 
@@ -350,9 +350,9 @@ namespace Havenline.Editor
             var furnace = objects.FirstOrDefault(item => item.name == "FurnaceLight")?.GetComponent<Light>();
             if (furnace != null)
             {
-                furnace.intensity = 5.4f;
-                furnace.range = 14f;
-                furnace.color = new Color(1f, 0.30f, 0.055f, 1f);
+                furnace.intensity = 2.35f;
+                furnace.range = 9f;
+                furnace.color = new Color(1f, 0.42f, 0.12f, 1f);
             }
             var camp = objects.FirstOrDefault(item => item.name == "CampWarmth")?.GetComponent<Light>();
             if (camp != null)
@@ -363,7 +363,7 @@ namespace Havenline.Editor
             }
 
             CreatePointLight(parent, "FurnaceBounceLight", new Vector3(0f, 1.2f, 0.4f),
-                new Color(1f, 0.25f, 0.04f), 4.2f, 13f, true);
+                new Color(1f, 0.36f, 0.10f), 1.65f, 8.5f, true);
             CreatePointLight(parent, "PlayerReadabilityLight", new Vector3(0f, 3.4f, 6.0f),
                 new Color(0.30f, 0.68f, 1f), 1.7f, 10f, false);
             CreatePointLight(parent, "ShelterFillLight", new Vector3(0f, 3.6f, -3.1f),
@@ -418,10 +418,13 @@ namespace Havenline.Editor
         {
             foreach (var renderer in objects.SelectMany(item => item.GetComponents<Renderer>()).Distinct())
             {
-                renderer.shadowCastingMode = ShadowCastingMode.On;
-                renderer.receiveShadows = true;
+                var isFlame = renderer.GetComponentInParent<HavenlineFlamePulse>() != null;
+                renderer.shadowCastingMode = isFlame ? ShadowCastingMode.Off : ShadowCastingMode.On;
+                renderer.receiveShadows = !isFlame;
                 renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
-                renderer.reflectionProbeUsage = ReflectionProbeUsage.BlendProbes;
+                renderer.reflectionProbeUsage = isFlame
+                    ? ReflectionProbeUsage.Off
+                    : ReflectionProbeUsage.BlendProbes;
             }
         }
 

@@ -323,6 +323,36 @@ namespace Havenline.Editor
                     failures.Add($"Superseded imported tent visual is still active: {oldTentName}.");
             }
 
+            var flameVisuals = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<HavenlineFlamePulse>(true))
+                .ToArray();
+            if (flameVisuals.Length != 1)
+            {
+                failures.Add($"Shipping furnace requires exactly one authored mesh flame; found {flameVisuals.Length}.");
+            }
+            else
+            {
+                var flameRenderers = flameVisuals[0].GetComponentsInChildren<MeshRenderer>(true);
+                if (flameRenderers.Length != 2)
+                    failures.Add($"Authored furnace flame requires outer and inner mesh layers; found {flameRenderers.Length}.");
+                var flameMaterialPaths = flameRenderers
+                    .Select(renderer => AssetDatabase.GetAssetPath(renderer.sharedMaterial))
+                    .ToArray();
+                if (!flameMaterialPaths.Contains(HavenlinePremiumVisualAssets.FlameOuterMaterialPath) ||
+                    !flameMaterialPaths.Contains(HavenlinePremiumVisualAssets.FlameInnerMaterialPath))
+                {
+                    failures.Add("Authored furnace flame is not using both approved emissive HAVENLINE materials.");
+                }
+            }
+
+            var thawedSnow = objects.SingleOrDefault(item => item.name == "FurnaceWarmSnow")
+                ?.GetComponent<MeshRenderer>();
+            if (thawedSnow == null ||
+                AssetDatabase.GetAssetPath(thawedSnow.sharedMaterial) != HavenlinePremiumVisualAssets.ThawedSnowMaterialPath)
+            {
+                failures.Add("Furnace thaw footprint must use the approved pale thawed-snow material.");
+            }
+
             foreach (var effectName in new[] { "FurnaceFireVFX", "FurnaceSparksVFX", "FurnaceSmokeVFX" })
             {
                 var effectObject = objects.SingleOrDefault(item => item.name == effectName);
@@ -343,7 +373,7 @@ namespace Havenline.Editor
             {
                 var effectiveFireSize = EffectiveCurveMaximum(fireEffect.main.startSize) *
                                         MaximumScale(fireEffect.transform.lossyScale);
-                if (effectiveFireSize > 0.45f)
+                if (effectiveFireSize > 0.08f)
                 {
                     failures.Add(
                         $"Furnace fire particles are oversized and obscure the machine silhouette " +
