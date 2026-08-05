@@ -8,13 +8,12 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioBitmapFont
     {
-        private const int AtlasSize = 512;
+        private const int AtlasSize = 1024;
         private const int Columns = 16;
-        private const int CellWidth = 30;
-        private const int CellHeight = 34;
-        private const int PixelScale = 4;
-        private const int GlyphWidth = 20;
-        private const int GlyphHeight = 28;
+        private const int CellWidth = 44;
+        private const int CellHeight = 52;
+        private const int GlyphWidth = 34;
+        private const int GlyphHeight = 42;
         private const string AtlasPath =
             "Assets/Havenline/Art/Production/UI/HAVENLINE_UI_FontAtlas.png";
         private const string MaterialPath =
@@ -65,13 +64,13 @@ namespace Havenline.Editor
                     uvTopLeft = new Vector2(u0, v1),
                     uvTopRight = new Vector2(u1, v1),
                     minX = 0,
-                    maxX = character == ' ' ? 8 : GlyphWidth,
-                    minY = -3,
-                    maxY = GlyphHeight - 3,
-                    advance = character == ' ' ? 12 : 22,
-                    glyphWidth = character == ' ' ? 8 : GlyphWidth,
+                    maxX = character == ' ' ? 12 : GlyphWidth,
+                    minY = -4,
+                    maxY = GlyphHeight - 4,
+                    advance = character == ' ' ? 17 : 36,
+                    glyphWidth = character == ' ' ? 12 : GlyphWidth,
                     glyphHeight = GlyphHeight,
-                    size = 24,
+                    size = 32,
                     style = FontStyle.Normal
                 });
             }
@@ -110,7 +109,7 @@ namespace Havenline.Editor
 
             var font = new Font
             {
-                name = "HAVENLINE_UI_Geometric_Static",
+                name = "HAVENLINE_UI_Rounded_Geometric",
                 material = material,
                 characterInfo = characters.ToArray()
             };
@@ -129,18 +128,62 @@ namespace Havenline.Editor
 
         private static void DrawGlyph(Texture2D texture, int originX, int originY, IReadOnlyList<string> pattern)
         {
-            var color = new Color32(255, 255, 255, 255);
+            const float radius = 2.35f;
+            var points = new Vector2[7, 5];
+            for (var row = 0; row < 7; row++)
+            {
+                for (var column = 0; column < 5; column++)
+                {
+                    points[row, column] = new Vector2(
+                        originX + 5f + column * 6.0f,
+                        originY + 5f + (6 - row) * 5.15f);
+                }
+            }
+
             for (var row = 0; row < 7; row++)
             {
                 for (var column = 0; column < 5; column++)
                 {
                     if (pattern[row][column] != '1')
                         continue;
-                    var baseX = originX + column * PixelScale;
-                    var baseY = originY + (6 - row) * PixelScale;
-                    for (var y = 0; y < PixelScale; y++)
-                        for (var x = 0; x < PixelScale; x++)
-                            texture.SetPixel(baseX + x, baseY + y, color);
+                    var point = points[row, column];
+                    DrawDisc(texture, point, radius);
+                    if (column < 4 && pattern[row][column + 1] == '1')
+                        DrawCapsule(texture, point, points[row, column + 1], radius);
+                    if (row < 6 && pattern[row + 1][column] == '1')
+                        DrawCapsule(texture, point, points[row + 1, column], radius);
+                }
+            }
+        }
+
+        private static void DrawDisc(Texture2D texture, Vector2 center, float radius) =>
+            DrawCapsule(texture, center, center, radius);
+
+        private static void DrawCapsule(Texture2D texture, Vector2 start, Vector2 end, float radius)
+        {
+            var minX = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(start.x, end.x) - radius - 1.5f));
+            var maxX = Mathf.Min(texture.width - 1, Mathf.CeilToInt(Mathf.Max(start.x, end.x) + radius + 1.5f));
+            var minY = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(start.y, end.y) - radius - 1.5f));
+            var maxY = Mathf.Min(texture.height - 1, Mathf.CeilToInt(Mathf.Max(start.y, end.y) + radius + 1.5f));
+            var segment = end - start;
+            var lengthSquared = segment.sqrMagnitude;
+
+            for (var y = minY; y <= maxY; y++)
+            {
+                for (var x = minX; x <= maxX; x++)
+                {
+                    var sample = new Vector2(x + 0.5f, y + 0.5f);
+                    var t = lengthSquared > 0.0001f
+                        ? Mathf.Clamp01(Vector2.Dot(sample - start, segment) / lengthSquared)
+                        : 0f;
+                    var nearest = start + segment * t;
+                    var distance = Vector2.Distance(sample, nearest);
+                    var alpha = 1f - Mathf.SmoothStep(radius - 0.85f, radius + 0.85f, distance);
+                    if (alpha <= 0.001f)
+                        continue;
+                    var previous = texture.GetPixel(x, y);
+                    if (alpha > previous.a)
+                        texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
                 }
             }
         }
