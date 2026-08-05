@@ -63,6 +63,20 @@ jobs:
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          BUILD_TOOLS="$SDK_ROOT/build-tools/36.0.0"
+          test -s "$BUILD_TOOLS/lib/apksigner.jar"
+          if [[ ! -x "$BUILD_TOOLS/apksigner" ]]; then
+            cat > "$BUILD_TOOLS/apksigner" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          exec java -jar "$HERE/lib/apksigner.jar" "$@"
+          SH
+            chmod +x "$BUILD_TOOLS/apksigner"
+          fi
+          test -x "$BUILD_TOOLS/apksigner"
+          test -x "$BUILD_TOOLS/zipalign"
+          test -x "$BUILD_TOOLS/aapt"
 
       - name: Create disposable CI packaging signer
         id: signer
@@ -143,6 +157,8 @@ jobs:
           PY
 
       - name: Build and verify cumulative 0.15.16
+        id: build
+        continue-on-error: true
         shell: bash
         env:
           MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
@@ -152,21 +168,41 @@ jobs:
           MSC_BACKEND_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
           MSC_SMART_ONLINE_VALIDATED: ${{ steps.endpoint.outputs.validated }}
         run: |
-          set -euo pipefail
-          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
-          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
-          bash .msc-build/build-0.15.16-truth-gated-release.sh
-          cp endpoint-classification.json release-0.15.16/metadata/ENDPOINT-CLASSIFICATION.json
-          if [[ -s endpoint-health.txt ]]; then
-            cp endpoint-health.txt release-0.15.16/metadata/ENDPOINT-RAW-RESPONSE.txt
-          fi
-          printf '%s\n' \
-            "source_commit=${GITHUB_SHA}" \
-            "workflow_run=${GITHUB_RUN_ID}" \
-            "classification=${{ steps.endpoint.outputs.reason }}" \
-            >> release-0.15.16/metadata/BUILD-CONNECTION-MODE.txt
+          set +e
+          set -o pipefail
+          {
+            set -euxo pipefail
+            bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+            bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+            bash .msc-build/build-0.15.16-truth-gated-release.sh
+            cp endpoint-classification.json release-0.15.16/metadata/ENDPOINT-CLASSIFICATION.json
+            if [[ -s endpoint-health.txt ]]; then
+              cp endpoint-health.txt release-0.15.16/metadata/ENDPOINT-RAW-RESPONSE.txt
+            fi
+            printf '%s\n' \
+              "source_commit=${GITHUB_SHA}" \
+              "workflow_run=${GITHUB_RUN_ID}" \
+              "classification=${{ steps.endpoint.outputs.reason }}" \
+              >> release-0.15.16/metadata/BUILD-CONNECTION-MODE.txt
+          } 2>&1 | tee build-0.15.16.log
+          status=${PIPESTATUS[0]}
+          printf 'build_exit_status=%s\n' "$status" | tee -a build-0.15.16.log
+          exit "$status"
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.16-build-diagnostics
+          path: |
+            build-0.15.16.log
+            endpoint-classification.json
+            endpoint-health.txt
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Re-verify downloadable artifact checksum paths
+        if: steps.build.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
@@ -174,9 +210,17 @@ jobs:
           sha256sum -c metadata/SHA256SUMS-CI.txt
 
       - name: Upload truth-gated APKs and verification evidence
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: msc-0.15.16-truth-gated-ai-activities
           path: release-0.15.16
           retention-days: 14
           if-no-files-found: error
+
+      - name: Fail after preserving diagnostics
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        run: |
+          echo 'The 0.15.16 build failed; diagnostics were uploaded before failing the job.' >&2
+          exit 1
