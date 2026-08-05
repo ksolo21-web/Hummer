@@ -11,11 +11,12 @@ using UnityEngine.Audio;
 namespace Havenline.Editor
 {
     /// <summary>
-    /// Prevents prototype, placeholder, or incomplete content from being exported as a
-    /// HAVENLINE premium release candidate.
+    /// Prevents prototype, placeholder, incomplete or visually mixed content from being
+    /// exported as a HAVENLINE premium release candidate.
     /// </summary>
     public static class HavenlinePremiumBuildGate
     {
+        public const int CurrentSchemaVersion = 2;
         public const string ProductionRoot = "Assets/Havenline/Art/Production";
         public const string ManifestPath = ProductionRoot + "/HAVENLINE_PRODUCTION_ART.json";
 
@@ -43,25 +44,51 @@ namespace Havenline.Editor
             public string survivorModel;
             public string wolfModel;
             public string furnaceModel;
+            public string furnaceLevel2Model;
+            public string furnaceLevel3Model;
+            public string furnaceLevel4Model;
             public string campfireModel;
             public string tentModel;
+            public string storageModel;
+            public string barricadeModel;
+            public string forestGateModel;
             public string backpackModel;
             public string logModel;
+            public string stoneResourceModel;
+            public string metalResourceModel;
+            public string fuelResourceModel;
             public string pineModelA;
             public string pineModelB;
             public string rockModelA;
             public string rockModelB;
+            public string environmentPrefab;
+
+            public string snowMaterial;
+            public string iceMaterial;
+            public string warmthMaterial;
             public string hudAtlas;
             public string uiFont;
+            public string hudPrefab;
+            public string pauseMenuPrefab;
+
             public string playerController;
             public string survivorController;
             public string wolfController;
+
+            public string fireVfxPrefab;
+            public string snowfallVfxPrefab;
+            public string gatherVfxPrefab;
+            public string buildVfxPrefab;
+            public string hitVfxPrefab;
+
             public string audioMixer;
+            public string audioRigPrefab;
 
             public int minimumEnvironmentModels;
             public int minimumTextureFiles;
             public int minimumAnimationClips;
             public int minimumAudioClips;
+            public int minimumMaterials;
         }
 
         public sealed class ValidationResult
@@ -87,7 +114,6 @@ namespace Havenline.Editor
                     "HAVENLINE premium production gate failed:\n - " +
                     string.Join("\n - ", result.Failures));
             }
-
             Debug.Log($"HAVENLINE premium production content passed. Art version: {result.Manifest.artVersion}");
         }
 
@@ -96,12 +122,10 @@ namespace Havenline.Editor
             var failures = new List<string>();
             var manifest = LoadManifest(failures);
             if (manifest == null)
-            {
                 return new ValidationResult(null, failures);
-            }
 
-            if (manifest.schemaVersion != 1)
-                failures.Add($"Unsupported production-art manifest schema: {manifest.schemaVersion}.");
+            if (manifest.schemaVersion != CurrentSchemaVersion)
+                failures.Add($"Unsupported production-art manifest schema: {manifest.schemaVersion}; require {CurrentSchemaVersion}.");
             if (!manifest.approved)
                 failures.Add("Production art is not approved. Set approved=true only after visual review of the complete shipping set.");
             if (string.IsNullOrWhiteSpace(manifest.approvedBy))
@@ -109,36 +133,24 @@ namespace Havenline.Editor
             if (string.IsNullOrWhiteSpace(manifest.artVersion) || manifest.artVersion.Contains("blocked", StringComparison.OrdinalIgnoreCase))
                 failures.Add("Production artVersion is missing or still marked blocked.");
 
-            var requiredAssets = new Dictionary<string, string>
-            {
-                ["player model"] = manifest.playerModel,
-                ["survivor model"] = manifest.survivorModel,
-                ["wolf model"] = manifest.wolfModel,
-                ["furnace model"] = manifest.furnaceModel,
-                ["campfire model"] = manifest.campfireModel,
-                ["tent model"] = manifest.tentModel,
-                ["backpack model"] = manifest.backpackModel,
-                ["log model"] = manifest.logModel,
-                ["pine model A"] = manifest.pineModelA,
-                ["pine model B"] = manifest.pineModelB,
-                ["rock model A"] = manifest.rockModelA,
-                ["rock model B"] = manifest.rockModelB,
-                ["HUD atlas"] = manifest.hudAtlas,
-                ["UI font"] = manifest.uiFont,
-                ["player animator controller"] = manifest.playerController,
-                ["survivor animator controller"] = manifest.survivorController,
-                ["wolf animator controller"] = manifest.wolfController,
-                ["audio mixer"] = manifest.audioMixer
-            };
-
+            var requiredAssets = RequiredAssets(manifest);
             foreach (var asset in requiredAssets)
-            {
                 ValidateRequiredAsset(asset.Key, asset.Value, failures);
-            }
 
             ValidateType<GameObject>("player model", manifest.playerModel, failures);
             ValidateType<GameObject>("survivor model", manifest.survivorModel, failures);
             ValidateType<GameObject>("wolf model", manifest.wolfModel, failures);
+            ValidateType<GameObject>("furnace level 1", manifest.furnaceModel, failures);
+            ValidateType<GameObject>("furnace level 2", manifest.furnaceLevel2Model, failures);
+            ValidateType<GameObject>("furnace level 3", manifest.furnaceLevel3Model, failures);
+            ValidateType<GameObject>("furnace level 4", manifest.furnaceLevel4Model, failures);
+            ValidateType<GameObject>("environment prefab", manifest.environmentPrefab, failures);
+            ValidateType<GameObject>("HUD prefab", manifest.hudPrefab, failures);
+            ValidateType<GameObject>("pause/settings prefab", manifest.pauseMenuPrefab, failures);
+            ValidateType<GameObject>("audio rig prefab", manifest.audioRigPrefab, failures);
+            ValidateType<Material>("snow material", manifest.snowMaterial, failures);
+            ValidateType<Material>("ice material", manifest.iceMaterial, failures);
+            ValidateType<Material>("warmth material", manifest.warmthMaterial, failures);
             ValidateType<Texture2D>("HUD atlas", manifest.hudAtlas, failures);
             ValidateType<Font>("UI font", manifest.uiFont, failures);
             ValidateType<AnimatorController>("player animator controller", manifest.playerController, failures);
@@ -167,14 +179,17 @@ namespace Havenline.Editor
             var textureCount = files.Count(path => HasExtension(path, TextureExtensions));
             var audioCount = files.Count(path => HasExtension(path, AudioExtensions));
             var animationClipCount = CountAnimationClips(files);
+            var materialCount = AssetDatabase.FindAssets("t:Material", new[] { ProductionRoot }).Length;
 
             RequireMinimum("production model files", modelCount, manifest.minimumEnvironmentModels, failures);
             RequireMinimum("production texture files", textureCount, manifest.minimumTextureFiles, failures);
             RequireMinimum("production animation clips", animationClipCount, manifest.minimumAnimationClips, failures);
             RequireMinimum("production audio clips", audioCount, manifest.minimumAudioClips, failures);
+            RequireMinimum("authored materials", materialCount, manifest.minimumMaterials, failures);
 
-            if (AssetDatabase.FindAssets("t:Material", new[] { ProductionRoot }).Length < 12)
-                failures.Add("Production art requires at least 12 authored materials with a consistent HAVENLINE visual language.");
+            ValidateAnimatorController(manifest.playerController, "player", failures);
+            ValidateAnimatorController(manifest.survivorController, "survivor", failures);
+            ValidateAnimatorController(manifest.wolfController, "wolf", failures);
 
             return new ValidationResult(manifest, failures.Distinct().OrderBy(message => message).ToArray());
         }
@@ -188,9 +203,51 @@ namespace Havenline.Editor
                     "HAVENLINE premium release candidate blocked. The shipping content gate found:\n - " +
                     string.Join("\n - ", result.Failures));
             }
-
             return result.Manifest;
         }
+
+        private static Dictionary<string, string> RequiredAssets(ProductionArtManifest manifest) => new()
+        {
+            ["player model"] = manifest.playerModel,
+            ["survivor model"] = manifest.survivorModel,
+            ["wolf model"] = manifest.wolfModel,
+            ["furnace level 1"] = manifest.furnaceModel,
+            ["furnace level 2"] = manifest.furnaceLevel2Model,
+            ["furnace level 3"] = manifest.furnaceLevel3Model,
+            ["furnace level 4"] = manifest.furnaceLevel4Model,
+            ["campfire model"] = manifest.campfireModel,
+            ["tent model"] = manifest.tentModel,
+            ["storage model"] = manifest.storageModel,
+            ["barricade model"] = manifest.barricadeModel,
+            ["forest gate model"] = manifest.forestGateModel,
+            ["backpack model"] = manifest.backpackModel,
+            ["log model"] = manifest.logModel,
+            ["stone resource model"] = manifest.stoneResourceModel,
+            ["metal resource model"] = manifest.metalResourceModel,
+            ["fuel resource model"] = manifest.fuelResourceModel,
+            ["pine model A"] = manifest.pineModelA,
+            ["pine model B"] = manifest.pineModelB,
+            ["rock model A"] = manifest.rockModelA,
+            ["rock model B"] = manifest.rockModelB,
+            ["environment prefab"] = manifest.environmentPrefab,
+            ["snow material"] = manifest.snowMaterial,
+            ["ice material"] = manifest.iceMaterial,
+            ["warmth material"] = manifest.warmthMaterial,
+            ["HUD atlas"] = manifest.hudAtlas,
+            ["UI font"] = manifest.uiFont,
+            ["HUD prefab"] = manifest.hudPrefab,
+            ["pause/settings prefab"] = manifest.pauseMenuPrefab,
+            ["player animator controller"] = manifest.playerController,
+            ["survivor animator controller"] = manifest.survivorController,
+            ["wolf animator controller"] = manifest.wolfController,
+            ["fire VFX prefab"] = manifest.fireVfxPrefab,
+            ["snowfall VFX prefab"] = manifest.snowfallVfxPrefab,
+            ["gather VFX prefab"] = manifest.gatherVfxPrefab,
+            ["build VFX prefab"] = manifest.buildVfxPrefab,
+            ["hit VFX prefab"] = manifest.hitVfxPrefab,
+            ["audio mixer"] = manifest.audioMixer,
+            ["audio rig prefab"] = manifest.audioRigPrefab
+        };
 
         private static ProductionArtManifest LoadManifest(ICollection<string> failures)
         {
@@ -199,11 +256,9 @@ namespace Havenline.Editor
                 failures.Add($"Production-art manifest is missing: {ManifestPath}");
                 return null;
             }
-
             try
             {
-                var json = File.ReadAllText(ManifestPath);
-                var manifest = JsonUtility.FromJson<ProductionArtManifest>(json);
+                var manifest = JsonUtility.FromJson<ProductionArtManifest>(File.ReadAllText(ManifestPath));
                 if (manifest == null)
                     failures.Add("Production-art manifest could not be parsed.");
                 return manifest;
@@ -222,7 +277,6 @@ namespace Havenline.Editor
                 failures.Add($"Required {label} path is empty.");
                 return;
             }
-
             var normalized = path.Replace('\\', '/');
             if (!normalized.StartsWith(ProductionRoot + "/", StringComparison.Ordinal))
                 failures.Add($"Required {label} must be committed under {ProductionRoot}: {normalized}");
@@ -236,9 +290,23 @@ namespace Havenline.Editor
         {
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
                 return;
-
             if (AssetDatabase.LoadAssetAtPath<T>(path) == null)
                 failures.Add($"Required {label} did not import as {typeof(T).Name}: {path}");
+        }
+
+        private static void ValidateAnimatorController(string path, string label, ICollection<string> failures)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                return;
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+            if (controller == null)
+                return;
+            var parameterNames = controller.parameters.Select(parameter => parameter.name).ToHashSet(StringComparer.Ordinal);
+            foreach (var required in new[] { "Speed", "CarryAmount", "ActionType", "Action", "ActionEnd", "Hit", "Dead" })
+            {
+                if (!parameterNames.Contains(required))
+                    failures.Add($"{label} animator controller is missing required parameter '{required}'.");
+            }
         }
 
         private static int CountAnimationClips(IEnumerable<string> files)
