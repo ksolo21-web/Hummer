@@ -18,6 +18,7 @@ namespace Havenline
         [SerializeField] private int capacity = Reference.CarryCapacity;
         [SerializeField] private Transform visibleCarryRoot;
         [SerializeField] private HavenlineCarryVisual carryVisual;
+
         private readonly Dictionary<ResourceKind, int> amounts = new();
 
         public int Capacity => capacity;
@@ -47,6 +48,7 @@ namespace Havenline
             var accepted = Mathf.Min(Mathf.Max(0, amount), capacity - Total);
             if (accepted <= 0)
                 return 0;
+
             amounts[kind] = this[kind] + accepted;
             NotifyChanged();
             return accepted;
@@ -57,6 +59,7 @@ namespace Havenline
             var removed = Mathf.Min(Mathf.Max(0, amount), this[kind]);
             if (removed <= 0)
                 return 0;
+
             amounts[kind] = this[kind] - removed;
             NotifyChanged();
             return removed;
@@ -70,9 +73,11 @@ namespace Havenline
             {
                 if (this[candidate] <= 0)
                     continue;
+
                 kind = candidate;
                 return true;
             }
+
             kind = ResourceKind.Wood;
             return false;
         }
@@ -100,6 +105,7 @@ namespace Havenline
                 else if (amounts[ResourceKind.Stone] > 0) amounts[ResourceKind.Stone]--;
                 else if (amounts[ResourceKind.Wood] > 0) amounts[ResourceKind.Wood]--;
             }
+
             NotifyChanged();
         }
 
@@ -113,14 +119,11 @@ namespace Havenline
         {
             if (visibleCarryRoot != null)
                 visibleCarryRoot.gameObject.SetActive(Total > 0);
+
             carryVisual?.Apply(Capture(), Total, capacity);
         }
     }
 
-    /// <summary>
-    /// Displays individual carried resources in authored attachment slots. This replaces
-    /// the old single backpack visibility toggle with the stacked-cargo look from the reference.
-    /// </summary>
     public sealed class HavenlineCarryVisual : MonoBehaviour
     {
         [SerializeField] private GameObject[] woodSlots = Array.Empty<GameObject>();
@@ -154,10 +157,6 @@ namespace Havenline
         }
     }
 
-    /// <summary>
-    /// Production Mecanim bridge. Gameplay changes happen on animation impact events;
-    /// a deterministic timing fallback keeps actions functional if a clip event is absent.
-    /// </summary>
     public sealed class HavenlineActorAnimator : MonoBehaviour
     {
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
@@ -198,10 +197,12 @@ namespace Havenline
         {
             if (action == AutomaticActionKind.None || currentAction == action)
                 return;
+
             currentAction = action;
             impactQueued = false;
             if (animator == null)
                 return;
+
             animator.SetInteger(ActionTypeHash, (int)action);
             animator.ResetTrigger(ActionEndHash);
             animator.SetTrigger(ActionHash);
@@ -211,10 +212,12 @@ namespace Havenline
         {
             if (currentAction == AutomaticActionKind.None)
                 return;
+
             currentAction = AutomaticActionKind.None;
             impactQueued = false;
             if (animator == null)
                 return;
+
             animator.SetInteger(ActionTypeHash, 0);
             animator.SetTrigger(ActionEndHash);
         }
@@ -224,12 +227,12 @@ namespace Havenline
             elapsed += Time.deltaTime;
             if (!impactQueued && elapsed < Mathf.Max(0.05f, fallbackSeconds))
                 return false;
+
             impactQueued = false;
             elapsed = 0f;
             return true;
         }
 
-        // Called by animation events on chop/mine/attack/deposit/build/repair/rescue clips.
         public void ActionImpact() => impactQueued = true;
         public void PulseAction() => impactQueued = true;
 
@@ -260,6 +263,7 @@ namespace Havenline
         private Vector3 planarVelocity;
         private Vector3 lastSafePosition;
         private Vector2 moveInput;
+        private bool initialized;
 
         public HavenlineInventory Inventory => inventory;
         public HavenlineActorAnimator ActorAnimator => actorAnimator;
@@ -270,25 +274,46 @@ namespace Havenline
 
         public void Configure(HavenlineInputRouter router, Transform visualRoot, HavenlineActorAnimator animator)
         {
+            EnsureDependencies();
             input = router;
             visual = visualRoot;
             actorAnimator = animator;
-            if (automaticActions != null)
-                automaticActions.Configure(this);
+            automaticActions.Configure(this);
+            actorAnimator?.SetCarryAmount(inventory.Total);
         }
 
-        private void Awake()
+        private void Awake() => EnsureDependencies();
+        private void OnEnable() => EnsureDependencies();
+
+        private void EnsureDependencies()
         {
             controller = GetComponent<CharacterController>();
+            if (controller == null)
+                controller = gameObject.AddComponent<CharacterController>();
+
             inventory = GetComponent<HavenlineInventory>();
+            if (inventory == null)
+                inventory = gameObject.AddComponent<HavenlineInventory>();
+
             automaticActions = GetComponent<HavenlineAutomaticActionController>();
+            if (automaticActions == null)
+                automaticActions = gameObject.AddComponent<HavenlineAutomaticActionController>();
+
             automaticActions.Configure(this);
-            lastSafePosition = Reference.PlayerSpawn;
+
+            if (!initialized)
+            {
+                initialized = true;
+                lastSafePosition = Reference.PlayerSpawn;
+            }
+
+            inventory.Changed -= HandleInventoryChanged;
             inventory.Changed += HandleInventoryChanged;
         }
 
         private void Start()
         {
+            EnsureDependencies();
             var saved = HavenlineSave.LoadPlayerPosition();
             transform.position = Reference.IsValidSavedPosition(saved) ? saved : Reference.PlayerSpawn;
             lastSafePosition = transform.position;
@@ -303,7 +328,9 @@ namespace Havenline
 
         private void Update()
         {
+            EnsureDependencies();
             moveInput = input != null ? input.Move : Vector2.zero;
+
             var mainCamera = Camera.main;
             var forward = mainCamera != null
                 ? Vector3.ProjectOnPlane(mainCamera.transform.forward, Vector3.up).normalized
@@ -311,6 +338,7 @@ namespace Havenline
             var right = mainCamera != null
                 ? Vector3.ProjectOnPlane(mainCamera.transform.right, Vector3.up).normalized
                 : Vector3.right;
+
             var desiredDirection = right * moveInput.x + forward * moveInput.y;
             if (desiredDirection.sqrMagnitude > 1f)
                 desiredDirection.Normalize();
@@ -320,6 +348,7 @@ namespace Havenline
             var rate = targetVelocity.sqrMagnitude > planarVelocity.sqrMagnitude
                 ? Reference.Acceleration
                 : Reference.Deceleration;
+
             planarVelocity = Vector3.MoveTowards(planarVelocity, targetVelocity, rate * Time.deltaTime);
             controller.Move((planarVelocity + Physics.gravity) * Time.deltaTime);
             transform.position = Reference.ClampToWorld(transform.position);
@@ -329,10 +358,12 @@ namespace Havenline
                 actorAnimator?.EndAction();
                 Face(transform.position + desiredDirection);
             }
+
             actorAnimator?.SetMotion(planarVelocity.magnitude / Reference.RunSpeed);
 
             if (controller.isGrounded && Reference.IsValidSavedPosition(transform.position))
                 lastSafePosition = transform.position;
+
             if (transform.position.y < Reference.FallRecoveryY)
                 RecoverFromFall();
 
@@ -343,9 +374,11 @@ namespace Havenline
         {
             if (visual == null)
                 return;
+
             var direction = Vector3.ProjectOnPlane(worldPoint - transform.position, Vector3.up);
             if (direction.sqrMagnitude < 0.001f)
                 return;
+
             visual.rotation = Quaternion.Slerp(
                 visual.rotation,
                 Quaternion.LookRotation(direction.normalized),
