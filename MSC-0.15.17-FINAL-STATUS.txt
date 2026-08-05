@@ -1,54 +1,45 @@
-MY STUDY COMPANION 0.15.17 — VERIFIED BUILD STATUS
+MY STUDY COMPANION 0.15.17 — CORRECTED SAFE RELEASE STATUS
 
-SOURCE AND REGRESSION SAFETY
-- The 0.15.17 layer reconstructs the accepted cumulative source through 0.15.16 before adding the isolated interactive-paint changes.
-- Preserved cumulative repairs include Google Sign-In source/configuration, household pairing, adaptive scrolling, family study scheduling, voting persistence, widgets, AI activities, and the Smart Online truth gate.
-- The interaction source and generator are checksum-locked and fail closed if their expected source drifts.
+IMPORTANT RETRACTION
+- The APK artifact produced by workflow run 31012705994 is withdrawn from installation use.
+- It was signed with an isolated CI packaging certificate rather than the permanent Firebase-registered certificate.
+- It also substituted the Firebase Hosting address for the real Cloud Run API endpoint and therefore disabled Smart Online based on an invalid endpoint test.
+- Do not install either earlier 0.15.17 APK and do not uninstall the currently working app to make either APK install.
 
-COMPLETED AND VERIFIED
-- Pinch-to-zoom from 1x through 5x.
-- Clamped two-axis panning.
-- Inverse tap-coordinate mapping through the exact zoom/pan transform before region-mask lookup.
-- Separate Reset view and Reset picture controls.
-- 25%, 50%, 75%, and 100% milestone feedback.
-- Automatic palette advancement after all remaining regions for the current number are complete.
-- Undo, redo, hints, saved progress, and completed-picture reveal remain present.
-- 16 premium paint-by-number pages passed the 28–100 region gate and 2,400-pixel minimum-region gate.
-- Phone and Wear tests, backend tests, web tests, compilation, private-alpha assembly, APK signature verification, 16 KiB alignment checks, identity checks, and packaged-manifest comparison passed.
+WHAT REMAINS VALID
+- The isolated Android feature implementation for pinch zoom, pan, inverse tap mapping, reset controls, milestone feedback, automatic palette advancement, and premium paint-by-number content compiled and passed its source/build tests.
+- Those feature changes remain staged on top of the accepted cumulative source through 0.15.16.
+- This does not make the earlier APK a safe production update; signing identity and connected-release configuration are mandatory parts of a valid Android release.
 
-FINAL SUCCESSFUL CI RUN
-- Workflow: My Study Companion 0.15.17 Premium Interactive Paint
-- Run: 31012705994
-- Source commit: d7f5dcd02ec99946d692c13f8d0d0f0aa9ebf5aa
-- Result: SUCCESS
+ROOT CAUSE
+- The 0.15.17 packaging workflow used the wrong release path: it allowed a disposable signer and hardcoded https://my-study-companion-abc01.web.app as though it were the backend API.
+- The previously working connected path deploys the private service to Google Cloud Run and uses the deploy action's real service URL.
+- Google Sign-In and the cloud architecture were not proven broken. The replacement packaging and endpoint validation were wrong.
 
-APK IDENTITIES
-Phone:
-- package: com.mystudycompanion.app
-- versionCode: 50
-- versionName: 0.15.17-private-alpha-premium-interactive-paint
-- SHA-256: f03ee135c0782945b4eda4157a1aee8845203238e70f34c7cc78e4ac1a3e771b
+CORRECTED RELEASE GATE
+- Corrective commit: 8d3c955343cc040fe2b67fb9c3bcb8666f2a6b64
+- Workflow: My Study Companion 0.15.17 Safe Canonical Connected Release
+- The workflow now refuses all disposable or replacement signing certificates.
+- It requires and verifies the permanent Firebase certificate:
+  SHA-1: 1997d421d177215a44f9651ce53dbaec152fbc49
+  SHA-256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+- It restores the previously working Workload Identity, Cloud Run deployment, server-secret verification, Firebase Auth, App Check, Firestore, and GPT-5.6 backend path.
+- It accepts only the real Cloud Run .run.app service URL after the complete authenticated 0.15.17 health contract passes.
+- It publishes APKs only after the final phone and Wear certificates match the permanent Firebase signing identity and the connected backend URL is verified.
 
-Wear:
-- package: com.mystudycompanion.app
-- versionCode: 360167001
-- versionName: 0.15.17-wear-private-alpha-premium-interactive-paint
-- SHA-256: c99fcd1c3a065a66e616d400129fdaa5d58c055bce487064249cbcd7dc91b686
+CURRENT SAFE BUILD RESULT
+- Safe workflow run: 31021386843
+- Result: BLOCKED SAFELY BEFORE APK BUILD
+- Exact blocker: the canonical keystore secret MSC_SIGNING_KEYSTORE_B64 and related canonical signing inputs are not present in GitHub Actions.
+- No phone APK, Wear APK, or fallback-signed APK was produced by the corrected safe workflow.
+- The Cloud Run deployment was intentionally not changed after the signing gate failed.
 
-SMART ONLINE TRUTH
-- Candidate endpoint: https://my-study-companion-abc01.web.app
-- Its /health response did not satisfy the required authenticated 0.15.17 JSON health contract.
-- Smart Online therefore remains safely disabled and Auto mode uses the private offline assistant.
-- No OpenAI API key is packaged in Android.
-- Enabling Smart Online requires a real deployed backend with server-side OpenAI credentials, Firebase user authentication, App Check, Firestore persistence, and the required health contract.
+CURRENT INSTALLATION INSTRUCTION
+- Keep the currently installed, working app in place.
+- Do not uninstall it.
+- Do not install the withdrawn 0.15.17 CI APKs.
 
-CANONICAL SIGNING TRUTH
-- Canonical signing probe run: 31014235586
-- The permanent Firebase-registered signing key is not stored in GitHub Actions.
-- The CI APKs were produced with an isolated verification/packaging signer, not the permanent Firebase signer.
-- These APKs prove the code builds and passes its gates, but they are not guaranteed to install over the currently installed app or preserve Google Sign-In.
-- A safe in-place production update must be signed externally with the canonical certificate whose SHA-1 is 1997d421d177215a44f9651ce53dbaec152fbc49.
-
-CONCLUSION
-- The requested Android implementation, build scripts, CI workflow, tests, APK builds, and verification are complete.
-- The only unfinished production-release dependencies are external credentials that are not available in the repository or GitHub Actions: the canonical Android private signing key and valid cloud-backend deployment credentials/secrets.
+WHAT IS REQUIRED FOR THE ACTUAL UPDATE
+- The existing permanent Android signing keystore and its passwords/alias must be supplied through the protected MSC_SIGNING_* release inputs, or the same source must be signed in the secure environment that holds that key.
+- This private key cannot be recreated, substituted, or bypassed without producing a different Android application identity and risking Google Sign-In and update compatibility.
+- Once the canonical key is available, the corrected workflow can deploy and verify the real Cloud Run backend, build the connected APK, prove its signing identity, and publish the only approved 0.15.17 update.
