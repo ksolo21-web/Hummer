@@ -1,0 +1,74 @@
+name: My Study Companion Widget Data Source Snapshot
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.18-widget-data-source-snapshot.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install reconstruction image dependencies
+        run: python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scipy==1.17.0 scikit-image==0.26.0
+      - name: Reconstruct accepted source through 0.15.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+          bash .msc-build/apply-0.15.10-household-date-recovery.sh
+          bash .msc-build/apply-0.15.11-local-family-generator.sh
+          bash .msc-build/apply-0.15.13-family-schedule-regression-audit.sh
+          bash .msc-build/apply-0.15.12-family-vote-widgets.sh
+          bash .msc-build/apply-0.15.12-widget-compile-fix.sh
+          bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
+      - name: Package only source needed for widget data integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p widget-data-source
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/AppContainer.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/MyStudyCompanionApp.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionHubRepository.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/family/FamilyWorshipOrganizerRepository.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/repository/StudyRepository.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt widget-data-source/
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt widget-data-source/ 2>/dev/null || true
+          find MyStudyCompanion/app/src/main/java/com/mystudycompanion/app -type f \
+            \( -iname '*daily*' -o -iname '*schedule*' -o -iname '*worship*' -o -iname '*snapshot*' \) \
+            -print0 | xargs -0 -I{} cp --parents {} widget-data-source/
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-widget-data-source-snapshot
+          path: widget-data-source
+          retention-days: 3
+          if-no-files-found: error
