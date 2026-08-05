@@ -20,10 +20,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  editmode:
-    name: Compile and run premium contract tests
+  unity-tests:
+    name: Compile and run ${{ matrix.testMode }} premium tests
     runs-on: ubuntu-24.04
     timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        testMode:
+          - editmode
+          - playmode
 
     steps:
       - name: Check out exact branch commit
@@ -50,11 +56,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: HAVENLINE_UNITY/Library
-          key: havenline-source-6000.3.18f1-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/**/*.asmdef') }}
+          key: havenline-source-6000.3.18f1-${{ matrix.testMode }}-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/**/*.asmdef') }}
           restore-keys: |
+            havenline-source-6000.3.18f1-${{ matrix.testMode }}-
             havenline-source-6000.3.18f1-
 
-      - name: Compile project and run EditMode tests
+      - name: Compile project and run ${{ matrix.testMode }} tests
         id: tests
         uses: game-ci/unity-test-runner@v4
         env:
@@ -64,16 +71,16 @@ jobs:
         with:
           projectPath: HAVENLINE_UNITY
           unityVersion: 6000.3.18f1
-          testMode: editmode
-          artifactsPath: artifacts/editmode
+          testMode: ${{ matrix.testMode }}
+          artifactsPath: artifacts/${{ matrix.testMode }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: HAVENLINE Unity compile and premium contracts
+          checkName: HAVENLINE Unity ${{ matrix.testMode }} validation
 
-      - name: Upload test and compiler diagnostics
+      - name: Upload ${{ matrix.testMode }} test and compiler diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: HAVENLINE-Unity-source-validation-${{ github.run_number }}
+          name: HAVENLINE-Unity-${{ matrix.testMode }}-validation-${{ github.run_number }}
           if-no-files-found: warn
           retention-days: 14
           path: |
