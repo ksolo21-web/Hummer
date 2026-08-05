@@ -150,9 +150,9 @@ namespace Havenline.Editor
             IReadOnlyList<Vector2> uv)
         {
             var mesh = new Mesh { name = name };
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0, true);
-            mesh.SetUVs(0, uv);
+            mesh.vertices = vertices.ToArray();
+            mesh.triangles = triangles.ToArray();
+            mesh.uv = uv.ToArray();
             mesh.RecalculateNormals();
             mesh.RecalculateTangents();
             mesh.RecalculateBounds();

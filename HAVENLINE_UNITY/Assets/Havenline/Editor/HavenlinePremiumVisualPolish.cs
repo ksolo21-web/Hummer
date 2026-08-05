@@ -88,8 +88,8 @@ namespace Havenline.Editor
             RenderSettings.reflectionIntensity = 0.72f;
 
             QualitySettings.antiAliasing = 4;
-            QualitySettings.shadows = ShadowQuality.All;
-            QualitySettings.shadowResolution = ShadowResolution.High;
+            QualitySettings.shadows = UnityEngine.ShadowQuality.All;
+            QualitySettings.shadowResolution = UnityEngine.ShadowResolution.High;
             QualitySettings.shadowDistance = 48f;
             QualitySettings.shadowCascades = 2;
             QualitySettings.lodBias = Mathf.Max(QualitySettings.lodBias, 1.45f);
