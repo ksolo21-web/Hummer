@@ -1,0 +1,41 @@
+name: Package Android APK Signer
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-apksigner-tool.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-apksigner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android build tools 36.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'build-tools;36.0.0'
+          test -s "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar"
+          mkdir -p apk-signing-tool
+          cp "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar" apk-signing-tool/apksigner.jar
+          sha256sum apk-signing-tool/apksigner.jar > apk-signing-tool/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: android-build-tools-36-apksigner
+          path: apk-signing-tool
+          retention-days: 14
+          if-no-files-found: error
