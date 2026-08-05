@@ -80,7 +80,7 @@ jobs:
           unityVersion: 6000.3.18f1
           targetPlatform: Android
           androidExportType: androidPackage
-          buildMethod: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineBuildPipeline.BuildVerifiedReleaseCandidate' || 'Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate' }}
+          buildMethod: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineCiBuildEntryPoints.BuildVerifiedRelease' || 'Havenline.Editor.HavenlineCiBuildEntryPoints.BuildAndroidDeviceTest' }}
           allowDirtyBuild: true
           collectUnityLogs: true
           streamUnityLogs: true
@@ -161,6 +161,7 @@ jobs:
             echo '- APK bytes: `${{ steps.verify.outputs.size }}`'
             echo '- APK SHA-256: `${{ steps.verify.outputs.sha256 }}`'
             echo '- Commit: `${{ github.sha }}`'
+            echo '- Deterministic production preparation: `passed`'
             echo '- Premium content and functional gates: `passed`'
           } >> "$GITHUB_STEP_SUMMARY"
 
