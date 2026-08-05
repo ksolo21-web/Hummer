@@ -1,7 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEngine;
 
 namespace Havenline
@@ -14,6 +14,174 @@ namespace Havenline
         public int stone;
         public int metal;
         public int fuel;
+        public bool hasDurability;
+        public float durability;
+    }
+
+    [Serializable]
+    public struct HavenlineConstructionSnapshot
+    {
+        public string id;
+        public int deliveredWood;
+        public int deliveredStone;
+        public bool built;
+    }
+
+    [Serializable]
+    public struct HavenlineBarricadeSnapshot
+    {
+        public string id;
+        public float health;
+    }
+
+    internal static class HavenlineWorldRegistry
+    {
+        private static readonly HashSet<HavenlineResourceNode> Resources = new();
+        private static readonly HashSet<HavenlineConstructionSite> ConstructionSites = new();
+        private static readonly HashSet<HavenlineBarricade> Barricades = new();
+        private static readonly HashSet<HavenlineEnemy> Enemies = new();
+
+        internal static IEnumerable<HavenlineResourceNode> ActiveResources => Resources;
+        internal static IEnumerable<HavenlineConstructionSite> ActiveConstructionSites => ConstructionSites;
+        internal static IEnumerable<HavenlineBarricade> ActiveBarricades => Barricades;
+        internal static IEnumerable<HavenlineEnemy> ActiveEnemies => Enemies;
+
+        internal static void Register(HavenlineResourceNode value) => Resources.Add(value);
+        internal static void Register(HavenlineConstructionSite value) => ConstructionSites.Add(value);
+        internal static void Register(HavenlineBarricade value) => Barricades.Add(value);
+        internal static void Register(HavenlineEnemy value) => Enemies.Add(value);
+        internal static void Unregister(HavenlineResourceNode value) => Resources.Remove(value);
+        internal static void Unregister(HavenlineConstructionSite value) => ConstructionSites.Remove(value);
+        internal static void Unregister(HavenlineBarricade value) => Barricades.Remove(value);
+        internal static void Unregister(HavenlineEnemy value) => Enemies.Remove(value);
+
+        internal static int AliveEnemyCount
+        {
+            get
+            {
+                var count = 0;
+                foreach (var enemy in Enemies)
+                {
+                    if (enemy != null && enemy.isActiveAndEnabled && enemy.IsAlive)
+                        count++;
+                }
+                return count;
+            }
+        }
+
+        internal static HavenlineEnemy ClosestEnemy(Vector3 origin, float maximumDistance = float.PositiveInfinity)
+        {
+            HavenlineEnemy best = null;
+            var bestSqr = maximumDistance * maximumDistance;
+            foreach (var enemy in Enemies)
+            {
+                if (enemy == null || !enemy.isActiveAndEnabled || !enemy.IsAlive)
+                    continue;
+                var sqr = HorizontalSqr(origin, enemy.transform.position);
+                if (sqr >= bestSqr)
+                    continue;
+                best = enemy;
+                bestSqr = sqr;
+            }
+            return best;
+        }
+
+        internal static HavenlineResourceNode ClosestResource(Vector3 origin)
+        {
+            HavenlineResourceNode best = null;
+            var bestSqr = float.PositiveInfinity;
+            foreach (var resource in Resources)
+            {
+                if (resource == null || !resource.isActiveAndEnabled || resource.Remaining <= 0)
+                    continue;
+                var sqr = HorizontalSqr(origin, resource.transform.position);
+                if (sqr >= bestSqr)
+                    continue;
+                best = resource;
+                bestSqr = sqr;
+            }
+            return best;
+        }
+
+        internal static HavenlineConstructionSite ClosestIncompleteConstruction(Vector3 origin)
+        {
+            HavenlineConstructionSite best = null;
+            var bestSqr = float.PositiveInfinity;
+            foreach (var site in ConstructionSites)
+            {
+                if (site == null || !site.isActiveAndEnabled || site.IsBuilt)
+                    continue;
+                var sqr = HorizontalSqr(origin, site.transform.position);
+                if (sqr >= bestSqr)
+                    continue;
+                best = site;
+                bestSqr = sqr;
+            }
+            return best;
+        }
+
+        internal static HavenlineBarricade MostDamagedBarricade(Vector3 origin)
+        {
+            HavenlineBarricade best = null;
+            var bestScore = float.PositiveInfinity;
+            foreach (var barricade in Barricades)
+            {
+                if (barricade == null || !barricade.isActiveAndEnabled || !barricade.IsBuilt)
+                    continue;
+                var score = barricade.HealthFraction * 100f + Mathf.Sqrt(HorizontalSqr(origin, barricade.transform.position));
+                if (score >= bestScore)
+                    continue;
+                best = barricade;
+                bestScore = score;
+            }
+            return best;
+        }
+
+        internal static HavenlineBarricade ClosestStandingBarricade(Vector3 origin)
+        {
+            HavenlineBarricade best = null;
+            var bestSqr = float.PositiveInfinity;
+            foreach (var barricade in Barricades)
+            {
+                if (barricade == null || !barricade.isActiveAndEnabled || !barricade.IsBuilt)
+                    continue;
+                var sqr = HorizontalSqr(origin, barricade.transform.position);
+                if (sqr >= bestSqr)
+                    continue;
+                best = barricade;
+                bestSqr = sqr;
+            }
+            return best;
+        }
+
+        internal static HavenlineConstructionSnapshot[] CaptureConstruction()
+        {
+            var values = new List<HavenlineConstructionSnapshot>(ConstructionSites.Count);
+            foreach (var site in ConstructionSites)
+            {
+                if (site != null)
+                    values.Add(site.Capture());
+            }
+            return values.ToArray();
+        }
+
+        internal static HavenlineBarricadeSnapshot[] CaptureBarricades()
+        {
+            var values = new List<HavenlineBarricadeSnapshot>(Barricades.Count);
+            foreach (var barricade in Barricades)
+            {
+                if (barricade != null && barricade.IsBuilt)
+                    values.Add(barricade.Capture());
+            }
+            return values.ToArray();
+        }
+
+        private static float HorizontalSqr(Vector3 a, Vector3 b)
+        {
+            var x = a.x - b.x;
+            var z = a.z - b.z;
+            return x * x + z * z;
+        }
     }
 
     public sealed class HavenlineResourceNode : HavenlineInteractable
@@ -25,8 +193,8 @@ namespace Havenline
         [SerializeField] private ParticleSystem impactEffect;
 
         private HavenlinePlayerController activeActor;
-        private float actionElapsed;
-        private float helperElapsed;
+        private float playerActionElapsed;
+        private float helperActionElapsed;
 
         public ResourceKind Kind => kind;
         public int Remaining => remaining;
@@ -38,7 +206,7 @@ namespace Havenline
             _ => AutomaticActionKind.GatherFuel
         };
         public override int Priority => 30;
-        public override float NormalizedProgress => Mathf.Clamp01(actionElapsed / Mathf.Max(0.05f, secondsPerUnit));
+        public override float NormalizedProgress => Mathf.Clamp01(playerActionElapsed / Mathf.Max(0.05f, secondsPerUnit));
         public override string ContextLabel => kind switch
         {
             ResourceKind.Wood => "Chopping",
@@ -46,6 +214,18 @@ namespace Havenline
             ResourceKind.Metal => "Salvaging",
             _ => "Collecting fuel"
         };
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            HavenlineWorldRegistry.Register(this);
+        }
+
+        protected override void OnDisable()
+        {
+            HavenlineWorldRegistry.Unregister(this);
+            base.OnDisable();
+        }
 
         public void Configure(ResourceKind resourceKind, int units)
         {
@@ -70,13 +250,13 @@ namespace Havenline
         public override void OnSelected(HavenlinePlayerController actor)
         {
             activeActor = actor;
-            actionElapsed = 0f;
+            playerActionElapsed = 0f;
         }
 
         public override void OnDeselected(HavenlinePlayerController actor)
         {
             activeActor = null;
-            actionElapsed = 0f;
+            playerActionElapsed = 0f;
         }
 
         public override void TickInteraction(HavenlinePlayerController actor, float deltaTime)
@@ -86,17 +266,13 @@ namespace Havenline
             if (activeActor != actor)
                 OnSelected(actor);
 
-            var animator = actor.ActorAnimator;
-            var impact = animator != null
-                ? animator.ConsumeImpact(ref actionElapsed, secondsPerUnit)
-                : AdvanceFallback(ref actionElapsed, secondsPerUnit, deltaTime);
-            if (!impact)
+            var impact = ConsumeImpact(actor.ActorAnimator, ref playerActionElapsed, secondsPerUnit, deltaTime);
+            if (!impact || actor.Inventory.Add(kind, 1) <= 0)
                 return;
 
-            if (actor.Inventory.Add(kind, 1) <= 0)
-                return;
             impactEffect?.Play(true);
             remaining--;
+            HavenlineSave.MarkDirty();
             ApplyDepletedState();
         }
 
@@ -104,15 +280,14 @@ namespace Havenline
         {
             if (remaining <= 0 || inventory == null || inventory.IsFull)
                 return false;
-            var impact = animator != null
-                ? animator.ConsumeImpact(ref helperElapsed, secondsPerUnit)
-                : AdvanceFallback(ref helperElapsed, secondsPerUnit, deltaTime);
-            if (!impact)
+            if (!ConsumeImpact(animator, ref helperActionElapsed, secondsPerUnit, deltaTime))
                 return true;
+
             if (inventory.Add(kind, 1) > 0)
             {
                 impactEffect?.Play(true);
                 remaining--;
+                HavenlineSave.MarkDirty();
                 ApplyDepletedState();
             }
             return remaining > 0;
@@ -122,12 +297,14 @@ namespace Havenline
         {
             if (depletedVisual != null)
                 depletedVisual.SetActive(remaining <= 0);
-            if (remaining <= 0)
+            if (remaining <= 0 && gameObject.activeSelf)
                 gameObject.SetActive(false);
         }
 
-        private static bool AdvanceFallback(ref float elapsed, float seconds, float deltaTime)
+        private static bool ConsumeImpact(HavenlineActorAnimator animator, ref float elapsed, float seconds, float deltaTime)
         {
+            if (animator != null)
+                return animator.ConsumeImpact(ref elapsed, seconds);
             elapsed += deltaTime;
             if (elapsed < seconds)
                 return false;
@@ -146,28 +323,53 @@ namespace Havenline
         [SerializeField] private ParticleSystem depositEffect;
         [SerializeField] private GameObject[] levelVisuals = Array.Empty<GameObject>();
         [SerializeField] private Renderer[] heatedSnowRenderers = Array.Empty<Renderer>();
+        [SerializeField] private float maxDurability = 260f;
 
         private readonly Dictionary<ResourceKind, int> stored = new();
-        private float depositElapsed;
+        private float interactionElapsed;
 
         public int Level { get; private set; } = 1;
-        public float WarmthRadius { get; private set; } = 4f;
-        public override AutomaticActionKind ActionKind => AutomaticActionKind.Deposit;
-        public override int Priority => 95;
+        public float WarmthRadius { get; private set; } = 4.5f;
+        public float Durability { get; private set; }
+        public float DurabilityFraction => maxDurability <= 0f ? 0f : Durability / maxDurability;
+        public bool IsOperational => Durability > 0f;
+        public bool NeedsRepair => Durability < maxDurability - 0.01f;
+        public override AutomaticActionKind ActionKind => NeedsRepair ? AutomaticActionKind.Repair : AutomaticActionKind.Deposit;
+        public override int Priority => NeedsRepair ? 130 : 95;
         public override float InteractionRange => Reference.DepositRadius;
-        public override string ContextLabel => "Delivering supplies";
-        public override float NormalizedProgress => Mathf.Repeat(depositElapsed / 0.16f, 1f);
+        public override string ContextLabel => NeedsRepair ? "Repairing furnace" : "Delivering supplies";
+        public override float NormalizedProgress => Mathf.Repeat(interactionElapsed / (NeedsRepair ? 0.34f : 0.16f), 1f);
         public int Stored(ResourceKind kind) => stored.TryGetValue(kind, out var value) ? value : 0;
 
         public event Action Changed;
         public event Action<int> LevelChanged;
         public event Action<ResourceKind, int> Deposited;
+        public event Action<float> DurabilityChanged;
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            Instance = this;
+            if (Durability <= 0f)
+                Durability = maxDurability;
+        }
+
+        protected override void OnDisable()
+        {
+            if (Instance == this)
+                Instance = null;
+            base.OnDisable();
+        }
+
+        private void Start() => Restore(HavenlineSave.LoadFurnace());
 
         public void Configure(Transform ring, Light light, ParticleSystem particles)
         {
             warmthRing = ring;
             fireLight = light;
             fireParticles = particles;
+            if (Durability <= 0f)
+                Durability = maxDurability;
             ApplyVisuals();
         }
 
@@ -185,45 +387,38 @@ namespace Havenline
             depositEffect = deliveryEffect;
             levelVisuals = authoredLevelVisuals ?? Array.Empty<GameObject>();
             heatedSnowRenderers = snowRenderers ?? Array.Empty<Renderer>();
+            if (Durability <= 0f)
+                Durability = maxDurability;
             ApplyVisuals();
         }
 
-        protected override void OnEnable()
+        public override bool CanInteract(HavenlinePlayerController actor)
         {
-            base.OnEnable();
-            Instance = this;
+            if (actor == null || actor.Inventory == null)
+                return false;
+            if (NeedsRepair)
+                return actor.Inventory[ResourceKind.Wood] > 0;
+            return actor.Inventory.Total > 0;
         }
-
-        protected override void OnDisable()
-        {
-            if (Instance == this)
-                Instance = null;
-            base.OnDisable();
-        }
-
-        private void Start()
-        {
-            Restore(HavenlineSave.LoadFurnace());
-        }
-
-        public override bool CanInteract(HavenlinePlayerController actor) =>
-            actor != null && actor.Inventory != null && actor.Inventory.Total > 0;
 
         public override void TickInteraction(HavenlinePlayerController actor, float deltaTime)
         {
             if (!CanInteract(actor))
                 return;
-            var animator = actor.ActorAnimator;
-            var impact = animator != null
-                ? animator.ConsumeImpact(ref depositElapsed, 0.16f)
-                : Advance(ref depositElapsed, 0.16f, deltaTime);
-            if (impact)
+
+            var seconds = NeedsRepair ? 0.34f : 0.16f;
+            if (!ConsumeImpact(actor.ActorAnimator, ref interactionElapsed, seconds, deltaTime))
+                return;
+
+            if (NeedsRepair)
+                RepairOne(actor.Inventory);
+            else
                 DepositOne(actor.Inventory);
         }
 
         public bool DepositOne(HavenlineInventory inventory)
         {
-            if (inventory == null || !inventory.TryGetFirstCarried(out var kind))
+            if (!IsOperational || inventory == null || !inventory.TryGetFirstCarried(out var kind))
                 return false;
             if (inventory.Remove(kind, 1) <= 0)
                 return false;
@@ -232,6 +427,7 @@ namespace Havenline
             depositEffect?.Play(true);
             Deposited?.Invoke(kind, 1);
             RecalculateLevel();
+            HavenlineSave.MarkDirty();
             Changed?.Invoke();
             return true;
         }
@@ -241,13 +437,39 @@ namespace Havenline
             while (DepositOne(inventory)) { }
         }
 
+        public bool RepairOne(HavenlineInventory inventory)
+        {
+            if (inventory == null || Durability >= maxDurability || inventory.Remove(ResourceKind.Wood, 1) <= 0)
+                return false;
+
+            Durability = Mathf.Min(maxDurability, Durability + 42f);
+            depositEffect?.Play(true);
+            DurabilityChanged?.Invoke(DurabilityFraction);
+            HavenlineSave.MarkDirty();
+            ApplyVisuals();
+            return true;
+        }
+
+        public void Damage(float amount)
+        {
+            if (amount <= 0f || Durability <= 0f)
+                return;
+
+            Durability = Mathf.Max(0f, Durability - amount);
+            DurabilityChanged?.Invoke(DurabilityFraction);
+            HavenlineSave.MarkDirty();
+            ApplyVisuals();
+        }
+
         public HavenlineFurnaceSnapshot Capture() => new()
         {
             level = Level,
             wood = Stored(ResourceKind.Wood),
             stone = Stored(ResourceKind.Stone),
             metal = Stored(ResourceKind.Metal),
-            fuel = Stored(ResourceKind.Fuel)
+            fuel = Stored(ResourceKind.Fuel),
+            hasDurability = true,
+            durability = Durability
         };
 
         public void Restore(HavenlineFurnaceSnapshot snapshot)
@@ -258,6 +480,7 @@ namespace Havenline
             stored[ResourceKind.Metal] = Mathf.Max(0, snapshot.metal);
             stored[ResourceKind.Fuel] = Mathf.Max(0, snapshot.fuel);
             Level = Mathf.Clamp(snapshot.level <= 0 ? 1 : snapshot.level, 1, 4);
+            Durability = snapshot.hasDurability ? Mathf.Clamp(snapshot.durability, 0f, maxDurability) : maxDurability;
             RecalculateLevel();
             ApplyVisuals();
             Changed?.Invoke();
@@ -273,7 +496,7 @@ namespace Havenline
             if (Stored(ResourceKind.Wood) >= 64 && Stored(ResourceKind.Stone) >= 28 && Stored(ResourceKind.Metal) >= 6)
                 Level = 4;
 
-            WarmthRadius = 4f + (Level - 1) * 2.5f;
+            WarmthRadius = 4.5f + (Level - 1) * 3.5f;
             ApplyVisuals();
             if (Level != previous)
                 LevelChanged?.Invoke(Level);
@@ -281,27 +504,31 @@ namespace Havenline
 
         private void ApplyVisuals()
         {
-            WarmthRadius = 4f + (Mathf.Max(1, Level) - 1) * 2.5f;
+            WarmthRadius = 4.5f + (Mathf.Max(1, Level) - 1) * 3.5f;
             if (warmthRing != null)
                 warmthRing.localScale = Vector3.one * WarmthRadius;
+
             if (fireLight != null)
             {
-                fireLight.range = 7f + Level * 2.2f;
-                fireLight.intensity = 2.8f + Level * 1.3f;
+                fireLight.range = IsOperational ? 7f + Level * 2.4f : 2.5f;
+                fireLight.intensity = IsOperational ? 2.9f + Level * 1.35f : 0.18f;
             }
+
             if (fireParticles != null)
             {
                 var main = fireParticles.main;
-                main.startSizeMultiplier = 0.7f + Level * 0.18f;
+                main.startSizeMultiplier = IsOperational ? 0.72f + Level * 0.18f : 0.12f;
                 var emission = fireParticles.emission;
-                emission.rateOverTimeMultiplier = 18f + Level * 7f;
+                emission.rateOverTimeMultiplier = IsOperational ? 18f + Level * 7f : 1f;
             }
+
             for (var index = 0; index < levelVisuals.Length; index++)
             {
                 if (levelVisuals[index] != null)
                     levelVisuals[index].SetActive(index == Mathf.Clamp(Level - 1, 0, levelVisuals.Length - 1));
             }
-            var thaw = Mathf.InverseLerp(1f, 4f, Level);
+
+            var thaw = IsOperational ? Mathf.InverseLerp(1f, 4f, Level) : 0f;
             foreach (var renderer in heatedSnowRenderers)
             {
                 if (renderer == null)
@@ -313,10 +540,12 @@ namespace Havenline
             }
         }
 
-        private static bool Advance(ref float elapsed, float threshold, float deltaTime)
+        private static bool ConsumeImpact(HavenlineActorAnimator animator, ref float elapsed, float seconds, float deltaTime)
         {
+            if (animator != null)
+                return animator.ConsumeImpact(ref elapsed, seconds);
             elapsed += deltaTime;
-            if (elapsed < threshold)
+            if (elapsed < seconds)
                 return false;
             elapsed = 0f;
             return true;
@@ -325,12 +554,15 @@ namespace Havenline
 
     public sealed class HavenlineBarricade : HavenlineInteractable
     {
+        [SerializeField] private string barricadeId;
         [SerializeField] private float maxHealth = 160f;
         [SerializeField] private Renderer[] renderers = Array.Empty<Renderer>();
         [SerializeField] private GameObject[] damageStages = Array.Empty<GameObject>();
         [SerializeField] private ParticleSystem repairEffect;
+
         private float repairElapsed;
 
+        public string BarricadeId => string.IsNullOrWhiteSpace(barricadeId) ? name : barricadeId;
         public float Health { get; private set; }
         public bool IsBuilt => Health > 0f;
         public float HealthFraction => maxHealth <= 0f ? 0f : Health / maxHealth;
@@ -340,11 +572,39 @@ namespace Havenline
         public override string ContextLabel => "Repairing barricade";
         public override float NormalizedProgress => Mathf.Repeat(repairElapsed / 0.34f, 1f);
 
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            HavenlineWorldRegistry.Register(this);
+        }
+
+        protected override void OnDisable()
+        {
+            HavenlineWorldRegistry.Unregister(this);
+            base.OnDisable();
+        }
+
         private void Awake()
         {
-            Health = maxHealth * 0.55f;
+            if (string.IsNullOrWhiteSpace(barricadeId))
+                barricadeId = name;
             if (renderers == null || renderers.Length == 0)
                 renderers = GetComponentsInChildren<Renderer>(true);
+            Health = maxHealth;
+            Apply();
+        }
+
+        private void Start()
+        {
+            Health = HavenlineSave.LoadBarricadeHealth(BarricadeId, maxHealth);
+            Apply();
+        }
+
+        public void Configure(string id, float maximumHealth)
+        {
+            barricadeId = string.IsNullOrWhiteSpace(id) ? name : id;
+            maxHealth = Mathf.Max(1f, maximumHealth);
+            Health = maxHealth;
             Apply();
         }
 
@@ -353,17 +613,14 @@ namespace Havenline
 
         public override void TickInteraction(HavenlinePlayerController actor, float deltaTime)
         {
-            var animator = actor.ActorAnimator;
-            var impact = animator != null
-                ? animator.ConsumeImpact(ref repairElapsed, 0.34f)
-                : Advance(ref repairElapsed, 0.34f, deltaTime);
-            if (impact)
+            if (ConsumeImpact(actor.ActorAnimator, ref repairElapsed, 0.34f, deltaTime))
                 Repair(actor.Inventory);
         }
 
         public void Damage(float amount)
         {
             Health = Mathf.Max(0f, Health - Mathf.Max(0f, amount));
+            HavenlineSave.MarkDirty();
             Apply();
         }
 
@@ -373,9 +630,16 @@ namespace Havenline
                 return false;
             Health = Mathf.Min(maxHealth, Health + 28f);
             repairEffect?.Play(true);
+            HavenlineSave.MarkDirty();
             Apply();
             return true;
         }
+
+        public HavenlineBarricadeSnapshot Capture() => new()
+        {
+            id = BarricadeId,
+            health = Health
+        };
 
         private void Apply()
         {
@@ -396,10 +660,12 @@ namespace Havenline
             }
         }
 
-        private static bool Advance(ref float elapsed, float threshold, float deltaTime)
+        private static bool ConsumeImpact(HavenlineActorAnimator animator, ref float elapsed, float seconds, float deltaTime)
         {
+            if (animator != null)
+                return animator.ConsumeImpact(ref elapsed, seconds);
             elapsed += deltaTime;
-            if (elapsed < threshold)
+            if (elapsed < seconds)
                 return false;
             elapsed = 0f;
             return true;
@@ -427,13 +693,19 @@ namespace Havenline
         public override int Priority => 80;
         public override float InteractionRange => Reference.BuildRadius;
         public override string ContextLabel => $"Building {name}";
-        public override float NormalizedProgress
+        public override float NormalizedProgress => Mathf.Clamp01(
+            (deliveredWood + deliveredStone) / (float)Mathf.Max(1, requiredWood + requiredStone));
+
+        protected override void OnEnable()
         {
-            get
-            {
-                var total = Mathf.Max(1, requiredWood + requiredStone);
-                return Mathf.Clamp01((deliveredWood + deliveredStone) / (float)total);
-            }
+            base.OnEnable();
+            HavenlineWorldRegistry.Register(this);
+        }
+
+        protected override void OnDisable()
+        {
+            HavenlineWorldRegistry.Unregister(this);
+            base.OnDisable();
         }
 
         public void Configure(
@@ -455,7 +727,10 @@ namespace Havenline
 
         private void Start()
         {
-            IsBuilt = HavenlineSave.IsConstructionBuilt(buildId);
+            var snapshot = HavenlineSave.LoadConstruction(buildId);
+            deliveredWood = Mathf.Clamp(snapshot.deliveredWood, 0, requiredWood);
+            deliveredStone = Mathf.Clamp(snapshot.deliveredStone, 0, requiredStone);
+            IsBuilt = snapshot.built || HavenlineSave.IsConstructionBuilt(buildId);
             if (IsBuilt)
             {
                 deliveredWood = requiredWood;
@@ -474,11 +749,7 @@ namespace Havenline
 
         public override void TickInteraction(HavenlinePlayerController actor, float deltaTime)
         {
-            var animator = actor.ActorAnimator;
-            var impact = animator != null
-                ? animator.ConsumeImpact(ref buildElapsed, 0.24f)
-                : Advance(ref buildElapsed, 0.24f, deltaTime);
-            if (impact)
+            if (ConsumeImpact(actor.ActorAnimator, ref buildElapsed, 0.24f, deltaTime))
                 Contribute(actor.Inventory);
         }
 
@@ -486,10 +757,7 @@ namespace Havenline
         {
             if (IsBuilt || inventory == null)
                 return false;
-            var impact = animator != null
-                ? animator.ConsumeImpact(ref buildElapsed, 0.32f)
-                : Advance(ref buildElapsed, 0.32f, deltaTime);
-            if (impact)
+            if (ConsumeImpact(animator, ref buildElapsed, 0.32f, deltaTime))
                 Contribute(inventory);
             return !IsBuilt;
         }
@@ -499,6 +767,14 @@ namespace Havenline
             ResourceKind.Wood => deliveredWood < requiredWood,
             ResourceKind.Stone => deliveredStone < requiredStone,
             _ => false
+        };
+
+        public HavenlineConstructionSnapshot Capture() => new()
+        {
+            id = buildId,
+            deliveredWood = deliveredWood,
+            deliveredStone = deliveredStone,
+            built = IsBuilt
         };
 
         private void Contribute(HavenlineInventory inventory)
@@ -516,15 +792,15 @@ namespace Havenline
                 IsBuilt = true;
                 HavenlineSave.MarkConstructionBuilt(buildId);
             }
+            HavenlineSave.MarkDirty();
             ApplyVisuals();
         }
 
         private void ApplyVisuals()
         {
-            var progress = NormalizedProgress;
             var visibleStage = constructionStages.Length == 0
                 ? -1
-                : Mathf.Clamp(Mathf.FloorToInt(progress * constructionStages.Length), 0, constructionStages.Length - 1);
+                : Mathf.Clamp(Mathf.FloorToInt(NormalizedProgress * constructionStages.Length), 0, constructionStages.Length - 1);
             for (var index = 0; index < constructionStages.Length; index++)
             {
                 if (constructionStages[index] != null)
@@ -534,10 +810,12 @@ namespace Havenline
                 completedStructure.SetActive(IsBuilt);
         }
 
-        private static bool Advance(ref float elapsed, float threshold, float deltaTime)
+        private static bool ConsumeImpact(HavenlineActorAnimator animator, ref float elapsed, float seconds, float deltaTime)
         {
+            if (animator != null)
+                return animator.ConsumeImpact(ref elapsed, seconds);
             elapsed += deltaTime;
-            if (elapsed < threshold)
+            if (elapsed < seconds)
                 return false;
             elapsed = 0f;
             return true;
@@ -553,13 +831,14 @@ namespace Havenline
 
         private CharacterController controller;
         private HavenlineInventory inventory;
+        private HavenlinePlayerController player;
         private HavenlineResourceNode targetResource;
         private HavenlineEnemy targetEnemy;
         private HavenlineBarricade targetBarricade;
         private HavenlineConstructionSite targetConstruction;
         private float decisionClock;
         private float rescueElapsed;
-        private float helperActionElapsed;
+        private float actionElapsed;
 
         public HelperState State { get; private set; } = HelperState.Trapped;
         public HavenlineInventory Inventory => inventory;
@@ -578,7 +857,18 @@ namespace Havenline
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
+            if (controller == null)
+                controller = gameObject.AddComponent<CharacterController>();
             inventory = GetComponent<HavenlineInventory>();
+            if (inventory == null)
+                inventory = gameObject.AddComponent<HavenlineInventory>();
+            inventory.Changed += HavenlineSave.MarkDirty;
+        }
+
+        private void OnDestroy()
+        {
+            if (inventory != null)
+                inventory.Changed -= HavenlineSave.MarkDirty;
         }
 
         private void Start()
@@ -586,16 +876,20 @@ namespace Havenline
             State = HavenlineSave.LoadHelperState();
             if (State == HelperState.Rescuing)
                 State = HelperState.Trapped;
+            inventory.Restore(HavenlineSave.LoadHelperInventory());
+            var savedPosition = HavenlineSave.LoadHelperPosition(transform.position);
+            if (Reference.IsValidSavedPosition(savedPosition))
+                transform.position = savedPosition;
         }
 
         public override bool CanInteract(HavenlinePlayerController actor) =>
-            State == HelperState.Trapped && HavenlineFurnace.Instance != null && HavenlineFurnace.Instance.Level >= 2;
+            State == HelperState.Trapped && HavenlineFurnace.Instance != null &&
+            HavenlineFurnace.Instance.IsOperational && HavenlineFurnace.Instance.Level >= 2;
 
         public override void OnSelected(HavenlinePlayerController actor)
         {
             rescueElapsed = 0f;
-            State = HelperState.Rescuing;
-            animator?.BeginAction(AutomaticActionKind.Rescue);
+            SetState(HelperState.Rescuing, AutomaticActionKind.Rescue);
         }
 
         public override void OnDeselected(HavenlinePlayerController actor)
@@ -609,14 +903,16 @@ namespace Havenline
         public override void TickInteraction(HavenlinePlayerController actor, float deltaTime)
         {
             if (State != HelperState.Rescuing)
-                State = HelperState.Rescuing;
+                SetState(HelperState.Rescuing, AutomaticActionKind.Rescue);
             rescueElapsed += deltaTime;
             if (rescueElapsed < 2.2f)
                 return;
+
             rescueElapsed = 2.2f;
             State = HelperState.Following;
             rescueEffect?.Play(true);
             animator?.EndAction();
+            HavenlineSave.MarkDirty();
             HavenlineSave.SaveNow(actor);
         }
 
@@ -628,7 +924,8 @@ namespace Havenline
                 return;
             }
 
-            var player = FindFirstObjectByType<HavenlinePlayerController>();
+            if (player == null)
+                player = FindFirstObjectByType<HavenlinePlayerController>();
             var furnace = HavenlineFurnace.Instance;
             if (player == null || furnace == null)
                 return;
@@ -643,14 +940,21 @@ namespace Havenline
             if (targetEnemy != null && targetEnemy.IsAlive &&
                 Vector3.Distance(targetEnemy.transform.position, transform.position) < 7f)
             {
-                State = HelperState.Defending;
+                SetState(HelperState.Defending, AutomaticActionKind.Combat);
                 MoveToward(targetEnemy.transform.position, 3.75f);
-                if (Vector3.Distance(targetEnemy.transform.position, transform.position) < 2.3f)
-                {
-                    animator?.BeginAction(AutomaticActionKind.Combat);
-                    if (animator == null ? Advance(ref helperActionElapsed, 0.9f, Time.deltaTime) : animator.ConsumeImpact(ref helperActionElapsed, 0.9f))
-                        targetEnemy.Damage(18f);
-                }
+                if (Vector3.Distance(targetEnemy.transform.position, transform.position) < 2.3f &&
+                    ConsumeImpact(animator, ref actionElapsed, 0.9f, Time.deltaTime))
+                    targetEnemy.Damage(18f);
+                return;
+            }
+
+            if (furnace.NeedsRepair && inventory[ResourceKind.Wood] > 0)
+            {
+                SetState(HelperState.Repairing, AutomaticActionKind.Repair);
+                MoveToward(furnace.transform.position, 3.3f);
+                if (Vector3.Distance(transform.position, furnace.transform.position) < Reference.DepositRadius &&
+                    ConsumeImpact(animator, ref actionElapsed, 0.42f, Time.deltaTime))
+                    furnace.RepairOne(inventory);
                 return;
             }
 
@@ -658,80 +962,71 @@ namespace Havenline
                 ((targetConstruction.Needs(ResourceKind.Wood) && inventory[ResourceKind.Wood] > 0) ||
                  (targetConstruction.Needs(ResourceKind.Stone) && inventory[ResourceKind.Stone] > 0)))
             {
-                State = HelperState.Building;
+                SetState(HelperState.Building, AutomaticActionKind.Build);
                 MoveToward(targetConstruction.transform.position, 3.25f);
                 if (Vector3.Distance(transform.position, targetConstruction.transform.position) < Reference.BuildRadius)
-                {
-                    animator?.BeginAction(AutomaticActionKind.Build);
                     targetConstruction.ContributeForHelper(inventory, animator, Time.deltaTime);
-                }
                 return;
             }
 
             if (targetBarricade != null && targetBarricade.HealthFraction < 0.75f && inventory[ResourceKind.Wood] > 0)
             {
-                State = HelperState.Repairing;
+                SetState(HelperState.Repairing, AutomaticActionKind.Repair);
                 MoveToward(targetBarricade.transform.position, 3.2f);
-                if (Vector3.Distance(transform.position, targetBarricade.transform.position) < Reference.BuildRadius)
-                {
-                    animator?.BeginAction(AutomaticActionKind.Repair);
-                    if (animator == null ? Advance(ref helperActionElapsed, 0.42f, Time.deltaTime) : animator.ConsumeImpact(ref helperActionElapsed, 0.42f))
-                        targetBarricade.Repair(inventory);
-                }
+                if (Vector3.Distance(transform.position, targetBarricade.transform.position) < Reference.BuildRadius &&
+                    ConsumeImpact(animator, ref actionElapsed, 0.42f, Time.deltaTime))
+                    targetBarricade.Repair(inventory);
                 return;
             }
 
             if (inventory.Total > 0)
             {
-                State = HelperState.Delivering;
+                SetState(HelperState.Delivering, AutomaticActionKind.Deposit);
                 MoveToward(furnace.transform.position, 3.3f);
-                if (Vector3.Distance(transform.position, furnace.transform.position) < Reference.DepositRadius)
-                {
-                    animator?.BeginAction(AutomaticActionKind.Deposit);
-                    if (animator == null ? Advance(ref helperActionElapsed, 0.2f, Time.deltaTime) : animator.ConsumeImpact(ref helperActionElapsed, 0.2f))
-                        furnace.DepositOne(inventory);
-                }
+                if (Vector3.Distance(transform.position, furnace.transform.position) < Reference.DepositRadius &&
+                    ConsumeImpact(animator, ref actionElapsed, 0.2f, Time.deltaTime))
+                    furnace.DepositOne(inventory);
                 return;
             }
 
             if (targetResource != null && targetResource.isActiveAndEnabled && targetResource.Remaining > 0)
             {
-                State = HelperState.Gathering;
+                SetState(HelperState.Gathering, targetResource.ActionKind);
                 MoveToward(targetResource.transform.position, 3.15f);
                 if (Vector3.Distance(transform.position, targetResource.transform.position) < targetResource.InteractionRange)
-                {
-                    animator?.BeginAction(targetResource.ActionKind);
                     targetResource.GatherForHelper(inventory, animator, Time.deltaTime);
-                }
                 return;
             }
 
-            State = HelperState.Following;
-            animator?.EndAction();
+            SetState(HelperState.Following, AutomaticActionKind.None);
             MoveToward(player.transform.position + new Vector3(-1.35f, 0f, -1.05f), 3.2f);
         }
 
         private void RefreshTargets()
         {
-            targetEnemy = FindObjectsByType<HavenlineEnemy>(FindObjectsSortMode.None)
-                .Where(enemy => enemy.IsAlive)
-                .OrderBy(enemy => Vector3.Distance(enemy.transform.position, transform.position))
-                .FirstOrDefault();
-            targetConstruction = FindObjectsByType<HavenlineConstructionSite>(FindObjectsSortMode.None)
-                .Where(site => !site.IsBuilt)
-                .OrderBy(site => Vector3.Distance(site.transform.position, transform.position))
-                .FirstOrDefault();
-            targetBarricade = FindObjectsByType<HavenlineBarricade>(FindObjectsSortMode.None)
-                .Where(barricade => barricade.IsBuilt)
-                .OrderBy(barricade => barricade.HealthFraction)
-                .FirstOrDefault();
+            targetEnemy = HavenlineWorldRegistry.ClosestEnemy(transform.position, 9f);
+            targetConstruction = HavenlineWorldRegistry.ClosestIncompleteConstruction(transform.position);
+            targetBarricade = HavenlineWorldRegistry.MostDamagedBarricade(transform.position);
             if (targetResource == null || !targetResource.isActiveAndEnabled || targetResource.Remaining <= 0)
+                targetResource = HavenlineWorldRegistry.ClosestResource(transform.position);
+        }
+
+        private void SetState(HelperState state, AutomaticActionKind action)
+        {
+            if (State == state)
             {
-                targetResource = FindObjectsByType<HavenlineResourceNode>(FindObjectsSortMode.None)
-                    .Where(resource => resource.isActiveAndEnabled && resource.Remaining > 0)
-                    .OrderBy(resource => Vector3.Distance(resource.transform.position, transform.position))
-                    .FirstOrDefault();
+                if (action != AutomaticActionKind.None)
+                    animator?.BeginAction(action);
+                return;
             }
+
+            State = state;
+            actionElapsed = 0f;
+            if (action == AutomaticActionKind.None)
+                animator?.EndAction();
+            else
+                animator?.BeginAction(action);
+            HavenlineSave.MarkDirty();
         }
 
         private void MoveToward(Vector3 target, float speed)
@@ -742,6 +1037,7 @@ namespace Havenline
                 animator?.SetMotion(0f);
                 return;
             }
+
             direction.Normalize();
             controller.Move((direction * speed + Physics.gravity) * Time.deltaTime);
             transform.position = Reference.ClampToWorld(transform.position);
@@ -755,10 +1051,12 @@ namespace Havenline
             animator?.SetMotion(1f);
         }
 
-        private static bool Advance(ref float elapsed, float threshold, float deltaTime)
+        private static bool ConsumeImpact(HavenlineActorAnimator actorAnimator, ref float elapsed, float seconds, float deltaTime)
         {
+            if (actorAnimator != null)
+                return actorAnimator.ConsumeImpact(ref elapsed, seconds);
             elapsed += deltaTime;
-            if (elapsed < threshold)
+            if (elapsed < seconds)
                 return false;
             elapsed = 0f;
             return true;
@@ -777,15 +1075,37 @@ namespace Havenline
         private CharacterController controller;
         private HavenlineBarricade targetBarricade;
         private float health;
-        private float attackElapsed;
+        private float playerHitElapsed;
+        private float enemyAttackElapsed;
         private float targetRefreshClock;
+        private bool dying;
 
-        public bool IsAlive => health > 0f;
+        public bool IsAlive => health > 0f && !dying;
         public override AutomaticActionKind ActionKind => AutomaticActionKind.Combat;
         public override int Priority => 200;
         public override float InteractionRange => Reference.CombatRadius;
         public override string ContextLabel => "Defending";
         public override float NormalizedProgress => -1f;
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            HavenlineWorldRegistry.Register(this);
+        }
+
+        protected override void OnDisable()
+        {
+            HavenlineWorldRegistry.Unregister(this);
+            base.OnDisable();
+        }
+
+        private void Awake()
+        {
+            controller = GetComponent<CharacterController>();
+            if (controller == null)
+                controller = gameObject.AddComponent<CharacterController>();
+            ResetForSpawn();
+        }
 
         public void Configure(Transform visualRoot, HavenlineActorAnimator actorAnimator)
         {
@@ -793,10 +1113,17 @@ namespace Havenline
             animator = actorAnimator;
         }
 
-        private void Awake()
+        public void ResetForSpawn()
         {
-            controller = GetComponent<CharacterController>();
+            StopAllCoroutines();
             health = maxHealth;
+            dying = false;
+            playerHitElapsed = 0f;
+            enemyAttackElapsed = 0f;
+            targetRefreshClock = 0f;
+            targetBarricade = null;
+            if (controller != null)
+                controller.enabled = true;
         }
 
         public override bool CanInteract(HavenlinePlayerController actor) => IsAlive;
@@ -805,11 +1132,7 @@ namespace Havenline
         {
             if (!IsAlive)
                 return;
-            var actorAnimator = actor.ActorAnimator;
-            var impact = actorAnimator != null
-                ? actorAnimator.ConsumeImpact(ref attackElapsed, 0.64f)
-                : Advance(ref attackElapsed, 0.64f, deltaTime);
-            if (impact)
+            if (ConsumeImpact(actor.ActorAnimator, ref playerHitElapsed, 0.64f, deltaTime))
                 Damage(22f);
         }
 
@@ -822,13 +1145,12 @@ namespace Havenline
             if (targetRefreshClock <= 0f)
             {
                 targetRefreshClock = 0.45f;
-                targetBarricade = FindObjectsByType<HavenlineBarricade>(FindObjectsSortMode.None)
-                    .Where(barricade => barricade.IsBuilt)
-                    .OrderBy(barricade => Vector3.Distance(transform.position, barricade.transform.position))
-                    .FirstOrDefault();
+                targetBarricade = HavenlineWorldRegistry.ClosestStandingBarricade(transform.position);
             }
 
-            var target = targetBarricade != null ? targetBarricade.transform.position : Reference.Furnace;
+            var furnace = HavenlineFurnace.Instance;
+            var hasBarricade = targetBarricade != null && targetBarricade.IsBuilt;
+            var target = hasBarricade ? targetBarricade.transform.position : furnace != null ? furnace.transform.position : Reference.Furnace;
             var direction = Vector3.ProjectOnPlane(target - transform.position, Vector3.up);
             if (direction.magnitude > 1.55f)
             {
@@ -848,14 +1170,20 @@ namespace Havenline
 
             animator?.SetMotion(0f);
             animator?.BeginAction(AutomaticActionKind.Combat);
-            if (animator == null ? Advance(ref attackElapsed, 1.1f, Time.deltaTime) : animator.ConsumeImpact(ref attackElapsed, 1.1f))
-                targetBarricade?.Damage(16f);
+            if (!ConsumeImpact(animator, ref enemyAttackElapsed, 1.1f, Time.deltaTime))
+                return;
+
+            if (hasBarricade)
+                targetBarricade.Damage(16f);
+            else
+                furnace?.Damage(14f);
         }
 
         public void Damage(float amount)
         {
             if (!IsAlive)
                 return;
+
             health -= Mathf.Max(0f, amount);
             hitEffect?.Play(true);
             animator?.PlayHit();
@@ -863,19 +1191,62 @@ namespace Havenline
                 return;
 
             health = 0f;
+            dying = true;
+            if (controller != null)
+                controller.enabled = false;
             animator?.PlayDeath();
             if (droppedResource != null)
                 Instantiate(droppedResource, transform.position, Quaternion.identity);
-            Destroy(gameObject, 1.15f);
+            StartCoroutine(ReturnAfterDeath());
         }
 
-        private static bool Advance(ref float elapsed, float threshold, float deltaTime)
+        private IEnumerator ReturnAfterDeath()
         {
+            yield return new WaitForSeconds(1.15f);
+            HavenlineEnemyPool.Return(this);
+        }
+
+        private static bool ConsumeImpact(HavenlineActorAnimator actorAnimator, ref float elapsed, float seconds, float deltaTime)
+        {
+            if (actorAnimator != null)
+                return actorAnimator.ConsumeImpact(ref elapsed, seconds);
             elapsed += deltaTime;
-            if (elapsed < threshold)
+            if (elapsed < seconds)
                 return false;
             elapsed = 0f;
             return true;
+        }
+    }
+
+    internal static class HavenlineEnemyPool
+    {
+        private static readonly Stack<HavenlineEnemy> Pool = new();
+
+        internal static HavenlineEnemy Spawn(HavenlineEnemy template, Vector3 position)
+        {
+            if (template == null)
+                return null;
+
+            HavenlineEnemy enemy = null;
+            while (Pool.Count > 0 && enemy == null)
+                enemy = Pool.Pop();
+
+            if (enemy == null)
+                enemy = UnityEngine.Object.Instantiate(template, position, Quaternion.identity);
+            else
+                enemy.transform.SetPositionAndRotation(position, Quaternion.identity);
+
+            enemy.ResetForSpawn();
+            enemy.gameObject.SetActive(true);
+            return enemy;
+        }
+
+        internal static void Return(HavenlineEnemy enemy)
+        {
+            if (enemy == null)
+                return;
+            enemy.gameObject.SetActive(false);
+            Pool.Push(enemy);
         }
     }
 
@@ -888,16 +1259,20 @@ namespace Havenline
         [SerializeField] private GameObject nextAreaGate;
 
         private float waveClock = 48f;
-        private int wave;
+        private int completedWaves;
+        private bool waveActive;
 
         public string Objective { get; private set; } = "Gather wood";
-        public int Wave => wave;
+        public int Wave => completedWaves;
         public float WaveClock => waveClock;
+        public bool WaveActive => waveActive;
+        public int ActiveEnemyCount => HavenlineWorldRegistry.AliveEnemyCount;
         public HavenlineHelper Helper => helper;
         public HavenlineFurnace Furnace => furnace;
-        public bool OpeningComplete => furnace != null && furnace.Level >= 2 &&
+        public bool OpeningComplete => furnace != null && furnace.IsOperational && furnace.Level >= 2 &&
                                        helper != null && helper.State != HelperState.Trapped &&
-                                       (requiredDefense == null || requiredDefense.IsBuilt) && wave >= 1;
+                                       helper.State != HelperState.Rescuing &&
+                                       (requiredDefense == null || requiredDefense.IsBuilt) && completedWaves >= 1;
 
         public void Configure(HavenlineEnemy prefab, HavenlineHelper survivor, HavenlineFurnace centralFurnace)
         {
@@ -922,7 +1297,8 @@ namespace Havenline
 
         private void Start()
         {
-            HavenlineSave.LoadDirector(out wave, out waveClock);
+            HavenlineSave.LoadDirector(out completedWaves, out waveClock);
+            waveActive = false;
         }
 
         private void Update()
@@ -930,40 +1306,60 @@ namespace Havenline
             if (furnace == null)
                 return;
 
+            if (waveActive && HavenlineWorldRegistry.AliveEnemyCount == 0)
+            {
+                waveActive = false;
+                completedWaves++;
+                waveClock = Mathf.Max(24f, 48f - completedWaves * 3f);
+                HavenlineSave.MarkDirty();
+            }
+
             Objective = DetermineObjective();
             if (nextAreaGate != null)
                 nextAreaGate.SetActive(OpeningComplete);
 
-            if (furnace.Level < 2 || helper == null || helper.State == HelperState.Trapped || helper.State == HelperState.Rescuing)
-                return;
-            if (requiredDefense != null && !requiredDefense.IsBuilt)
+            if (waveActive || !ReadyForWave())
                 return;
 
             waveClock -= Time.deltaTime;
             if (waveClock > 0f)
                 return;
-            wave++;
-            waveClock = Mathf.Max(24f, 48f - wave * 3f);
-            SpawnWave(2 + wave);
+
+            var waveNumber = completedWaves + 1;
+            SpawnWave(2 + waveNumber);
+            waveActive = HavenlineWorldRegistry.AliveEnemyCount > 0;
+            if (!waveActive)
+                waveClock = 5f;
+            HavenlineSave.MarkDirty();
         }
+
+        private bool ReadyForWave() => furnace.IsOperational && furnace.Level >= 2 &&
+                                       helper != null && helper.State != HelperState.Trapped &&
+                                       helper.State != HelperState.Rescuing &&
+                                       (requiredDefense == null || requiredDefense.IsBuilt);
 
         private string DetermineObjective()
         {
+            if (!furnace.IsOperational)
+                return "Carry wood close to repair the furnace";
             if (furnace.Level < 2)
                 return "Gather supplies and feed the furnace";
             if (helper != null && helper.State == HelperState.Trapped)
                 return "Move close to rescue the frozen survivor";
             if (requiredDefense != null && !requiredDefense.IsBuilt)
                 return "Carry wood and stone to the barricade";
-            if (wave < 1)
+            if (waveActive)
+                return $"Defend automatically • {HavenlineWorldRegistry.AliveEnemyCount} wolves";
+            if (completedWaves < 1)
                 return $"Prepare for wolves • {Mathf.CeilToInt(waveClock)}s";
-            return OpeningComplete ? "The forest route is open" : "Stay near threats to defend automatically";
+            return OpeningComplete ? "The forest route is open" : "Repair the outpost";
         }
 
         private void SpawnWave(int count)
         {
             if (enemyPrefab == null)
                 return;
+
             for (var index = 0; index < count; index++)
             {
                 var north = index % 2 == 0;
@@ -971,7 +1367,7 @@ namespace Havenline
                     Mathf.Lerp(-9f, 9f, (index + 1f) / (count + 1f)),
                     0.15f,
                     north ? -15.2f : 15.2f);
-                Instantiate(enemyPrefab, position, Quaternion.identity).gameObject.SetActive(true);
+                HavenlineEnemyPool.Spawn(enemyPrefab, position);
             }
         }
     }
@@ -979,14 +1375,19 @@ namespace Havenline
     [Serializable]
     public sealed class HavenlineSaveData
     {
-        public int version = 2;
+        public int version = 3;
         public Vector3 playerPosition = Reference.PlayerSpawn;
         public HavenlineInventorySnapshot inventory;
         public HavenlineFurnaceSnapshot furnace;
         public HelperState helperState = HelperState.Trapped;
+        public bool helperPositionValid;
+        public Vector3 helperPosition;
+        public HavenlineInventorySnapshot helperInventory;
         public int wave;
         public float waveClock = 48f;
         public string[] builtConstructionIds = Array.Empty<string>();
+        public HavenlineConstructionSnapshot[] construction = Array.Empty<HavenlineConstructionSnapshot>();
+        public HavenlineBarricadeSnapshot[] barricades = Array.Empty<HavenlineBarricadeSnapshot>();
         public long savedUtcTicks;
     }
 
@@ -998,9 +1399,13 @@ namespace Havenline
         private static readonly HashSet<string> Built = new(StringComparer.Ordinal);
         private static HavenlineSaveData cached;
         private static float nextSave;
+        private static bool dirty = true;
+        private static Vector3 lastSavedPosition = Reference.PlayerSpawn;
 
-        private static string SavePath => Path.Combine(Application.persistentDataPath, "havenline-save-v2.json");
+        private static string SavePath => Path.Combine(Application.persistentDataPath, "havenline-save-v3.json");
         private static string TempPath => SavePath + ".tmp";
+
+        public static void MarkDirty() => dirty = true;
 
         public static Vector3 LoadPlayerPosition()
         {
@@ -1028,11 +1433,53 @@ namespace Havenline
             return cached.helperState;
         }
 
+        public static Vector3 LoadHelperPosition(Vector3 fallback)
+        {
+            EnsureLoaded();
+            return cached.helperPositionValid && Reference.IsValidSavedPosition(cached.helperPosition)
+                ? cached.helperPosition
+                : fallback;
+        }
+
+        public static HavenlineInventorySnapshot LoadHelperInventory()
+        {
+            EnsureLoaded();
+            return cached.helperInventory;
+        }
+
         public static void LoadDirector(out int wave, out float waveClock)
         {
             EnsureLoaded();
             wave = Mathf.Max(0, cached.wave);
             waveClock = cached.waveClock > 0f ? cached.waveClock : 48f;
+        }
+
+        public static HavenlineConstructionSnapshot LoadConstruction(string id)
+        {
+            EnsureLoaded();
+            if (cached.construction != null)
+            {
+                foreach (var snapshot in cached.construction)
+                {
+                    if (string.Equals(snapshot.id, id, StringComparison.Ordinal))
+                        return snapshot;
+                }
+            }
+            return new HavenlineConstructionSnapshot { id = id, built = Built.Contains(id) };
+        }
+
+        public static float LoadBarricadeHealth(string id, float fallback)
+        {
+            EnsureLoaded();
+            if (cached.barricades != null)
+            {
+                foreach (var snapshot in cached.barricades)
+                {
+                    if (string.Equals(snapshot.id, id, StringComparison.Ordinal))
+                        return Mathf.Clamp(snapshot.health, 0f, fallback);
+                }
+            }
+            return fallback;
         }
 
         public static bool IsConstructionBuilt(string id)
@@ -1047,14 +1494,19 @@ namespace Havenline
                 return;
             EnsureLoaded();
             Built.Add(id);
-            cached.builtConstructionIds = Built.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+            cached.builtConstructionIds = CopyBuiltIds();
+            dirty = true;
         }
 
         public static void MaybeSave(HavenlinePlayerController player)
         {
-            if (player == null || Time.unscaledTime < nextSave || !Reference.IsValidSavedPosition(player.transform.position))
+            if (player == null || !Reference.IsValidSavedPosition(player.transform.position))
                 return;
-            nextSave = Time.unscaledTime + 2f;
+
+            var moved = (player.transform.position - lastSavedPosition).sqrMagnitude > 0.25f;
+            if ((!dirty && !moved) || Time.unscaledTime < nextSave)
+                return;
+
             SaveNow(player);
         }
 
@@ -1062,6 +1514,7 @@ namespace Havenline
         {
             if (player == null)
                 return;
+
             EnsureLoaded();
             cached.playerPosition = Reference.IsValidSavedPosition(player.transform.position)
                 ? player.transform.position
@@ -1071,18 +1524,32 @@ namespace Havenline
             var furnace = HavenlineFurnace.Instance;
             if (furnace != null)
                 cached.furnace = furnace.Capture();
+
             var helper = UnityEngine.Object.FindFirstObjectByType<HavenlineHelper>();
             if (helper != null)
+            {
                 cached.helperState = helper.State;
+                cached.helperPosition = helper.transform.position;
+                cached.helperPositionValid = Reference.IsValidSavedPosition(helper.transform.position);
+                cached.helperInventory = helper.Inventory.Capture();
+            }
+
             var director = UnityEngine.Object.FindFirstObjectByType<HavenlineGameDirector>();
             if (director != null)
             {
                 cached.wave = director.Wave;
                 cached.waveClock = director.WaveClock;
             }
-            cached.builtConstructionIds = Built.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+
+            cached.builtConstructionIds = CopyBuiltIds();
+            cached.construction = HavenlineWorldRegistry.CaptureConstruction();
+            cached.barricades = HavenlineWorldRegistry.CaptureBarricades();
             cached.savedUtcTicks = DateTime.UtcNow.Ticks;
             WriteAtomic(cached);
+
+            lastSavedPosition = cached.playerPosition;
+            nextSave = Time.unscaledTime + 8f;
+            dirty = false;
         }
 
         public static void ResetAll()
@@ -1090,25 +1557,30 @@ namespace Havenline
             cached = new HavenlineSaveData();
             cached.furnace.level = 1;
             Built.Clear();
-            if (File.Exists(SavePath))
-                File.Delete(SavePath);
-            if (File.Exists(TempPath))
-                File.Delete(TempPath);
+            dirty = true;
+            nextSave = 0f;
+            lastSavedPosition = Reference.PlayerSpawn;
+            DeleteIfExists(SavePath);
+            DeleteIfExists(TempPath);
         }
 
         private static void EnsureLoaded()
         {
             if (cached != null)
                 return;
+
             cached = ReadSave() ?? MigrateLegacyPosition();
-            cached.version = 2;
+            cached.version = 3;
             cached.builtConstructionIds ??= Array.Empty<string>();
+            cached.construction ??= Array.Empty<HavenlineConstructionSnapshot>();
+            cached.barricades ??= Array.Empty<HavenlineBarricadeSnapshot>();
             Built.Clear();
             foreach (var id in cached.builtConstructionIds)
             {
                 if (!string.IsNullOrWhiteSpace(id))
                     Built.Add(id);
             }
+            lastSavedPosition = cached.playerPosition;
         }
 
         private static HavenlineSaveData ReadSave()
@@ -1118,7 +1590,7 @@ namespace Havenline
                 if (!File.Exists(SavePath))
                     return null;
                 var parsed = JsonUtility.FromJson<HavenlineSaveData>(File.ReadAllText(SavePath));
-                if (parsed == null || parsed.version > 2)
+                if (parsed == null || parsed.version > 3)
                     return null;
                 return parsed;
             }
@@ -1135,6 +1607,7 @@ namespace Havenline
             data.furnace.level = 1;
             if (!PlayerPrefs.HasKey(LegacyX))
                 return data;
+
             var legacy = new Vector3(
                 PlayerPrefs.GetFloat(LegacyX),
                 PlayerPrefs.GetFloat(LegacyY),
@@ -1143,20 +1616,34 @@ namespace Havenline
             return data;
         }
 
+        private static string[] CopyBuiltIds()
+        {
+            var values = new string[Built.Count];
+            Built.CopyTo(values);
+            Array.Sort(values, StringComparer.Ordinal);
+            return values;
+        }
+
         private static void WriteAtomic(HavenlineSaveData data)
         {
             try
             {
                 Directory.CreateDirectory(Application.persistentDataPath);
                 File.WriteAllText(TempPath, JsonUtility.ToJson(data, true));
-                if (File.Exists(SavePath))
-                    File.Delete(SavePath);
+                DeleteIfExists(SavePath);
                 File.Move(TempPath, SavePath);
             }
             catch (Exception exception)
             {
+                dirty = true;
                 Debug.LogError($"HAVENLINE save failed: {exception.Message}");
             }
+        }
+
+        private static void DeleteIfExists(string path)
+        {
+            if (File.Exists(path))
+                File.Delete(path);
         }
     }
 }
