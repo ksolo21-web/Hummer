@@ -4,6 +4,7 @@ import android.content.Context
 import com.kreativstudio.app.ai.AiMentorRepository
 import com.kreativstudio.app.auth.AuthRepository
 import com.kreativstudio.app.cloud.CloudSyncRepository
+import com.kreativstudio.app.cloud.DocumentCloudBackupRepository
 import com.kreativstudio.app.data.FileProjectRepository
 import com.kreativstudio.app.data.LessonProgressRepository
 import com.kreativstudio.app.data.LessonRepository
@@ -18,6 +19,7 @@ class KreativContainer(context: Context, firebaseReady: Boolean) {
     val lessonProgressRepository = LessonProgressRepository(context)
     val authRepository = AuthRepository(context, firebaseReady)
     val cloudSyncRepository = CloudSyncRepository(context, firebaseReady)
+    val documentCloudBackupRepository = DocumentCloudBackupRepository(context)
     val aiMentorRepository = AiMentorRepository(firebaseReady)
     val projectExporter = ProjectExporter(context)
 }

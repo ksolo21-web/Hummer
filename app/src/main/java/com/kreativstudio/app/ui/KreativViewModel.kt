@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.kreativstudio.app.KreativContainer
+import com.kreativstudio.app.cloud.DocumentStudioBackup
 import com.kreativstudio.app.model.AiAdvice
 import com.kreativstudio.app.model.AppSettings
 import com.kreativstudio.app.model.AttachmentKind
@@ -49,8 +50,13 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     val lessons = container.lessonRepository.lessons
     val onDeviceMentorState = container.aiMentorRepository.onDeviceState
     val isGoogleConfigured: Boolean get() = container.authRepository.isGoogleConfigured
-    val isCloudConfigured: Boolean get() = container.cloudSyncRepository.isConfigured
-    val cloudFailureDetail: String? get() = container.cloudSyncRepository.lastFailureMessage
+    val isCloudConfigured: Boolean get() =
+        container.documentCloudBackupRepository.isConnected || container.cloudSyncRepository.isConfigured
+    val cloudFailureDetail: String? get() =
+        container.documentCloudBackupRepository.lastFailureMessage
+            ?: container.cloudSyncRepository.lastFailureMessage
+    val documentCloudBackupConnected: Boolean
+        get() = container.documentCloudBackupRepository.isConnected
 
     var screen by mutableStateOf(StudioScreen.HOME)
         private set
@@ -70,7 +76,7 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     var aiPrompt by mutableStateOf("")
     var isBusy by mutableStateOf(false)
         private set
-    var cloudAccessAvailable by mutableStateOf(false)
+    var cloudAccessAvailable by mutableStateOf(container.documentCloudBackupRepository.isConnected)
         private set
     var message by mutableStateOf<String?>(null)
         private set
@@ -115,13 +121,13 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
             isBusy = true
             container.authRepository.signInWithGoogle(activity)
                 .onSuccess { signedIn ->
-                    val cloudReady = restoreFromCloud()
-                    message = if (cloudReady) {
-                        "Welcome home, ${signedIn.displayName}. Cloud backup is connected."
-                    } else {
-                        "Welcome home, ${signedIn.displayName}. Signed in successfully. Device autosave is active while cloud backup authorization is repaired."
-                    }
-                }
+          val cloudReady = if (documentCloudBackupConnected) restoreFromCloud() else false
+          message = if (cloudReady) {
+              "Welcome home, ${signedIn.displayName}. Your Google Drive studio backup is connected."
+          } else {
+              "Welcome home, ${signedIn.displayName}. Google sign-in succeeded. Connect Google Drive backup in Settings to protect the full studio."
+          }
+      }
                 .onFailure { message = it.message ?: "Google sign-in failed." }
             isBusy = false
         }
@@ -411,19 +417,23 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     }
 
     fun syncCurrentProject() {
-        val project = currentProject ?: return
-        if (!cloudAccessAvailable) {
-            message = cloudUnavailableMessage()
+        syncAllUserData()
+    }
+
+    fun syncAllUserData() {
+        if (!documentCloudBackupConnected) {
+            message = "Connect a Google Drive backup file in Settings first."
             return
         }
         viewModelScope.launch {
             isBusy = true
-            container.cloudSyncRepository.upload(project)
-                .onSuccess { synced ->
+            val snapshot = projectsForBackup()
+            container.documentCloudBackupRepository
+                .backup(snapshot, settings.value, lessonProgress.value)
+                .onSuccess {
+                    markProjectsSynced(snapshot)
                     cloudAccessAvailable = true
-                    currentProject = container.projectRepository.save(synced)
-                    backupUserState()
-                    message = "Project safely synced."
+                    message = "The full studio is backed up to Google Drive."
                 }
                 .onFailure {
                     cloudAccessAvailable = false
@@ -433,31 +443,34 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
         }
     }
 
-    fun syncAllUserData() {
-        if (!isCloudConfigured) {
-            message = "Sign in with the configured Google account before syncing the full studio."
-            return
-        }
-        if (!cloudAccessAvailable) {
-            message = cloudUnavailableMessage()
-            return
-        }
+    fun connectDocumentCloudBackup(uri: Uri) {
         viewModelScope.launch {
             isBusy = true
-            runCatching {
-                projects.value.forEach { project ->
-                    val synced = container.cloudSyncRepository.upload(project).getOrThrow()
-                    val saved = container.projectRepository.save(synced)
-                    if (currentProject?.id == saved.id) currentProject = saved
+            val snapshot = projectsForBackup()
+            container.documentCloudBackupRepository
+                .connectAndBackup(uri, snapshot, settings.value, lessonProgress.value)
+                .onSuccess {
+                    markProjectsSynced(snapshot)
+                    cloudAccessAvailable = true
+                    message = "Google Drive backup is connected and the full studio is protected."
                 }
-                backupUserState()
-            }.onSuccess {
-                cloudAccessAvailable = true
-                message = "Every local project, lesson milestone, and studio setting is backed up."
-            }.onFailure {
-                cloudAccessAvailable = false
-                message = cloudUnavailableMessage()
-            }
+                .onFailure {
+                    cloudAccessAvailable = false
+                    message = cloudUnavailableMessage()
+                }
+            isBusy = false
+        }
+    }
+
+    fun restoreDocumentCloudBackup(uri: Uri) {
+        viewModelScope.launch {
+            isBusy = true
+            container.documentCloudBackupRepository.restoreFrom(uri)
+                .onSuccess { backup ->
+                    applyDocumentBackup(backup)
+                    message = "Studio restored from the selected cloud backup."
+                }
+                .onFailure { message = cloudUnavailableMessage() }
             isBusy = false
         }
     }
@@ -511,79 +524,85 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
         viewModelScope.launch {
             val updated = transform(settings.value)
             container.settingsRepository.update { updated }
-            if (isCloudConfigured && cloudAccessAvailable) {
-                container.cloudSyncRepository.backupUserState(updated, lessonProgress.value)
-                    .onFailure { cloudAccessAvailable = false }
-            }
+            if (documentCloudBackupConnected && cloudAccessAvailable) {
+        backupUserState()
+    }
         }
     }
 
     fun setTheme(theme: StudioThemeId) = updateSettings { it.copy(themeId = theme) }
 
     fun retryCloudConnection() {
-        viewModelScope.launch {
-            isBusy = true
-            val cloudReady = restoreFromCloud()
-            message = if (cloudReady) {
-                "Cloud backup is connected."
-            } else {
-                cloudUnavailableMessage()
-            }
-            isBusy = false
+        if (!documentCloudBackupConnected) {
+            message = "Connect Google Drive backup in Settings. Firestore is no longer required."
+            return
         }
+        syncAllUserData()
     }
 
     private suspend fun restoreFromCloud(): Boolean {
-        if (!isCloudConfigured) {
+        if (!documentCloudBackupConnected) {
             cloudAccessAvailable = false
             return false
         }
-        val restoredProjects = container.cloudSyncRepository.restoreProjects().getOrElse {
+        val backup = container.documentCloudBackupRepository.restoreConnected().getOrElse {
             cloudAccessAvailable = false
             return false
         }
-        val cloudState = container.cloudSyncRepository.restoreUserState().getOrElse {
-            cloudAccessAvailable = false
-            return false
-        }
-        restoredProjects.forEach { remote ->
+        applyDocumentBackup(backup)
+        cloudAccessAvailable = true
+        return true
+    }
+
+    private suspend fun applyDocumentBackup(backup: DocumentStudioBackup) {
+        backup.projects.forEach { remote ->
             val local = container.projectRepository.get(remote.id)
             if (local == null || remote.updatedAt > local.updatedAt) {
                 container.projectRepository.save(remote.copy(syncState = SyncState.SYNCED))
             }
         }
-        cloudState?.let { restoredState ->
-            restoredState.settings?.let { restored -> container.settingsRepository.update { restored } }
-            if (restoredState.progress.isNotEmpty()) {
-                val merged = (lessonProgress.value + restoredState.progress)
-                    .groupBy { it.lessonId }
-                    .map { (lessonId, entries) ->
-                        val mastered = entries.flatMap { it.masteredStepIndices }.toSet()
-                        val needsPractice = entries.flatMap { it.needsPracticeStepIndices }.toSet() - mastered
-                        LessonProgress(
-                            lessonId = lessonId,
-                            completedSteps = mastered.size,
-                            attempts = entries.maxOfOrNull { it.attempts } ?: 0,
-                            masteredStepIndices = mastered,
-                            needsPracticeStepIndices = needsPractice,
-                            lastOpenedAt = entries.maxOfOrNull { it.lastOpenedAt } ?: System.currentTimeMillis(),
-                        )
-                    }
-                container.lessonProgressRepository.replaceAll(merged)
-            }
+        container.settingsRepository.update { backup.settings }
+        if (backup.progress.isNotEmpty()) {
+            val merged = (lessonProgress.value + backup.progress)
+                .groupBy { it.lessonId }
+                .map { (lessonId, entries) ->
+                    val mastered = entries.flatMap { it.masteredStepIndices }.toSet()
+                    val needsPractice = entries.flatMap { it.needsPracticeStepIndices }.toSet() - mastered
+                    LessonProgress(
+                        lessonId = lessonId,
+                        completedSteps = mastered.size,
+                        attempts = entries.maxOfOrNull { it.attempts } ?: 0,
+                        masteredStepIndices = mastered,
+                        needsPracticeStepIndices = needsPractice,
+                        lastOpenedAt = entries.maxOfOrNull { it.lastOpenedAt } ?: System.currentTimeMillis(),
+                    )
+                }
+            container.lessonProgressRepository.replaceAll(merged)
         }
-        cloudAccessAvailable = true
-        return true
+    }
+
+    private fun projectsForBackup(): List<KreativProject> {
+        val active = currentProject
+        return (projects.value.filterNot { it.id == active?.id } + listOfNotNull(active))
+            .sortedByDescending { it.updatedAt }
+    }
+
+    private suspend fun markProjectsSynced(snapshot: List<KreativProject>) {
+        snapshot.forEach { project ->
+            val synced = container.projectRepository.save(project.copy(syncState = SyncState.SYNCED))
+            if (currentProject?.id == synced.id) currentProject = synced
+        }
     }
 
     private suspend fun backupUserState() {
-        if (!isCloudConfigured || !cloudAccessAvailable) return
-        container.cloudSyncRepository.backupUserState(settings.value, lessonProgress.value)
+        if (!documentCloudBackupConnected || !cloudAccessAvailable) return
+        container.documentCloudBackupRepository
+            .backup(projectsForBackup(), settings.value, lessonProgress.value)
             .onFailure { cloudAccessAvailable = false }
     }
 
     private fun cloudUnavailableMessage(): String =
-        (cloudFailureDetail ?: "Cloud access has not been verified yet.") +
+        (cloudFailureDetail ?: "The Google Drive backup file is not connected.") +
             " Your work remains safely stored on this device."
 
     private fun openProjectInternal(project: KreativProject) {
