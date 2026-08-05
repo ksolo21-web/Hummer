@@ -1,0 +1,245 @@
+name: My Study Companion 0.15.17 Premium Interactive Paint
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.17-premium-interactive-paint.yml
+      - .msc-build/0.15.17-interactive-paint.patch
+      - .msc-build/0.15.17-premium-paint-generator.py.gz.b64
+      - .msc-build/apply-0.15.17-premium-interactive-paint.sh
+      - .msc-build/build-0.15.17-premium-interactive-paint.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-01517-premium-interactive-paint
+  cancel-in-progress: false
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    steps:
+      - name: Check out cumulative fix branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scipy==1.17.0 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          BUILD_TOOLS="$SDK_ROOT/build-tools/36.0.0"
+          test -s "$BUILD_TOOLS/lib/apksigner.jar"
+          if [[ ! -x "$BUILD_TOOLS/apksigner" ]]; then
+            cat > "$BUILD_TOOLS/apksigner" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          exec java -jar "$HERE/lib/apksigner.jar" "$@"
+          SH
+            chmod +x "$BUILD_TOOLS/apksigner"
+          fi
+          test -x "$BUILD_TOOLS/apksigner"
+          test -x "$BUILD_TOOLS/zipalign"
+          test -x "$BUILD_TOOLS/aapt"
+
+      - name: Prepare stable signer when available, isolated CI signer otherwise
+        id: signer
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.MSC_RELEASE_KEYSTORE_B64 || secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.MSC_RELEASE_STORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MSC_RELEASE_KEY_ALIAS || secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MSC_RELEASE_KEY_PASSWORD || secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-01517-signing"
+          mkdir -p "$SIGNING_DIR"
+          if [[ -n "$KEYSTORE_B64" && -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$SIGNING_DIR/release.jks"
+            keytool -list -keystore "$SIGNING_DIR/release.jks" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+            MODE='protected stable signer'
+          else
+            STORE_PASSWORD='msc-01517-packaging-only'
+            KEY_PASSWORD='msc-01517-packaging-only'
+            KEY_ALIAS='msc-01517-packaging'
+            keytool -genkeypair -noprompt \
+              -keystore "$SIGNING_DIR/release.jks" \
+              -storepass "$STORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA -keysize 3072 -validity 2 \
+              -dname 'CN=My Study Companion 0.15.17 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
+            MODE='isolated CI packaging signer'
+          fi
+          echo "store_file=$SIGNING_DIR/release.jks" >> "$GITHUB_OUTPUT"
+          echo "store_password=$STORE_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "key_alias=$KEY_ALIAS" >> "$GITHUB_OUTPUT"
+          echo "key_password=$KEY_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Strictly classify the candidate Smart Online endpoint
+        id: endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL='https://my-study-companion-abc01.web.app'
+          STATUS="$(curl --silent --show-error --location --max-time 30 \
+            --output endpoint-health.txt --write-out '%{http_code}' "$BASE_URL/health" || true)"
+          export STATUS
+          python3 - <<'PY'
+          from __future__ import annotations
+          import json
+          import os
+          from pathlib import Path
+
+          status = os.environ.get('STATUS', '')
+          body = Path('endpoint-health.txt').read_text(encoding='utf-8', errors='replace') if Path('endpoint-health.txt').exists() else ''
+          validated = False
+          reason = f'HTTP {status or "request failed"}'
+          payload = None
+          if status == '200':
+              try:
+                  payload = json.loads(body)
+              except json.JSONDecodeError:
+                  reason = 'HTTP 200 returned non-JSON content'
+              else:
+                  required = {
+                      'status': 'ok',
+                      'openAiConfigured': True,
+                      'appCheckRequired': True,
+                      'userAuthRequired': True,
+                      'persistenceBackend': 'firestore',
+                  }
+                  mismatches = [
+                      f'{key}={payload.get(key)!r}'
+                      for key, expected in required.items()
+                      if payload.get(key) != expected
+                  ]
+                  version = str(payload.get('version', ''))
+                  if version != '0.15.17':
+                      mismatches.append(f'version={version!r}')
+                  if mismatches:
+                      reason = 'health contract mismatch: ' + ', '.join(mismatches)
+                  else:
+                      validated = True
+                      reason = 'validated backend 0.15.17'
+          report = {
+              'url': 'https://my-study-companion-abc01.web.app',
+              'httpStatus': status,
+              'smartOnlineValidated': validated,
+              'reason': reason,
+              'parsedHealth': payload,
+          }
+          Path('endpoint-classification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output:
+              output.write('base_url=https://my-study-companion-abc01.web.app\n')
+              output.write(f'validated={str(validated).lower()}\n')
+              output.write(f'reason={reason}\n')
+          print(json.dumps(report, indent=2))
+          PY
+
+      - name: Build and verify cumulative 0.15.17
+        id: build
+        continue-on-error: true
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: ${{ steps.signer.outputs.store_password }}
+          MSC_RELEASE_KEY_ALIAS: ${{ steps.signer.outputs.key_alias }}
+          MSC_RELEASE_KEY_PASSWORD: ${{ steps.signer.outputs.key_password }}
+          MSC_BACKEND_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
+          MSC_SMART_ONLINE_VALIDATED: ${{ steps.endpoint.outputs.validated }}
+        run: |
+          set +e
+          set -o pipefail
+          {
+            set -euxo pipefail
+            bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+            bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+            bash .msc-build/build-0.15.17-premium-interactive-paint.sh
+            cp endpoint-classification.json release-0.15.17/metadata/ENDPOINT-CLASSIFICATION.json
+            if [[ -s endpoint-health.txt ]]; then
+              cp endpoint-health.txt release-0.15.17/metadata/ENDPOINT-RAW-RESPONSE.txt
+            fi
+            printf '%s\n' \
+              "source_commit=${GITHUB_SHA}" \
+              "workflow_run=${GITHUB_RUN_ID}" \
+              "endpoint_classification=${{ steps.endpoint.outputs.reason }}" \
+              "signing_mode=${{ steps.signer.outputs.mode }}" \
+              >> release-0.15.17/metadata/BUILD-CONNECTION-MODE.txt
+          } 2>&1 | tee build-0.15.17.log
+          status=${PIPESTATUS[0]}
+          printf 'build_exit_status=%s\n' "$status" | tee -a build-0.15.17.log
+          exit "$status"
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.17-build-diagnostics
+          path: |
+            build-0.15.17.log
+            endpoint-classification.json
+            endpoint-health.txt
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Re-verify downloaded-root checksum paths
+        if: steps.build.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-0.15.17
+          sha256sum -c metadata/SHA256SUMS-CI.txt
+
+      - name: Upload verified 0.15.17 APKs and evidence
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.17-premium-interactive-paint
+          path: release-0.15.17
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Fail only after preserving diagnostics
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        run: |
+          echo 'The 0.15.17 build failed; diagnostics were preserved before failing the job.' >&2
+          exit 1
