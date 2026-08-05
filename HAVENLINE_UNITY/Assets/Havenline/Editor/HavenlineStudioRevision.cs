@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.16";
+        public const string Current = "0.1.0-review.17";
         public const string Purpose =
-            "Validate the level-aware two-layer furnace core, secondary particle limits, operational runtime binding, balanced lighting, pale thawed snow and unchanged premium proof gates.";
+            "Replace the edge-on furnace icon with a volumetric three-tongue firebox core, authored ember bed and explicit anti-slash geometry gates while preserving restrained particles and blocked production release.";
     }
 }
