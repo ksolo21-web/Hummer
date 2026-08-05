@@ -1,0 +1,244 @@
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+@@ -146,12 +146,14 @@
+     9 to 0xFF303234, // Black
+ )
+ 
+-private data class LoadedWorkbookIllustration(
++private data class LoadedDifferenceIllustration(
+     val asset: WorkbookIllustrationAsset,
+     val master: Bitmap,
+-    val line: Bitmap,
+-    val mask: Bitmap,
+     val changed: Bitmap,
++)
++
++private data class LoadedColorIllustration(
++    val asset: WorkbookIllustrationAsset,
+     val colorMaster: Bitmap,
+     val colorLine: Bitmap,
+     val colorMask: Bitmap,
+@@ -163,23 +165,70 @@
+         requireNotNull(BitmapFactory.decodeStream(input)) { "Unable to decode workbook asset: $path" }
+     }
+ 
++private inline fun <T> loadWorkbookAssetSafely(loader: () -> T): T? = try {
++    loader()
++} catch (_: Exception) {
++    null
++}
++
++private fun loadTransparentLineBitmap(context: android.content.Context, path: String): Bitmap {
++    val source = loadAssetBitmap(context, path)
++    return try {
++        transparentLineBitmap(source)
++    } finally {
++        source.recycle()
++    }
++}
++
+ @Composable
+-private fun rememberWorkbookIllustration(activity: WorkbookActivityDefinition): LoadedWorkbookIllustration {
++private fun rememberWorkbookIllustrationAsset(activity: WorkbookActivityDefinition): WorkbookIllustrationAsset? {
++    val context = LocalContext.current
++    return remember(activity.id) {
++        loadWorkbookAssetSafely { WorkbookIllustrationCatalog.assetFor(context, activity) }
++    }
++}
++
++@Composable
++private fun rememberDifferenceIllustration(activity: WorkbookActivityDefinition): LoadedDifferenceIllustration? {
++    val context = LocalContext.current
++    return remember(activity.id) {
++        loadWorkbookAssetSafely {
++            val asset = WorkbookIllustrationCatalog.assetFor(context, activity)
++            LoadedDifferenceIllustration(
++                asset = asset,
++                master = loadAssetBitmap(context, asset.masterPath),
++                changed = loadAssetBitmap(context, asset.changedPath),
++            )
++        }
++    }
++}
++
++@Composable
++private fun rememberColorIllustration(activity: WorkbookActivityDefinition): LoadedColorIllustration? {
+     val context = LocalContext.current
+     val manifest = remember { WorkbookIllustrationCatalog.manifest(context) }
+-    val asset = remember(activity.id) { WorkbookIllustrationCatalog.assetFor(context, activity) }
+-    return remember(asset.id) {
+-        LoadedWorkbookIllustration(
+-            asset = asset,
+-            master = loadAssetBitmap(context, asset.masterPath),
+-            line = transparentLineBitmap(loadAssetBitmap(context, asset.linePath)),
+-            mask = loadAssetBitmap(context, asset.regionMaskPath),
+-            changed = loadAssetBitmap(context, asset.changedPath),
+-            colorMaster = loadAssetBitmap(context, asset.colorMasterPath),
+-            colorLine = transparentLineBitmap(loadAssetBitmap(context, asset.colorLinePath)),
+-            colorMask = loadAssetBitmap(context, asset.colorRegionMaskPath),
+-            paletteLabels = manifest.palette.associate { it.number to it.label },
+-        )
++    return remember(activity.id) {
++        loadWorkbookAssetSafely {
++            val asset = WorkbookIllustrationCatalog.assetFor(context, activity)
++            LoadedColorIllustration(
++                asset = asset,
++                colorMaster = loadAssetBitmap(context, asset.colorMasterPath),
++                colorLine = loadTransparentLineBitmap(context, asset.colorLinePath),
++                colorMask = loadAssetBitmap(context, asset.colorRegionMaskPath),
++                paletteLabels = manifest.palette.associate { it.number to it.label },
++            )
++        }
++    }
++}
++
++@Composable
++private fun WorkbookActivityUnavailable(detail: String) {
++    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
++        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
++            Text("This activity could not be opened safely.", fontWeight = FontWeight.Bold)
++            Text(detail, style = MaterialTheme.typography.bodySmall)
++            Text("Your event and saved workbook data are still intact.", style = MaterialTheme.typography.labelSmall)
++        }
+     }
+ }
+ 
+@@ -601,7 +650,15 @@
+     progress: WorkbookPageProgress,
+     repository: CompanionHubRepository,
+ ) {
+-    val puzzle = activity.crosswordPuzzle ?: return
++    val puzzle = activity.crosswordPuzzle
++    if (puzzle == null) {
++        WorkbookActivityUnavailable("The crossword definition is missing.")
++        return
++    }
++    if (puzzle.rows <= 0 || puzzle.columns <= 0 || puzzle.placements.isEmpty()) {
++        WorkbookActivityUnavailable("The crossword layout is incomplete.")
++        return
++    }
+     val activeCells = remember(puzzle) {
+         buildSet {
+             puzzle.placements.forEach { placement ->
+@@ -713,7 +770,18 @@
+     progress: WorkbookPageProgress,
+     repository: CompanionHubRepository,
+ ) {
+-    val puzzle = activity.wordSearchPuzzle ?: return
++    val puzzle = activity.wordSearchPuzzle
++    if (puzzle == null) {
++        WorkbookActivityUnavailable("The word-search definition is missing.")
++        return
++    }
++    val validGrid = puzzle.rows > 0 && puzzle.columns > 0 &&
++        puzzle.grid.size >= puzzle.rows &&
++        puzzle.grid.take(puzzle.rows).all { row -> row.getOrNull(puzzle.columns - 1) != null }
++    if (!validGrid || puzzle.placements.isEmpty()) {
++        WorkbookActivityUnavailable("The word-search grid is incomplete.")
++        return
++    }
+     var startCell by rememberSaveable(activity.id) { mutableStateOf<String?>(null) }
+     val foundPlacements = puzzle.placements.filter { "${activity.id}:${it.id}" in progress.foundPuzzleIds }
+     val foundCells = foundPlacements.flatMap { it.cellKeys() }.toSet()
+@@ -749,8 +817,11 @@
+                                     } else {
+                                         val match = puzzle.placements.firstOrNull { placement ->
+                                             val cells = placement.cellKeys()
+-                                            (cells.first() == first && cells.last() == key) ||
+-                                                (cells.first() == key && cells.last() == first)
++                                            val firstCell = cells.firstOrNull()
++                                            val lastCell = cells.lastOrNull()
++                                            firstCell != null && lastCell != null &&
++                                                ((firstCell == first && lastCell == key) ||
++                                                    (firstCell == key && lastCell == first))
+                                         }
+                                         if (match != null) {
+                                             repository.setWorkbookPuzzleFound(pageKey, "${activity.id}:${match.id}", true)
+@@ -771,10 +842,10 @@
+             }
+         }
+     }
+-    puzzle.placements.map { it.word }.chunked(3).forEach { rowWords ->
++    puzzle.placements.chunked(3).forEach { rowPlacements ->
+         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+-            rowWords.forEach { word ->
+-                val placement = puzzle.placements.first { it.word == word }
++            rowPlacements.forEach { placement ->
++                val word = placement.word
+                 val found = "${activity.id}:${placement.id}" in progress.foundPuzzleIds
+                 Surface(
+                     modifier = Modifier.weight(1f),
+@@ -789,7 +860,7 @@
+                     )
+                 }
+             }
+-            repeat(3 - rowWords.size) { Spacer(Modifier.weight(1f)) }
++            repeat(3 - rowPlacements.size) { Spacer(Modifier.weight(1f)) }
+         }
+     }
+     OutlinedButton(onClick = { repository.clearWorkbookPuzzle(pageKey, activity.id) }) {
+@@ -804,7 +875,11 @@
+     progress: WorkbookPageProgress,
+     repository: CompanionHubRepository,
+ ) {
+-    val illustration = rememberWorkbookIllustration(activity)
++    val illustration = rememberDifferenceIllustration(activity)
++    if (illustration == null) {
++        WorkbookActivityUnavailable("The comparison pictures could not be loaded.")
++        return
++    }
+     val spots = illustration.asset.differences
+     val foundIds = spots.filter { "${activity.id}:${it.id}" in progress.foundPuzzleIds }.map { it.id }.toSet()
+     val foundCount = foundIds.size
+@@ -1037,7 +1112,11 @@
+     progress: WorkbookPageProgress,
+     repository: CompanionHubRepository,
+ ) {
+-    val illustration = rememberWorkbookIllustration(activity)
++    val illustration = rememberColorIllustration(activity)
++    if (illustration == null) {
++        WorkbookActivityUnavailable("The paint-by-number picture could not be loaded.")
++        return
++    }
+     val regions = illustration.asset.colorRegions
+     val usedNumbers = illustration.asset.colorNumbersUsed.ifEmpty { regions.map { it.number }.distinct().sorted() }
+     val firstIncomplete = regions.firstOrNull { region ->
+@@ -1380,8 +1459,16 @@
+     progress: WorkbookPageProgress,
+     repository: CompanionHubRepository,
+ ) {
+-    val illustration = rememberWorkbookIllustration(activity)
+-    val steps = illustration.asset.drawingSteps
++    val illustrationAsset = rememberWorkbookIllustrationAsset(activity)
++    if (illustrationAsset == null) {
++        WorkbookActivityUnavailable("The guided drawing asset could not be loaded.")
++        return
++    }
++    val steps = illustrationAsset.drawingSteps
++    if (steps.isEmpty()) {
++        WorkbookActivityUnavailable("The guided drawing steps are incomplete.")
++        return
++    }
+     val stepIndex = (progress.drawingSteps[activity.id] ?: 0).coerceIn(0, steps.lastIndex)
+     Text(
+         "Follow the stored professional drawing stages, draw with a finger or stylus, and add your own details. The current stage and every stroke are saved.",
+@@ -1406,7 +1493,7 @@
+             }
+         }
+     }
+-    InkStudio(pageKey, activity.id, progress, repository, illustrationAsset = illustration.asset, drawingStepIndex = stepIndex, embedded = true)
++    InkStudio(pageKey, activity.id, progress, repository, illustrationAsset = illustrationAsset, drawingStepIndex = stepIndex, embedded = true)
+     OutlinedTextField(
+         value = progress.textAnswers["${activity.id}:caption"].orEmpty(),
+         onValueChange = { repository.setWorkbookText(pageKey, "${activity.id}:caption", it) },
+@@ -1434,7 +1521,9 @@
+     val currentPoints = remember(pageKey, activityId) { mutableStateListOf<Offset>() }
+     val context = LocalContext.current
+     val stepBitmap = remember(illustrationAsset?.id, drawingStepIndex) {
+-        illustrationAsset?.let { loadAssetBitmap(context, it.drawingStepPath(drawingStepIndex + 1)) }
++        illustrationAsset?.let { asset ->
++            loadWorkbookAssetSafely { loadAssetBitmap(context, asset.drawingStepPath(drawingStepIndex + 1)) }
++        }
+     }
+ 
+     val content: @Composable () -> Unit = {
