@@ -1,0 +1,65 @@
+ork. */
++    val regions: List<WorkbookIllustrationRegion> = emptyList(),
++    /** Curated, large, meaningful closed shapes used by the rebuilt color-by-number activity. */
++    val colorRegions: List<WorkbookIllustrationRegion> = emptyList(),
++    val colorRegionCount: Int = 0,
++    val colorNumbersUsed: List<Int> = emptyList(),
+     val differences: List<WorkbookIllustrationDifference>,
+     val drawingSteps: List<String>,
+ ) {
+@@ -42,6 +48,9 @@
+     val linePath: String get() = "workbook/$id/line.webp"
+     val regionMaskPath: String get() = "workbook/$id/region-mask.png"
+     val changedPath: String get() = "workbook/$id/difference-changed.webp"
++    val colorMasterPath: String get() = "workbook/$id/color-master.webp"
++    val colorLinePath: String get() = "workbook/$id/color-line.png"
++    val colorRegionMaskPath: String get() = "workbook/$id/color-region-mask.png"
+     fun drawingStepPath(index: Int): String = when (index.coerceIn(1, 4)) {
+         1 -> "workbook/$id/drawing-step-1.webp"
+         2 -> "workbook/$id/drawing-step-2.webp"
+@@ -53,6 +62,7 @@
+ @Serializable
+ data class WorkbookIllustrationManifest(
+     val version: Int,
++    val colorByNumberVersion: Int = 1,
+     val width: Int,
+     val height: Int,
+     val palette: List<WorkbookIllustrationPaletteEntry>,
+@@ -66,9 +76,23 @@
+     fun manifest(context: Context): WorkbookIllustrationManifest = cached ?: synchronized(this) {
+         cached ?: context.assets.open("workbook/manifest.json").bufferedReader().use { reader ->
+             json.decodeFromString<WorkbookIllustrationManifest>(reader.readText()).also { manifest ->
+-                require(manifest.version >= 3) { "Unsupported workbook illustration pack" }
++                require(manifest.version >= 4 && manifest.colorByNumberVersion >= 2) {
++                    "The curated color-by-number illustration pack is missing"
++                }
+                 require(manifest.assets.size >= 16) { "Professional workbook illustration pack is incomplete" }
+-                require(manifest.assets.all { it.regions.size >= 35 }) { "Workbook region masks are incomplete" }
++                require(manifest.palette.map { it.number }.toSet().size == manifest.palette.size) {
++                    "Workbook palette numbers must be unique"
++                }
++                require(manifest.assets.all { asset -> asset.colorRegions.size in 8..24 }) {
++                    "Curated workbook scenes must contain 8-24 meaningful regions"
++                }
++                require(manifest.assets.all { asset -> asset.colorRegions.all { it.pixelCount >= 900 } }) {
++                    "Curated workbook scenes contain regions too small for reliable touch interaction"
++                }
++                require(manifest.assets.all { asset ->
++                    asset.colorRegions.map { it.id }.toSet().size == asset.colorRegions.size &&
++                        asset.colorRegions.all { it.number in asset.colorNumbersUsed }
++                }) { "Curated workbook region metadata is inconsistent" }
+                 cached = manifest
+             }
+         }
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/local/StudyDao.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/data/local/StudyDao.kt
+@@ -171,6 +171,9 @@
+     @Query("SELECT * FROM ai_study_messages ORDER BY createdAtEpochMillis ASC")
+     fun observeAiMessages(): Flow<List<AiStudyMessageEntity>>
+ 
++    @Query("SELECT * FROM ai_study_messages ORDER BY createdAtEpochMillis DESC LIMIT :limit")
++    suspend fun recentAiMessages(limit: Int): List<AiStudyMessageEntity>
++
+     @Upsert
+     suspend fun upsertAiMessage(message: AiStudyMessageEntity)
+ 
