@@ -4,16 +4,35 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-: "${MSC_BACKEND_BASE_URL:?MSC_BACKEND_BASE_URL is required}"
 : "${MSC_GOOGLE_WEB_CLIENT_ID:?MSC_GOOGLE_WEB_CLIENT_ID is required}"
-[[ "$MSC_BACKEND_BASE_URL" == https://*.run.app ]] || {
-  echo "Refusing non-Cloud-Run backend URL: $MSC_BACKEND_BASE_URL" >&2
-  exit 1
-}
+: "${MSC_RELEASE_STORE_FILE:?MSC_RELEASE_STORE_FILE is required for the internal CI signing input}"
+: "${MSC_RELEASE_STORE_PASSWORD:?MSC_RELEASE_STORE_PASSWORD is required}"
+: "${MSC_RELEASE_KEY_ALIAS:?MSC_RELEASE_KEY_ALIAS is required}"
+: "${MSC_RELEASE_KEY_PASSWORD:?MSC_RELEASE_KEY_PASSWORD is required}"
+
+MSC_BACKEND_BASE_URL="${MSC_BACKEND_BASE_URL:-}"
+MSC_SMART_ONLINE_VALIDATED="${MSC_SMART_ONLINE_VALIDATED:-false}"
+case "$MSC_SMART_ONLINE_VALIDATED" in
+  true|false) ;;
+  *) echo 'MSC_SMART_ONLINE_VALIDATED must be true or false.' >&2; exit 1 ;;
+esac
 [[ "$MSC_GOOGLE_WEB_CLIENT_ID" == *.apps.googleusercontent.com ]] || {
   echo 'A valid Google web client ID is required.' >&2
   exit 1
 }
+if [[ -n "$MSC_BACKEND_BASE_URL" ]]; then
+  [[ "$MSC_BACKEND_BASE_URL" == https://*.run.app ]] || {
+    echo "Refusing non-Cloud-Run backend URL: $MSC_BACKEND_BASE_URL" >&2
+    exit 1
+  }
+  [[ "$MSC_SMART_ONLINE_VALIDATED" == true ]] || {
+    echo 'A packaged Cloud Run URL must have passed the release health contract.' >&2
+    exit 1
+  }
+elif [[ "$MSC_SMART_ONLINE_VALIDATED" != false ]]; then
+  echo 'Smart Online cannot be validated without a Cloud Run URL.' >&2
+  exit 1
+fi
 
 APP_GRADLE='MyStudyCompanion/app/build.gradle.kts'
 WEAR_GRADLE='MyStudyCompanion/wear/build.gradle.kts'
@@ -60,26 +79,22 @@ test -s "$BUILD_TOOLS/lib/apksigner.jar"
 test -x "$BUILD_TOOLS/zipalign"
 test -x "$BUILD_TOOLS/aapt"
 
-RELEASE='release-0.15.18-transport'
+RELEASE='release-0.15.18-signing-input'
 rm -rf "$RELEASE"
-mkdir -p "$RELEASE/phone" "$RELEASE/wear" "$RELEASE/metadata" "$RELEASE/tools/lib"
-PHONE_NAME='MyStudyCompanion-phone-0.15.18-connected-transport.apk'
-WEAR_NAME='MyStudyCompanion-wear-0.15.18-connected-transport.apk'
+mkdir -p "$RELEASE/phone" "$RELEASE/wear" "$RELEASE/metadata"
+PHONE_NAME='MyStudyCompanion-phone-0.15.18-SIGNING-INPUT-NOT-INSTALLABLE.apk'
+WEAR_NAME='MyStudyCompanion-wear-0.15.18-SIGNING-INPUT-NOT-INSTALLABLE.apk'
 PHONE="$RELEASE/phone/$PHONE_NAME"
 WEAR="$RELEASE/wear/$WEAR_NAME"
 cp "$PHONE_SOURCE" "$PHONE"
 cp "$WEAR_SOURCE" "$WEAR"
-cp "$BUILD_TOOLS/lib/apksigner.jar" "$RELEASE/tools/lib/apksigner.jar"
-cp "$BUILD_TOOLS/zipalign" "$RELEASE/tools/zipalign"
-cp "$BUILD_TOOLS/aapt" "$RELEASE/tools/aapt"
-chmod +x "$RELEASE/tools/zipalign" "$RELEASE/tools/aapt"
 
 "$BUILD_TOOLS/aapt" dump badging "$PHONE" > "$RELEASE/metadata/PHONE-IDENTITY.txt"
 "$BUILD_TOOLS/aapt" dump badging "$WEAR" > "$RELEASE/metadata/WEAR-IDENTITY.txt"
 java -jar "$BUILD_TOOLS/lib/apksigner.jar" verify --verbose --print-certs "$PHONE" \
-  > "$RELEASE/metadata/PHONE-TRANSPORT-SIGNATURE.txt"
+  > "$RELEASE/metadata/PHONE-STAGING-SIGNATURE.txt"
 java -jar "$BUILD_TOOLS/lib/apksigner.jar" verify --verbose --print-certs "$WEAR" \
-  > "$RELEASE/metadata/WEAR-TRANSPORT-SIGNATURE.txt"
+  > "$RELEASE/metadata/WEAR-STAGING-SIGNATURE.txt"
 "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$PHONE" > "$RELEASE/metadata/PHONE-ALIGNMENT.txt"
 "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$WEAR" > "$RELEASE/metadata/WEAR-ALIGNMENT.txt"
 
@@ -87,27 +102,35 @@ grep -Fq "package: name='com.mystudycompanion.app' versionCode='51' versionName=
   "$RELEASE/metadata/PHONE-IDENTITY.txt"
 grep -Fq "package: name='com.mystudycompanion.app' versionCode='360168001' versionName='0.15.18-wear-private-alpha-premium-widgets'" \
   "$RELEASE/metadata/WEAR-IDENTITY.txt"
-grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RELEASE/metadata/PHONE-TRANSPORT-SIGNATURE.txt"
-grep -Fq 'Verified using v3 scheme (APK Signature Scheme v3): true' "$RELEASE/metadata/PHONE-TRANSPORT-SIGNATURE.txt"
+grep -Fq 'Verified using v2 scheme (APK Signature Scheme v2): true' "$RELEASE/metadata/PHONE-STAGING-SIGNATURE.txt"
+grep -Fq 'Verified using v3 scheme (APK Signature Scheme v3): true' "$RELEASE/metadata/PHONE-STAGING-SIGNATURE.txt"
+! grep -Fiq '13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c' \
+  "$RELEASE/metadata/PHONE-STAGING-SIGNATURE.txt"
+
 grep -Fq "BACKEND_BASE_URL = \"$MSC_BACKEND_BASE_URL\"" \
   MyStudyCompanion/app/build/generated/source/buildConfig/privateAlpha/com/mystudycompanion/app/BuildConfig.java
 grep -Fq "GOOGLE_WEB_CLIENT_ID = \"$MSC_GOOGLE_WEB_CLIENT_ID\"" \
   MyStudyCompanion/app/build/generated/source/buildConfig/privateAlpha/com/mystudycompanion/app/BuildConfig.java
 
-cp endpoint-health.json "$RELEASE/metadata/DEPLOYED-BACKEND-HEALTH.json"
 cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt \
   "$RELEASE/metadata/StudyCompanionWidgets.kt"
 cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt \
   "$RELEASE/metadata/DailyStudyWidget.kt"
 cp MyStudyCompanion/app/src/main/AndroidManifest.xml "$RELEASE/metadata/AndroidManifest.xml"
+if [[ -s endpoint-health.json ]]; then
+  cp endpoint-health.json "$RELEASE/metadata/VERIFIED-CLOUD-RUN-HEALTH.json"
+fi
 
-cat > "$RELEASE/metadata/TRANSPORT-ONLY-NOT-FINAL.txt" <<EOF
-THIS ARTIFACT IS A CONNECTED TRANSPORT BUILD, NOT THE USER-FACING RELEASE.
-It was compiled against the verified Cloud Run backend:
-$MSC_BACKEND_BASE_URL
-It preserves the verified Google web client ID and Firebase configuration.
-Its temporary CI transport signature must be replaced with the recovered permanent Firebase-registered Android signing identity before installation.
-Do not install either APK directly from this artifact.
+cat > "$RELEASE/metadata/DO-NOT-INSTALL.txt" <<EOF
+THIS IS AN INTERNAL CI SIGNING INPUT, NOT AN ANDROID RELEASE.
+The temporary staging signature is intentionally not the Firebase-registered application identity.
+Neither APK may be installed, distributed, or described as an update.
+Only an offline finalization using the recovered canonical certificate SHA-256
+13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+may create the user-facing release.
+Firebase Auth, Google Sign-In, Firestore, App Check configuration, package identity, and tested payload remain in this signing input.
+Cloud Run backend packaged: ${MSC_BACKEND_BASE_URL:-none}
+Smart Online release validation: $MSC_SMART_ONLINE_VALIDATED
 EOF
 
 cat > "$RELEASE/metadata/WIDGET-REBUILD-AUDIT.txt" <<'EOF'
@@ -122,16 +145,16 @@ EOF
 printf '%s\n' \
   "source_commit=${GITHUB_SHA:-local}" \
   "workflow_run=${GITHUB_RUN_ID:-local}" \
-  "backend_url=$MSC_BACKEND_BASE_URL" \
-  'smart_online_validated=true' \
+  "backend_url=${MSC_BACKEND_BASE_URL:-}" \
+  "smart_online_validated=$MSC_SMART_ONLINE_VALIDATED" \
   'release=0.15.18' \
-  'signature=temporary transport signature; canonical local re-sign required' \
-  > "$RELEASE/metadata/CONNECTED-BUILD.txt"
+  'signature=temporary CI staging identity; do not install' \
+  > "$RELEASE/metadata/BUILD-INPUT.txt"
 
 (
   cd "$RELEASE"
-  sha256sum "phone/$PHONE_NAME" "wear/$WEAR_NAME" > metadata/SHA256SUMS-TRANSPORT.txt
-  sha256sum -c metadata/SHA256SUMS-TRANSPORT.txt
+  sha256sum "phone/$PHONE_NAME" "wear/$WEAR_NAME" > metadata/SHA256SUMS-STAGING.txt
+  sha256sum -c metadata/SHA256SUMS-STAGING.txt
 )
 
-echo 'PASS: connected 0.15.18 transport APKs compiled and packaged for canonical local re-signing.'
+echo 'PASS: tested 0.15.18 signing inputs are packaged for offline canonical finalization.'
