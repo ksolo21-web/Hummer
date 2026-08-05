@@ -1,0 +1,648 @@
+name: KREATIV Google Drive Cloud Repair v2
+
+on:
+  push:
+    branches:
+      - agent/kreativ-studio-v0.1
+    paths:
+      - '.github/workflows/kreativ-google-drive-cloud-repair-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair-build-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/kreativ-studio-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Install user-owned Google Drive backup
+        shell: bash
+        run: |
+          cat > /tmp/apply_drive_backup.py <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('.')
+
+          def replace_exact(path: str, old: str, new: str, label: str) -> None:
+              target = root / path
+              text = target.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              target.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          def replace_regex(path: str, pattern: str, replacement: str, label: str) -> None:
+              target = root / path
+              text = target.read_text(encoding='utf-8')
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S | re.M)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one regex match, found {count}')
+              target.write_text(updated, encoding='utf-8')
+
+          document_repo = '''package com.kreativstudio.app.cloud
+
+          import android.content.Context
+          import android.content.Intent
+          import android.net.Uri
+          import androidx.core.content.FileProvider
+          import com.kreativstudio.app.model.AppSettings
+          import com.kreativstudio.app.model.KreativProject
+          import com.kreativstudio.app.model.LessonProgress
+          import com.kreativstudio.app.model.ProjectAttachment
+          import com.kreativstudio.app.model.SyncState
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.withContext
+          import kotlinx.serialization.Serializable
+          import kotlinx.serialization.decodeFromString
+          import kotlinx.serialization.encodeToString
+          import kotlinx.serialization.json.Json
+          import java.io.BufferedInputStream
+          import java.io.BufferedOutputStream
+          import java.io.File
+          import java.util.zip.ZipEntry
+          import java.util.zip.ZipInputStream
+          import java.util.zip.ZipOutputStream
+
+          /**
+           * User-owned cloud backup through Android's document provider.
+           * Choosing Google Drive once gives KREATIV durable access to one backup file.
+           * This avoids dependence on the shared Firebase project's broken rules.
+           */
+          class DocumentCloudBackupRepository(private val context: Context) {
+              private val json = Json {
+                  encodeDefaults = true
+                  ignoreUnknownKeys = true
+              }
+              private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+
+              @Volatile
+              var lastFailureMessage: String? = null
+                  private set
+
+              val isConnected: Boolean
+                  get() = connectedUri() != null
+
+              suspend fun connectAndBackup(
+                  uri: Uri,
+                  projects: List<KreativProject>,
+                  settings: AppSettings,
+                  progress: List<LessonProgress>,
+              ): Result<Unit> = operation {
+                  persistPermission(uri, write = true)
+                  writeArchive(uri, projects, settings, progress)
+                  preferences.edit().putString(KEY_BACKUP_URI, uri.toString()).apply()
+              }
+
+              suspend fun backup(
+                  projects: List<KreativProject>,
+                  settings: AppSettings,
+                  progress: List<LessonProgress>,
+              ): Result<Unit> = operation {
+                  val uri = connectedUri()
+                      ?: error("Choose a Google Drive backup file before backing up the studio.")
+                  writeArchive(uri, projects, settings, progress)
+              }
+
+              suspend fun restoreConnected(): Result<DocumentStudioBackup> = operation {
+                  val uri = connectedUri()
+                      ?: error("No Google Drive backup file is connected.")
+                  readArchive(uri)
+              }
+
+              suspend fun restoreFrom(uri: Uri): Result<DocumentStudioBackup> = operation {
+                  persistPermission(uri, write = false)
+                  readArchive(uri)
+              }
+
+              private fun connectedUri(): Uri? = preferences
+                  .getString(KEY_BACKUP_URI, null)
+                  ?.takeIf { it.isNotBlank() }
+                  ?.let(Uri::parse)
+
+              private fun persistPermission(uri: Uri, write: Boolean) {
+                  val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                      (if (write) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                  try {
+                      context.contentResolver.takePersistableUriPermission(uri, flags)
+                  } catch (error: SecurityException) {
+                      throw IllegalStateException(
+                          "The cloud provider did not grant lasting access. Choose the backup file again.",
+                          error,
+                      )
+                  }
+              }
+
+              private suspend fun writeArchive(
+                  uri: Uri,
+                  projects: List<KreativProject>,
+                  settings: AppSettings,
+                  progress: List<LessonProgress>,
+              ) = withContext(Dispatchers.IO) {
+                  val output = context.contentResolver.openOutputStream(uri, "wt")
+                      ?: error("The selected cloud backup file could not be opened for writing.")
+                  output.use { raw ->
+                      ZipOutputStream(BufferedOutputStream(raw)).use { zip ->
+                          val portableProjects = projects.map { project ->
+                              project.copy(
+                                  attachments = project.attachments.map { attachment ->
+                                      embedAttachment(zip, project.id, attachment)
+                                  },
+                                  syncState = SyncState.SYNCED,
+                              )
+                          }
+                          val manifest = DocumentStudioBackup(
+                              createdAt = System.currentTimeMillis(),
+                              settings = settings,
+                              progress = progress,
+                              projects = portableProjects,
+                          )
+                          zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
+                          zip.write(json.encodeToString(manifest).encodeToByteArray())
+                          zip.closeEntry()
+                      }
+                  }
+              }
+
+              private fun embedAttachment(
+                  zip: ZipOutputStream,
+                  projectId: String,
+                  attachment: ProjectAttachment,
+              ): ProjectAttachment {
+                  val source = runCatching { Uri.parse(attachment.uri) }.getOrNull() ?: return attachment
+                  if (source.scheme != "content" && source.scheme != "file") return attachment
+                  val safeName = safeSegment(attachment.displayName).take(100).ifBlank { "attachment" }
+                  val entryName = "attachments/${safeSegment(projectId)}/${safeSegment(attachment.id)}_$safeName"
+                  return try {
+                      val input = context.contentResolver.openInputStream(source) ?: return attachment
+                      input.use {
+                          zip.putNextEntry(ZipEntry(entryName))
+                          it.copyTo(zip)
+                          zip.closeEntry()
+                      }
+                      attachment.copy(uri = BACKUP_URI_PREFIX + entryName)
+                  } catch (_: Throwable) {
+                      runCatching { zip.closeEntry() }
+                      attachment
+                  }
+              }
+
+              private suspend fun readArchive(uri: Uri): DocumentStudioBackup = withContext(Dispatchers.IO) {
+                  val input = context.contentResolver.openInputStream(uri)
+                      ?: error("The selected cloud backup file could not be opened for reading.")
+                  val restoreRoot = File(context.filesDir, RESTORE_DIRECTORY).apply {
+                      deleteRecursively()
+                      mkdirs()
+                  }
+                  var manifestText: String? = null
+                  input.use { raw ->
+                      ZipInputStream(BufferedInputStream(raw)).use { zip ->
+                          while (true) {
+                              val entry = zip.nextEntry ?: break
+                              when {
+                                  entry.isDirectory -> Unit
+                                  entry.name == MANIFEST_ENTRY -> manifestText = zip.readBytes().decodeToString()
+                                  entry.name.startsWith("attachments/") -> {
+                                      safeRestoreTarget(restoreRoot, entry.name)?.let { target ->
+                                          target.parentFile?.mkdirs()
+                                          target.outputStream().buffered().use { zip.copyTo(it) }
+                                      }
+                                  }
+                              }
+                              zip.closeEntry()
+                          }
+                      }
+                  }
+                  val decoded = json.decodeFromString<DocumentStudioBackup>(
+                      manifestText ?: error("This is not a valid KREATIV Studio backup."),
+                  )
+                  decoded.copy(
+                      projects = decoded.projects.map { project ->
+                          project.copy(
+                              attachments = project.attachments.map { attachment ->
+                                  restoreAttachmentUri(restoreRoot, attachment)
+                              },
+                              syncState = SyncState.SYNCED,
+                          )
+                      },
+                  )
+              }
+
+              private fun restoreAttachmentUri(
+                  restoreRoot: File,
+                  attachment: ProjectAttachment,
+              ): ProjectAttachment {
+                  if (!attachment.uri.startsWith(BACKUP_URI_PREFIX)) return attachment
+                  val entryName = attachment.uri.removePrefix(BACKUP_URI_PREFIX)
+                  val target = safeRestoreTarget(restoreRoot, entryName) ?: return attachment
+                  if (!target.isFile) return attachment
+                  val localUri = FileProvider.getUriForFile(
+                      context,
+                      "${context.packageName}.files",
+                      target,
+                  )
+                  return attachment.copy(uri = localUri.toString())
+              }
+
+              private fun safeRestoreTarget(root: File, entryName: String): File? {
+                  val canonicalRoot = root.canonicalFile
+                  val target = File(canonicalRoot, entryName).canonicalFile
+                  val prefix = canonicalRoot.path + File.separator
+                  return target.takeIf { it.path.startsWith(prefix) }
+              }
+
+              private fun safeSegment(value: String): String = value
+                  .replace(Regex("[^A-Za-z0-9._-]+"), "_")
+                  .take(120)
+                  .ifBlank { "item" }
+
+              private suspend fun <T> operation(block: suspend () -> T): Result<T> = try {
+                  val value = block()
+                  lastFailureMessage = null
+                  Result.success(value)
+              } catch (error: Throwable) {
+                  lastFailureMessage = when (error) {
+                      is SecurityException -> "Google Drive access expired. Choose the backup file again."
+                      else -> error.message?.takeIf { it.isNotBlank() }
+                          ?: "The cloud backup file could not be accessed."
+                  }
+                  Result.failure(error)
+              }
+
+              companion object {
+                  private const val PREFERENCES = "kreativ_document_cloud_backup"
+                  private const val KEY_BACKUP_URI = "backup_uri"
+                  private const val MANIFEST_ENTRY = "studio.json"
+                  private const val RESTORE_DIRECTORY = "restored_cloud_backup"
+                  private const val BACKUP_URI_PREFIX = "kreativ-backup:"
+              }
+          }
+
+          @Serializable
+          data class DocumentStudioBackup(
+              val schemaVersion: Int = 1,
+              val createdAt: Long,
+              val settings: AppSettings,
+              val progress: List<LessonProgress>,
+              val projects: List<KreativProject>,
+          )
+          '''
+          # The here-document is indented ten spaces inside YAML. Remove only that common prefix.
+          document_repo = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in document_repo.splitlines()
+          ).lstrip() + '\n'
+          (root / 'app/src/main/java/com/kreativstudio/app/cloud/DocumentCloudBackupRepository.kt').write_text(
+              document_repo,
+              encoding='utf-8',
+          )
+
+          replace_exact(
+              'app/src/main/java/com/kreativstudio/app/KreativContainer.kt',
+              'import com.kreativstudio.app.cloud.CloudSyncRepository\n',
+              'import com.kreativstudio.app.cloud.CloudSyncRepository\nimport com.kreativstudio.app.cloud.DocumentCloudBackupRepository\n',
+              'container import',
+          )
+          replace_exact(
+              'app/src/main/java/com/kreativstudio/app/KreativContainer.kt',
+              '    val cloudSyncRepository = CloudSyncRepository(context, firebaseReady)\n',
+              '    val cloudSyncRepository = CloudSyncRepository(context, firebaseReady)\n    val documentCloudBackupRepository = DocumentCloudBackupRepository(context)\n',
+              'container repository',
+          )
+
+          vm = 'app/src/main/java/com/kreativstudio/app/ui/KreativViewModel.kt'
+          replace_exact(
+              vm,
+              'import com.kreativstudio.app.KreativContainer\n',
+              'import com.kreativstudio.app.KreativContainer\nimport com.kreativstudio.app.cloud.DocumentStudioBackup\n',
+              'viewmodel import',
+          )
+          replace_exact(
+              vm,
+              '''    val isGoogleConfigured: Boolean get() = container.authRepository.isGoogleConfigured
+              val isCloudConfigured: Boolean get() = container.cloudSyncRepository.isConfigured
+              val cloudFailureDetail: String? get() = container.cloudSyncRepository.lastFailureMessage
+          ''',
+              '''    val isGoogleConfigured: Boolean get() = container.authRepository.isGoogleConfigured
+              val isCloudConfigured: Boolean get() =
+                  container.documentCloudBackupRepository.isConnected || container.cloudSyncRepository.isConfigured
+              val cloudFailureDetail: String? get() =
+                  container.documentCloudBackupRepository.lastFailureMessage
+                      ?: container.cloudSyncRepository.lastFailureMessage
+              val documentCloudBackupConnected: Boolean
+                  get() = container.documentCloudBackupRepository.isConnected
+          ''',
+              'viewmodel properties',
+          )
+          replace_exact(
+              vm,
+              '    var cloudAccessAvailable by mutableStateOf(false)\n',
+              '    var cloudAccessAvailable by mutableStateOf(container.documentCloudBackupRepository.isConnected)\n',
+              'viewmodel cloud state',
+          )
+          replace_regex(
+              vm,
+              r'''                \.onSuccess \{ signedIn ->\n                    val cloudReady = restoreFromCloud\(\)\n                    message = if \(cloudReady\) \{\n                        "Welcome home, \$\{signedIn\.displayName\}\. Cloud backup is connected\."\n                    \} else \{\n                        "Welcome home, \$\{signedIn\.displayName\}\. Signed in successfully\. Device autosave is active while cloud backup authorization is repaired\."\n                    \}\n                \}''',
+              '''                .onSuccess { signedIn ->
+                    val cloudReady = if (documentCloudBackupConnected) restoreFromCloud() else false
+                    message = if (cloudReady) {
+                        "Welcome home, ${signedIn.displayName}. Your Google Drive studio backup is connected."
+                    } else {
+                        "Welcome home, ${signedIn.displayName}. Google sign-in succeeded. Connect Google Drive backup in Settings to protect the full studio."
+                    }
+                }''',
+              'viewmodel sign-in',
+          )
+          replace_regex(
+              vm,
+              r'''    fun syncCurrentProject\(\) \{.*?^    fun saveNow\(\) \{''',
+              '''    fun syncCurrentProject() {
+                  syncAllUserData()
+              }
+
+              fun syncAllUserData() {
+                  if (!documentCloudBackupConnected) {
+                      message = "Connect a Google Drive backup file in Settings first."
+                      return
+                  }
+                  viewModelScope.launch {
+                      isBusy = true
+                      val snapshot = projectsForBackup()
+                      container.documentCloudBackupRepository
+                          .backup(snapshot, settings.value, lessonProgress.value)
+                          .onSuccess {
+                              markProjectsSynced(snapshot)
+                              cloudAccessAvailable = true
+                              message = "The full studio is backed up to Google Drive."
+                          }
+                          .onFailure {
+                              cloudAccessAvailable = false
+                              message = cloudUnavailableMessage()
+                          }
+                      isBusy = false
+                  }
+              }
+
+              fun connectDocumentCloudBackup(uri: Uri) {
+                  viewModelScope.launch {
+                      isBusy = true
+                      val snapshot = projectsForBackup()
+                      container.documentCloudBackupRepository
+                          .connectAndBackup(uri, snapshot, settings.value, lessonProgress.value)
+                          .onSuccess {
+                              markProjectsSynced(snapshot)
+                              cloudAccessAvailable = true
+                              message = "Google Drive backup is connected and the full studio is protected."
+                          }
+                          .onFailure {
+                              cloudAccessAvailable = false
+                              message = cloudUnavailableMessage()
+                          }
+                      isBusy = false
+                  }
+              }
+
+              fun restoreDocumentCloudBackup(uri: Uri) {
+                  viewModelScope.launch {
+                      isBusy = true
+                      container.documentCloudBackupRepository.restoreFrom(uri)
+                          .onSuccess { backup ->
+                              applyDocumentBackup(backup)
+                              message = "Studio restored from the selected cloud backup."
+                          }
+                          .onFailure { message = cloudUnavailableMessage() }
+                      isBusy = false
+                  }
+              }
+
+              fun saveNow() {''',
+              'viewmodel sync functions',
+          )
+          replace_regex(
+              vm,
+              r'''            if \(isCloudConfigured && cloudAccessAvailable\) \{\n                container\.cloudSyncRepository\.backupUserState\(updated, lessonProgress\.value\)\n                    \.onFailure \{ cloudAccessAvailable = false \}\n            \}''',
+              '''            if (documentCloudBackupConnected && cloudAccessAvailable) {
+                  backupUserState()
+              }''',
+              'viewmodel settings backup',
+          )
+          replace_regex(
+              vm,
+              r'''    fun retryCloudConnection\(\) \{.*?^    private fun openProjectInternal\(project: KreativProject\) \{''',
+              '''    fun retryCloudConnection() {
+                  if (!documentCloudBackupConnected) {
+                      message = "Connect Google Drive backup in Settings. Firestore is no longer required."
+                      return
+                  }
+                  syncAllUserData()
+              }
+
+              private suspend fun restoreFromCloud(): Boolean {
+                  if (!documentCloudBackupConnected) {
+                      cloudAccessAvailable = false
+                      return false
+                  }
+                  val backup = container.documentCloudBackupRepository.restoreConnected().getOrElse {
+                      cloudAccessAvailable = false
+                      return false
+                  }
+                  applyDocumentBackup(backup)
+                  cloudAccessAvailable = true
+                  return true
+              }
+
+              private suspend fun applyDocumentBackup(backup: DocumentStudioBackup) {
+                  backup.projects.forEach { remote ->
+                      val local = container.projectRepository.get(remote.id)
+                      if (local == null || remote.updatedAt > local.updatedAt) {
+                          container.projectRepository.save(remote.copy(syncState = SyncState.SYNCED))
+                      }
+                  }
+                  container.settingsRepository.update { backup.settings }
+                  if (backup.progress.isNotEmpty()) {
+                      val merged = (lessonProgress.value + backup.progress)
+                          .groupBy { it.lessonId }
+                          .map { (lessonId, entries) ->
+                              val mastered = entries.flatMap { it.masteredStepIndices }.toSet()
+                              val needsPractice = entries.flatMap { it.needsPracticeStepIndices }.toSet() - mastered
+                              LessonProgress(
+                                  lessonId = lessonId,
+                                  completedSteps = mastered.size,
+                                  attempts = entries.maxOfOrNull { it.attempts } ?: 0,
+                                  masteredStepIndices = mastered,
+                                  needsPracticeStepIndices = needsPractice,
+                                  lastOpenedAt = entries.maxOfOrNull { it.lastOpenedAt } ?: System.currentTimeMillis(),
+                              )
+                          }
+                      container.lessonProgressRepository.replaceAll(merged)
+                  }
+              }
+
+              private fun projectsForBackup(): List<KreativProject> {
+                  val active = currentProject
+                  return (projects.value.filterNot { it.id == active?.id } + listOfNotNull(active))
+                      .sortedByDescending { it.updatedAt }
+              }
+
+              private suspend fun markProjectsSynced(snapshot: List<KreativProject>) {
+                  snapshot.forEach { project ->
+                      val synced = container.projectRepository.save(project.copy(syncState = SyncState.SYNCED))
+                      if (currentProject?.id == synced.id) currentProject = synced
+                  }
+              }
+
+              private suspend fun backupUserState() {
+                  if (!documentCloudBackupConnected || !cloudAccessAvailable) return
+                  container.documentCloudBackupRepository
+                      .backup(projectsForBackup(), settings.value, lessonProgress.value)
+                      .onFailure { cloudAccessAvailable = false }
+              }
+
+              private fun cloudUnavailableMessage(): String =
+                  (cloudFailureDetail ?: "The Google Drive backup file is not connected.") +
+                      " Your work remains safely stored on this device."
+
+              private fun openProjectInternal(project: KreativProject) {''',
+              'viewmodel restore helpers',
+          )
+
+          screens = 'app/src/main/java/com/kreativstudio/app/ui/Screens.kt'
+          replace_exact(
+              screens,
+              '''fun SettingsScreen(viewModel: KreativViewModel, user: AppUser) {
+              val settings by viewModel.settings.collectAsState()
+          ''',
+              '''fun SettingsScreen(viewModel: KreativViewModel, user: AppUser) {
+              val settings by viewModel.settings.collectAsState()
+              val createCloudBackupLauncher = rememberLauncherForActivityResult(
+                  ActivityResultContracts.CreateDocument("application/zip"),
+              ) { uri ->
+                  if (uri != null) viewModel.connectDocumentCloudBackup(uri)
+                  else viewModel.showMessage("Cloud backup setup was cancelled.")
+              }
+              val restoreCloudBackupLauncher = rememberLauncherForActivityResult(
+                  ActivityResultContracts.OpenDocument(),
+              ) { uri ->
+                  if (uri != null) viewModel.restoreDocumentCloudBackup(uri)
+              }
+          ''',
+              'settings launchers',
+          )
+          replace_regex(
+              screens,
+              r'''                Text\(\n                    if \(viewModel\.isGoogleConfigured\).*?                OutlinedButton\(onClick = viewModel::signOut\) \{ Text\("Sign out"\) \}''',
+              '''                Text(
+                      "Google sign-in is active. KREATIV now uses a cloud file you own instead of the blocked Firestore path.",
+                      style = MaterialTheme.typography.bodyMedium,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                  Text(
+                      if (viewModel.documentCloudBackupConnected) {
+                          "Google Drive backup is connected. Tap below to update it with all projects, lesson progress, settings, and readable attachments."
+                      } else {
+                          "Tap Connect, then choose Google Drive in Android's file picker. KREATIV will keep secure access to that backup file."
+                      },
+                      style = MaterialTheme.typography.bodyMedium,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                  Button(
+                      onClick = {
+                          if (viewModel.documentCloudBackupConnected) {
+                              viewModel.syncAllUserData()
+                          } else {
+                              createCloudBackupLauncher.launch("KREATIV-Studio-Backup.kreativstudio")
+                          }
+                      },
+                      enabled = !viewModel.isBusy,
+                      modifier = Modifier.fillMaxWidth(),
+                  ) {
+                      Icon(Icons.Default.CloudSync, null)
+                      Spacer(Modifier.width(8.dp))
+                      Text(
+                          if (viewModel.documentCloudBackupConnected) "Back up the full studio now"
+                          else "Connect Google Drive backup",
+                      )
+                  }
+                  OutlinedButton(
+                      onClick = {
+                          restoreCloudBackupLauncher.launch(
+                              arrayOf("application/zip", "application/octet-stream", "*/*"),
+                          )
+                      },
+                      enabled = !viewModel.isBusy,
+                      modifier = Modifier.fillMaxWidth(),
+                  ) {
+                      Icon(Icons.Default.Download, null)
+                      Spacer(Modifier.width(8.dp))
+                      Text("Restore a studio backup")
+                  }
+                  Text(
+                      "Select Google Drive—not device storage—for off-device protection.",
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                  OutlinedButton(onClick = viewModel::signOut) { Text("Sign out") }''',
+              'settings account cloud section',
+          )
+
+          (root / 'VERSION').write_text('0.1.9\n', encoding='utf-8')
+          PY
+          python /tmp/apply_drive_backup.py
+
+      - name: Verify repaired source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'Connect Google Drive backup' app/src/main/java/com/kreativstudio/app/ui/Screens.kt
+          grep -q 'DocumentCloudBackupRepository' app/src/main/java/com/kreativstudio/app/KreativContainer.kt
+          grep -q 'connectAndBackup' app/src/main/java/com/kreativstudio/app/cloud/DocumentCloudBackupRepository.kt
+          ! grep -q 'cloud backup authorization is repaired' app/src/main/java/com/kreativstudio/app/ui/KreativViewModel.kt
+
+      - name: Build and test repaired APK
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug
+
+      - name: Commit verified repair to current KREATIV branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            VERSION \
+            app/src/main/java/com/kreativstudio/app/KreativContainer.kt \
+            app/src/main/java/com/kreativstudio/app/cloud/DocumentCloudBackupRepository.kt \
+            app/src/main/java/com/kreativstudio/app/ui/KreativViewModel.kt \
+            app/src/main/java/com/kreativstudio/app/ui/Screens.kt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Replace blocked Firestore backup with Google Drive file backup'
+            git push origin HEAD:agent/kreativ-studio-v0.1
+          fi
+
+      - name: Package installable APK
+        shell: bash
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/KREATIV-Studio-0.1.9-Google-Drive-Cloud.apk
+          sha256sum release/KREATIV-Studio-0.1.9-Google-Drive-Cloud.apk | tee release/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: KREATIV-Studio-0.1.9-Google-Drive-Cloud
+          path: release
+          retention-days: 14
+          if-no-files-found: error
