@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.7";
+        public const string Current = "0.1.0-review.8";
         public const string Purpose =
-            "Validate the owned static HUD font, layered snow, dimensional lighting, close camera and UI-inclusive premium proofs.";
+            "Compile and score the layered snow, dimensional lighting, static HUD font and UI-inclusive premium proofs.";
     }
 }
