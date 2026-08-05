@@ -1,0 +1,287 @@
+name: My Study Companion 0.15.18 Connected Transport Build
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.18-connected-transport-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: msc-01518-connected-transport
+  cancel-in-progress: true
+
+env:
+  GCP_PROJECT_ID: my-study-companion-abc01
+  GCP_REGION: us-central1
+  CLOUD_RUN_SERVICE: my-study-companion-private
+  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+  GCP_RUNTIME_SERVICE_ACCOUNT: msc-backend-runtime@my-study-companion-abc01.iam.gserviceaccount.com
+  FIREBASE_PROJECT_NUMBER: '949620144971'
+  FIREBASE_ANDROID_APP_ID: 1:949620144971:android:617dfde7340cd0995946ce
+
+jobs:
+  build-deploy-and-package-transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    environment: my-study-companion-private
+    steps:
+      - name: Check out cumulative repair branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            Pillow==12.2.0 numpy==2.4.2 scipy==1.17.0 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          test -s "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar"
+          test -x "$SDK_ROOT/build-tools/36.0.0/zipalign"
+          test -x "$SDK_ROOT/build-tools/36.0.0/aapt"
+
+      - name: Create transport-only CI signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-01518-transport-signing"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/transport.jks" \
+            -storepass 'msc-01518-transport-only' \
+            -keypass 'msc-01518-transport-only' \
+            -alias 'msc-01518-transport' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion 0.15.18 Transport Only, OU=Must Be Canonically Re-signed, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/transport.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Reconstruct the accepted cumulative source through 0.15.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+          bash .msc-build/apply-0.15.10-household-date-recovery.sh
+          bash .msc-build/apply-0.15.11-local-family-generator.sh
+          bash .msc-build/apply-0.15.13-family-schedule-regression-audit.sh
+          bash .msc-build/apply-0.15.12-family-vote-widgets.sh
+          bash .msc-build/apply-0.15.12-widget-compile-fix.sh
+          bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
+
+      - name: Normalize the 0.15.14 release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path, code, name in (
+              (Path('MyStudyCompanion/app/build.gradle.kts'), '47', '0.15.14-private-alpha-vote-persistence'),
+              (Path('MyStudyCompanion/wear/build.gradle.kts'), '360164001', '0.15.14-wear-private-alpha-vote-persistence'),
+          ):
+              text = path.read_text(encoding='utf-8')
+              text, a = re.subn(r'versionCode\s*=\s*\d+', f'versionCode = {code}', text, count=1)
+              text, b = re.subn(r'versionName\s*=\s*"[^"]+"', f'versionName = "{name}"', text, count=1)
+              if a != 1 or b != 1:
+                  raise SystemExit(f'Could not normalize {path}')
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Apply cumulative 0.15.15 through responsive 0.15.18 widgets
+        shell: bash
+        env:
+          MSC_SMART_ONLINE_VALIDATED: 'true'
+        run: |
+          set -euo pipefail
+          bash .msc-build/apply-0.15.18-premium-widgets.sh
+
+      - name: Recover and verify the registered Google web client ID
+        id: google
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' | sha256sum -c -
+          WEB_CLIENT_ID="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          clients = {item['client_info']['android_client_info']['package_name']: item for item in data['client']}
+          canonical = clients['com.mystudycompanion.app']
+          android = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert android[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert web[0]['client_id'].endswith('.apps.googleusercontent.com')
+          print(web[0]['client_id'])
+          PY
+          )"
+          echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate with the previously working Workload Identity path
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Verify runtime identity and existing server-side secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
+          for secret in msc-admin-token msc-openai-api-key msc-content-signing-key; do
+            gcloud secrets describe "$secret" --project "$GCP_PROJECT_ID" >/dev/null
+          done
+
+      - id: deploy_backend
+        name: Deploy the real 0.15.18 Smart Online Cloud Run service
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          region: ${{ env.GCP_REGION }}
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          source: MyStudyCompanion/backend
+          env_vars_update_strategy: merge
+          secrets_update_strategy: merge
+          env_vars: |-
+            MSC_ENV=production
+            MSC_PERSISTENCE_BACKEND=firestore
+            MSC_DATABASE_PATH=/tmp/my-study-companion-local-fallback.sqlite3
+            MSC_CONTENT_SIGNING_KEY_PATH=/secrets/content-signing-key.pem
+            MSC_CONTENT_SIGNING_KEY_ID=msc-0-15-18
+            MSC_FIREBASE_PROJECT_NUMBER=${{ env.FIREBASE_PROJECT_NUMBER }}
+            MSC_FIREBASE_PROJECT_ID=${{ env.GCP_PROJECT_ID }}
+            MSC_FIREBASE_ANDROID_APP_ID=${{ env.FIREBASE_ANDROID_APP_ID }}
+            MSC_REQUIRE_APP_CHECK=true
+            MSC_REQUIRE_USER_AUTH=true
+            MSC_ALLOWED_ORIGINS=https://${{ env.GCP_PROJECT_ID }}.web.app,https://${{ env.GCP_PROJECT_ID }}.firebaseapp.com
+            MSC_HOUSEHOLD_ID=kaleb-family
+            MSC_OPENAI_MODEL=gpt-5.6
+            MSC_MAX_AI_REQUESTS_PER_HOUR=60
+            MSC_MINIMUM_PHONE_VERSION_CODE=51
+            MSC_MINIMUM_WEAR_VERSION_CODE=360168001
+            MSC_TIMEZONE=America/Detroit
+            MSC_OFFICIAL_READER_MAX_BYTES=2000000
+            MSC_OFFICIAL_READER_CACHE_SECONDS=300
+          secrets: |-
+            MSC_ADMIN_TOKEN=msc-admin-token:latest
+            MSC_OPENAI_API_KEY=msc-openai-api-key:latest
+            /secrets/content-signing-key.pem=msc-content-signing-key:latest
+          flags: >-
+            --allow-unauthenticated
+            --service-account=${{ env.GCP_RUNTIME_SERVICE_ACCOUNT }}
+            --execution-environment=gen2
+            --memory=1Gi
+            --cpu=2
+            --min=1
+            --max=3
+            --concurrency=30
+            --timeout=180s
+
+      - name: Verify the deployed 0.15.18 backend contract
+        id: endpoint
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.deploy_backend.outputs.url }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVICE_URL"
+          [[ "$SERVICE_URL" == https://*.run.app ]] || {
+            echo "Refusing non-Cloud-Run backend URL: $SERVICE_URL" >&2
+            exit 1
+          }
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --max-time 30 "$SERVICE_URL/health" | tee endpoint-health.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('endpoint-health.json').read_text(encoding='utf-8'))
+          expected = {
+              'status': 'ok',
+              'version': '0.15.18',
+              'openAiConfigured': True,
+              'signingKeyConfigured': True,
+              'appCheckRequired': True,
+              'userAuthRequired': True,
+              'persistenceBackend': 'firestore',
+          }
+          bad = [f'{key}={payload.get(key)!r}' for key, value in expected.items() if payload.get(key) != value]
+          if bad:
+              raise SystemExit('backend contract mismatch: ' + ', '.join(bad))
+          PY
+          echo "base_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Build connected transport APKs for secure canonical re-signing
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-01518-transport-only
+          MSC_RELEASE_KEY_ALIAS: msc-01518-transport
+          MSC_RELEASE_KEY_PASSWORD: msc-01518-transport-only
+          MSC_BACKEND_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
+          MSC_GOOGLE_WEB_CLIENT_ID: ${{ steps.google.outputs.web_client_id }}
+          MSC_SMART_ONLINE_VALIDATED: 'true'
+        run: |
+          set -euo pipefail
+          bash .msc-build/package-0.15.18-connected-transport.sh
+
+      - name: Upload connected transport package for secure local canonical signing
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.18-connected-transport-for-canonical-resign
+          path: release-0.15.18-transport
+          retention-days: 3
+          if-no-files-found: error
