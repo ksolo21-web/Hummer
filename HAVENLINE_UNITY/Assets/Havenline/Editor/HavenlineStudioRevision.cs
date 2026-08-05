@@ -4,6 +4,6 @@ namespace Havenline.Editor
     {
         public const string Current = "0.1.0-review.16";
         public const string Purpose =
-            "Replace the billboard stack with a level-aware two-layer mesh flame, reduce particles to secondary feedback, balance furnace lighting and use pale thawed snow.";
+            "Validate the level-aware two-layer furnace core, secondary particle limits, operational runtime binding, balanced lighting, pale thawed snow and unchanged premium proof gates.";
     }
 }
