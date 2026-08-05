@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.17";
+        public const string Current = "0.1.0-review.18";
         public const string Purpose =
-            "Replace the edge-on furnace icon with a volumetric three-tongue firebox core, authored ember bed and explicit anti-slash geometry gates while preserving restrained particles and blocked production release.";
+            "Replace the flat flame-icon proof with asymmetric radial 3D flame volumes, depth-staggered inner cores, a broader visible ember bed and restrained warm emission while preserving secondary particles and the blocked production release.";
     }
 }
