@@ -45,10 +45,6 @@ namespace Havenline
         public long capturedUtcTicks;
     }
 
-    /// <summary>
-    /// Display-aware frame pacing for 60/90/120 Hz devices with reversible quality scaling.
-    /// It measures sustained frame time instead of claiming a rate from configuration alone.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class HavenlinePerformance : MonoBehaviour
     {
@@ -93,8 +89,7 @@ namespace Havenline
         private void Update()
         {
             var delta = Mathf.Clamp(Time.unscaledDeltaTime, 0.0001f, 0.25f);
-            var milliseconds = delta * 1000f;
-            frameTimesMs[frameIndex] = milliseconds;
+            frameTimesMs[frameIndex] = delta * 1000f;
             frameIndex = (frameIndex + 1) % FrameWindow;
             frameCount = Mathf.Min(frameCount + 1, FrameWindow);
             sessionClock += delta;
@@ -106,15 +101,12 @@ namespace Havenline
             if (timingCount > 0)
             {
                 var timing = frameTimings[0];
-                if (timing.cpuFrameTime > 0d)
-                    accumulatedCpuMs += (float)timing.cpuFrameTime;
-                if (timing.gpuFrameTime > 0d)
-                    accumulatedGpuMs += (float)timing.gpuFrameTime;
+                if (timing.cpuFrameTime > 0d) accumulatedCpuMs += (float)timing.cpuFrameTime;
+                if (timing.gpuFrameTime > 0d) accumulatedGpuMs += (float)timing.gpuFrameTime;
                 timingSamples++;
             }
 
-            if (evaluationClock < EvaluationSeconds || frameCount < 60)
-                return;
+            if (evaluationClock < EvaluationSeconds || frameCount < 60) return;
             evaluationClock = 0f;
             EvaluateWindow();
         }
@@ -131,33 +123,34 @@ namespace Havenline
         {
             DisplayRefreshRate = Math.Max(1d, Screen.currentResolution.refreshRateRatio.value);
             var supported = QuantizeSupportedRefresh(DisplayRefreshRate);
-            TargetFrameRate = FrameMode switch
+            switch (FrameMode)
             {
-                HavenlineFrameMode.Quality60 => Reference.MinimumFrameRate,
-                HavenlineFrameMode.Balanced90 => Mathf.Min(Reference.BalancedFrameRate, supported),
-                HavenlineFrameMode.Performance120 => Mathf.Min(Reference.MaximumFrameRate, supported),
-                _ => supported
-            };
+                case HavenlineFrameMode.Quality60:
+                    TargetFrameRate = Reference.MinimumFrameRate;
+                    break;
+                case HavenlineFrameMode.Balanced90:
+                    TargetFrameRate = Mathf.Min(Reference.BalancedFrameRate, supported);
+                    break;
+                case HavenlineFrameMode.Performance120:
+                    TargetFrameRate = Mathf.Min(Reference.MaximumFrameRate, supported);
+                    break;
+                default:
+                    TargetFrameRate = supported;
+                    break;
+            }
             TargetFrameRate = Mathf.Max(Reference.MinimumFrameRate, TargetFrameRate);
             Application.targetFrameRate = TargetFrameRate;
 
-            if (resetQuality)
-            {
-                var startingTier = TargetFrameRate <= 60
-                    ? HavenlineQualityTier.Ultra
-                    : HavenlineQualityTier.High;
-                ApplyQuality(startingTier, false);
-                badWindows = 0;
-                goodWindows = 0;
-            }
+            if (!resetQuality) return;
+            ApplyQuality(TargetFrameRate <= 60 ? HavenlineQualityTier.Ultra : HavenlineQualityTier.High, false);
+            badWindows = 0;
+            goodWindows = 0;
         }
 
         private static int QuantizeSupportedRefresh(double refresh)
         {
-            if (refresh >= 118d)
-                return Reference.MaximumFrameRate;
-            if (refresh >= 88d)
-                return Reference.BalancedFrameRate;
+            if (refresh >= 118d) return Reference.MaximumFrameRate;
+            if (refresh >= 88d) return Reference.BalancedFrameRate;
             return Reference.MinimumFrameRate;
         }
 
@@ -168,22 +161,18 @@ namespace Havenline
             for (var index = 0; index < frameCount; index++)
             {
                 var value = frameTimesMs[index];
-                if (value <= 0f)
-                    continue;
+                if (value <= 0f) continue;
                 samples.Add(value);
                 total += value;
             }
-            if (samples.Count == 0)
-                return;
+            if (samples.Count == 0) return;
 
             samples.Sort();
             var averageMs = total / samples.Count;
             AverageFps = 1000f / Mathf.Max(0.01f, averageMs);
             P95FrameTimeMs = Percentile(samples, 0.95f);
             P99FrameTimeMs = Percentile(samples, 0.99f);
-
-            if (sessionClock < WarmupSeconds)
-                return;
+            if (sessionClock < WarmupSeconds) return;
 
             var frameBudget = 1000f / TargetFrameRate;
             var struggling = AverageFps < TargetFrameRate * 0.90f || P95FrameTimeMs > frameBudget * 1.28f;
@@ -195,28 +184,35 @@ namespace Havenline
                 goodWindows = 0;
                 if (badWindows >= 2 && QualityTier > HavenlineQualityTier.Safe)
                 {
-                    ApplyQuality(QualityTier - 1, true);
+                    ApplyQuality(StepTier(QualityTier, -1), true);
                     qualityDownshifts++;
                     badWindows = 0;
                 }
+                return;
             }
-            else if (stable)
+
+            if (stable)
             {
                 goodWindows++;
                 badWindows = 0;
                 var maximumTier = TargetFrameRate <= 60 ? HavenlineQualityTier.Ultra : HavenlineQualityTier.High;
                 if (goodWindows >= 5 && QualityTier < maximumTier)
                 {
-                    ApplyQuality(QualityTier + 1, true);
+                    ApplyQuality(StepTier(QualityTier, 1), true);
                     qualityUpshifts++;
                     goodWindows = 0;
                 }
+                return;
             }
-            else
-            {
-                badWindows = Mathf.Max(0, badWindows - 1);
-                goodWindows = Mathf.Max(0, goodWindows - 1);
-            }
+
+            badWindows = Mathf.Max(0, badWindows - 1);
+            goodWindows = Mathf.Max(0, goodWindows - 1);
+        }
+
+        private static HavenlineQualityTier StepTier(HavenlineQualityTier current, int direction)
+        {
+            var value = Mathf.Clamp((int)current + direction, (int)HavenlineQualityTier.Safe, (int)HavenlineQualityTier.Ultra);
+            return (HavenlineQualityTier)value;
         }
 
         private void ApplyQuality(HavenlineQualityTier tier, bool notify)
@@ -225,60 +221,49 @@ namespace Havenline
             switch (tier)
             {
                 case HavenlineQualityTier.Ultra:
-                    ScalableBufferManager.ResizeBuffers(1f, 1f);
-                    QualitySettings.shadowDistance = 48f;
-                    QualitySettings.lodBias = 1.5f;
-                    QualitySettings.maximumLODLevel = 0;
-                    QualitySettings.antiAliasing = 4;
-                    QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
-                    QualitySettings.realtimeReflectionProbes = true;
+                    ApplyRenderSettings(1f, 48f, 1.5f, 0, 4, AnisotropicFiltering.ForceEnable, true);
                     break;
                 case HavenlineQualityTier.High:
-                    ScalableBufferManager.ResizeBuffers(0.94f, 0.94f);
-                    QualitySettings.shadowDistance = 40f;
-                    QualitySettings.lodBias = 1.25f;
-                    QualitySettings.maximumLODLevel = 0;
-                    QualitySettings.antiAliasing = 4;
-                    QualitySettings.anisotropicFiltering = AnisotropicFiltering.Enable;
-                    QualitySettings.realtimeReflectionProbes = true;
+                    ApplyRenderSettings(0.94f, 40f, 1.25f, 0, 4, AnisotropicFiltering.Enable, true);
                     break;
                 case HavenlineQualityTier.Balanced:
-                    ScalableBufferManager.ResizeBuffers(0.84f, 0.84f);
-                    QualitySettings.shadowDistance = 32f;
-                    QualitySettings.lodBias = 1.0f;
-                    QualitySettings.maximumLODLevel = 1;
-                    QualitySettings.antiAliasing = 2;
-                    QualitySettings.anisotropicFiltering = AnisotropicFiltering.Enable;
-                    QualitySettings.realtimeReflectionProbes = false;
+                    ApplyRenderSettings(0.84f, 32f, 1f, 1, 2, AnisotropicFiltering.Enable, false);
                     break;
                 default:
-                    ScalableBufferManager.ResizeBuffers(0.74f, 0.74f);
-                    QualitySettings.shadowDistance = 24f;
-                    QualitySettings.lodBias = 0.8f;
-                    QualitySettings.maximumLODLevel = 1;
-                    QualitySettings.antiAliasing = 2;
-                    QualitySettings.anisotropicFiltering = AnisotropicFiltering.Disable;
-                    QualitySettings.realtimeReflectionProbes = false;
+                    ApplyRenderSettings(0.74f, 24f, 0.8f, 1, 2, AnisotropicFiltering.Disable, false);
                     break;
             }
-
             Shader.SetGlobalFloat("_HavenlineQualityTier", (float)QualityTier);
-            if (notify)
-                QualityChanged?.Invoke(QualityTier, TargetFrameRate);
+            if (notify) QualityChanged?.Invoke(QualityTier, TargetFrameRate);
+        }
+
+        private static void ApplyRenderSettings(
+            float scale,
+            float shadowDistance,
+            float lodBias,
+            int maximumLod,
+            int antialiasing,
+            AnisotropicFiltering anisotropy,
+            bool realtimeReflections)
+        {
+            ScalableBufferManager.ResizeBuffers(scale, scale);
+            QualitySettings.shadowDistance = shadowDistance;
+            QualitySettings.lodBias = lodBias;
+            QualitySettings.maximumLODLevel = maximumLod;
+            QualitySettings.antiAliasing = antialiasing;
+            QualitySettings.anisotropicFiltering = anisotropy;
+            QualitySettings.realtimeReflectionProbes = realtimeReflections;
         }
 
         private static float Percentile(IReadOnlyList<float> sorted, float percentile)
         {
-            if (sorted.Count == 0)
-                return 0f;
+            if (sorted.Count == 0) return 0f;
             var index = Mathf.Clamp(Mathf.CeilToInt((sorted.Count - 1) * percentile), 0, sorted.Count - 1);
             return sorted[index];
         }
 
         public HavenlinePerformanceReport CaptureReport()
         {
-            var cpu = timingSamples > 0 ? accumulatedCpuMs / timingSamples : 0f;
-            var gpu = timingSamples > 0 ? accumulatedGpuMs / timingSamples : 0f;
             return new HavenlinePerformanceReport
             {
                 deviceModel = SystemInfo.deviceModel,
@@ -292,8 +277,8 @@ namespace Havenline
                 averageFps = AverageFps,
                 p95FrameTimeMs = P95FrameTimeMs,
                 p99FrameTimeMs = P99FrameTimeMs,
-                averageCpuFrameTimeMs = cpu,
-                averageGpuFrameTimeMs = gpu,
+                averageCpuFrameTimeMs = timingSamples > 0 ? accumulatedCpuMs / timingSamples : 0f,
+                averageGpuFrameTimeMs = timingSamples > 0 ? accumulatedGpuMs / timingSamples : 0f,
                 peakMemoryBytes = peakMemory,
                 sessionSeconds = sessionClock,
                 qualityDownshifts = qualityDownshifts,
@@ -318,18 +303,14 @@ namespace Havenline
 
         private void OnApplicationFocus(bool focused)
         {
-            if (focused)
-                ReconfigureForDisplay(false);
-            else
-                WriteReport();
+            if (focused) ReconfigureForDisplay(false);
+            else WriteReport();
         }
 
         private void OnApplicationPause(bool paused)
         {
-            if (paused)
-                WriteReport();
-            else
-                ReconfigureForDisplay(false);
+            if (paused) WriteReport();
+            else ReconfigureForDisplay(false);
         }
 
         private void OnDestroy()
