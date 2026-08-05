@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+          sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
