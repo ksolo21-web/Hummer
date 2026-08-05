@@ -435,17 +435,17 @@ namespace Havenline.Editor
                 safe.anchorMax = Vector2.one;
                 safe.offsetMin = safe.offsetMax = Vector2.zero;
 
-                var resources = CreatePanel(safe, "ResourcesPanel", new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(390f, 132f), Navy, 0.88f);
-                CreateText(resources.transform, "ResourcesText", "WOOD 0   STONE 0   METAL 0   FUEL 0", 25, TextAnchor.MiddleCenter);
-                var objective = CreatePanel(safe, "ObjectivePanel", new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(720f, 112f), Navy, 0.90f);
-                CreateText(objective.transform, "ObjectiveText", "RESTORE THE FURNACE", 31, TextAnchor.MiddleCenter);
-                var furnace = CreatePanel(safe, "FurnacePanel", new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(330f, 132f), Navy, 0.88f);
-                CreateText(furnace.transform, "StatusText", "FURNACE  LV.1", 25, TextAnchor.MiddleCenter);
+                var resources = CreatePanel(safe, "ResourcesPanel", new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(500f, 92f), Navy, 0.88f);
+                CreateText(resources.transform, "ResourcesText", "WOOD 0   STONE 0   METAL 0", 24, TextAnchor.MiddleCenter);
+                var objective = CreatePanel(safe, "ObjectivePanel", new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(580f, 88f), Navy, 0.90f);
+                CreateText(objective.transform, "ObjectiveText", "RESTORE THE FURNACE", 24, TextAnchor.MiddleCenter);
+                var furnace = CreatePanel(safe, "FurnacePanel", new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(300f, 92f), Navy, 0.88f);
+                CreateText(furnace.transform, "StatusText", "FURNACE LV.1", 24, TextAnchor.MiddleCenter);
 
-                var context = CreatePanel(safe, "ContextPanel", new Vector2(0.5f, 0f), new Vector2(0f, 42f), new Vector2(570f, 104f), Navy, 0.82f);
-                CreateText(context.transform, "ContextText", "MOVE NEAR AN OBJECT TO ACT", 23, TextAnchor.UpperCenter);
+                var context = CreatePanel(safe, "ContextPanel", new Vector2(0.5f, 0f), new Vector2(0f, 28f), new Vector2(540f, 84f), Navy, 0.82f);
+                CreateText(context.transform, "ContextText", "MOVE CLOSE TO ACT", 24, TextAnchor.UpperCenter);
                 var progressBackground = CreateImage(context.transform, "ContextProgressBackground", new Color(0.02f,0.07f,0.11f,0.9f));
-                SetRect(progressBackground.rectTransform, new Vector2(0.5f,0f), new Vector2(0f,14f), new Vector2(500f,16f));
+                SetRect(progressBackground.rectTransform, new Vector2(0.5f,0f), new Vector2(0f,14f), new Vector2(470f,12f));
                 var progress = CreateImage(progressBackground.transform, "ContextProgress", Orange);
                 progress.type = Image.Type.Filled;
                 progress.fillMethod = Image.FillMethod.Horizontal;
@@ -456,18 +456,18 @@ namespace Havenline.Editor
                 progressRect.anchorMax = Vector2.one;
                 progressRect.offsetMin = progressRect.offsetMax = Vector2.zero;
 
-                var helper = CreatePanel(safe, "HelperPanel", new Vector2(0f, 0f), new Vector2(24f, 214f), new Vector2(330f, 94f), Navy, 0.78f);
-                CreateText(helper.transform, "HelperText", "HELPER: FROZEN", 22, TextAnchor.MiddleCenter);
-                var threat = CreatePanel(safe, "ThreatPanel", new Vector2(1f, 0f), new Vector2(-24f, 214f), new Vector2(330f, 94f), Navy, 0.78f);
-                CreateText(threat.transform, "ThreatText", "THREAT: QUIET", 22, TextAnchor.MiddleCenter);
+                var helper = CreatePanel(safe, "HelperPanel", new Vector2(0f, 0f), new Vector2(24f, 132f), new Vector2(280f, 72f), Navy, 0.78f);
+                CreateText(helper.transform, "HelperText", "HELPER: FROZEN", 24, TextAnchor.MiddleCenter);
+                var threat = CreatePanel(safe, "ThreatPanel", new Vector2(1f, 0f), new Vector2(-24f, 132f), new Vector2(280f, 72f), Navy, 0.78f);
+                CreateText(threat.transform, "ThreatText", "THREAT: QUIET", 24, TextAnchor.MiddleCenter);
 
                 var joystick = CreateImage(safe, "JoystickBase", new Color(0.08f,0.23f,0.34f,0.50f));
-                SetRect(joystick.rectTransform, new Vector2(0f,0f), new Vector2(166f,154f), new Vector2(226f,226f));
+                SetRect(joystick.rectTransform, new Vector2(0f,0f), new Vector2(132f,126f), new Vector2(190f,190f));
                 var knob = CreateImage(joystick.transform, "JoystickKnob", new Color(0.52f,0.78f,0.92f,0.72f));
-                SetRect(knob.rectTransform, new Vector2(0.5f,0.5f), Vector2.zero, new Vector2(96f,96f));
+                SetRect(knob.rectTransform, new Vector2(0.5f,0.5f), Vector2.zero, new Vector2(82f,82f));
                 var warmth = CreateImage(safe, "WarmthIndicator", new Color(1f,0.31f,0.06f,0.82f));
-                SetRect(warmth.rectTransform, new Vector2(1f,0f), new Vector2(-168f,154f), new Vector2(176f,176f));
-                CreateText(warmth.transform, "WarmthText", "WARMTH", 21, TextAnchor.MiddleCenter);
+                SetRect(warmth.rectTransform, new Vector2(1f,0f), new Vector2(-128f,126f), new Vector2(150f,150f));
+                CreateText(warmth.transform, "WarmthText", "WARMTH", 24, TextAnchor.MiddleCenter);
 
                 for (var index = 0; index < 8; index++)
                 {
@@ -828,15 +828,15 @@ namespace Havenline.Editor
             var text = gameObject.GetComponent<Text>();
             text.text = value;
             text.font = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
-            text.fontSize = size;
-            text.fontStyle = FontStyle.Bold;
+            text.fontSize = 24;
+            text.fontStyle = FontStyle.Normal;
             text.alignment = alignment;
             text.color = new Color(0.94f,0.98f,1f,1f);
-            text.resizeTextForBestFit = true;
-            text.resizeTextMinSize = Mathf.Max(15, size - 8);
-            text.resizeTextMaxSize = size;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.resizeTextForBestFit = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.lineSpacing = 0.90f;
+            text.raycastTarget = false;
             var rect = text.rectTransform;
             if (position.HasValue || dimensions.HasValue)
                 SetRect(rect, new Vector2(0.5f,0.5f), position ?? Vector2.zero, dimensions ?? new Vector2(500f,80f));

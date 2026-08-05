@@ -12,6 +12,12 @@ namespace Havenline.Editor
         internal const string SnowFieldPath = Root + "/HAVENLINE_LayeredSnowField.asset";
         internal const string PathPatchPath = Root + "/HAVENLINE_SnowPathPatch.asset";
         internal const string WarmPatchPath = Root + "/HAVENLINE_WarmSnowPatch.asset";
+        internal const string FurnaceBodyPath = Root + "/HAVENLINE_FurnaceBody.asset";
+        internal const string FurnaceHoodPath = Root + "/HAVENLINE_FurnaceHood.asset";
+        internal const string FurnaceChimneyPath = Root + "/HAVENLINE_FurnaceChimney.asset";
+        internal const string ShelterShellPath = Root + "/HAVENLINE_ShelterShell.asset";
+        internal const string PaleSnowMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_PaleSnow.mat";
         internal const string SnowPathMaterialPath =
             "Assets/Havenline/Art/Production/Materials/HAVENLINE_SnowPath.mat";
         internal const string WarmSnowMaterialPath =
@@ -33,6 +39,19 @@ namespace Havenline.Editor
                     "HAVENLINE_SnowPathPatch", 40, 1f, 1f, 0.045f, 9137));
                 CreateMeshIfMissing(WarmPatchPath, CreateEllipseMesh(
                     "HAVENLINE_WarmSnowPatch", 48, 1f, 1f, 0.055f, 16127));
+                CreateMeshIfMissing(FurnaceBodyPath, CreateChamferedColumnMesh(
+                    "HAVENLINE_FurnaceBody", 3.2f, 1.9f, 1.8f, 0.24f));
+                CreateMeshIfMissing(FurnaceHoodPath, CreateChamferedColumnMesh(
+                    "HAVENLINE_FurnaceHood", 3.75f, 2.2f, 0.58f, 0.28f));
+                CreateMeshIfMissing(FurnaceChimneyPath, CreateChamferedColumnMesh(
+                    "HAVENLINE_FurnaceChimney", 0.82f, 0.82f, 1.55f, 0.16f));
+                CreateMeshIfMissing(ShelterShellPath, CreateTentMesh(
+                    "HAVENLINE_ShelterShell", 3.9f, 2.65f, 3.3f));
+                CreateMaterialIfMissing(
+                    PaleSnowMaterialPath,
+                    new Color(0.965f, 0.985f, 1f, 1f),
+                    0.17f,
+                    string.Empty);
                 CreateMaterialIfMissing(
                     SnowPathMaterialPath,
                     new Color(0.56f, 0.73f, 0.82f, 1f),
@@ -143,6 +162,88 @@ namespace Havenline.Editor
             return BuildMesh(name, vertices, triangles, uv);
         }
 
+        private static Mesh CreateChamferedColumnMesh(
+            string name,
+            float width,
+            float depth,
+            float height,
+            float bevel)
+        {
+            var halfWidth = width * 0.5f;
+            var halfDepth = depth * 0.5f;
+            var points = new[]
+            {
+                new Vector2(-halfWidth + bevel, -halfDepth),
+                new Vector2(halfWidth - bevel, -halfDepth),
+                new Vector2(halfWidth, -halfDepth + bevel),
+                new Vector2(halfWidth, halfDepth - bevel),
+                new Vector2(halfWidth - bevel, halfDepth),
+                new Vector2(-halfWidth + bevel, halfDepth),
+                new Vector2(-halfWidth, halfDepth - bevel),
+                new Vector2(-halfWidth, -halfDepth + bevel)
+            };
+            var vertices = new List<Vector3>();
+            var uv = new List<Vector2>();
+            foreach (var point in points)
+            {
+                vertices.Add(new Vector3(point.x, 0f, point.y));
+                uv.Add(new Vector2(point.x / width + 0.5f, 0f));
+            }
+            foreach (var point in points)
+            {
+                vertices.Add(new Vector3(point.x, height, point.y));
+                uv.Add(new Vector2(point.x / width + 0.5f, 1f));
+            }
+            var bottomCenter = vertices.Count;
+            vertices.Add(Vector3.zero);
+            uv.Add(new Vector2(0.5f, 0.5f));
+            var topCenter = vertices.Count;
+            vertices.Add(new Vector3(0f, height, 0f));
+            uv.Add(new Vector2(0.5f, 0.5f));
+            var triangles = new List<int>();
+            for (var index = 0; index < points.Length; index++)
+            {
+                var next = (index + 1) % points.Length;
+                triangles.Add(index);
+                triangles.Add(next + points.Length);
+                triangles.Add(index + points.Length);
+                triangles.Add(index);
+                triangles.Add(next);
+                triangles.Add(next + points.Length);
+                triangles.Add(topCenter);
+                triangles.Add(index + points.Length);
+                triangles.Add(next + points.Length);
+                triangles.Add(bottomCenter);
+                triangles.Add(next);
+                triangles.Add(index);
+            }
+            return BuildMesh(name, vertices, triangles, uv);
+        }
+
+        private static Mesh CreateTentMesh(string name, float width, float height, float depth)
+        {
+            var halfWidth = width * 0.5f;
+            var halfDepth = depth * 0.5f;
+            var vertices = new List<Vector3>
+            {
+                new(-halfWidth, 0f, halfDepth), new(0f, height, halfDepth), new(halfWidth, 0f, halfDepth),
+                new(-halfWidth, 0f, -halfDepth), new(0f, height, -halfDepth), new(halfWidth, 0f, -halfDepth)
+            };
+            var triangles = new List<int>
+            {
+                0,1,2, 5,4,3,
+                0,3,4, 0,4,1,
+                1,4,5, 1,5,2,
+                0,2,5, 0,5,3
+            };
+            var uv = new List<Vector2>
+            {
+                new(0f,0f), new(0.5f,1f), new(1f,0f),
+                new(0f,0f), new(0.5f,1f), new(1f,0f)
+            };
+            return BuildMesh(name, vertices, triangles, uv);
+        }
+
         private static Mesh BuildMesh(
             string name,
             IReadOnlyList<Vector3> vertices,
@@ -163,10 +264,7 @@ namespace Havenline.Editor
         private static void CreateMeshIfMissing(string path, Mesh mesh)
         {
             if (AssetDatabase.LoadAssetAtPath<Mesh>(path) != null)
-            {
-                UnityEngine.Object.DestroyImmediate(mesh);
-                return;
-            }
+                AssetDatabase.DeleteAsset(path);
             AssetDatabase.CreateAsset(mesh, path);
         }
 
@@ -177,7 +275,7 @@ namespace Havenline.Editor
             string texturePath)
         {
             if (AssetDatabase.LoadAssetAtPath<Material>(path) != null)
-                return;
+                AssetDatabase.DeleteAsset(path);
             var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if (shader == null)
                 throw new InvalidOperationException("HAVENLINE visual polish could not find a lit shader.");
@@ -189,7 +287,9 @@ namespace Havenline.Editor
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Color")) material.SetColor("_Color", color);
             if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
-            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+            var texture = string.IsNullOrWhiteSpace(texturePath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
             if (texture != null)
             {
                 if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);

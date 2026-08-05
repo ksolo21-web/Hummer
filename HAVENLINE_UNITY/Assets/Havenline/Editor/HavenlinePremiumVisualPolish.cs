@@ -52,6 +52,8 @@ namespace Havenline.Editor
             var dressing = RebuildDressing(scene);
             BuildLayeredGround(dressing.transform);
             BuildCampDetails(dressing.transform);
+            BuildFurnaceSilhouette(dressing.transform);
+            BuildShelterSilhouettes(dressing.transform);
             TuneWorldLayout(objects);
             TuneLighting(objects, dressing.transform);
             ConfigureInterface(objects, mainCamera);
@@ -115,8 +117,8 @@ namespace Havenline.Editor
                 parent,
                 "LayeredSnowField",
                 HavenlinePremiumVisualAssets.SnowFieldPath,
-                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Snow.mat",
-                new Vector3(0f, -0.12f, 0f),
+                HavenlinePremiumVisualAssets.PaleSnowMaterialPath,
+                new Vector3(0f, -0.085f, 0f),
                 Vector3.one,
                 Quaternion.identity);
 
@@ -149,8 +151,8 @@ namespace Havenline.Editor
                 "FurnaceWarmSnow",
                 HavenlinePremiumVisualAssets.WarmPatchPath,
                 HavenlinePremiumVisualAssets.WarmSnowMaterialPath,
-                new Vector3(0f, 0.086f, 0.25f),
-                new Vector3(4.4f, 1f, 3.75f),
+                new Vector3(0f, 0.092f, 0.25f),
+                new Vector3(3.25f, 1f, 2.55f),
                 Quaternion.identity);
         }
 
@@ -187,12 +189,63 @@ namespace Havenline.Editor
             fuel.transform.localScale = Vector3.one * 0.82f;
         }
 
+        private static void BuildFurnaceSilhouette(Transform parent)
+        {
+            CreateMeshObject(parent, "FurnacePremiumBody",
+                HavenlinePremiumVisualAssets.FurnaceBodyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Metal.mat",
+                new Vector3(0f, 0.12f, 0.18f), Vector3.one, Quaternion.identity);
+            CreateMeshObject(parent, "FurnacePremiumHood",
+                HavenlinePremiumVisualAssets.FurnaceHoodPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_MetalLight.mat",
+                new Vector3(0f, 1.86f, 0.18f), Vector3.one, Quaternion.identity);
+            CreateMeshObject(parent, "FurnacePremiumChimney",
+                HavenlinePremiumVisualAssets.FurnaceChimneyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Navy.mat",
+                new Vector3(0f, 2.36f, 0.05f), Vector3.one, Quaternion.identity);
+            CreateMeshObject(parent, "FurnaceDoorFrame",
+                HavenlinePremiumVisualAssets.FurnaceBodyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Amber.mat",
+                new Vector3(0f, 0.48f, 1.15f), new Vector3(0.50f, 0.54f, 0.12f), Quaternion.identity);
+            CreateMeshObject(parent, "FurnaceGlowCore",
+                HavenlinePremiumVisualAssets.FurnaceBodyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Orange.mat",
+                new Vector3(0f, 0.58f, 1.30f), new Vector3(0.38f, 0.39f, 0.055f), Quaternion.identity);
+        }
+
+        private static void BuildShelterSilhouettes(Transform parent)
+        {
+            BuildShelter(parent, "LeftPremiumShelter", new Vector3(-6.25f, 0.02f, -1.15f), 18f, true);
+            BuildShelter(parent, "RightPremiumShelter", new Vector3(6.15f, 0.02f, -1.0f), -22f, false);
+        }
+
+        private static void BuildShelter(Transform parent, string name, Vector3 position, float yaw, bool left)
+        {
+            CreateMeshObject(parent, name + "Shell",
+                HavenlinePremiumVisualAssets.ShelterShellPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Blue.mat",
+                position, Vector3.one, Quaternion.Euler(0f, yaw, 0f));
+            CreateMeshObject(parent, name + "SnowCap",
+                HavenlinePremiumVisualAssets.ShelterShellPath,
+                HavenlinePremiumVisualAssets.PaleSnowMaterialPath,
+                position + new Vector3(0f, 0.42f, 0f),
+                new Vector3(1.04f, 0.70f, 1.04f), Quaternion.Euler(0f, yaw, 0f));
+            var lanternPosition = position + new Vector3(left ? 1.35f : -1.35f, 0.72f, 1.35f);
+            CreateMeshObject(parent, name + "Lantern",
+                HavenlinePremiumVisualAssets.FurnaceChimneyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Amber.mat",
+                lanternPosition, new Vector3(0.22f, 0.28f, 0.22f), Quaternion.identity);
+            CreatePointLight(parent, name + "LanternLight", lanternPosition + Vector3.up * 0.15f,
+                new Color(1f, 0.48f, 0.12f), 1.55f, 7.5f, false);
+        }
+
         private static void TuneWorldLayout(IReadOnlyCollection<GameObject> objects)
         {
-            SetPose(objects, "StartingTent", new Vector3(-5.45f, 0f, -3.0f), 24f);
-            SetPose(objects, "RescueShelter", new Vector3(5.45f, 0f, -3.05f), -24f);
-            SetPose(objects, "SupplyStorage", new Vector3(-3.15f, 0f, 1.55f), -12f);
-            SetPose(objects, "Campfire", new Vector3(3.1f, 0f, 1.72f), 0f);
+            SetPose(objects, "StartingTent", new Vector3(-6.25f, 0f, -1.15f), 18f);
+            SetPose(objects, "RescueShelter", new Vector3(6.15f, 0f, -1.0f), -22f);
+            SetPose(objects, "SupplyStorage", new Vector3(-3.35f, 0f, 1.65f), -16f);
+            SetPose(objects, "Campfire", new Vector3(3.15f, 0f, 1.70f), 0f);
+            TuneTreeComposition(objects);
 
             var warmth = objects.FirstOrDefault(item => item.name == "WarmthBoundary");
             if (warmth != null)
@@ -202,6 +255,34 @@ namespace Havenline.Editor
             var rightTent = objects.FirstOrDefault(item => item.name == "RescueShelter");
             if (leftTent != null) leftTent.transform.localScale *= 1.12f;
             if (rightTent != null) rightTent.transform.localScale *= 1.12f;
+        }
+
+        private static void TuneTreeComposition(IReadOnlyCollection<GameObject> objects)
+        {
+            var woodPositions = new[]
+            {
+                new Vector3(-10.6f,0f,7.4f), new Vector3(-11.7f,0f,1.9f),
+                new Vector3(10.4f,0f,7.1f), new Vector3(11.8f,0f,1.4f),
+                new Vector3(-10.2f,0f,-7.4f), new Vector3(10.8f,0f,-7.0f)
+            };
+            for (var index = 0; index < woodPositions.Length; index++)
+                SetPose(objects, $"WoodNode_{index}", woodPositions[index], 19f + index * 47f);
+
+            var boundaryPositions = new[]
+            {
+                new Vector3(-13.0f,0f,10.8f), new Vector3(12.7f,0f,9.9f),
+                new Vector3(-13.1f,0f,-9.8f), new Vector3(12.8f,0f,-10.3f),
+                new Vector3(-5.1f,0f,-13.6f), new Vector3(6.8f,0f,-13.1f)
+            };
+            for (var index = 0; index < boundaryPositions.Length; index++)
+            {
+                var pine = objects.FirstOrDefault(item => item.name == $"BoundaryPine_{index}");
+                if (pine == null)
+                    continue;
+                pine.transform.position = boundaryPositions[index];
+                pine.transform.rotation = Quaternion.Euler(0f, 31f + index * 61f, 0f);
+                pine.transform.localScale *= 0.86f + index % 3 * 0.10f;
+            }
         }
 
         private static void TuneLighting(IReadOnlyCollection<GameObject> objects, Transform parent)
@@ -268,9 +349,21 @@ namespace Havenline.Editor
                 if (image.name.Contains("Panel", StringComparison.OrdinalIgnoreCase))
                 {
                     var color = image.color;
-                    color.a = Mathf.Clamp(color.a, 0.78f, 0.94f);
+                    color.a = Mathf.Clamp(color.a, 0.68f, 0.84f);
                     image.color = color;
                 }
+            }
+
+            foreach (var text in objects.SelectMany(item => item.GetComponents<Text>()))
+            {
+                text.fontStyle = FontStyle.Normal;
+                text.resizeTextForBestFit = false;
+                text.fontSize = 24;
+                text.horizontalOverflow = HorizontalWrapMode.Overflow;
+                text.verticalOverflow = VerticalWrapMode.Overflow;
+                text.lineSpacing = 0.90f;
+                text.raycastTarget = false;
+                text.color = new Color(0.94f, 0.98f, 1f, 1f);
             }
         }
 
@@ -289,8 +382,8 @@ namespace Havenline.Editor
         {
             TuneMaterial(
                 "Assets/Havenline/Art/Production/Materials/HAVENLINE_Snow.mat",
-                new Color(0.76f, 0.88f, 0.95f, 1f),
-                0.32f,
+                new Color(0.91f, 0.965f, 1f, 1f),
+                0.20f,
                 false);
             TuneMaterial(
                 "Assets/Havenline/Art/Production/Materials/HAVENLINE_Ice.mat",

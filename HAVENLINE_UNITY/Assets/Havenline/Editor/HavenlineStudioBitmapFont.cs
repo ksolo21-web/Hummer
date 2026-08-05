@@ -12,9 +12,9 @@ namespace Havenline.Editor
         private const int Columns = 16;
         private const int CellWidth = 30;
         private const int CellHeight = 34;
-        private const int PixelScale = 3;
-        private const int GlyphWidth = 15;
-        private const int GlyphHeight = 21;
+        private const int PixelScale = 4;
+        private const int GlyphWidth = 20;
+        private const int GlyphHeight = 28;
         private const string AtlasPath =
             "Assets/Havenline/Art/Production/UI/HAVENLINE_UI_FontAtlas.png";
         private const string MaterialPath =
@@ -30,7 +30,7 @@ namespace Havenline.Editor
             var texture = new Texture2D(AtlasSize, AtlasSize, TextureFormat.RGBA32, false, false)
             {
                 name = "HAVENLINE_UI_FontAtlas",
-                filterMode = FilterMode.Point,
+                filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp
             };
             var clear = new Color32(0, 0, 0, 0);
@@ -68,7 +68,7 @@ namespace Havenline.Editor
                     maxX = character == ' ' ? 8 : GlyphWidth,
                     minY = -3,
                     maxY = GlyphHeight - 3,
-                    advance = character == ' ' ? 10 : 18,
+                    advance = character == ' ' ? 12 : 22,
                     glyphWidth = character == ' ' ? 8 : GlyphWidth,
                     glyphHeight = GlyphHeight,
                     size = 24,
@@ -87,7 +87,7 @@ namespace Havenline.Editor
                 importer.textureType = TextureImporterType.Default;
                 importer.alphaIsTransparency = true;
                 importer.mipmapEnabled = false;
-                importer.filterMode = FilterMode.Point;
+                importer.filterMode = FilterMode.Bilinear;
                 importer.wrapMode = TextureWrapMode.Clamp;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.maxTextureSize = AtlasSize;
@@ -110,10 +110,18 @@ namespace Havenline.Editor
 
             var font = new Font
             {
-                name = "HAVENLINE_UI_Rounded_Static",
+                name = "HAVENLINE_UI_Geometric_Static",
                 material = material,
                 characterInfo = characters.ToArray()
             };
+            var serializedFont = new SerializedObject(font);
+            var fontSize = serializedFont.FindProperty("m_FontSize");
+            if (fontSize != null)
+                fontSize.intValue = 24;
+            var lineSpacing = serializedFont.FindProperty("m_LineSpacing");
+            if (lineSpacing != null)
+                lineSpacing.floatValue = 1f;
+            serializedFont.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(font, fontPath);
             EditorUtility.SetDirty(font);
             AssetDatabase.SaveAssets();
