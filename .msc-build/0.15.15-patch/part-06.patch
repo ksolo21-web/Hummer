@@ -1,0 +1,207 @@
+icyContract.POLICY_VERSION,
+     val sourcePolicy: String = AiSourcePolicyContract.SOURCE_POLICY,
+     val scriptureEdition: String = AiSourcePolicyContract.SCRIPTURE_EDITION,
+ )
+ 
+ @Serializable
++data class AiStudyTurnDto(
++    val role: String,
++    val body: String,
++)
++
++@Serializable
++data class AiStudySourceExcerptDto(
++    val title: String,
++    val url: String,
++    val excerpt: String,
++)
++
++@Serializable
+ data class AiStudyContextDto(
+     val dailyScriptureReference: String,
+     val dailyOfficialUrl: String,
+@@ -231,6 +247,8 @@
+     val sessionId: String,
+     val answer: String,
+     val citations: List<AiCitationDto>,
++    val followUpQuestions: List<String> = emptyList(),
++    val modelLabel: String = "Smart Online AI",
+     val generatedAtEpochSeconds: Long,
+     val policyVersion: Int,
+     val sourcePolicy: String,
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
+@@ -1,11 +1,13 @@
+ package com.mystudycompanion.app.ai
+ 
++import android.content.Context
+ import android.net.Uri
+ import com.mystudycompanion.app.ai.knowledge.AiGroundingValidator
+ import com.mystudycompanion.app.ai.knowledge.AiPromptBuilder
+ import com.mystudycompanion.app.ai.knowledge.KnowledgeSyncStateStore
+ import com.mystudycompanion.app.ai.knowledge.OfficialKnowledgeRepository
+ import com.mystudycompanion.app.ai.knowledge.OfficialKnowledgeSyncEngine
++import com.mystudycompanion.app.ai.knowledge.RetrievedOfficialPassage
+ import com.mystudycompanion.app.ai.preparation.PreparationReviewEngine
+ import com.mystudycompanion.app.ai.runtime.AiProviderRouter
+ import com.mystudycompanion.app.ai.runtime.AiRuntimeState
+@@ -22,10 +24,17 @@
+ import com.mystudycompanion.app.data.PreparationTask
+ import com.mystudycompanion.app.data.PreparationTaskCatalog
+ import com.mystudycompanion.app.data.SpiritualSourcePolicy
++import com.mystudycompanion.app.data.StudyCitation
+ import com.mystudycompanion.app.data.local.StudyDao
+ import com.mystudycompanion.app.data.local.toDomain
+ import com.mystudycompanion.app.data.local.toEntity
+ import com.mystudycompanion.app.data.repository.StudyRepository
++import com.mystudycompanion.app.network.AiStudyContextDto
++import com.mystudycompanion.app.network.AiStudyRequestDto
++import com.mystudycompanion.app.network.AiStudySourceExcerptDto
++import com.mystudycompanion.app.network.AiStudyTurnDto
++import com.mystudycompanion.app.network.BackendApi
++import com.mystudycompanion.app.network.BackendConfig
+ import java.util.UUID
+ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
+@@ -39,12 +48,45 @@
+ import kotlinx.coroutines.sync.Mutex
+ import kotlinx.coroutines.sync.withLock
+ 
++enum class AiAssistantMode(
++    val label: String,
++    val description: String,
++) {
++    AUTO(
++        label = "Auto",
++        description = "Use Smart Online AI when available and automatically fall back to private offline help.",
++    ),
++    SMART_ONLINE(
++        label = "Smart Online",
++        description = "Use the secure cloud AI for the strongest conversational answers and official-source research.",
++    ),
++    PRIVATE_OFFLINE(
++        label = "Private Offline",
++        description = "Keep the question on this device and use only downloaded AI and verified cached sources.",
++    ),
++}
++
+ data class AiRequestState(
+     val isSending: Boolean = false,
+     val error: String? = null,
+ )
+ 
++data class AiAssistantState(
++    val mode: AiAssistantMode = AiAssistantMode.AUTO,
++    val smartOnlineConfigured: Boolean = false,
++    val lastProviderLabel: String = "Not used yet",
++    val usedOfflineFallback: Boolean = false,
++    val followUpQuestions: List<String> = emptyList(),
++)
++
++private data class StudyContextBundle(
++    val context: AiStudyContextDto,
++    val selectedPart: MeetingPart?,
++    val passages: List<RetrievedOfficialPassage>,
++)
++
+ class AiStudyRepository(
++    appContext: Context,
+     private val dao: StudyDao,
+     private val studyRepository: StudyRepository,
+     private val networkStatusMonitor: NetworkStatusMonitor,
+@@ -57,16 +99,29 @@
+     private val knowledgeSyncEngine: OfficialKnowledgeSyncEngine,
+     private val syncStateStore: KnowledgeSyncStateStore,
+     private val preparationReviewEngine: PreparationReviewEngine,
++    private val backendConfig: BackendConfig,
++    private val backendApi: BackendApi,
+ ) {
+     val messages: Flow<List<AiStudyMessage>> = dao.observeAiMessages()
+         .map { entities -> entities.map { it.toDomain() } }
+ 
++    private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+     private val mutableRequestState = MutableStateFlow(AiRequestState())
+     val requestState: StateFlow<AiRequestState> = mutableRequestState
+ 
+     private val mutableRuntimeState = MutableStateFlow(AiRuntimeState())
+     val runtimeState: StateFlow<AiRuntimeState> = mutableRuntimeState
+ 
++    private val mutableAssistantState = MutableStateFlow(
++        AiAssistantState(
++            mode = preferences.getString(KEY_MODE, null)
++                ?.let { stored -> AiAssistantMode.entries.firstOrNull { it.name == stored } }
++                ?: AiAssistantMode.AUTO,
++            smartOnlineConfigured = backendConfig.isConfigured,
++        ),
++    )
++    val assistantState: StateFlow<AiAssistantState> = mutableAssistantState
++
+     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+     private val runtimeMutex = Mutex()
+ 
+@@ -92,6 +147,15 @@
+         scope.launch { refreshRuntime() }
+     }
+ 
++    fun setAssistantMode(mode: AiAssistantMode) {
++        preferences.edit().putString(KEY_MODE, mode.name).apply()
++        mutableAssistantState.value = mutableAssistantState.value.copy(
++            mode = mode,
++            usedOfflineFallback = false,
++            followUpQuestions = emptyList(),
++        )
++    }
++
+     suspend fun refreshRuntime() = runtimeMutex.withLock {
+         val (geminiStatus, localStatus) = providerRouter.statuses()
+         mutableRuntimeState.value = mutableRuntimeState.value.copy(
+@@ -103,6 +167,9 @@
+             knowledge = syncStateStore.state.value,
+             online = networkStatusMonitor.isOnline(),
+         )
++        mutableAssistantState.value = mutableAssistantState.value.copy(
++            smartOnlineConfigured = backendConfig.isConfigured,
++        )
+     }
+ 
+     suspend fun refreshOfficialSources(force: Boolean = true): Boolean = try {
+@@ -168,64 +235,50 @@
+             ).toEntity(),
+         )
+         mutableRequestState.value = AiRequestState(isSending = true)
++        mutableAssistantState.value = mutableAssistantState.value.copy(
++            usedOfflineFallback = false,
++            followUpQuestions = emptyList(),
++        )
+         try {
+-            if (networkStatusMonitor.isOnline()) knowledgeSyncEngine.ensureCurrent()
+-            val snapshot = studyRepository.widgetSnapshot()
+-            val family = studyRepository.familyWorshipSnapshot()
+-            val selectedPart = selectedMeetingPartId?.let { id ->
+-                snapshot.weekly.parts.firstOrNull { it.id == id }
+-                    ?: dao.getMeetingPart(id)?.toDomain()
+-            }
+-            val preferredUrls = buildSet {
+-                add(snapshot.daily.officialUrl)
+-                add(snapshot.weekly.officialUrl)
+-                add(family.officialUrl)
+-                selectedPart?.officialUrl?.let(::add)
+-            }.filter(SpiritualSourcePolicy::isAllowed).toSet()
+-            val expandedQuestion = buildString {
+-                append(cleanQuestion)
+-                append(" Current Daily Text: ").append(snapshot.daily.scriptureReference)
+-                append(". Current Bible reading: ").append(snapshot.weekly.bibleReading)
+-                selectedPart?.let { append(". Selected meeting part: ").append(it.title) }
+-                append(". Family Worship topic: ").append(family.title).append(' ').append(family.theme)
+-            }
+-            val passages = knowledgeRepository.retrieve(expandedQuestion, preferredUrls, limit = 6)
+-            val (answer, citations) = if (passages.isEmpty()) {
+-                val safeMessage = if (networkStatusMonitor.isOnline()) {
+-                    "I could not find enough verified JW.org or Watchtower Online Library material in the current source library to answer that safely. Refresh official sources or open the specific official material first."
+-                } else {
+-                    "I do not have enough verified material stored offline to answer that safely. Reconnect and refresh official sources."
++            val online = networkStatusMonitor.isOnline()
++            if (online) runCatching { knowledgeSyncEngine.ensureCurrent() }
++            val bundle = buildStudyContext(cleanQuestion, selectedMeetingPartId)
++            val mode = mutableAssistantState.value.mode
++            val canTrySmartOnline = mode != AiAssistan
