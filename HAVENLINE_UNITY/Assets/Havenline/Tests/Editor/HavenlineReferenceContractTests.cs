@@ -12,9 +12,9 @@ namespace Havenline.Tests
         [Test]
         public void CameraKeepsTheCartoonSurvivorCloseAndReadable()
         {
-            Assert.That(Reference.CameraSize, Is.EqualTo(9.45f).Within(0.0001f));
-            Assert.That(Reference.CameraSize, Is.LessThanOrEqualTo(9.5f));
-            Assert.That(Reference.CameraOffset, Is.EqualTo(new Vector3(0f, 5.25f, 8.15f)));
+            Assert.That(Reference.CameraSize, Is.EqualTo(7.15f).Within(0.0001f));
+            Assert.That(Reference.CameraSize, Is.LessThanOrEqualTo(7.2f));
+            Assert.That(Reference.CameraOffset, Is.EqualTo(new Vector3(0f, 6.80f, 8.60f)));
             Assert.That(Reference.CameraOffset.z, Is.GreaterThan(Reference.CameraOffset.y));
             Assert.That(Reference.CameraLookAhead, Is.LessThan(0.75f));
             Assert.That(Reference.PlayerSpawn, Is.EqualTo(new Vector3(0f, 0.08f, 6.2f)));
