@@ -23,7 +23,7 @@ namespace Havenline.Editor
         internal static readonly Color FlameInnerBase = new(1f, 0.32f, 0.030f, 1f);
         internal static readonly Color FlameInnerEmission = new(1.42f, 0.34f, 0.030f, 1f);
 
-        private static bool shadersWarmed;
+        private static bool flameMaterialsWarmed;
 
         internal static void Ensure()
         {
@@ -47,10 +47,10 @@ namespace Havenline.Editor
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            if (!shadersWarmed)
+            if (!flameMaterialsWarmed)
             {
-                Shader.WarmupAllShaders();
-                shadersWarmed = true;
+                WarmAuthoredFlameMaterials();
+                flameMaterialsWarmed = true;
             }
         }
 
@@ -236,6 +236,95 @@ namespace Havenline.Editor
             material.EnableKeyword("_EMISSION");
             material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             EditorUtility.SetDirty(material);
+        }
+
+        private static void WarmAuthoredFlameMaterials()
+        {
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(FlameTongueMeshPath);
+            var outer = AssetDatabase.LoadAssetAtPath<Material>(HavenlinePremiumVisualAssets.FlameOuterMaterialPath);
+            var inner = AssetDatabase.LoadAssetAtPath<Material>(HavenlinePremiumVisualAssets.FlameInnerMaterialPath);
+            if (mesh == null || outer == null || inner == null)
+                throw new InvalidOperationException("HAVENLINE targeted flame warm-up assets are missing.");
+
+            var root = new GameObject("HAVENLINE_FlameWarmupRoot")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            var texture = new RenderTexture(128, 128, 24, RenderTextureFormat.ARGB32)
+            {
+                antiAliasing = 1,
+                useMipMap = false,
+                autoGenerateMips = false,
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            var previousActive = RenderTexture.active;
+            try
+            {
+                var cameraObject = new GameObject("HAVENLINE_FlameWarmupCamera")
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                cameraObject.transform.SetParent(root.transform, false);
+                cameraObject.transform.localPosition = new Vector3(0f, 0.70f, -3f);
+                var camera = cameraObject.AddComponent<Camera>();
+                camera.enabled = false;
+                camera.orthographic = true;
+                camera.orthographicSize = 1.15f;
+                camera.nearClipPlane = 0.01f;
+                camera.farClipPlane = 8f;
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = Color.black;
+                camera.allowHDR = true;
+                camera.targetTexture = texture;
+
+                var lightObject = new GameObject("HAVENLINE_FlameWarmupLight")
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                lightObject.transform.SetParent(root.transform, false);
+                lightObject.transform.localRotation = Quaternion.Euler(38f, -28f, 0f);
+                var light = lightObject.AddComponent<Light>();
+                light.type = LightType.Directional;
+                light.color = new Color(1f, 0.72f, 0.52f, 1f);
+                light.intensity = 1f;
+                light.shadows = LightShadows.None;
+
+                CreateWarmupRenderer(root.transform, "Outer", mesh, outer, new Vector3(-0.40f, 0f, 0f));
+                CreateWarmupRenderer(root.transform, "Inner", mesh, inner, new Vector3(0.40f, 0f, 0f));
+
+                texture.Create();
+                RenderTexture.active = texture;
+                camera.Render();
+                camera.Render();
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                texture.Release();
+                UnityEngine.Object.DestroyImmediate(texture);
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        private static void CreateWarmupRenderer(
+            Transform parent,
+            string suffix,
+            Mesh mesh,
+            Material material,
+            Vector3 localPosition)
+        {
+            var child = new GameObject(
+                "HAVENLINE_FlameWarmup_" + suffix,
+                typeof(MeshFilter),
+                typeof(MeshRenderer))
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            child.transform.SetParent(parent, false);
+            child.transform.localPosition = localPosition;
+            child.transform.localScale = Vector3.one * 0.72f;
+            child.GetComponent<MeshFilter>().sharedMesh = mesh;
+            child.GetComponent<MeshRenderer>().sharedMaterial = material;
         }
     }
 }
