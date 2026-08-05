@@ -1,0 +1,195 @@
+e feedback, and no answer list.")
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ b/MyStudyCompanion/tools/generate_curated_color_by_number.py
+@@ -0,0 +1,398 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++
++import json
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Callable, Iterable
++
++from PIL import Image, ImageDraw
++
++W, H = 512, 768
++OUTLINE = (35, 40, 45, 255)
++WHITE = (255, 255, 255, 255)
++PALETTE = {
++    1: (139, 90, 58, 255),   # brown
++    2: (224, 176, 132, 255), # warm skin
++    3: (211, 67, 72, 255),   # red
++    4: (72, 151, 205, 255),  # blue
++    5: (145, 151, 157, 255), # gray
++    6: (79, 157, 92, 255),   # green
++    7: (205, 171, 116, 255), # tan
++    8: (244, 202, 69, 255),  # yellow
++}
++PALETTE_LABELS = {
++    1: "Brown", 2: "Warm peach", 3: "Red", 4: "Blue",
++    5: "Gray", 6: "Green", 7: "Tan", 8: "Yellow",
++}
++
++@dataclass
++class Region:
++    id: int
++    number: int
++    label: str
++    center: tuple[int, int]
++
++class Scene:
++    def __init__(self, title: str):
++        self.title = title
++        self.master = Image.new("RGBA", (W, H), WHITE)
++        self.line = Image.new("RGBA", (W, H), WHITE)
++        self.mask = Image.new("RGB", (W, H), (0, 0, 0))
++        self.md = ImageDraw.Draw(self.master)
++        self.ld = ImageDraw.Draw(self.line)
++        self.kd = ImageDraw.Draw(self.mask)
++        self.regions: list[Region] = []
++        self._next = 1
++
++    def _add(self, number: int, label: str, center: tuple[int, int], draw_fn: Callable[[ImageDraw.ImageDraw, object], None], args: object, width: int = 5):
++        rid = self._next
++        self._next += 1
++        color = PALETTE[number]
++        draw_fn(self.md, (args, color, OUTLINE, width))
++        draw_fn(self.ld, (args, WHITE, OUTLINE, width))
++        draw_fn(self.kd, (args, (rid, 0, 0), (rid, 0, 0), 0))
++        self.regions.append(Region(rid, number, label, center))
++
++    def polygon(self, points, number, label, center, width=5):
++        def fn(draw, data):
++            pts, fill, outline, w = data[0], data[1], data[2], data[3]
++            draw.polygon(pts, fill=fill)
++            if w: draw.line(list(pts) + [pts[0]], fill=outline, width=w, joint="curve")
++        self._add(number, label, center, fn, points, width)
++
++    def ellipse(self, box, number, label, center, width=5):
++        def fn(draw, data):
++            b, fill, outline, w = data[0], data[1], data[2], data[3]
++            draw.ellipse(b, fill=fill, outline=outline if w else None, width=w)
++        self._add(number, label, center, fn, box, width)
++
++    def rectangle(self, box, number, label, center, radius=0, width=5):
++        def fn(draw, data):
++            payload, fill, outline, w = data[0], data[1], data[2], data[3]
++            b, r = payload
++            if r:
++                draw.rounded_rectangle(b, radius=r, fill=fill, outline=outline if w else None, width=w)
++            else:
++                draw.rectangle(b, fill=fill, outline=outline if w else None, width=w)
++        self._add(number, label, center, fn, (box, radius), width)
++
++    def arc(self, box, start, end, fill=OUTLINE, width=5):
++        self.ld.arc(box, start=start, end=end, fill=fill, width=width)
++        self.md.arc(box, start=start, end=end, fill=fill, width=width)
++
++    def line_detail(self, points, width=4):
++        self.ld.line(points, fill=OUTLINE, width=width, joint="curve")
++        self.md.line(points, fill=OUTLINE, width=width, joint="curve")
++
++    def detail_ellipse(self, box, fill=OUTLINE, width=3):
++        self.ld.ellipse(box, fill=fill, outline=OUTLINE, width=width)
++        self.md.ellipse(box, fill=fill, outline=OUTLINE, width=width)
++
++    def finish(self, out_dir: Path, asset: dict):
++        out_dir.mkdir(parents=True, exist_ok=True)
++        self.master.convert("RGB").save(out_dir / "color-master.webp", "WEBP", quality=94, method=6)
++        self.line.convert("RGB").save(out_dir / "color-line.png", "PNG", optimize=True)
++        self.mask.save(out_dir / "color-region-mask.png", "PNG", optimize=True)
++        mask_pixels = list(self.mask.get_flattened_data())
++        region_payload = []
++        for region in self.regions:
++            pixel_count = sum(1 for p in mask_pixels if p[0] == region.id)
++            cx, cy = region.center
++            px = min(W - 1, max(0, cx))
++            py = min(H - 1, max(0, cy))
++            actual = self.mask.getpixel((px, py))[0]
++            if actual != region.id:
++                # Find a stable interior point nearest to the requested center.
++                candidates = [(abs((i % W) - cx) + abs((i // W) - cy), i) for i, p in enumerate(mask_pixels) if p[0] == region.id]
++                if not candidates:
++                    raise RuntimeError(f"Region {region.id} in {asset['id']} is empty")
++                _, index = min(candidates)
++                px, py = index % W, index // W
++            if pixel_count < 900:
++                raise RuntimeError(f"Region {region.id} in {asset['id']} is too small: {pixel_count}")
++            region_payload.append({
++                "id": str(region.id),
++                "number": region.number,
++                "label": region.label,
++                "centerX": round(px / (W - 1) * 1000),
++                "centerY": round(py / (H - 1) * 1000),
++                "pixelCount": pixel_count,
++            })
++        asset["colorRegions"] = region_payload
++        asset["colorRegionCount"] = len(region_payload)
++        asset["colorNumbersUsed"] = sorted({r.number for r in self.regions})
++
++
++def background(scene: Scene, sky_number=4, ground_number=6):
++    scene.rectangle((8, 8, 504, 470), sky_number, "sky", (256, 210), radius=28)
++    scene.polygon([(8, 440), (504, 400), (504, 760), (8, 760)], ground_number, "ground", (256, 620))
++    scene.ellipse((380, 45, 462, 127), 8, "sun", (421, 86))
++
++
++def person(scene: Scene, x: int, y: int, scale: float, robe_number: int, label: str, facing=1):
++    head = (int(x-25*scale), int(y-110*scale), int(x+25*scale), int(y-60*scale))
++    scene.ellipse(head, 2, f"{label} face", (x, int(y-85*scale)))
++    robe = [(int(x-28*scale), int(y-55*scale)), (int(x+28*scale), int(y-55*scale)),
++            (int(x+48*scale), int(y+75*scale)), (int(x-48*scale), int(y+75*scale))]
++    scene.polygon(robe, robe_number, f"{label} robe", (x, int(y+18*scale)))
++    scene.line_detail([(int(x-26*scale), int(y-35*scale)), (int(x-75*scale*facing), int(y+18*scale))], max(3, int(5*scale)))
++    scene.line_detail([(int(x+26*scale), int(y-35*scale)), (int(x+70*scale*facing), int(y+10*scale))], max(3, int(5*scale)))
++
++
++def scene_creation(s: Scene):
++    background(s)
++    s.polygon([(8,480),(155,385),(274,470),(390,360),(504,430),(504,760),(8,760)], 6, "hills", (260,560))
++    s.polygon([(215,760),(250,525),(292,525),(330,760)], 4, "river", (270,650))
++    s.rectangle((72,310,105,545),1,"tree trunk",(89,430),radius=10)
++    s.ellipse((28,220,150,365),6,"tree leaves",(90,290))
++    s.ellipse((340,510,438,610),7,"deer body",(390,560))
++    s.ellipse((415,490,468,540),7,"deer head",(442,516))
++    s.ellipse((80,590,150,650),8,"flowers",(115,620))
++    s.ellipse((365,630,445,690),3,"flowers",(405,660))
++
++
++def scene_noah(s: Scene):
++    s.rectangle((8,8,504,500),4,"sky",(256,240),radius=28)
++    s.polygon([(8,480),(504,430),(504,760),(8,760)],4,"water",(256,620))
++    s.polygon([(85,390),(420,390),(375,545),(130,545)],1,"ark hull",(252,465))
++    s.rectangle((145,275,360,405),7,"ark cabin",(252,340),radius=14)
++    s.polygon([(125,290),(252,205),(380,290)],3,"ark roof",(252,260))
++    s.rectangle((235,318,280,405),1,"ark door",(258,360),radius=7)
++    s.ellipse((90,585,165,655),5,"elephant",(128,620))
++    s.ellipse((360,580,430,650),8,"giraffe",(395,615))
++    s.ellipse((388,525,425,590),8,"giraffe neck",(406,558))
++    s.ellipse((410,505,460,545),8,"giraffe head",(435,525))
++    # broad rainbow bands
++    s.arc((55,45,455,365),195,345,fill=OUTLINE,width=28)
++    s.arc((75,65,435,345),195,345,fill=PALETTE[3],width=18)
++    s.arc((95,85,415,325),195,345,fill=PALETTE[8],width=18)
++
++
++def scene_jonah(s: Scene):
++    s.rectangle((8,8,504,410),4,"sky",(256,200),radius=28)
++    s.polygon([(8,380),(504,350),(504,760),(8,760)],4,"sea",(256,600))
++    s.ellipse((80,395,445,650),5,"great fish body",(255,525))
++    s.polygon([(80,495),(25,420),(40,575)],5,"great fish tail",(50,500))
++    s.ellipse((350,450,430,525),2,"great fish mouth",(390,488))
++    s.ellipse((316,421,354,459),8,"great fish eye",(335,440))
++    s.polygon([(310,530),(380,650),(250,620)],4,"fin",(315,595))
++    s.polygon([(95,275),(250,275),(215,350),(120,350)],1,"boat",(165,315))
++    s.polygon([(170,120),(170,275),(275,260)],7,"sail",(205,220))
++    s.rectangle((166,112,176,300),1,"mast",(171,205),radius=3)
++    s.ellipse((215,650,300,720),2,"Jonah face",(258,685))
++    s.polygon([(220,690),(295,690),(320,755),(198,755)],3,"Jonah robe",(258,730))
++
++
++def scene_davi
