@@ -1,0 +1,61 @@
+MY STUDY COMPANION 0.15.19 — SMART ONLINE HYBRID FIX
+FINAL RELEASE VERIFICATION
+
+RELEASE RESULT
+PASS — installable phone and Wear OS APKs were built from the complete cumulative 0.15.18 source, patched only for the Smart Online connection behavior, then signed with the same permanent canonical certificate as the accepted 0.15.18 release.
+
+WHAT WAS FIXED
+- Removed the forced-off Smart Online gate that treated every build as unconfigured.
+- Online status now enables the Smart Online study path instead of only displaying that the phone has internet.
+- Auto and Smart Online modes now refresh/check verified JW.org and Watchtower Online Library sources while connected.
+- When no verified private cloud endpoint is packaged, the answer is generated privately with the available on-device provider, including Gemini Nano when available, using the verified source context.
+- If a configured secure cloud request fails, the app falls back to the verified-source/on-device path instead of breaking the study session.
+- Private Offline remains private and does not use the network.
+- The misleading “Smart Online AI is not configured in this build” state is no longer shown merely because the optional cloud endpoint is absent while the device is online.
+
+IMPORTANT BACKEND TRUTH
+This release does not pretend that a private Cloud Run AI service is deployed. BACKEND_BASE_URL remains empty because no verified Cloud Run endpoint or usable deployment credential was available. The working connected mode in 0.15.19 is the verified-online-source + on-device-AI hybrid. No OpenAI key or private cloud credential is embedded in the APK.
+
+PRESERVATION GATE
+PASS — the release reconstruction applied every accepted cumulative patch through 0.15.18 before the 0.15.19 change. Source gates confirmed preservation of Google Sign-In/Firebase, household repairs, adaptive layouts, Family Worship repairs and local generation, voting, four responsive widgets, the interactive workbook and premium paint editor, Daily Text/profile/ministry/theme improvements, and Wear OS functionality.
+
+CI AND SOURCE VALIDATION
+Repository: ksolo21-web/Hummer
+Branch: agent/msc-0.15.15-ai-activity-rebuild
+0.15.19 source/workflow commit: 66c6371b938f35a8a6e415d5acd5a9c986fb0c1b
+GitHub Actions run: 31043659629
+Job: 92433824500
+Result: SUCCESS
+Artifact ID: 8945810358
+Artifact digest: 1c0747463bcd0dac46841551cc7046f3044ee28c05d876f4415accb2eb4bfd2f
+Backend tests: 54 passed, 1 skipped
+Web/PWA tests: 9 passed, 0 failed
+Android phone/Wear unit tests, private-alpha assembly, lint-vital, Firebase checksum, OAuth certificate binding, cumulative source gates and Smart Online hybrid gates: PASS
+
+PHONE APK
+File: MyStudyCompanion-0.15.19-Smart-Online-FIXED.apk
+Package: com.mystudycompanion.app
+Version code: 52
+Version name: 0.15.19-private-alpha-smart-online-hybrid
+SHA-256: 96ff5de1c34e13fc381f94d3aa60590f236b2fdcfb74d816ec2f315572c84775
+Signature: APK Signature Scheme v2=true, v3=true
+16 KiB alignment: PASS
+Payload parity: PASS — all 1,719 non-signature ZIP entries are byte-identical to the CI-tested APK.
+
+WEAR OS APK
+File: MyStudyCompanion-Wear-0.15.19-Smart-Online-FIXED.apk
+Package: com.mystudycompanion.app
+Version code: 360169001
+Version name: 0.15.19-wear-private-alpha-smart-online-hybrid
+SHA-256: 4bc46cd7432c0f3b1f44d6a199680bb0eecbd07a356c41fa6233f9078bd1b69c
+Signature: APK Signature Scheme v3=true
+16 KiB alignment: PASS
+Payload parity: PASS — all 581 non-signature ZIP entries are byte-identical to the CI-tested APK.
+
+CANONICAL SIGNING IDENTITY
+Certificate SHA-1: 1997d421d177215a44f9651ce53dbaec152fbc49
+Certificate SHA-256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+PASS — identical to the accepted 0.15.18 phone and Wear signing identity.
+
+UPGRADE COMPATIBILITY
+PASS — package name and signing certificate match 0.15.18, and phone version code 52 is greater than 0.15.18 version code 51. Install over the existing app. Do not uninstall first.
