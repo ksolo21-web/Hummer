@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.20";
+        public const string Current = "0.1.0-review.21";
         public const string Purpose =
-            "Replace the brittle ember vertex assertion and global shader warm-up with topology-based geometry gates plus a targeted two-pass warm-up of the exact authored furnace meshes and materials while preserving blocked production release.";
+            "Preserve the accepted volumetric furnace proof while stacking the objective beneath the top status row on foldable aspect ratios, wrapping resource counts safely and restoring an exact-head source-contract gate before production approval.";
     }
 }
