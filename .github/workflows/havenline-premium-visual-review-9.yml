@@ -21,7 +21,17 @@ jobs:
           fetch-depth: 0
 
       - name: Apply premium visual revision
-        run: python .github/scripts/havenline_visual_patch9.py
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/havenline_visual_patch9.py')
+          source = path.read_text(encoding='utf-8')
+          source = source.replace(
+              'Rerun the layered snow and HUD-inclusive visual review after correcting Unity mesh and shadow API compatibility.',
+              'Compile and score the layered snow, dimensional lighting, static HUD font and UI-inclusive premium proofs.')
+          path.write_text(source, encoding='utf-8')
+          PY
+          python .github/scripts/havenline_visual_patch9.py
 
       - name: Commit premium visual revision
         run: |
