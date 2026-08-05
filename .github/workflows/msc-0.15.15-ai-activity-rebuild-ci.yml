@@ -1,0 +1,116 @@
+name: My Study Companion 0.15.15 Smart AI and Activities CI
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.15-ai-activity-rebuild-ci.yml
+      - .msc-build/0.15.15-patch/**
+      - .msc-build/apply-0.15.15-ai-activity-rebuild.sh
+      - .msc-build/build-0.15.15-ai-activity-rebuild.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-01515-smart-ai-activities-ci
+  cancel-in-progress: false
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out cumulative fix branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+
+      - name: Create disposable CI packaging signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-01515-packaging"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/packaging.jks" \
+            -storepass 'msc-01515-packaging-only' \
+            -keypass 'msc-01515-packaging-only' \
+            -alias 'msc-01515-packaging' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion 0.15.15 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/packaging.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Probe existing Firebase-hosted private route
+        id: endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL='https://my-study-companion-abc01.web.app'
+          STATUS="$(curl --silent --show-error --location --max-time 30 --output endpoint-health.txt --write-out '%{http_code}' "$BASE_URL/health" || true)"
+          printf '%s\n' "url=$BASE_URL" "health_status=$STATUS" > endpoint-probe.txt
+          if [[ -s endpoint-health.txt ]]; then head -c 4000 endpoint-health.txt >> endpoint-probe.txt; fi
+          cat endpoint-probe.txt
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Build and verify cumulative 0.15.15
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-01515-packaging-only
+          MSC_RELEASE_KEY_ALIAS: msc-01515-packaging
+          MSC_RELEASE_KEY_PASSWORD: msc-01515-packaging-only
+          MSC_BACKEND_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/build-0.15.15-ai-activity-rebuild.sh
+          cp endpoint-probe.txt release-0.15.15/metadata/EXISTING-ENDPOINT-PROBE.txt
+          printf '%s\n' "source_commit=${GITHUB_SHA}" "workflow_run=${GITHUB_RUN_ID}" >> release-0.15.15/metadata/EXISTING-ENDPOINT-PROBE.txt
+
+      - name: Upload connected APKs and verification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.15-smart-ai-activities-ci
+          path: release-0.15.15
+          retention-days: 14
+          if-no-files-found: error
