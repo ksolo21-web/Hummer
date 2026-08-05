@@ -81,6 +81,45 @@ jobs:
           bash .msc-build/apply-0.15.12-widget-compile-fix.sh
           bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
 
+      - name: Restore the exact 0.15.14 release identity expected by the 0.15.15 feature patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          targets = (
+              (
+                  Path('MyStudyCompanion/app/build.gradle.kts'),
+                  '47',
+                  '0.15.14-private-alpha-vote-persistence',
+              ),
+              (
+                  Path('MyStudyCompanion/wear/build.gradle.kts'),
+                  '360164001',
+                  '0.15.14-wear-private-alpha-vote-persistence',
+              ),
+          )
+          for path, version_code, version_name in targets:
+              text = path.read_text(encoding='utf-8')
+              text, code_count = re.subn(
+                  r'versionCode\s*=\s*\d+',
+                  f'versionCode = {version_code}',
+                  text,
+                  count=1,
+              )
+              text, name_count = re.subn(
+                  r'versionName\s*=\s*"[^"]+"',
+                  f'versionName = "{version_name}"',
+                  text,
+                  count=1,
+              )
+              if code_count != 1 or name_count != 1:
+                  raise SystemExit(f'Could not normalize release identity in {path}')
+              path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Apply 0.15.15 through the 0.15.18 responsive widget rebuild
         shell: bash
         env:
