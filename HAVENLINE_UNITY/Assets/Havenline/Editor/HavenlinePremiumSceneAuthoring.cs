@@ -390,6 +390,9 @@ namespace Havenline.Editor
             animator.applyRootMotion = false;
             animator.updateMode = AnimatorUpdateMode.Normal;
             animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            EditorUtility.SetDirty(animator);
+            if (PrefabUtility.IsPartOfPrefabInstance(animator))
+                PrefabUtility.RecordPrefabInstancePropertyModifications(animator);
             return animator;
         }
 
