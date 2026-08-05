@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "artVersion": "0.1.0-premium-device-test-r27",
+  "artVersion": "0.1.0-premium-reference-rebuild-r28",
   "approved": true,
-  "approvedBy": "HAVENLINE Studio Review",
-  "approvalNote": "Revision 25 wide, close, and foldable visual proof remains accepted. Revision 27 source, EditMode, PlayMode, and clean-checkout deterministic production preparation passed. Approved for premium ARM64 device-test packaging only; verified release still requires physical-device acceptance.",
+  "approvedBy": "HAVENLINE Reference-Grade Review Gate",
+  "approvalNote": "Revision 25 remains a historical baseline only. Revision 28 replaces the rejected circular island, blue ground decal, block-furnace presentation, distant camera, oversized pixel HUD, and unreadable low-light pass with a close layered camp, cylindrical authored furnace stages, compact rounded HUD, smooth geometric lettering, and brighter cold/warm lighting. Approved only to generate a new premium ARM64 device-test proof; verified release remains blocked pending physical-device visual acceptance.",
 
   "playerModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Player.obj",
   "survivorModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Survivor.obj",
