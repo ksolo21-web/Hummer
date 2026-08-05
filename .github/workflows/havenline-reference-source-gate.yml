@@ -1,6 +1,12 @@
 name: HAVENLINE Clean Unity Source Gate
 
 on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - HAVENLINE_UNITY/**
+      - .github/workflows/havenline-reference-source-gate.yml
   pull_request:
     branches:
       - main
@@ -21,7 +27,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Check out exact pull request head
+      - name: Check out exact branch or pull request head
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -40,6 +46,7 @@ jobs:
           test -f "$root/Assets/Havenline/Runtime/HavenlineActor.cs"
           test -f "$root/Assets/Havenline/Runtime/HavenlineGameplay.cs"
           test -f "$root/Assets/Havenline/Runtime/HavenlinePresentation.cs"
+          test -f "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
           test -f "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs"
           test -f "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs"
           test -f "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
@@ -53,6 +60,9 @@ jobs:
           grep -q 'CameraKeepsTheCartoonSurvivorCloseAndReadable' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs"
           grep -q 'MovementCarryAndAutomaticActionRangesUseTheLockedDesign' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs"
           grep -q 'PlayerSpawn = new(0f, 0.08f, 6.2f)' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -q '\[ExecuteAlways\]' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
+          grep -q 'Canvas.preWillRenderCanvases' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
+          grep -q 'FoldableAspectThreshold = 1.45f' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
           grep -q 'BuildAndroidReviewCandidate' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
           grep -q 'HavenlineSceneAuthoring.Author' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
           grep -q 'HavenlineAssetBootstrap.Bootstrap' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
