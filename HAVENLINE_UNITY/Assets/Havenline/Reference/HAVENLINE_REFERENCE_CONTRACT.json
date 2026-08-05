@@ -1,0 +1,62 @@
+{
+  "contractVersion": "1.0.0",
+  "product": "HAVENLINE",
+  "engine": "Unity 6.3 LTS URP",
+  "unityEditor": "6000.3.18f1",
+  "referencePackage": {
+    "name": "HAVENLINE-v0.3.0-reference-final-ARM64.apk",
+    "sizeBytes": 107695534,
+    "sha256": "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67"
+  },
+  "camera": {
+    "projection": "orthographic",
+    "size": 14.8,
+    "offset": [0.0, 7.0, 7.0],
+    "focusHeight": 0.82,
+    "lookAhead": 1.15
+  },
+  "player": {
+    "spawn": [0.0, 0.08, 6.2],
+    "walkSpeed": 3.85,
+    "runSpeed": 5.75,
+    "acceleration": 30.0,
+    "deceleration": 36.0,
+    "carryCapacity": 6,
+    "interactionRadius": 1.85
+  },
+  "world": {
+    "boundX": 14.2,
+    "boundZ": 16.2,
+    "fallRecoveryY": -2.2,
+    "furnace": [0.0, 0.0, 0.2],
+    "campfire": [2.7, 0.0, 2.1],
+    "storage": [-2.8, 0.0, 2.25],
+    "leftTent": [-6.6, 0.0, -3.8],
+    "rightTent": [6.6, 0.0, -3.8],
+    "survivor": [7.1, 0.0, -2.8],
+    "northBarricade": [0.0, 0.0, -10.7],
+    "southBarricade": [0.0, 0.0, 11.7],
+    "forestGate": [0.0, 0.0, -14.8]
+  },
+  "requiredLoop": [
+    "screen-relative movement",
+    "automatic gathering",
+    "visible carrying",
+    "automatic furnace deposit",
+    "furnace upgrades",
+    "expanding warmth zone",
+    "survivor rescue",
+    "helper gathering and delivery",
+    "barricade repair",
+    "animated wolf pressure",
+    "bounded world and fall recovery",
+    "Galaxy Z Fold safe-area HUD"
+  ],
+  "releaseGate": {
+    "compiledAuthoredScene": true,
+    "unityRenderedReferenceFrames": true,
+    "installableArm64Apk": true,
+    "automatedGameplayEvidence": true,
+    "physicalGalaxyZFoldAcceptance": true
+  }
+}

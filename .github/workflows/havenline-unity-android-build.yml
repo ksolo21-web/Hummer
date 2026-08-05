@@ -1,0 +1,187 @@
+name: HAVENLINE Premium Android Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Premium build stage
+        required: true
+        default: device_test
+        type: choice
+        options:
+          - device_test
+          - verified_release
+
+permissions:
+  contents: read
+
+concurrency:
+  group: havenline-premium-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build and verify premium ARM64 ${{ inputs.mode }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out exact branch commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm Unity CI secrets exist
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for required in UNITY_LICENSE UNITY_EMAIL UNITY_PASSWORD; do
+            if [ -z "${!required:-}" ]; then
+              echo "Required repository secret is missing: $required" >&2
+              exit 1
+            fi
+          done
+          echo "Unity CI credentials are present. Values are not printed."
+
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo rm -rf /opt/ghc /usr/share/dotnet /usr/local/share/boost || true
+          docker system prune --all --force || true
+          df -h
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: HAVENLINE_UNITY/Library
+          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json') }}
+          restore-keys: |
+            havenline-premium-unity-6000.3.18f1-android-
+
+      - name: Build HAVENLINE premium Android package in Unity
+        id: unity-build
+        uses: game-ci/unity-builder@v5.0.0
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: HAVENLINE_UNITY
+          unityVersion: 6000.3.18f1
+          targetPlatform: Android
+          androidExportType: androidPackage
+          buildMethod: ${{ inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineBuildPipeline.BuildVerifiedReleaseCandidate' || 'Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate' }}
+          allowDirtyBuild: true
+          collectUnityLogs: true
+          streamUnityLogs: true
+
+      - name: Locate and verify premium APK and proof outputs
+        id: verify
+        shell: bash
+        env:
+          BUILD_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "$BUILD_MODE" = "verified_release" ]; then
+            expected='HAVENLINE-premium-release-candidate-arm64.apk'
+            expected_release='true'
+            expected_performance='true'
+          else
+            expected='HAVENLINE-premium-device-test-arm64.apk'
+            expected_release='false'
+            expected_performance='false'
+          fi
+
+          apk="$(find "$GITHUB_WORKSPACE" -type f -name "$expected" -print -quit)"
+          if [ -z "$apk" ]; then
+            echo "Unity completed without producing required premium APK: $expected" >&2
+            find "$GITHUB_WORKSPACE" -maxdepth 7 -type f | sort
+            exit 1
+          fi
+
+          size="$(stat -c '%s' "$apk")"
+          if [ "$size" -lt 25000000 ]; then
+            echo "Premium package is implausibly small: $size bytes" >&2
+            exit 1
+          fi
+
+          unzip -t "$apk"
+          unzip -l "$apk" | grep -q 'AndroidManifest.xml'
+
+          calculated_sha="$(sha256sum "$apk" | awk '{print $1}')"
+          sha_file="${apk}.sha256"
+          test -f "$sha_file"
+          recorded_sha="$(awk '{print $1}' "$sha_file")"
+          test "$calculated_sha" = "$recorded_sha"
+
+          proof_dir="$(find "$GITHUB_WORKSPACE" -type d -path '*/Builds/Review' -print -quit)"
+          test -n "$proof_dir"
+          evidence="$proof_dir/HAVENLINE-premium-evidence.json"
+          test -f "$proof_dir/HAVENLINE-premium-frozen-outpost.png"
+          test -f "$proof_dir/HAVENLINE-premium-close-camera.png"
+          test -f "$evidence"
+
+          jq -e '.premiumArtContract == true' "$evidence"
+          jq -e '.automaticActionContract == true' "$evidence"
+          jq -e '.gatheringContract == true and .carryingContract == true and .depositContract == true' "$evidence"
+          jq -e '.helperContract == true and .constructionContract == true and .defenseContract == true' "$evidence"
+          jq -e --argjson expected "$expected_release" '.releaseCandidate == $expected' "$evidence"
+          jq -e --argjson expected "$expected_performance" '.performanceContract == $expected' "$evidence"
+
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "sha256=$calculated_sha" >> "$GITHUB_OUTPUT"
+          echo "size=$size" >> "$GITHUB_OUTPUT"
+          echo "proof_dir=$proof_dir" >> "$GITHUB_OUTPUT"
+          echo "Verified premium HAVENLINE package: $apk"
+          echo "Size: $size bytes"
+          echo "SHA-256: $calculated_sha"
+
+      - name: Write build summary
+        shell: bash
+        run: |
+          {
+            echo '## HAVENLINE premium Android build'
+            echo ''
+            echo '- Stage: `${{ inputs.mode }}`'
+            echo '- Unity: `6000.3.18f1`'
+            echo '- ABI target: `ARM64`'
+            echo '- Graphics APIs: `Vulkan`, `OpenGLES3` fallback'
+            echo '- APK bytes: `${{ steps.verify.outputs.size }}`'
+            echo '- APK SHA-256: `${{ steps.verify.outputs.sha256 }}`'
+            echo '- Commit: `${{ github.sha }}`'
+            echo '- Premium content and functional gates: `passed`'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verified premium HAVENLINE APK and proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Premium-${{ inputs.mode }}-ARM64-${{ github.run_number }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            **/HAVENLINE-premium-device-test-arm64.apk
+            **/HAVENLINE-premium-device-test-arm64.apk.sha256
+            **/HAVENLINE-premium-release-candidate-arm64.apk
+            **/HAVENLINE-premium-release-candidate-arm64.apk.sha256
+            **/Builds/Review/HAVENLINE-premium-frozen-outpost.png
+            **/Builds/Review/HAVENLINE-premium-close-camera.png
+            **/Builds/Review/HAVENLINE-premium-evidence.json
+
+      - name: Upload complete Unity diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Unity-diagnostics-${{ github.run_number }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            Logs/UnityDiagnostics/**
+            HAVENLINE_UNITY/Logs/**
+            HAVENLINE_UNITY/build/**
+            HAVENLINE_UNITY/Builds/**
+            HAVENLINE_UNITY/Library/PackageCache/**/Logs/**

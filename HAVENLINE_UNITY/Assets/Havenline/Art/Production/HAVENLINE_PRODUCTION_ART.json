@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "artVersion": "0.1.0-studio-review-blocked",
+  "approved": false,
+  "approvedBy": "",
+  "approvalNote": "The HAVENLINE deterministic art studio is now the canonical source for the coherent winter-cartoon production library. Approval remains blocked until generated 1920x1080 review frames are visually accepted; no prototype or generic fallback content may ship.",
+
+  "playerModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Player.obj",
+  "survivorModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Survivor.obj",
+  "wolfModel": "Assets/Havenline/Art/Production/Enemies/HAVENLINE_Wolf.obj",
+
+  "furnaceModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L1.obj",
+  "furnaceLevel2Model": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L2.obj",
+  "furnaceLevel3Model": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L3.obj",
+  "furnaceLevel4Model": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L4.obj",
+  "campfireModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Campfire.obj",
+  "tentModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Tent.obj",
+  "storageModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Storage.obj",
+  "barricadeModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Barricade.obj",
+  "forestGateModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_ForestGate.obj",
+
+  "backpackModel": "Assets/Havenline/Art/Production/Props/HAVENLINE_Backpack.obj",
+  "logModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Log.obj",
+  "stoneResourceModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Stone.obj",
+  "metalResourceModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Metal.obj",
+  "fuelResourceModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Fuel.obj",
+  "pineModelA": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Pine_A.obj",
+  "pineModelB": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Pine_B.obj",
+  "rockModelA": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Rock_A.obj",
+  "rockModelB": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Rock_B.obj",
+  "environmentPrefab": "Assets/Havenline/Art/Production/Environment/HAVENLINE_FrozenOutpost_Environment.prefab",
+
+  "snowMaterial": "Assets/Havenline/Art/Production/Materials/HAVENLINE_Snow.mat",
+  "iceMaterial": "Assets/Havenline/Art/Production/Materials/HAVENLINE_Ice.mat",
+  "warmthMaterial": "Assets/Havenline/Art/Production/Materials/HAVENLINE_Warmth.mat",
+  "hudAtlas": "Assets/Havenline/Art/Production/UI/HAVENLINE_HUD_Atlas.png",
+  "uiFont": "Assets/Havenline/Art/Production/UI/HAVENLINE_UI_Font.fontsettings",
+  "hudPrefab": "Assets/Havenline/Art/Production/UI/HAVENLINE_GameplayHUD.prefab",
+  "pauseMenuPrefab": "Assets/Havenline/Art/Production/UI/HAVENLINE_PauseSettings.prefab",
+
+  "playerController": "Assets/Havenline/Art/Production/Animation/HAVENLINE_Player.controller",
+  "survivorController": "Assets/Havenline/Art/Production/Animation/HAVENLINE_Survivor.controller",
+  "wolfController": "Assets/Havenline/Art/Production/Animation/HAVENLINE_Wolf.controller",
+
+  "fireVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_FurnaceFire.prefab",
+  "snowfallVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_Snowfall.prefab",
+  "gatherVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_GatherImpact.prefab",
+  "buildVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_BuildImpact.prefab",
+  "hitVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_CombatHit.prefab",
+
+  "audioMixer": "Assets/Havenline/Art/Production/Audio/HAVENLINE_Audio.mixer",
+  "audioRigPrefab": "Assets/Havenline/Art/Production/Audio/HAVENLINE_AudioRig.prefab",
+
+  "minimumEnvironmentModels": 28,
+  "minimumTextureFiles": 36,
+  "minimumAnimationClips": 32,
+  "minimumAudioClips": 36,
+  "minimumMaterials": 18
+}

@@ -1,0 +1,90 @@
+name: HAVENLINE Unity Source Validation
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - 'HAVENLINE_UNITY/Assets/Havenline/**'
+      - 'HAVENLINE_UNITY/Packages/**'
+      - 'HAVENLINE_UNITY/ProjectSettings/**'
+      - '.github/workflows/havenline-unity-source-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: havenline-unity-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unity-tests:
+    name: Compile and run ${{ matrix.testMode }} premium tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        testMode:
+          - editmode
+          - playmode
+
+    steps:
+      - name: Check out exact branch commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm Unity CI secrets exist
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for required in UNITY_LICENSE UNITY_EMAIL UNITY_PASSWORD; do
+            if [ -z "${!required:-}" ]; then
+              echo "Required repository secret is missing: $required" >&2
+              exit 1
+            fi
+          done
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: HAVENLINE_UNITY/Library
+          key: havenline-source-6000.3.18f1-${{ matrix.testMode }}-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/**/*.asmdef') }}
+          restore-keys: |
+            havenline-source-6000.3.18f1-${{ matrix.testMode }}-
+            havenline-source-6000.3.18f1-
+
+      - name: Compile project and run ${{ matrix.testMode }} tests
+        id: tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: HAVENLINE_UNITY
+          unityVersion: 6000.3.18f1
+          testMode: ${{ matrix.testMode }}
+          artifactsPath: artifacts/${{ matrix.testMode }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: HAVENLINE Unity ${{ matrix.testMode }} validation
+
+      - name: Upload ${{ matrix.testMode }} test, compiler and studio diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Unity-${{ matrix.testMode }}-validation-${{ github.run_number }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ steps.tests.outputs.artifactsPath }}
+            HAVENLINE_UNITY/Logs/**
+            HAVENLINE_UNITY/Builds/Review/HAVENLINE-Studio/**
+            Builds/Review/HAVENLINE-Studio/**
