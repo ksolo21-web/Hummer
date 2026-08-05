@@ -114,14 +114,6 @@ namespace Havenline.Editor
                 material = material,
                 characterInfo = characters.ToArray()
             };
-            var serializedFont = new SerializedObject(font);
-            var fontSize = serializedFont.FindProperty("m_FontSize");
-            if (fontSize != null)
-                fontSize.intValue = 24;
-            var lineSpacing = serializedFont.FindProperty("m_LineSpacing");
-            if (lineSpacing != null)
-                lineSpacing.floatValue = 1f;
-            serializedFont.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.CreateAsset(font, fontPath);
             EditorUtility.SetDirty(font);
             AssetDatabase.SaveAssets();

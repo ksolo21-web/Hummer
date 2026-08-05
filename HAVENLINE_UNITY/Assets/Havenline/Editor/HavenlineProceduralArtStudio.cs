@@ -458,8 +458,11 @@ namespace Havenline.Editor
 
                 var helper = CreatePanel(safe, "HelperPanel", new Vector2(0f, 0f), new Vector2(24f, 132f), new Vector2(280f, 72f), Navy, 0.78f);
                 CreateText(helper.transform, "HelperText", "HELPER: FROZEN", 24, TextAnchor.MiddleCenter);
+                helper.SetActive(false);
                 var threat = CreatePanel(safe, "ThreatPanel", new Vector2(1f, 0f), new Vector2(-24f, 132f), new Vector2(280f, 72f), Navy, 0.78f);
                 CreateText(threat.transform, "ThreatText", "THREAT: QUIET", 24, TextAnchor.MiddleCenter);
+                threat.SetActive(false);
+                context.SetActive(false);
 
                 var joystick = CreateImage(safe, "JoystickBase", new Color(0.08f,0.23f,0.34f,0.50f));
                 SetRect(joystick.rectTransform, new Vector2(0f,0f), new Vector2(132f,126f), new Vector2(190f,190f));
@@ -815,9 +818,10 @@ namespace Havenline.Editor
             gameObject.transform.SetParent(parent, false);
             var image = gameObject.GetComponent<Image>();
             image.color = color;
-            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(UiRoot + "/HAVENLINE_HUD_Atlas.png");
-            image.sprite = sprite;
-            image.type = Image.Type.Sliced;
+            image.sprite = HavenlineStudioUiAssets.Resolve(name);
+            image.type = HavenlineStudioUiAssets.ShouldSlice(name)
+                ? Image.Type.Sliced
+                : Image.Type.Simple;
             return image;
         }
 
