@@ -1,0 +1,59 @@
+name: My Study Companion 0.15.17 Canonical Signing Probe
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.17-canonical-signing-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify canonical signer availability and Firebase identity
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.MSC_SIGNING_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.MSC_SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MSC_SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MSC_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_B64" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            cat > canonical-signing-status.txt <<'EOF'
+          UNAVAILABLE: the permanent Firebase-registered signing key is not stored in GitHub Actions.
+          CONSEQUENCE: CI can build and verify an APK, but cannot produce an in-place update that is guaranteed to preserve Google Sign-In.
+          REQUIRED: sign the verified APK with the external canonical key whose SHA-1 is 1997d421d177215a44f9651ce53dbaec152fbc49.
+          EOF
+            exit 0
+          fi
+
+          mkdir -p "$RUNNER_TEMP/signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/signing/canonical.jks"
+          keytool -list -v -keystore "$RUNNER_TEMP/signing/canonical.jks" \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" > "$RUNNER_TEMP/signing/keytool.txt"
+          SHA1="$(sed -n 's/^[[:space:]]*SHA1: //p' "$RUNNER_TEMP/signing/keytool.txt" | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          SHA256="$(sed -n 's/^[[:space:]]*SHA256: //p' "$RUNNER_TEMP/signing/keytool.txt" | head -n1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test "$SHA1" = '1997d421d177215a44f9651ce53dbaec152fbc49'
+          test "$SHA256" = '13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c'
+          cat > canonical-signing-status.txt <<'EOF'
+          AVAILABLE: the permanent Firebase-registered signing key is present and matches the canonical certificate.
+          SAFE: the final APK can be signed for in-place upgrade and Google Sign-In compatibility.
+          EOF
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.17-canonical-signing-status
+          path: canonical-signing-status.txt
+          retention-days: 14
+          if-no-files-found: error
