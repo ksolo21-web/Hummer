@@ -419,7 +419,9 @@ namespace Havenline.Editor
                 hash.AppendData(new byte[] { 0 });
             }
 
-            return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+            return BitConverter.ToString(hash.GetHashAndReset())
+                .Replace("-", string.Empty)
+                .ToLowerInvariant();
         }
 
         private static bool IncludeInFingerprint(string path)
