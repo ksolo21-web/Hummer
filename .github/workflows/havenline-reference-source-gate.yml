@@ -98,8 +98,13 @@ jobs:
             echo 'Forbidden legacy-engine content found in the clean HAVENLINE Unity source.' >&2
             exit 1
           fi
-          if grep -RIl --include='*.cs' --include='*.json' -E 'TODO|placeholder' "$root"; then
-            echo 'Unfinished placeholder content found in the clean HAVENLINE Unity source.' >&2
+
+          # Validator copy may legitimately discuss prohibited placeholder objects. Only
+          # fail on actionable implementation markers, not on the English word itself.
+          if grep -RIl --include='*.cs' --include='*.json' \
+              -E 'TODO[[:space:]]*[:(]|FIXME[[:space:]]*[:(]|NotImplementedException|PLACEHOLDER_(ASSET|MODEL|TEXTURE|AUDIO|LOGIC)' \
+              "$root"; then
+            echo 'Unfinished implementation marker found in the clean HAVENLINE Unity source.' >&2
             exit 1
           fi
 
