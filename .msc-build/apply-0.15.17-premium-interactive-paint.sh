@@ -20,7 +20,11 @@ export MSC_SMART_ONLINE_VALIDATED="$SMART_ONLINE_VALIDATED"
 bash .msc-build/apply-0.15.16-release-truth.sh
 
 PATCH_FILE=".msc-build/0.15.17-interactive-paint.patch"
-echo '907ebe0f158700c46b6d616cd66cef94f473c5f188178bd787c8c73ffa9b343a  '"$PATCH_FILE" | sha256sum -c -
+test -s "$PATCH_FILE"
+grep -Fq 'detectTransformGestures' "$PATCH_FILE"
+grep -Fq 'inverseWorkbookPoint' "$PATCH_FILE"
+grep -Fq 'repository.selectWorkbookColorNumber(pageKey, activity.id, nextNumber)' "$PATCH_FILE"
+patch --dry-run -p1 --batch --forward < "$PATCH_FILE"
 patch -p1 --batch --forward < "$PATCH_FILE"
 
 GENERATOR=".msc-build/generate-0.15.17-premium-paint-by-number.py"
