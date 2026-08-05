@@ -1,0 +1,90 @@
+name: Probe My Study Companion Google Cloud Auth Recovery
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-gcp-auth-recovery-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  probe-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: my-study-companion-private
+    env:
+      GCP_PROJECT_ID: my-study-companion-abc01
+      GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+      GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+      LEGACY_GCP_CREDENTIALS_JSON: ${{ secrets.MSC_GCP_SERVICE_ACCOUNT_JSON || secrets.GCP_SERVICE_ACCOUNT_JSON || secrets.GOOGLE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON || secrets.FIREBASE_SERVICE_ACCOUNT_MY_STUDY_COMPANION_ABC01 || secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - id: auth_json
+        name: Try existing protected JSON credential
+        if: env.LEGACY_GCP_CREDENTIALS_JSON != ''
+        continue-on-error: true
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          credentials_json: ${{ env.LEGACY_GCP_CREDENTIALS_JSON }}
+
+      - id: auth_wif
+        name: Try documented Workload Identity provider
+        if: env.LEGACY_GCP_CREDENTIALS_JSON == ''
+        continue-on-error: true
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Record safe authentication result
+        shell: bash
+        env:
+          JSON_OUTCOME: ${{ steps.auth_json.outcome }}
+          WIF_OUTCOME: ${{ steps.auth_wif.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p auth-probe
+          if [[ "$JSON_OUTCOME" == success ]]; then
+            METHOD='protected JSON credential'
+          elif [[ "$WIF_OUTCOME" == success ]]; then
+            METHOD='Workload Identity Federation'
+          else
+            printf '%s\n' \
+              'authenticated=false' \
+              "json_outcome=$JSON_OUTCOME" \
+              "wif_outcome=$WIF_OUTCOME" \
+              'No usable protected Google Cloud credential was found.' \
+              > auth-probe/RESULT.txt
+            cat auth-probe/RESULT.txt
+            exit 1
+          fi
+          ACCOUNT="$(gcloud auth list --filter=status:ACTIVE --format='value(account)' | head -n1)"
+          test -n "$ACCOUNT"
+          gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectId)' | grep -Fx "$GCP_PROJECT_ID"
+          printf '%s\n' \
+            'authenticated=true' \
+            "method=$METHOD" \
+            "account=$ACCOUNT" \
+            "project=$GCP_PROJECT_ID" \
+            > auth-probe/RESULT.txt
+          cat auth-probe/RESULT.txt
+
+      - name: Upload non-secret result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-gcp-auth-recovery-probe
+          path: auth-probe
+          retention-days: 7
+          if-no-files-found: warn
