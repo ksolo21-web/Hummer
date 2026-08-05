@@ -11,6 +11,7 @@ namespace Havenline
     public sealed class HavenlineHud : MonoBehaviour
     {
         private const float FoldableAspectThreshold = 1.45f;
+        private const float TopPanelOpacity = 1f;
 
         [SerializeField] private Text resourceText;
         [SerializeField] private Text objectiveText;
@@ -168,6 +169,13 @@ namespace Havenline
             if (canvas == null)
                 return;
 
+            var resourcesPanel = PanelRectFor(resourceText);
+            var objectivePanel = PanelRectFor(objectiveText);
+            var furnacePanel = PanelRectFor(transientStatusText);
+            SetPanelOpacity(resourcesPanel, TopPanelOpacity);
+            SetPanelOpacity(objectivePanel, TopPanelOpacity);
+            SetPanelOpacity(furnacePanel, TopPanelOpacity);
+
             var pixelRect = canvas.pixelRect;
             var width = pixelRect.width;
             var height = pixelRect.height;
@@ -186,9 +194,6 @@ namespace Havenline
             lastLayoutAspect = aspect;
             foldableTopLayout = aspect < FoldableAspectThreshold;
 
-            var resourcesPanel = PanelRectFor(resourceText);
-            var objectivePanel = PanelRectFor(objectiveText);
-            var furnacePanel = PanelRectFor(transientStatusText);
             if (foldableTopLayout)
             {
                 SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(500f, 100f));
@@ -244,6 +249,18 @@ namespace Havenline
             text.horizontalOverflow = wrapMode;
             text.verticalOverflow = VerticalWrapMode.Truncate;
             text.resizeTextForBestFit = false;
+        }
+
+        private static void SetPanelOpacity(RectTransform rect, float alpha)
+        {
+            if (rect == null)
+                return;
+            var image = rect.GetComponent<Image>();
+            if (image == null)
+                return;
+            var color = image.color;
+            color.a = alpha;
+            image.color = color;
         }
 
         private static RectTransform PanelRectFor(Component component)
