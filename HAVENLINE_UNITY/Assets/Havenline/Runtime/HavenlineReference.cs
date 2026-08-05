@@ -13,7 +13,6 @@ namespace Havenline
         public const string ScenePath = "Assets/Havenline/Scenes/FrozenOutpost.unity";
         public const string ReferenceApkSha256 = "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67";
 
-        // Close playable-ad framing: the survivor remains large and readable on a phone.
         public const float CameraSize = 10.35f;
         public static readonly Vector3 CameraOffset = new(0f, 6.45f, 6.45f);
         public const float CameraFocusHeight = 0.88f;
@@ -76,6 +75,7 @@ namespace Havenline
     public sealed class EvidenceSnapshot
     {
         public string commit;
+        public string sourceFingerprint;
         public string artVersion;
         public string approvedBy;
         public bool sceneAuthored;
