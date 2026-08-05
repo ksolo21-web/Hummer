@@ -702,13 +702,10 @@ namespace Havenline.Editor
                             : isSmoke
                                 ? new ParticleSystem.MinMaxCurve(0.24f, 0.52f)
                                 : new ParticleSystem.MinMaxCurve(0.72f, 1.22f);
-                main.startSize = isFire
-                    ? CreateConstantCurve(0.18f)
-                    : isSparks
-                        ? CreateConstantCurve(0.055f)
-                        : isSmoke
-                            ? CreateConstantCurve(0.28f)
-                            : new ParticleSystem.MinMaxCurve(size * 0.72f, size * 1.18f);
+                main.startSize = isFire || isSparks || isSmoke
+                    ? CreateConstantCurve(1f)
+                    : new ParticleSystem.MinMaxCurve(size * 0.72f, size * 1.18f);
+                main.scalingMode = ParticleSystemScalingMode.Hierarchy;
                 main.gravityModifier = isSnow ? 0.04f : isSparks ? 0.26f : isSmoke ? -0.018f : isFire ? -0.06f : 0.16f;
 
                 var emission = particles.emission;

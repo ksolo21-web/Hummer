@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.14";
+        public const string Current = "0.1.0-review.15";
         public const string Purpose =
-            "Validate explicit constant-mode furnace particle curves, effective-size measurement, soft VFX materials, authored machine and shelter structures, and unchanged premium gates.";
+            "Normalize furnace particle curves and author their real hierarchy scales, then validate effective world size exactly as rendered.";
     }
 }

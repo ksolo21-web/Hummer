@@ -339,8 +339,17 @@ namespace Havenline.Editor
             }
             var fireEffect = objects.SingleOrDefault(item => item.name == "FurnaceFireVFX")
                 ?.GetComponentInChildren<ParticleSystem>(true);
-            if (fireEffect != null && EffectiveCurveMaximum(fireEffect.main.startSize) > 0.45f)
-                failures.Add("Furnace fire particles are oversized and obscure the machine silhouette.");
+            if (fireEffect != null)
+            {
+                var effectiveFireSize = EffectiveCurveMaximum(fireEffect.main.startSize) *
+                                        MaximumScale(fireEffect.transform.lossyScale);
+                if (effectiveFireSize > 0.45f)
+                {
+                    failures.Add(
+                        $"Furnace fire particles are oversized and obscure the machine silhouette " +
+                        $"(effective world size {effectiveFireSize:0.###}, mode {fireEffect.main.startSize.mode}).");
+                }
+            }
             var smokeEffect = objects.SingleOrDefault(item => item.name == "FurnaceSmokeVFX");
             if (smokeEffect != null && smokeEffect.transform.localPosition.y < 2.4f)
                 failures.Add("Furnace smoke must originate above the authored chimney.");
@@ -366,6 +375,9 @@ namespace Havenline.Editor
             if (!initialized || bounds.size.x < 24f || bounds.size.z < 28f)
                 failures.Add("Authored frozen outpost does not fill the required compact but substantial world footprint.");
         }
+
+        private static float MaximumScale(Vector3 scale) =>
+            Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
 
         private static float EffectiveCurveMaximum(ParticleSystem.MinMaxCurve curve)
         {

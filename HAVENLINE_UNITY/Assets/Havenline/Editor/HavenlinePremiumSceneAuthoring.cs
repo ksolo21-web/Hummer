@@ -185,16 +185,19 @@ namespace Havenline.Editor
             var fire = InstantiateEffect(manifest.fireVfxPrefab, root.transform, "FurnaceFireVFX");
             fire.transform.localPosition = new Vector3(0f, 0.64f, 1.10f);
             fire.transform.localRotation = Quaternion.Euler(-8f, 0f, 0f);
+            fire.transform.localScale = Vector3.one * 0.18f;
             var sparks = InstantiateEffect(
                 "Assets/Havenline/Art/Production/VFX/HAVENLINE_FurnaceSparks.prefab",
                 root.transform,
                 "FurnaceSparksVFX");
             sparks.transform.localPosition = new Vector3(0f, 0.78f, 1.05f);
+            sparks.transform.localScale = Vector3.one * 0.055f;
             var smoke = InstantiateEffect(
                 "Assets/Havenline/Art/Production/VFX/HAVENLINE_FurnaceSmoke.prefab",
                 root.transform,
                 "FurnaceSmokeVFX");
             smoke.transform.localPosition = new Vector3(0f, 2.82f, -0.14f);
+            smoke.transform.localScale = Vector3.one * 0.28f;
             var delivery = InstantiateEffect(manifest.buildVfxPrefab, root.transform, "FurnaceDeliveryVFX");
             var furnace = root.AddComponent<HavenlineFurnace>();
             furnace.Configure(warmth.transform, light, fire, delivery, levelVisuals, FindHeatedSnowRenderers());
