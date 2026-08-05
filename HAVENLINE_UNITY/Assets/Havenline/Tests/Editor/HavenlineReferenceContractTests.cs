@@ -3,7 +3,9 @@ using System.IO;
 using System.Linq;
 using Havenline.Editor;
 using NUnit.Framework;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Havenline.Tests
 {
@@ -100,6 +102,48 @@ namespace Havenline.Tests
             Assert.That(production.Passed, Is.True,
                 "Approved production manifest failed after deterministic clean-checkout preparation:\n - " +
                 string.Join("\n - ", production.Failures));
+
+            var scene = EditorSceneManager.OpenScene(Reference.ScenePath);
+            var objects = scene.GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                .Select(transform => transform.gameObject)
+                .ToArray();
+
+            Assert.That(objects.Any(item => item.name == "ReferenceGradeVisualRebuild"), Is.True,
+                "The rejected arena composition was authored without the reference-grade rebuild pass.");
+
+            var mainCamera = objects.SelectMany(item => item.GetComponents<Camera>())
+                .Single(camera => camera.CompareTag("MainCamera"));
+            Assert.That(mainCamera.orthographicSize, Is.LessThanOrEqualTo(7.2f));
+
+            foreach (var hiddenName in new[] { "IceShelf", "SnowIsland", "WarmthBoundary" })
+            {
+                var rejectedVisual = objects.Single(item => item.name == hiddenName);
+                Assert.That(rejectedVisual.GetComponentsInChildren<Renderer>(true).All(renderer => !renderer.enabled),
+                    Is.True, $"Rejected circular-arena visual is still rendered: {hiddenName}");
+            }
+
+            for (var level = 1; level <= 4; level++)
+            {
+                var stage = objects.Single(item => item.name == $"FurnaceLevel{level}");
+                Assert.That(stage.GetComponentsInChildren<Transform>(true)
+                        .Any(item => item.name == $"ReferenceFurnaceAssemblyL{level}"), Is.True,
+                    $"Furnace level {level} did not receive the rounded reference-grade machine assembly.");
+            }
+
+            var resourcesPanel = objects.Single(item => item.name == "ResourcesPanel").GetComponent<Image>();
+            Assert.That(resourcesPanel.rectTransform.sizeDelta.x, Is.LessThanOrEqualTo(430f));
+            Assert.That(resourcesPanel.rectTransform.sizeDelta.y, Is.LessThanOrEqualTo(72f));
+            Assert.That(objects.Where(item => item.name.StartsWith("HudAccent_", StringComparison.Ordinal))
+                .All(item => !item.activeSelf), Is.True);
+
+            var hudFonts = objects.SelectMany(item => item.GetComponents<Text>())
+                .Select(text => text.font)
+                .Where(font => font != null)
+                .Distinct()
+                .ToArray();
+            Assert.That(hudFonts, Has.Length.EqualTo(1));
+            Assert.That(hudFonts[0].name, Does.Contain("Rounded_Geometric"));
         }
 
         [Test]
