@@ -1,4 +1,4 @@
-name: KREATIV 0.1.10 Root-Fix Build
+name: KREATIV 0.1.10 Source Verification
 
 on:
   workflow_dispatch:
@@ -28,7 +28,7 @@ env:
   KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
 
 jobs:
-  build-and-test:
+  verify-source:
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -45,7 +45,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build configured intermediate APK
+      - name: Compile and test without publishing an APK
         shell: bash
         run: |
           set -euo pipefail
@@ -59,27 +59,25 @@ jobs:
             -PKREATIV_FIREBASE_PROJECT_ID="$KREATIV_FIREBASE_PROJECT_ID" \
             -PKREATIV_FIREBASE_STORAGE_BUCKET="$KREATIV_FIREBASE_STORAGE_BUCKET"
 
-      - name: Stage unsigned root-fix package
+      - name: Record source-verification result
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk \
-            dist/KREATIV-Studio-v0.1.10-root-fix-intermediate.apk
-          sha256sum dist/KREATIV-Studio-v0.1.10-root-fix-intermediate.apk \
-            > dist/KREATIV-Studio-v0.1.10-root-fix-intermediate.sha256
-          cat > dist/BUILD-IDENTITY.txt <<'EOF'
+          cat > dist/SOURCE-VERIFICATION.txt <<EOF
+          Commit: $GITHUB_SHA
           Package: com.kreativstudio.app
           Version: 0.1.10-dev (versionCode 10)
-          OAuth signer required (SHA-1): 5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59
-          OAuth signer required (SHA-256): 07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D
-          This Actions artifact is an intermediate package. Distribution requires signing with the recovered original KREATIV private-alpha key.
+          Result: Android source compiled and unit tests passed.
+          Distribution status: BLOCKED.
+          This job does not publish an APK and does not claim that live Firebase,
+          OAuth certificate registration, or cloud permissions are repaired.
           EOF
 
-      - name: Upload intermediate build
+      - name: Upload verification evidence only
         uses: actions/upload-artifact@v4
         with:
-          name: kreativ-0.1.10-root-fix-intermediate
-          path: dist/*
+          name: kreativ-0.1.10-source-verification
+          path: dist/SOURCE-VERIFICATION.txt
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 7
