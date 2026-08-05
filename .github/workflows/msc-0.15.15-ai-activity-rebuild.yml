@@ -1,0 +1,246 @@
+name: My Study Companion 0.15.15 Smart AI and Activities
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.15-ai-activity-rebuild.yml
+      - .msc-build/0.15.15-patch/**
+      - .msc-build/apply-0.15.15-ai-activity-rebuild.sh
+      - .msc-build/build-0.15.15-ai-activity-rebuild.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: msc-01515-smart-ai-activities
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  CLOUD_RUN_SERVICE: my-study-companion-private
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+  GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+  GCP_SCHEDULER_SERVICE_ACCOUNT: ${{ vars.GCP_SCHEDULER_SERVICE_ACCOUNT }}
+  FIREBASE_PROJECT_NUMBER: ${{ vars.MSC_FIREBASE_PROJECT_NUMBER }}
+  FIREBASE_ANDROID_APP_ID: ${{ vars.MSC_FIREBASE_ANDROID_APP_ID }}
+  ORGANIZER_USER_ID: ${{ vars.MSC_ORGANIZER_USER_ID }}
+
+jobs:
+  build-deploy-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: my-study-companion-private
+    steps:
+      - name: Check out cumulative fix branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check Pillow==12.2.0 numpy==2.4.2 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+
+      - name: Validate protected deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in \
+            GCP_PROJECT_ID \
+            GCP_WORKLOAD_IDENTITY_PROVIDER \
+            GCP_DEPLOY_SERVICE_ACCOUNT \
+            GCP_RUNTIME_SERVICE_ACCOUNT \
+            GCP_SCHEDULER_SERVICE_ACCOUNT \
+            FIREBASE_PROJECT_NUMBER \
+            FIREBASE_ANDROID_APP_ID \
+            ORGANIZER_USER_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required protected environment variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Create disposable CI packaging signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-01515-packaging"
+          mkdir -p "$SIGNING_DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/packaging.jks" \
+            -storepass 'msc-01515-packaging-only' \
+            -keypass 'msc-01515-packaging-only' \
+            -alias 'msc-01515-packaging' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion 0.15.15 CI Packaging, OU=Not Firebase Registered, O=My Study Companion, C=US'
+          echo "store_file=$SIGNING_DIR/packaging.jks" >> "$GITHUB_OUTPUT"
+
+      - name: Reconstruct and verify deployable 0.15.15 source
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-01515-packaging-only
+          MSC_RELEASE_KEY_ALIAS: msc-01515-packaging
+          MSC_RELEASE_KEY_PASSWORD: msc-01515-packaging-only
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/run-0.15.14-vote-persistence-fix.sh
+          bash .msc-build/apply-0.15.15-ai-activity-rebuild.sh
+          python -m pip install --disable-pip-version-check \
+            -r MyStudyCompanion/backend/requirements.txt \
+            -r MyStudyCompanion/backend/requirements-dev.txt
+          (cd MyStudyCompanion/backend && python -m pytest -q)
+
+      - id: auth
+        name: Authenticate with Google Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Verify private identities and server secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
+          gcloud iam service-accounts describe "$GCP_SCHEDULER_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
+          for secret in msc-admin-token msc-openai-api-key msc-content-signing-key; do
+            gcloud secrets describe "$secret" --project "$GCP_PROJECT_ID" >/dev/null
+          done
+
+      - id: deploy_backend
+        name: Deploy 0.15.15 Smart Online private service
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          region: ${{ env.GCP_REGION }}
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          source: MyStudyCompanion/backend
+          env_vars: |-
+            MSC_ENV=production
+            MSC_PERSISTENCE_BACKEND=firestore
+            MSC_DATABASE_PATH=/tmp/my-study-companion-local-fallback.sqlite3
+            MSC_CONTENT_SIGNING_KEY_PATH=/secrets/content-signing-key.pem
+            MSC_CONTENT_SIGNING_KEY_ID=msc-0-15-15
+            MSC_FIREBASE_PROJECT_NUMBER=${{ env.FIREBASE_PROJECT_NUMBER }}
+            MSC_FIREBASE_PROJECT_ID=${{ env.GCP_PROJECT_ID }}
+            MSC_FIREBASE_ANDROID_APP_ID=${{ env.FIREBASE_ANDROID_APP_ID }}
+            MSC_REQUIRE_APP_CHECK=true
+            MSC_REQUIRE_USER_AUTH=true
+            MSC_ALLOWED_ORIGINS=https://${{ env.GCP_PROJECT_ID }}.web.app,https://${{ env.GCP_PROJECT_ID }}.firebaseapp.com
+            MSC_HOUSEHOLD_ID=kaleb-family
+            MSC_ORGANIZER_USER_ID=${{ env.ORGANIZER_USER_ID }}
+            MSC_SCHEDULER_SERVICE_ACCOUNT_EMAIL=${{ env.GCP_SCHEDULER_SERVICE_ACCOUNT }}
+            MSC_OPENAI_MODEL=gpt-5.4
+            MSC_MAX_AI_REQUESTS_PER_HOUR=60
+            MSC_MINIMUM_PHONE_VERSION_CODE=48
+            MSC_MINIMUM_WEAR_VERSION_CODE=360165001
+            MSC_TIMEZONE=America/Detroit
+            MSC_OFFICIAL_READER_MAX_BYTES=2000000
+            MSC_OFFICIAL_READER_CACHE_SECONDS=300
+          secrets: |-
+            MSC_ADMIN_TOKEN=msc-admin-token:latest
+            MSC_OPENAI_API_KEY=msc-openai-api-key:latest
+            /secrets/content-signing-key.pem=msc-content-signing-key:latest
+          flags: >-
+            --allow-unauthenticated
+            --service-account=${{ env.GCP_RUNTIME_SERVICE_ACCOUNT }}
+            --execution-environment=gen2
+            --memory=1Gi
+            --cpu=2
+            --min=1
+            --max=3
+            --concurrency=30
+            --timeout=180s
+
+      - name: Verify deployed Smart Online service
+        shell: bash
+        env:
+          SERVICE_URL: ${{ steps.deploy_backend.outputs.url }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVICE_URL"
+          curl --fail --silent --show-error --retry 10 --retry-all-errors \
+            --max-time 30 "$SERVICE_URL/health" | tee cloud-run-health.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('cloud-run-health.json').read_text())
+          assert payload['status'] == 'ok'
+          assert payload['version'] == '0.15.15'
+          assert payload['openAiConfigured'] is True
+          assert payload['signingKeyConfigured'] is True
+          assert payload['appCheckRequired'] is True
+          assert payload['userAuthRequired'] is True
+          assert payload['persistenceBackend'] == 'firestore'
+          PY
+
+      - name: Build connected phone and Wear APKs
+        shell: bash
+        env:
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: msc-01515-packaging-only
+          MSC_RELEASE_KEY_ALIAS: msc-01515-packaging
+          MSC_RELEASE_KEY_PASSWORD: msc-01515-packaging-only
+          MSC_BACKEND_BASE_URL: ${{ steps.deploy_backend.outputs.url }}
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/build-0.15.15-ai-activity-rebuild.sh
+          printf '%s\n' "backend_url=${MSC_BACKEND_BASE_URL}" > release-0.15.15/metadata/DEPLOYED-ENDPOINT.txt
+          printf '%s\n' "source_commit=${GITHUB_SHA}" "workflow_run=${GITHUB_RUN_ID}" >> release-0.15.15/metadata/DEPLOYED-ENDPOINT.txt
+
+      - name: Upload connected APKs and verification evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.15-smart-ai-activities-connected-ci
+          path: release-0.15.15
+          retention-days: 14
+          if-no-files-found: error
