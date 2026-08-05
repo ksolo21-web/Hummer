@@ -652,6 +652,17 @@ namespace Havenline.Editor
             return clip;
         }
 
+        private static ParticleSystem.MinMaxCurve CreateConstantCurve(float value)
+        {
+            var curve = new ParticleSystem.MinMaxCurve
+            {
+                mode = ParticleSystemCurveMode.Constant,
+                constantMin = value,
+                constantMax = value
+            };
+            return curve;
+        }
+
         private static void CreateParticlePrefab(
             string path, string name, Color start, Color end, int maxParticles,
             float lifetime, float size, Vector3 shapeScale, bool worldSimulation, bool looping)
@@ -692,11 +703,11 @@ namespace Havenline.Editor
                                 ? new ParticleSystem.MinMaxCurve(0.24f, 0.52f)
                                 : new ParticleSystem.MinMaxCurve(0.72f, 1.22f);
                 main.startSize = isFire
-                    ? new ParticleSystem.MinMaxCurve(0.18f)
+                    ? CreateConstantCurve(0.18f)
                     : isSparks
-                        ? new ParticleSystem.MinMaxCurve(0.055f)
+                        ? CreateConstantCurve(0.055f)
                         : isSmoke
-                            ? new ParticleSystem.MinMaxCurve(0.28f)
+                            ? CreateConstantCurve(0.28f)
                             : new ParticleSystem.MinMaxCurve(size * 0.72f, size * 1.18f);
                 main.gravityModifier = isSnow ? 0.04f : isSparks ? 0.26f : isSmoke ? -0.018f : isFire ? -0.06f : 0.16f;
 

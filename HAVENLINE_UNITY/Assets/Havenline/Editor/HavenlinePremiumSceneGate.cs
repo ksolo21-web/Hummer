@@ -339,7 +339,7 @@ namespace Havenline.Editor
             }
             var fireEffect = objects.SingleOrDefault(item => item.name == "FurnaceFireVFX")
                 ?.GetComponentInChildren<ParticleSystem>(true);
-            if (fireEffect != null && fireEffect.main.startSize.constantMax > 0.45f)
+            if (fireEffect != null && EffectiveCurveMaximum(fireEffect.main.startSize) > 0.45f)
                 failures.Add("Furnace fire particles are oversized and obscure the machine silhouette.");
             var smokeEffect = objects.SingleOrDefault(item => item.name == "FurnaceSmokeVFX");
             if (smokeEffect != null && smokeEffect.transform.localPosition.y < 2.4f)
@@ -365,6 +365,29 @@ namespace Havenline.Editor
 
             if (!initialized || bounds.size.x < 24f || bounds.size.z < 28f)
                 failures.Add("Authored frozen outpost does not fill the required compact but substantial world footprint.");
+        }
+
+        private static float EffectiveCurveMaximum(ParticleSystem.MinMaxCurve curve)
+        {
+            static float MaximumKey(AnimationCurve animationCurve)
+            {
+                if (animationCurve == null || animationCurve.length == 0)
+                    return 0f;
+                return animationCurve.keys.Max(key => Mathf.Abs(key.value));
+            }
+
+            return curve.mode switch
+            {
+                ParticleSystemCurveMode.Constant => Mathf.Abs(curve.constant),
+                ParticleSystemCurveMode.TwoConstants =>
+                    Mathf.Max(Mathf.Abs(curve.constantMin), Mathf.Abs(curve.constantMax)),
+                ParticleSystemCurveMode.Curve =>
+                    Mathf.Abs(curve.curveMultiplier) * MaximumKey(curve.curve),
+                ParticleSystemCurveMode.TwoCurves =>
+                    Mathf.Abs(curve.curveMultiplier) *
+                    Mathf.Max(MaximumKey(curve.curveMin), MaximumKey(curve.curveMax)),
+                _ => float.PositiveInfinity
+            };
         }
 
         private static T FindSingle<T>(Scene scene, string label, ICollection<string> failures) where T : Component
