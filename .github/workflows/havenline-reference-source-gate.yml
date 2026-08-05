@@ -38,34 +38,62 @@ jobs:
         run: |
           set -euo pipefail
           root=HAVENLINE_UNITY
-          test -f "$root/ProjectSettings/ProjectVersion.txt"
-          test -f "$root/Packages/manifest.json"
-          test -f "$root/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json"
-          test -f "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
-          test -f "$root/Assets/Havenline/Runtime/HavenlineInput.cs"
-          test -f "$root/Assets/Havenline/Runtime/HavenlineActor.cs"
-          test -f "$root/Assets/Havenline/Runtime/HavenlineGameplay.cs"
-          test -f "$root/Assets/Havenline/Runtime/HavenlinePresentation.cs"
-          test -f "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
-          test -f "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs"
-          test -f "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs"
-          test -f "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
-          test -f "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs"
-          grep -q '^m_EditorVersion: 6000.3.18f1$' "$root/ProjectSettings/ProjectVersion.txt"
-          grep -q '"com.unity.cloud.gltfast": "6.19.0"' "$root/Packages/manifest.json"
-          grep -q '"com.unity.inputsystem": "1.17.0"' "$root/Packages/manifest.json"
-          grep -q '"com.unity.render-pipelines.universal": "17.3.0"' "$root/Packages/manifest.json"
-          # Runtime camera tuning is intentionally allowed to improve beyond the preserved
-          # reference APK baseline. Exact approved runtime values are locked by Unity tests.
-          grep -q 'CameraKeepsTheCartoonSurvivorCloseAndReadable' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs"
-          grep -q 'MovementCarryAndAutomaticActionRangesUseTheLockedDesign' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs"
-          grep -q 'PlayerSpawn = new(0f, 0.08f, 6.2f)' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
-          grep -q '\[ExecuteAlways\]' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
-          grep -q 'Canvas.preWillRenderCanvases' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
-          grep -q 'FoldableAspectThreshold = 1.45f' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
-          grep -q 'BuildAndroidReviewCandidate' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
-          grep -q 'HavenlineSceneAuthoring.Author' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
-          grep -q 'HavenlineAssetBootstrap.Bootstrap' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs"
+
+          require_file() {
+            local path="$1"
+            local label="$2"
+            if [ ! -f "$path" ]; then
+              echo "Missing HAVENLINE source contract file: $label ($path)" >&2
+              exit 1
+            fi
+          }
+
+          require_pattern() {
+            local pattern="$1"
+            local path="$2"
+            local label="$3"
+            if ! grep -Fq -- "$pattern" "$path"; then
+              echo "Missing HAVENLINE source contract: $label" >&2
+              echo "Expected literal: $pattern" >&2
+              echo "File: $path" >&2
+              exit 1
+            fi
+          }
+
+          require_file "$root/ProjectSettings/ProjectVersion.txt" "Unity editor version"
+          require_file "$root/Packages/manifest.json" "Unity package manifest"
+          require_file "$root/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json" "preserved reference contract"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineReference.cs" "runtime reference constants"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineInput.cs" "input implementation"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineActor.cs" "actor implementation"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineGameplay.cs" "gameplay implementation"
+          require_file "$root/Assets/Havenline/Runtime/HavenlinePresentation.cs" "presentation implementation"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "adaptive HUD implementation"
+          require_file "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap"
+          require_file "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs" "shipping-scene authoring"
+          require_file "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "Android build pipeline"
+          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "Unity reference tests"
+
+          require_pattern 'm_EditorVersion: 6000.3.18f1' "$root/ProjectSettings/ProjectVersion.txt" "Unity 6000.3.18f1"
+          require_pattern '"com.unity.cloud.gltfast": "6.19.0"' "$root/Packages/manifest.json" "glTFast 6.19.0"
+          require_pattern '"com.unity.inputsystem": "1.17.0"' "$root/Packages/manifest.json" "Input System 1.17.0"
+          require_pattern '"com.unity.render-pipelines.universal": "17.3.0"' "$root/Packages/manifest.json" "URP 17.3.0"
+
+          # Runtime framing can improve beyond the preserved APK baseline. The approved
+          # runtime values and gameplay ranges remain locked by compiled Unity tests.
+          require_pattern 'CameraKeepsTheCartoonSurvivorCloseAndReadable' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "close readable camera test"
+          require_pattern 'MovementCarryAndAutomaticActionRangesUseTheLockedDesign' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "movement/carry/action-range test"
+          require_pattern 'PlayerSpawn = new(0f, 0.08f, 6.2f)' "$root/Assets/Havenline/Runtime/HavenlineReference.cs" "locked player spawn"
+
+          require_pattern '[ExecuteAlways]' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "edit-time foldable HUD execution"
+          require_pattern 'Canvas.preWillRenderCanvases' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "pre-render adaptive HUD layout"
+          require_pattern 'FoldableAspectThreshold = 1.45f' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "foldable aspect threshold"
+
+          require_pattern 'public static void BuildAndroidReviewCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "device-test Android build stage"
+          require_pattern 'public static void BuildVerifiedReleaseCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "verified-release Android build stage"
+          require_pattern 'HavenlinePremiumSceneAuthoring.Author(manifest)' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "premium scene authoring call"
+          require_pattern 'public static void Bootstrap()' "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap entry point"
+
           if grep -RIl --include='*.cs' --include='*.json' -E 'Godot|project\.godot|extends Node' "$root"; then
             echo 'Forbidden legacy-engine content found in the clean HAVENLINE Unity source.' >&2
             exit 1
