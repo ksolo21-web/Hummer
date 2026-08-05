@@ -50,6 +50,7 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     val onDeviceMentorState = container.aiMentorRepository.onDeviceState
     val isGoogleConfigured: Boolean get() = container.authRepository.isGoogleConfigured
     val isCloudConfigured: Boolean get() = container.cloudSyncRepository.isConfigured
+    val cloudFailureDetail: String? get() = container.cloudSyncRepository.lastFailureMessage
 
     var screen by mutableStateOf(StudioScreen.HOME)
         private set
@@ -582,7 +583,8 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     }
 
     private fun cloudUnavailableMessage(): String =
-        "Cloud backup is not authorized yet. Your work remains safely stored on this device."
+        (cloudFailureDetail ?: "Cloud access has not been verified yet.") +
+            " Your work remains safely stored on this device."
 
     private fun openProjectInternal(project: KreativProject) {
         currentProject = project

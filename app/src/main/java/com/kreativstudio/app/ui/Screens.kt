@@ -668,7 +668,7 @@ fun SettingsScreen(viewModel: KreativViewModel, user: AppUser) {
                 Text(
                     if (user.isLocalPreview) "Device-only preview."
                     else if (viewModel.cloudAccessAvailable) "Cloud backup is connected."
-                    else "Google sign-in succeeded. Device autosave is active; Firebase cloud permission is not available yet.",
+                    else "Google sign-in succeeded. Device autosave is active. ${viewModel.cloudFailureDetail ?: "Cloud access has not been verified yet."}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
