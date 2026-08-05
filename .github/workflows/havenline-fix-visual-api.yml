@@ -1,0 +1,62 @@
+name: HAVENLINE Visual API Fix
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - .github/workflows/havenline-fix-visual-api.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+      - name: Patch Unity collection and shadow APIs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          assets = Path("HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualAssets.cs")
+          source = assets.read_text(encoding="utf-8")
+          replacements = {
+              "            mesh.SetVertices(vertices);": "            mesh.vertices = vertices.ToArray();",
+              "            mesh.SetTriangles(triangles, 0, true);": "            mesh.triangles = triangles.ToArray();",
+              "            mesh.SetUVs(0, uv);": "            mesh.uv = uv.ToArray();",
+          }
+          for old, new in replacements.items():
+              if old not in source:
+                  raise SystemExit(f"Missing visual mesh API target: {old}")
+              source = source.replace(old, new, 1)
+          assets.write_text(source, encoding="utf-8")
+
+          polish = Path("HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualPolish.cs")
+          source = polish.read_text(encoding="utf-8")
+          source = source.replace(
+              "QualitySettings.shadows = ShadowQuality.All;",
+              "QualitySettings.shadows = UnityEngine.ShadowQuality.All;",
+              1)
+          source = source.replace(
+              "QualitySettings.shadowResolution = ShadowResolution.High;",
+              "QualitySettings.shadowResolution = UnityEngine.ShadowResolution.High;",
+              1)
+          polish.write_text(source, encoding="utf-8")
+          PY
+      - name: Commit visual API correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualAssets.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumVisualPolish.cs
+          git commit -m "Fix Unity visual mesh and shadow API compatibility"
+          git push origin HEAD:havenline-unity-reference-rebuild
