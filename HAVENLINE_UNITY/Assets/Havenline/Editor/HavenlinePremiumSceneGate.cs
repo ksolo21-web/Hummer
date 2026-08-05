@@ -332,16 +332,50 @@ namespace Havenline.Editor
             }
             else
             {
-                var flameRenderers = flameVisuals[0].GetComponentsInChildren<MeshRenderer>(true);
-                if (flameRenderers.Length != 2)
-                    failures.Add($"Authored furnace flame requires outer and inner mesh layers; found {flameRenderers.Length}.");
+                var flameRoot = flameVisuals[0];
+                var flameRenderers = flameRoot.GetComponentsInChildren<MeshRenderer>(true);
+                var tongueRenderers = flameRenderers
+                    .Where(renderer => renderer.name.StartsWith("FlameTongue_", StringComparison.Ordinal))
+                    .ToArray();
+                var emberRenderers = flameRenderers
+                    .Where(renderer => renderer.name.StartsWith("Ember_", StringComparison.Ordinal))
+                    .ToArray();
+
+                if (flameRoot.GetComponentsInChildren<ParticleSystem>(true).Length != 0)
+                    failures.Add("The stable furnace core cannot contain particle billboards.");
+                if (tongueRenderers.Length != 6)
+                    failures.Add($"Volumetric furnace core requires three outer/inner tongue pairs; found {tongueRenderers.Length} tongue renderers.");
+                if (emberRenderers.Length < 7)
+                    failures.Add($"Volumetric furnace core requires a seven-piece ember bed; found {emberRenderers.Length} embers.");
+
+                var tongueMeshPaths = tongueRenderers
+                    .Select(renderer => AssetDatabase.GetAssetPath(renderer.GetComponent<MeshFilter>()?.sharedMesh))
+                    .ToArray();
+                if (tongueMeshPaths.Any(path => path != HavenlinePremiumFlameMeshFactory.FlameTongueMeshPath))
+                    failures.Add("Furnace tongues are not all using the approved volumetric HAVENLINE mesh.");
+
                 var flameMaterialPaths = flameRenderers
                     .Select(renderer => AssetDatabase.GetAssetPath(renderer.sharedMaterial))
                     .ToArray();
                 if (!flameMaterialPaths.Contains(HavenlinePremiumVisualAssets.FlameOuterMaterialPath) ||
                     !flameMaterialPaths.Contains(HavenlinePremiumVisualAssets.FlameInnerMaterialPath))
                 {
-                    failures.Add("Authored furnace flame is not using both approved emissive HAVENLINE materials.");
+                    failures.Add("Authored furnace core is not using both approved emissive HAVENLINE materials.");
+                }
+
+                if (flameRenderers.Length > 0)
+                {
+                    var fireBounds = flameRenderers[0].bounds;
+                    for (var index = 1; index < flameRenderers.Length; index++)
+                        fireBounds.Encapsulate(flameRenderers[index].bounds);
+                    if (fireBounds.size.x < 0.72f || fireBounds.size.y < 0.85f || fireBounds.size.z < 0.20f)
+                    {
+                        failures.Add(
+                            $"Volumetric furnace core is too small or flat " +
+                            $"({fireBounds.size.x:0.###} x {fireBounds.size.y:0.###} x {fireBounds.size.z:0.###}).");
+                    }
+                    if (fireBounds.size.x > 0f && fireBounds.size.y / fireBounds.size.x < 0.82f)
+                        failures.Add("Volumetric furnace core reads as horizontal bars instead of a vertical fire silhouette.");
                 }
             }
 
