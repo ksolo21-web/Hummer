@@ -7,12 +7,14 @@ on:
     paths:
       - HAVENLINE_UNITY/**
       - .github/workflows/havenline-reference-source-gate.yml
+      - .github/workflows/havenline-unity-android-build.yml
   pull_request:
     branches:
       - main
     paths:
       - HAVENLINE_UNITY/**
       - .github/workflows/havenline-reference-source-gate.yml
+      - .github/workflows/havenline-unity-android-build.yml
   workflow_dispatch:
 
 permissions:
@@ -72,7 +74,9 @@ jobs:
           require_file "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap"
           require_file "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs" "shipping-scene authoring"
           require_file "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "Android build pipeline"
+          require_file "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "clean-checkout CI preparation"
           require_file "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "Unity reference tests"
+          require_file ".github/workflows/havenline-unity-android-build.yml" "premium Android workflow"
 
           require_pattern 'm_EditorVersion: 6000.3.18f1' "$root/ProjectSettings/ProjectVersion.txt" "Unity 6000.3.18f1"
           require_pattern '"com.unity.cloud.gltfast": "6.19.0"' "$root/Packages/manifest.json" "glTFast 6.19.0"
@@ -93,6 +97,14 @@ jobs:
           require_pattern 'public static void BuildVerifiedReleaseCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "verified-release Android build stage"
           require_pattern 'HavenlinePremiumSceneAuthoring.Author(manifest)' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "premium scene authoring call"
           require_pattern 'public static void Bootstrap()' "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap entry point"
+
+          require_pattern 'public static void PrepareGeneratedProductionContent()' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "deterministic production preparation entry point"
+          require_pattern 'HavenlineProceduralArtStudio.GenerateForCi();' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "deterministic asset generation before gate"
+          require_pattern 'HavenlinePremiumBuildGate.InspectProductionContent();' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "strict premium inspection after generation"
+          require_pattern 'public static void BuildAndroidDeviceTest()' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "prepared device-test entry point"
+          require_pattern 'public static void BuildVerifiedRelease()' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "prepared verified-release entry point"
+          require_pattern 'HavenlineCiBuildEntryPoints.BuildAndroidDeviceTest' ".github/workflows/havenline-unity-android-build.yml" "workflow uses prepared device-test method"
+          require_pattern 'HavenlineCiBuildEntryPoints.BuildVerifiedRelease' ".github/workflows/havenline-unity-android-build.yml" "workflow uses prepared verified-release method"
 
           if grep -RIl --include='*.cs' --include='*.json' -E 'Godot|project\.godot|extends Node' "$root"; then
             echo 'Forbidden legacy-engine content found in the clean HAVENLINE Unity source.' >&2
@@ -156,7 +168,7 @@ jobs:
         run: |
           set -euo pipefail
           find HAVENLINE_UNITY -type f -print | sort | tee havenline-clean-source-inventory.txt
-          test "$(find HAVENLINE_UNITY/Assets/Havenline -name '*.cs' | wc -l)" -ge 9
+          test "$(find HAVENLINE_UNITY/Assets/Havenline -name '*.cs' | wc -l)" -ge 10
 
       - name: Upload source-gate evidence
         uses: actions/upload-artifact@v4
