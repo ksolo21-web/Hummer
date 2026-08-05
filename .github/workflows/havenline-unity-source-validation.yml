@@ -76,7 +76,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: HAVENLINE Unity ${{ matrix.testMode }} validation
 
-      - name: Upload ${{ matrix.testMode }} test and compiler diagnostics
+      - name: Upload ${{ matrix.testMode }} test, compiler and studio diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -86,3 +86,5 @@ jobs:
           path: |
             ${{ steps.tests.outputs.artifactsPath }}
             HAVENLINE_UNITY/Logs/**
+            HAVENLINE_UNITY/Builds/Review/HAVENLINE-Studio/**
+            Builds/Review/HAVENLINE-Studio/**
