@@ -3,8 +3,6 @@ using UnityEngine.InputSystem;
 
 namespace Havenline
 {
-namespace Havenline
-{
     /// <summary>
     /// HAVENLINE exposes one permanent gameplay control: movement. Full-stick movement
     /// transitions into running automatically; all world actions are proximity-driven.

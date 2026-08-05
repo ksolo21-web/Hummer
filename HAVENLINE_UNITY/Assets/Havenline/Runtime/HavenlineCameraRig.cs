@@ -3,8 +3,6 @@ using UnityEngine.UI;
 
 namespace Havenline
 {
-namespace Havenline
-{
     [RequireComponent(typeof(Camera))]
     public sealed class HavenlineCameraRig : MonoBehaviour
     {
