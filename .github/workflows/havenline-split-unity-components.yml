@@ -1,0 +1,216 @@
+name: HAVENLINE Split Unity Components
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/havenline-split-unity-components.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  split-components:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out active HAVENLINE branch
+        uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+
+      - name: Split Unity-serialized types into matching scripts
+        shell: python
+        run: |
+          from __future__ import annotations
+
+          import re
+          from pathlib import Path
+
+          root = Path('HAVENLINE_UNITY/Assets/Havenline/Runtime')
+          serialized_bases = (
+              'MonoBehaviour',
+              'ScriptableObject',
+              'HavenlineInteractable',
+          )
+
+          def sanitized(text: str) -> str:
+              output = list(text)
+              index = 0
+              state = 'code'
+              while index < len(text):
+                  current = text[index]
+                  next_char = text[index + 1] if index + 1 < len(text) else ''
+                  if state == 'code':
+                      if current == '/' and next_char == '/':
+                          output[index] = output[index + 1] = ' '
+                          index += 2
+                          state = 'line_comment'
+                          continue
+                      if current == '/' and next_char == '*':
+                          output[index] = output[index + 1] = ' '
+                          index += 2
+                          state = 'block_comment'
+                          continue
+                      if current == '"':
+                          output[index] = ' '
+                          state = 'string'
+                      elif current == "'":
+                          output[index] = ' '
+                          state = 'char'
+                  elif state == 'line_comment':
+                      if current == '\n':
+                          state = 'code'
+                      else:
+                          output[index] = ' '
+                  elif state == 'block_comment':
+                      output[index] = ' '
+                      if current == '*' and next_char == '/':
+                          output[index + 1] = ' '
+                          index += 2
+                          state = 'code'
+                          continue
+                  elif state == 'string':
+                      output[index] = ' '
+                      if current == '\\':
+                          if index + 1 < len(text):
+                              output[index + 1] = ' '
+                              index += 2
+                              continue
+                      elif current == '"':
+                          state = 'code'
+                  elif state == 'char':
+                      output[index] = ' '
+                      if current == '\\':
+                          if index + 1 < len(text):
+                              output[index + 1] = ' '
+                              index += 2
+                              continue
+                      elif current == "'":
+                          state = 'code'
+                  index += 1
+              return ''.join(output)
+
+          def brace_depths(clean: str) -> list[int]:
+              depths = [0] * (len(clean) + 1)
+              depth = 0
+              for index, char in enumerate(clean):
+                  depths[index] = depth
+                  if char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+              depths[len(clean)] = depth
+              return depths
+
+          def matching_brace(clean: str, opening: int) -> int:
+              depth = 0
+              for index in range(opening, len(clean)):
+                  if clean[index] == '{':
+                      depth += 1
+                  elif clean[index] == '}':
+                      depth -= 1
+                      if depth == 0:
+                          return index
+              raise RuntimeError(f'Unmatched class brace at {opening}')
+
+          changed = []
+          created = []
+          declaration = re.compile(
+              r'(?m)^[ \t]*(?:public|internal)\s+(?:(?:abstract|sealed|static)\s+)*class\s+'
+              r'(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?P<bases>:[^{]+)?\{'
+          )
+
+          for path in sorted(root.glob('*.cs')):
+              original = path.read_text(encoding='utf-8')
+              clean = sanitized(original)
+              depths = brace_depths(clean)
+              namespace_match = re.search(r'\bnamespace\s+Havenline\s*\{', clean)
+              if namespace_match is None:
+                  continue
+              namespace_open = clean.find('{', namespace_match.start())
+              namespace_class_depth = depths[namespace_open] + 1
+              using_prefix = original[:namespace_match.start()].rstrip() + '\n\n'
+              extractions = []
+
+              for match in declaration.finditer(clean):
+                  if depths[match.start()] != namespace_class_depth:
+                      continue
+                  name = match.group('name')
+                  if name == path.stem:
+                      continue
+                  bases = match.group('bases') or ''
+                  if not any(base in bases for base in serialized_bases):
+                      continue
+
+                  open_brace = clean.find('{', match.start(), match.end())
+                  close_brace = matching_brace(clean, open_brace)
+                  declaration_line = original.rfind('\n', 0, match.start()) + 1
+                  previous_blank = original.rfind('\n\n', 0, declaration_line)
+                  block_start = previous_blank + 2 if previous_blank >= 0 else declaration_line
+                  block_end = close_brace + 1
+                  while block_end < len(original) and original[block_end] in ' \t':
+                      block_end += 1
+                  if block_end < len(original) and original[block_end] == '\r':
+                      block_end += 1
+                  if block_end < len(original) and original[block_end] == '\n':
+                      block_end += 1
+
+                  block = original[block_start:block_end].strip('\r\n')
+                  target = root / f'{name}.cs'
+                  if target.exists():
+                      raise SystemExit(f'Refusing to overwrite existing component script: {target}')
+                  target.write_text(
+                      using_prefix + 'namespace Havenline\n{\n' + block + '\n}\n',
+                      encoding='utf-8')
+                  created.append(str(target))
+                  extractions.append((block_start, block_end, name))
+
+              if not extractions:
+                  continue
+              updated = original
+              for start, end, _ in sorted(extractions, reverse=True):
+                  updated = updated[:start] + updated[end:]
+              updated = re.sub(r'\n{3,}', '\n\n', updated)
+              path.write_text(updated, encoding='utf-8')
+              changed.append(str(path))
+
+          if not created:
+              raise SystemExit('No Unity-serialized component types were split.')
+
+          print('Changed grouped files:')
+          print('\n'.join(changed))
+          print('Created matching Unity scripts:')
+          print('\n'.join(created))
+
+      - name: Verify every Unity-facing type has a matching file
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          root = Path('HAVENLINE_UNITY/Assets/Havenline/Runtime')
+          failures = []
+          pattern = re.compile(
+              r'(?:public|internal)\s+(?:(?:abstract|sealed|static)\s+)*class\s+'
+              r'([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^\{]+)\{')
+          for path in root.glob('*.cs'):
+              text = path.read_text(encoding='utf-8')
+              for name, bases in pattern.findall(text):
+                  if any(base in bases for base in ('MonoBehaviour', 'ScriptableObject', 'HavenlineInteractable')):
+                      if not (root / f'{name}.cs').exists():
+                          failures.append(f'{name} declared in {path.name} has no matching script file')
+          if failures:
+              raise SystemExit('\n'.join(failures))
+
+      - name: Commit serialization-safe runtime layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Runtime
+          git commit -m "Split Unity components into serialization-safe scripts"
+          git push origin HEAD:havenline-unity-reference-rebuild
