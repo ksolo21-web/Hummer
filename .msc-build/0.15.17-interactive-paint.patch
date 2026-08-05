@@ -1,0 +1,361 @@
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+@@ -14,7 +14,9 @@
+ import androidx.compose.foundation.border
+ import androidx.compose.foundation.gestures.detectDragGestures
+ import androidx.compose.foundation.gestures.detectTapGestures
++import androidx.compose.foundation.gestures.detectTransformGestures
+ import androidx.compose.foundation.horizontalScroll
++import androidx.compose.foundation.clipToBounds
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.WindowInsets
+ import androidx.compose.foundation.layout.aspectRatio
+@@ -70,6 +72,7 @@
+ import androidx.compose.material3.Text
+ import androidx.compose.material3.TopAppBar
+ import androidx.compose.runtime.Composable
++import androidx.compose.runtime.LaunchedEffect
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableStateListOf
+ import androidx.compose.runtime.mutableStateOf
+@@ -86,8 +89,10 @@
+ import androidx.compose.ui.graphics.drawscope.DrawScope
+ import androidx.compose.ui.graphics.drawscope.Stroke
+ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
++import androidx.compose.ui.graphics.drawscope.withTransform
+ import androidx.compose.ui.graphics.nativeCanvas
+ import androidx.compose.ui.input.pointer.pointerInput
++import androidx.compose.ui.layout.onSizeChanged
+ import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.text.input.KeyboardCapitalization
+@@ -223,6 +228,42 @@
+     return id.takeIf { it > 0 }?.toString()
+ }
+ 
++private fun clampWorkbookPan(pan: Offset, zoom: Float, viewport: IntSize): Offset {
++    if (zoom <= 1f || viewport.width <= 0 || viewport.height <= 0) return Offset.Zero
++    val maxX = viewport.width * (zoom - 1f) / 2f
++    val maxY = viewport.height * (zoom - 1f) / 2f
++    return Offset(
++        x = pan.x.coerceIn(-maxX, maxX),
++        y = pan.y.coerceIn(-maxY, maxY),
++    )
++}
++
++private fun inverseWorkbookPoint(
++    tapped: Offset,
++    viewport: IntSize,
++    zoom: Float,
++    pan: Offset,
++): Offset? {
++    if (viewport.width <= 0 || viewport.height <= 0 || zoom <= 0f) return null
++    val center = Offset(viewport.width / 2f, viewport.height / 2f)
++    val mapped = center + (tapped - center - pan) / zoom
++    return mapped.takeIf {
++        it.x in 0f..viewport.width.toFloat() && it.y in 0f..viewport.height.toFloat()
++    }
++}
++
++private fun workbookMilestone(completed: Int, total: Int): Int {
++    if (total <= 0 || completed <= 0) return 0
++    val percent = completed * 100 / total
++    return when {
++        completed >= total -> 100
++        percent >= 75 -> 75
++        percent >= 50 -> 50
++        percent >= 25 -> 25
++        else -> 0
++    }
++}
++
+ @OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+ fun InteractiveWorkbookDialog(
+@@ -1010,6 +1051,10 @@
+     var feedback by rememberSaveable(activity.id) { mutableStateOf("Choose a color, then tap a shape carrying that number.") }
+     var wrongTaps by rememberSaveable(activity.id) { mutableStateOf(0) }
+     var hintRegionId by rememberSaveable(activity.id) { mutableStateOf<String?>(null) }
++    var zoom by rememberSaveable(activity.id) { mutableStateOf(1f) }
++    var panX by rememberSaveable(activity.id) { mutableStateOf(0f) }
++    var panY by rememberSaveable(activity.id) { mutableStateOf(0f) }
++    var viewportSize by remember(activity.id) { mutableStateOf(IntSize.Zero) }
+     val overlay = remember(illustration.asset.id, activity.id, progress.selectedColors) {
+         buildColorOverlay(illustration.colorMask, activity.id, progress.selectedColors)
+     }
+@@ -1019,9 +1064,24 @@
+         progress.selectedColors[workbookRegionKey(activity.id, it.id)] == workbookNumberColors[it.number]
+     }
+     val allComplete = regions.isNotEmpty() && completed == regions.size
++    var lastCelebratedMilestone by rememberSaveable(activity.id) {
++        mutableStateOf(workbookMilestone(completed, regions.size))
++    }
++
++    LaunchedEffect(viewportSize, zoom) {
++        val clamped = clampWorkbookPan(Offset(panX, panY), zoom, viewportSize)
++        panX = clamped.x
++        panY = clamped.y
++    }
++
++    fun resetView() {
++        zoom = 1f
++        panX = 0f
++        panY = 0f
++    }
+ 
+     Text(
+-        "This rebuilt page uses a small set of large, meaningful closed shapes—no jagged photo fragments or tiny slivers.",
++        "This rebuilt page uses natural, edge-following paint shapes from the stored professional artwork.",
+         style = MaterialTheme.typography.bodySmall,
+     )
+     Text("$completed of ${regions.size} shapes complete", fontWeight = FontWeight.SemiBold)
+@@ -1043,6 +1103,7 @@
+             FilterChip(
+                 selected = selectedNumber == number,
++                enabled = remaining > 0 || selectedNumber == number,
+                 onClick = {
+                     feedback = "${illustration.paletteLabels[number] ?: "Color"} $number selected—$remaining shapes left."
+                     hintRegionId = null
+@@ -1065,6 +1126,22 @@
+     }
+ 
+     val hintColor = MaterialTheme.colorScheme.tertiary
++    val pan = Offset(panX, panY)
++    val transformed = zoom > 1.001f || pan != Offset.Zero
++
++    Text(
++        "Pinch to zoom up to 5×, then drag to inspect small areas. Taps stay aligned with the transformed picture.",
++        style = MaterialTheme.typography.labelSmall,
++        color = MaterialTheme.colorScheme.onSurfaceVariant,
++    )
++    Text(
++        "View: ${(zoom * 100).roundToInt()}%",
++        style = MaterialTheme.typography.labelMedium,
++        fontWeight = FontWeight.SemiBold,
++    )
+ 
+     Canvas(
+         modifier = Modifier
+@@ -1073,17 +1150,60 @@
+             .background(Color.White, RoundedCornerShape(18.dp))
+             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
++            .clipToBounds()
++            .onSizeChanged { measured ->
++                viewportSize = measured
++                val clamped = clampWorkbookPan(Offset(panX, panY), zoom, measured)
++                panX = clamped.x
++                panY = clamped.y
++            }
++            .pointerInput(activity.id) {
++                detectTransformGestures { centroid, gesturePan, gestureZoom, _ ->
++                    val previousZoom = zoom.coerceAtLeast(1f)
++                    val nextZoom = (previousZoom * gestureZoom).coerceIn(1f, 5f)
++                    val factor = nextZoom / previousZoom
++                    val center = Offset(size.width / 2f, size.height / 2f)
++                    val nextPan = if (nextZoom <= 1.001f) {
++                        Offset.Zero
++                    } else {
++                        Offset(panX, panY) * factor + gesturePan - (centroid - center) * (factor - 1f)
++                    }
++                    val clamped = clampWorkbookPan(nextPan, nextZoom, IntSize(size.width, size.height))
++                    zoom = nextZoom
++                    panX = clamped.x
++                    panY = clamped.y
++                }
++            }
+             .pointerInput(activity.id, progress.selectedColors, selectedNumber, allComplete) {
+                 detectTapGestures { tapped ->
+                     if (allComplete) return@detectTapGestures
++                    val mappedTap = inverseWorkbookPoint(
++                        tapped = tapped,
++                        viewport = IntSize(size.width, size.height),
++                        zoom = zoom,
++                        pan = Offset(panX, panY),
++                    ) ?: run {
++                        wrongTaps += 1
++                        feedback = "That point is outside the picture. Pan back toward the artwork or reset the view."
++                        return@detectTapGestures
++                    }
+                     val regionId = regionAt(
+                         illustration.colorMask,
+-                        tapped,
++                        mappedTap,
+                         size.width.toFloat(),
+                         size.height.toFloat(),
+@@ -1116,50 +1236,98 @@
+                         expected,
+                     )
+-                    feedback = if (applied) {
+-                        if (completed + 1 == regions.size) "Picture complete—great careful work!" else "Correct—the ${region.label} is filled."
+-                    } else {
+-                        "That shape is already complete."
++                    if (!applied) {
++                        feedback = "That shape is already complete."
++                        return@detectTapGestures
+                     }
++
++                    val completedAfter = completed + 1
++                    val remainingAfter = regions.filter { candidate ->
++                        candidate.id != region.id &&
++                            progress.selectedColors[workbookRegionKey(activity.id, candidate.id)] != workbookNumberColors[candidate.number]
++                    }
++                    val currentColorRemaining = remainingAfter.any { it.number == selectedNumber }
++                    val nextNumber = if (currentColorRemaining || remainingAfter.isEmpty()) {
++                        null
++                    } else {
++                        val currentIndex = usedNumbers.indexOf(selectedNumber).coerceAtLeast(0)
++                        (1..usedNumbers.size)
++                            .asSequence()
++                            .map { step -> usedNumbers[(currentIndex + step) % usedNumbers.size] }
++                            .firstOrNull { candidate -> remainingAfter.any { it.number == candidate } }
++                    }
++                    if (nextNumber != null) {
++                        repository.selectWorkbookColorNumber(pageKey, activity.id, nextNumber)
++                    }
++
++                    val milestone = workbookMilestone(completedAfter, regions.size)
++                    val milestoneMessage = when {
++                        completedAfter == regions.size -> "Picture complete—great careful work!"
++                        milestone > lastCelebratedMilestone -> {
++                            lastCelebratedMilestone = milestone
++                            "$milestone% complete—excellent steady progress!"
++                        }
++                        else -> "Correct—the ${region.label} is filled."
++                    }
++                    val nextMessage = nextNumber?.let { number ->
++                        " Next: ${illustration.paletteLabels[number] ?: "color"} $number."
++                    }.orEmpty()
++                    feedback = milestoneMessage + nextMessage
+                     hintRegionId = null
+                 }
+             },
+     ) {
+         drawRect(Color.White)
+-        if (allComplete) {
+-            drawIllustrationBitmap(illustration.colorMaster)
+-        } else {
+-            drawIllustrationBitmap(overlay)
+-            drawIllustrationBitmap(illustration.colorLine)
+-        }
+-        val sx = size.width / 1000f
+-        val sy = size.height / 1000f
+-        if (!allComplete) {
+-            drawIntoCanvas { composeCanvas ->
+-                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+-                    textAlign = Paint.Align.CENTER
+-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+-                    textSize = (15f * minOf(sx, sy)).coerceIn(11f, 22f)
+-                }
+-                regions.forEach { region ->
+-                    val expected = workbookNumberColors[region.number]
+-                    if (progress.selectedColors[workbookRegionKey(activity.id, region.id)] != expected) {
+-                        val x = region.centerX * sx
+-                        val y = region.centerY * sy
+-                        paint.style = Paint.Style.FILL
+-                        paint.color = AndroidColor.WHITE
+-                        composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .82f, paint)
+-                        paint.style = Paint.Style.STROKE
+-                        paint.strokeWidth = 2f
+-                        paint.color = AndroidColor.rgb(35, 42, 47)
+-                        composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .82f, paint)
+-                        paint.style = Paint.Style.FILL
+-                        composeCanvas.nativeCanvas.drawText(
+-                            region.number.toString(),
+-                            x,
+-                            y - (paint.ascent() + paint.descent()) / 2f,
+-                            paint,
+-                        )
+-                    }
++        val center = Offset(size.width / 2f, size.height / 2f)
++        withTransform({
++            translate(left = center.x + panX, top = center.y + panY)
++            scale(scaleX = zoom, scaleY = zoom, pivot = Offset.Zero)
++            translate(left = -center.x, top = -center.y)
++        }) {
++            if (allComplete) {
++                drawIllustrationBitmap(illustration.colorMaster)
++            } else {
++                drawIllustrationBitmap(overlay)
++                drawIllustrationBitmap(illustration.colorLine)
++            }
++            val sx = size.width / 1000f
++            val sy = size.height / 1000f
++            if (!allComplete) {
++                drawIntoCanvas { composeCanvas ->
++                    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++                        textAlign = Paint.Align.CENTER
++                        typeface = android.graphics.Typeface.DEFAULT_BOLD
++                        textSize = (15f * minOf(sx, sy)).coerceIn(11f, 22f)
++                    }
++                    regions.forEach { region ->
++                        val expected = workbookNumberColors[region.number]
++                        if (progress.selectedColors[workbookRegionKey(activity.id, region.id)] != expected) {
++                            val x = region.centerX * sx
++                            val y = region.centerY * sy
++                            paint.style = Paint.Style.FILL
++                            paint.color = AndroidColor.WHITE
++                            composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .82f, paint)
++                            paint.style = Paint.Style.STROKE
++                            paint.strokeWidth = 2f
++                            paint.color = AndroidColor.rgb(35, 42, 47)
++                            composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .82f, paint)
++                            paint.style = Paint.Style.FILL
++                            composeCanvas.nativeCanvas.drawText(
++                                region.number.toString(),
++                                x,
++                                y - (paint.ascent() + paint.descent()) / 2f,
++                                paint,
++                            )
++                        }
++                    }
+                 }
+-            }
+-            hintRegionId?.let { id ->
+-                regions.firstOrNull { it.id == id }?.let { region ->
+-                    drawCircle(
+-                        color = hintColor,
+-                        radius = 30f * minOf(sx, sy),
+-                        center = Offset(region.centerX * sx, region.centerY * sy),
+-                        style = Stroke(width = 5f),
+-                    )
++                hintRegionId?.let { id ->
++                    regions.firstOrNull { it.id == id }?.let { region ->
++                        drawCircle(
++                            color = hintColor,
++                            radius = 30f * minOf(sx, sy),
++                            center = Offset(region.centerX * sx, region.centerY * sy),
++                            style = Stroke(width = 5f),
++                        )
++                    }
+                 }
+             }
+         }
+@@ -1207,6 +1375,14 @@
+                 enabled = redoAvailable,
+                 onClick = { repository.redoWorkbookColor(pageKey, activity.id) },
+             ) { Icon(Icons.Outlined.Redo, null); Spacer(Modifier.width(5.dp)); Text("Redo") }
++            OutlinedButton(
++                enabled = transformed,
++                onClick = {
++                    resetView()
++                    feedback = "View reset to fit the full picture."
++                },
++            ) { Text("Reset view") }
+             OutlinedButton(
+                 enabled = completed > 0 || wrongTaps > 0,
+                 onClick = {
+@@ -1214,13 +1390,16 @@
+                     wrongTaps = 0
+                     hintRegionId = null
++                    lastCelebratedMilestone = 0
++                    resetView()
+                     feedback = "Picture reset. Choose a color, then tap its numbered shapes."
+                 },
+-            ) { Icon(Icons.Outlined.RestartAlt, null); Spacer(Modifier.width(5.dp)); Text("Reset") }
++            ) { Icon(Icons.Outlined.RestartAlt, null); Spacer(Modifier.width(5.dp)); Text("Reset picture") }
+         }
+-        if (maxWidth < 520.dp) {
++        if (maxWidth < 700.dp) {
+             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
+         } else {
+             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
