@@ -1,0 +1,186 @@
+tMode.PRIVATE_OFFLINE && online && backendConfig.isConfigured
++
++            val result = if (canTrySmartOnline) {
++                runCatching { smartOnlineAnswer(cleanQuestion, bundle) }
++                    .fold(
++                        onSuccess = { it },
++                        onFailure = { cloudError ->
++                            if (mode == AiAssistantMode.SMART_ONLINE) throw SmartOnlineUnavailableException(
++                                "Smart Online AI could not complete this request. ${cloudError.safeUserDetail()}",
++                                cloudError,
++                            )
++                            val local = privateOfflineAnswer(cleanQuestion, bundle.passages)
++                            local.copy(
++                                answer = local.answer +
++                                    "\n\n— Smart Online AI was unavailable, so this answer used the private offline assistant.",
++                                usedFallback = true,
++                            )
++                        },
++                    )
++            } else if (mode == AiAssistantMode.SMART_ONLINE) {
++                val reason = when {
++                    !backendConfig.isConfigured -> "The secure AI service is not configured in this build."
++                    !online -> "The device is offline."
++                    else -> "The secure AI service is unavailable."
+                 }
+-                safeMessage to emptyList()
++                throw SmartOnlineUnavailableException(reason)
+             } else {
+-                val prompt = AiPromptBuilder.build(cleanQuestion, passages)
+-                val initial = providerRouter.generate(prompt)
+-                val validatedInitial = runCatching {
+-                    AiGroundingValidator.validateAndResolve(initial.first, passages)
+-                }
+-                val (grounded, provider) = if (validatedInitial.isSuccess) {
+-                    validatedInitial.getOrThrow() to initial.second
+-                } else {
+-                    val guided = providerRouter.generateGuided(prompt)
+-                    AiGroundingValidator.validateAndResolve(guided.first, passages) to guided.second
+-                }
+-                val usedCitations = grounded.usedPassageIndexes
+-                    .map(passages::get)
+-                    .map { it.citation() }
+-                    .distinctBy { it.url }
+-                    .take(5)
+-                val safeAnswer = grounded.body +
+-                    "\n\n— Answered with ${provider.label}; only the verified sources actually used are attached."
+-                safeAnswer to usedCitations
++                privateOfflineAnswer(cleanQuestion, bundle.passages)
+             }
+-            dao.upsertAiMessage(
+-                AiStudyMessage(
+-                    id = UUID.randomUUID().toString(),
+-                    role = AiMessageRole.ASSISTANT,
+-                    body = answer,
+-                    citations = citations,
+-                    createdAtEpochMillis = System.currentTimeMillis(),
+-                ).toEntity(),
++
++            saveAssistantMessage(result.answer, result.citations)
++            mutableAssistantState.value = mutableAssistantState.value.copy(
++                lastProviderLabel = result.providerLabel,
++                usedOfflineFallback = result.usedFallback,
++                followUpQuestions = result.followUps.take(3),
+             )
+             mutableRequestState.value = AiRequestState()
+             refreshRuntime()
+@@ -238,7 +291,13 @@
+ 
+     suspend fun clearConversation() {
+         dao.clearAiMessages()
++        preferences.edit().remove(KEY_CLOUD_SESSION_ID).apply()
+         mutableRequestState.value = AiRequestState()
++        mutableAssistantState.value = mutableAssistantState.value.copy(
++            lastProviderLabel = "Not used yet",
++            usedOfflineFallback = false,
++            followUpQuestions = emptyList(),
++        )
+     }
+ 
+     fun clearError() {
+@@ -262,11 +321,177 @@
+         return result.feedback
+     }
+ 
+-    private fun setRuntimeBusy(busy: Boolean) {
+-        mutableRuntimeState.value = mutableRuntimeState.value.copy(busy = busy)
++    private suspend fun buildStudyContext(
++        cleanQuestion: String,
++        selectedMeetingPartId: String?,
++    ): StudyContextBundle {
++        val snapshot = studyRepository.widgetSnapshot()
++        val family = studyRepository.familyWorshipSnapshot()
++        val selectedPart = selectedMeetingPartId?.let { id ->
++            snapshot.weekly.parts.firstOrNull { it.id == id }
++                ?: dao.getMeetingPart(id)?.toDomain()
++        }
++        val preferredUrls = buildSet {
++            add(snapshot.daily.officialUrl)
++            add(snapshot.weekly.officialUrl)
++            add(family.officialUrl)
++            selectedPart?.officialUrl?.let(::add)
++        }.filter(SpiritualSourcePolicy::isAllowed).toSet()
++        val expandedQuestion = buildString {
++            append(cleanQuestion)
++            append(" Current Daily Text: ").append(snapshot.daily.scriptureReference)
++            append(". Current Bible reading: ").append(snapshot.weekly.bibleReading)
++            selectedPart?.let { append(". Selected meeting part: ").append(it.title) }
++            append(". Family Worship topic: ").append(family.title).append(' ').append(family.theme)
++        }
++        return StudyContextBundle(
++            context = AiStudyContextDto(
++                dailyScriptureReference = snapshot.daily.scriptureReference,
++                dailyOfficialUrl = snapshot.daily.officialUrl,
++                weeklyBibleReading = snapshot.weekly.bibleReading,
++                weeklyOfficialUrl = snapshot.weekly.officialUrl,
++                selectedMeetingPartId = selectedPart?.id,
++                familyWorshipTitle = family.title,
++                familyWorshipTheme = family.theme,
++                familyKeyScripture = family.keyScripture,
++                familyOfficialUrl = family.officialUrl,
++            ),
++            selectedPart = selectedPart,
++            passages = knowledgeRepository.retrieve(expandedQuestion, preferredUrls, limit = 8),
++        )
++    }
++
++    private suspend fun smartOnlineAnswer(
++        question: String,
++        bundle: StudyContextBundle,
++    ): AnswerResult {
++        val recent = dao.recentAiMessages(13)
++            .asReversed()
++            .dropLast(1)
++            .takeLast(10)
++            .map { entity ->
++                val message = entity.toDomain()
++                AiStudyTurnDto(
++                    role = if (message.role == AiMessageRole.USER) "user" else "assistant",
++                    body = message.body.take(4_000),
++                )
++            }
++        val request = AiStudyRequestDto(
++            sessionId = preferences.getString(KEY_CLOUD_SESSION_ID, null),
++            question = question,
++            context = bundle.context,
++            recentMessages = recent,
++            localSources = bundle.passages.take(6).map { passage ->
++                AiStudySourceExcerptDto(
++                    title = passage.title,
++                    url = passage.citationUrl,
++                    excerpt = buildString {
++                        if (passage.heading.isNotBlank()) append(passage.heading).append("\n")
++                        append(passage.body)
++                    }.take(3_000),
++                )
++            },
++            requestedDepth = when {
++                question.contains("deep dive", ignoreCase = true) || question.length > 500 -> "deep"
++                question.contains("brief", ignoreCase = true) || question.contains("concise", ignoreCase = true) -> "brief"
++                else -> "adaptive"
++            },
++        )
++        val response = backendApi.askStudyAssistant(request)
++        require(response.answer.isNotBlank()) { "The secure AI service returned an empty answer." }
++        val citations = response.citations.mapNotNull { citation ->
++            citation.url.takeIf(SpiritualSourcePolicy::isAllowed)?.let { url ->
++                StudyCitation(citation.title.ifBlank { "Official source" }, url)
++            }
++        }.distinctBy { it.url }
++        require(citations.isNotEmpty()) { "The secure AI answer did not include verified official sources." }
++        preferences.edit().putString(KEY_CLOUD_SESSION_ID, response.sessionId).apply()
++        return AnswerResult(
++            answer = response.answer.trim(),
++            citations = citations,
++            providerLabel = response.modelLabel.ifBlank { "Smart Online AI" },
++            followUps = response.followUpQuestions.filter { it.length in 3..240 },
++        )
++    }
++
++    private suspend fun privateOfflineAnswer(
++        question: String,
++        passages: List<RetrievedOfficialPassage>,
++    ): AnswerResult {
++        if (passages.isEmpty()) {
++            val safeMessage = if (networkStatusMonitor.isOnline()) {
++                "I could not find enough verif
