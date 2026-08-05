@@ -1,0 +1,162 @@
+eProvider.label
+-                    Text("Active: $activeLabel", color = MaterialTheme.colorScheme.primary)
++                    Text("Mode: ${assistant.mode.label}", color = MaterialTheme.colorScheme.primary)
++                    Text(
++                        "Last answer: ${assistant.lastProviderLabel}",
++                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .68f),
++                        style = MaterialTheme.typography.bodySmall,
++                    )
+                 }
+                 Icon(
+                     if (runtime.online) Icons.Outlined.CloudDone else Icons.Outlined.CloudOff,
+@@ -270,7 +302,37 @@
+                 )
+             }
+ 
+-            StatusLine("Connection", if (runtime.online) "Online — live refresh available" else "Offline — cached sources only")
++            Text("Choose how the assistant answers", fontWeight = FontWeight.SemiBold)
++            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
++                AiAssistantMode.entries.forEach { mode ->
++                    FilterChip(
++                        selected = assistant.mode == mode,
++                        onClick = { onModeChange(mode) },
++                        modifier = Modifier.fillMaxWidth(),
++                        label = {
++                            Column(Modifier.padding(vertical = 3.dp)) {
++                                Text(mode.label, fontWeight = FontWeight.SemiBold)
++                                Text(mode.description, style = MaterialTheme.typography.bodySmall)
++                            }
++                        },
++                    )
++                }
++            }
++            if (!assistant.smartOnlineConfigured) {
++                Text(
++                    "Smart Online AI is not configured in this build. Auto mode will use private offline help until a secure backend is connected.",
++                    color = MaterialTheme.colorScheme.error,
++                    style = MaterialTheme.typography.bodySmall,
++                )
++            } else if (assistant.usedOfflineFallback) {
++                Text(
++                    "The last request automatically fell back to the private offline assistant.",
++                    color = MaterialTheme.colorScheme.tertiary,
++                    style = MaterialTheme.typography.bodySmall,
++                )
++            }
++
++            StatusLine("Connection", if (runtime.online) "Online — Smart Online research is available" else "Offline — cached sources only")
+             StatusLine("Gemini Nano", runtime.geminiNano.detail)
+             StatusLine("Offline Study AI", runtime.localModel.detail)
+             StatusLine(
+@@ -354,7 +416,7 @@
+         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+             Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+             Text("Begin a focused study", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+-            Text("Answers are built from the verified local JW source library and continue working offline after synchronization.")
++            Text("Auto mode uses the secure Smart Online assistant for strong, connected answers and falls back to verified private offline help when needed.")
+             listOf(
+                 "Help me understand today’s Daily Text more deeply.",
+                 "What does this week’s Bible reading teach me about Jehovah?",
+@@ -433,7 +495,7 @@
+             Text("Source protection", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+             Text("Spiritual research is restricted to JW.org, Watchtower Online Library, and the New World Translation—Study Edition.")
+             Text(
+-                "The model cannot create links. The app attaches only the verified sources the answer actually used, and routes each citation through JW Library instead of silently opening a browser.",
++                "The secure online model researches only approved official domains. The app validates every attached citation and routes it through JW Library. Your OpenAI API key remains on the private server and is never stored in the APK.",
+                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+             )
+         }
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+@@ -59,6 +59,7 @@
+ import androidx.compose.material3.ExperimentalMaterial3Api
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.IconButton
++import androidx.compose.material3.LinearProgressIndicator
+ import androidx.compose.material3.LocalTextStyle
+ import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.OutlinedButton
+@@ -146,6 +147,10 @@
+     val line: Bitmap,
+     val mask: Bitmap,
+     val changed: Bitmap,
++    val colorMaster: Bitmap,
++    val colorLine: Bitmap,
++    val colorMask: Bitmap,
++    val paletteLabels: Map<Int, String>,
+ )
+ 
+ private fun loadAssetBitmap(context: android.content.Context, path: String): Bitmap =
+@@ -156,6 +161,7 @@
+ @Composable
+ private fun rememberWorkbookIllustration(activity: WorkbookActivityDefinition): LoadedWorkbookIllustration {
+     val context = LocalContext.current
++    val manifest = remember { WorkbookIllustrationCatalog.manifest(context) }
+     val asset = remember(activity.id) { WorkbookIllustrationCatalog.assetFor(context, activity) }
+     return remember(asset.id) {
+         LoadedWorkbookIllustration(
+@@ -164,6 +170,10 @@
+             line = transparentLineBitmap(loadAssetBitmap(context, asset.linePath)),
+             mask = loadAssetBitmap(context, asset.regionMaskPath),
+             changed = loadAssetBitmap(context, asset.changedPath),
++            colorMaster = loadAssetBitmap(context, asset.colorMasterPath),
++            colorLine = transparentLineBitmap(loadAssetBitmap(context, asset.colorLinePath)),
++            colorMask = loadAssetBitmap(context, asset.colorRegionMaskPath),
++            paletteLabels = manifest.palette.associate { it.number to it.label },
+         )
+     }
+ }
+@@ -183,20 +193,20 @@
+ }
+ 
+ private fun buildColorOverlay(
+-    illustration: LoadedWorkbookIllustration,
++    mask: Bitmap,
+     activityId: String,
+     selectedColors: Map<String, Long>,
+ ): Bitmap {
+-    val width = illustration.mask.width
+-    val height = illustration.mask.height
++    val width = mask.width
++    val height = mask.height
+     val maskPixels = IntArray(width * height)
+-    illustration.mask.getPixels(maskPixels, 0, width, 0, 0, width, height)
++    mask.getPixels(maskPixels, 0, width, 0, 0, width, height)
+     val output = IntArray(maskPixels.size)
+     for (index in maskPixels.indices) {
+         val regionId = AndroidColor.red(maskPixels[index]).toString()
+         val color = selectedColors[workbookRegionKey(activityId, regionId)]
+         output[index] = if (color == null || color == 0xFFFFFFFF) AndroidColor.TRANSPARENT
+-        else AndroidColor.argb(205, AndroidColor.red(color.toInt()), AndroidColor.green(color.toInt()), AndroidColor.blue(color.toInt()))
++        else AndroidColor.argb(255, AndroidColor.red(color.toInt()), AndroidColor.green(color.toInt()), AndroidColor.blue(color.toInt()))
+     }
+     return Bitmap.createBitmap(output, width, height, Bitmap.Config.ARGB_8888)
+ }
+@@ -755,15 +765,64 @@
+ ) {
+     val illustration = rememberWorkbookIllustration(activity)
+     val spots = illustration.asset.differences
+-    val found = spots.filter { "${activity.id}:${it.id}" in progress.foundPuzzleIds }
++    val foundIds = spots.filter { "${activity.id}:${it.id}" in progress.foundPuzzleIds }.map { it.id }.toSet()
++    val foundCount = foundIds.size
++    val allFound = spots.isNotEmpty() && foundCount == spots.size
++    var feedback by rememberSaveable(activity.id) { mutableStateOf("Tap a difference in either picture.") }
++    var wrongTaps by rememberSaveable(activity.id) { mutableStateOf(0) }
++    var hintStage by rememberSaveable(activity.id) { mutableStateOf(0) }
++    var hintSpotId by rememberSaveable(activity.id) { mutableStateOf<String?>(null) }
++    val hintColor = MaterialTheme.colorScheme.tertiary
++
++    fun quadrant(spot: com.mystudycompanion.app.companion.WorkbookIllustrationDifference): String {
++        val vertical = if (spot.y < 500) "upper" else "lower"
++        val horizontal = if (spot.x < 500) "left" else "right"
++        return "$vertical-$horizontal area"
++    }
++
++    fun handleTap(tapped: Offset, width: Float, height: Float) {
++        if (width <= 0f || height <= 0f || allFound) return
++        val normalizedX = tapped.x / width * 1000f
++        val normalizedY = tapped.y / height * 1000f
++        val spot = spots.firstOrNull {
++            hypot(normalizedX - it.x, normalizedY - it.y) <= maxOf(it.radius.toFloat(), 90f)
++        }
++        w
