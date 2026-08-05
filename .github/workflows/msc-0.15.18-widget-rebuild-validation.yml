@@ -1,0 +1,129 @@
+name: My Study Companion 0.15.18 Widget Rebuild Validation
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.18-widget-rebuild-validation.yml
+      - .msc-build/apply-0.15.18-premium-widgets.sh
+      - .msc-build/0.15.18-widget-rebuild.py.gz.b64
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-01518-widget-rebuild-validation
+  cancel-in-progress: true
+
+jobs:
+  validate-source-and-resources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out cumulative repair branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic Android and image toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            Pillow==12.2.0 numpy==2.4.2 scipy==1.17.0 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+
+      - name: Reconstruct 0.15.18 and replace the broken StackView widgets
+        shell: bash
+        env:
+          # This is source validation only. It does not claim or deploy Smart Online.
+          MSC_SMART_ONLINE_VALIDATED: 'false'
+        run: |
+          set -euo pipefail
+          bash .msc-build/apply-0.15.18-premium-widgets.sh
+
+      - name: Prove widget layout policy and cumulative Android compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-0.15.18-widget-validation/metadata
+          (
+            cd MyStudyCompanion
+            gradle --no-daemon --stacktrace \
+              :app:testDebugUnitTest \
+              :app:processDebugResources \
+              :app:compileDebugKotlin \
+              :wear:compileDebugKotlin
+          ) 2>&1 | tee release-0.15.18-widget-validation/metadata/ANDROID-COMPILE-AND-TEST.txt
+
+      - name: Enforce no-StackView no-clipping and no-APK gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          WIDGET='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt'
+          MANIFEST='MyStudyCompanion/app/src/main/AndroidManifest.xml'
+          test -s "$WIDGET"
+          grep -Fq 'getAppWidgetOptions' "$WIDGET"
+          grep -Fq 'OPTION_APPWIDGET_MIN_WIDTH' "$WIDGET"
+          grep -Fq 'OPTION_APPWIDGET_MIN_HEIGHT' "$WIDGET"
+          grep -Fq 'widget_dashboard_tall' "$WIDGET"
+          ! grep -Fq 'StackView' "$WIDGET"
+          ! grep -Fq 'RemoteViewsService' "$WIDGET"
+          ! grep -Fq 'CompanionPagerService' "$MANIFEST"
+          test ! -e MyStudyCompanion/app/src/main/res/layout/widget_pager.xml
+          test ! -e MyStudyCompanion/app/src/main/res/layout/widget_pager_page.xml
+          for layout in \
+            widget_summary.xml \
+            widget_dashboard_compact.xml \
+            widget_dashboard_wide.xml \
+            widget_dashboard_tall.xml; do
+            path="MyStudyCompanion/app/src/main/res/layout/$layout"
+            test -s "$path"
+            grep -Fq 'android:fontFamily="sans-serif' "$path"
+            grep -Fq 'android:ellipsize="end"' "$path"
+          done
+          if find . -type f -name '*.apk' -print -quit | grep -q .; then
+            echo 'Validation must not publish or package a fallback-signed APK.' >&2
+            exit 1
+          fi
+          cat > release-0.15.18-widget-validation/metadata/NO-UNSAFE-RELEASE.txt <<'EOF'
+          PASS: source and Android resources compiled without building an APK.
+          PASS: no disposable signer or replacement signing identity was used.
+          PASS: no Firebase Hosting address was substituted for the Cloud Run API.
+          PASS: no Cloud Run, Firebase Auth, App Check, Firestore, or server secret was changed.
+          PASS: only a future canonical signer-verified connected workflow may publish 0.15.18.
+          EOF
+
+      - name: Upload widget source and compile evidence only
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.18-widget-rebuild-source-validation
+          path: release-0.15.18-widget-validation
+          retention-days: 14
+          if-no-files-found: error
