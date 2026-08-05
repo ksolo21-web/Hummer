@@ -1,0 +1,58 @@
+name: HAVENLINE Font Generation Fix
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - .github/workflows/havenline-fix-font-generation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+      - name: Replace unsupported dynamic-font clone
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineProceduralArtStudio.cs")
+          source = path.read_text(encoding="utf-8")
+          old = '''            AssetDatabase.DeleteAsset(FontPath);
+            var source = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (source == null)
+                throw new InvalidOperationException("Unity runtime font resource is unavailable.");
+            var font = UnityEngine.Object.Instantiate(source);
+            font.name = "HAVENLINE_UI_Rounded";
+            AssetDatabase.CreateAsset(font, FontPath);
+'''
+          new = '''            AssetDatabase.DeleteAsset(FontPath);
+            var font = Font.CreateDynamicFontFromOSFont(
+                new[] { "Roboto", "Noto Sans", "DejaVu Sans", "Arial", "sans-serif" },
+                32);
+            if (font == null)
+                throw new InvalidOperationException("No supported system font was available for HAVENLINE UI generation.");
+            font.name = "HAVENLINE_UI_Rounded";
+            AssetDatabase.CreateAsset(font, FontPath);
+'''
+          if old not in source:
+              raise SystemExit("Expected HAVENLINE font-generation block was not found")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
+      - name: Commit correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineProceduralArtStudio.cs
+          git commit -m "Generate production UI font without cloning dynamic assets"
+          git push origin HEAD:havenline-unity-reference-rebuild
