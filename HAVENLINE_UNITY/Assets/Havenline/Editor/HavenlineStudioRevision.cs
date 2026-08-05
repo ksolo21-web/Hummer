@@ -2,8 +2,8 @@ namespace Havenline.Editor
 {
     internal static class HavenlineStudioRevision
     {
-        public const string Current = "0.1.0-review.23";
+        public const string Current = "0.1.0-review.24";
         public const string Purpose =
-            "Validate the accepted volumetric furnace and corrected foldable HUD on one exact head while restricting unfinished-content detection to actionable markers so legitimate premium validators cannot fail their own source gate.";
+            "Preserve the accepted volumetric furnace and foldable HUD layout while giving the three top status cards dedicated near-opaque rounded sprites and runtime opacity enforcement so world barricades cannot read through as stray UI glyphs.";
     }
 }
