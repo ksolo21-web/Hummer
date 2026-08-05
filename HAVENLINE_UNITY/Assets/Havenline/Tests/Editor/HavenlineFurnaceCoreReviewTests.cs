@@ -39,5 +39,25 @@ namespace Havenline.Tests
                 Object.DestroyImmediate(ember);
             }
         }
+
+        [Test]
+        public void FurnaceMaterialsRemainReadableBeforeEmissionAndDoNotClipToWhite()
+        {
+            var outerBase = HavenlinePremiumFlameMeshFactory.FlameOuterBase;
+            var outerEmission = HavenlinePremiumFlameMeshFactory.FlameOuterEmission;
+            var innerBase = HavenlinePremiumFlameMeshFactory.FlameInnerBase;
+            var innerEmission = HavenlinePremiumFlameMeshFactory.FlameInnerEmission;
+
+            Assert.That(outerBase.r, Is.InRange(0.62f, 0.78f),
+                "Outer flame base must remain visible before an emissive shader variant warms up.");
+            Assert.That(outerBase.g, Is.InRange(0.055f, 0.14f));
+            Assert.That(outerEmission.r, Is.InRange(0.90f, 1.20f),
+                "Outer emission must be warm but restrained.");
+            Assert.That(innerBase.r, Is.InRange(0.92f, 1f));
+            Assert.That(innerBase.g, Is.InRange(0.24f, 0.40f));
+            Assert.That(innerEmission.r, Is.InRange(1.20f, 1.60f),
+                "Inner emission must not be driven into white clipping.");
+            Assert.That(innerEmission.g, Is.InRange(0.25f, 0.45f));
+        }
     }
 }
