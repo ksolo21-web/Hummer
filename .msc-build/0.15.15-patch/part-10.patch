@@ -1,0 +1,174 @@
+hen {
++            spot == null -> {
++                wrongTaps += 1
++                feedback = "Not there yet—compare shapes, colors, and missing objects carefully."
++            }
++            spot.id in foundIds -> feedback = "You already found that difference. Keep looking."
++            else -> {
++                repository.setWorkbookPuzzleFound(pageKey, "${activity.id}:${spot.id}", true)
++                feedback = if (foundCount + 1 == spots.size) {
++                    "Excellent—every difference is found."
++                } else {
++                    "Correct! ${spots.size - foundCount - 1} left."
++                }
++                hintSpotId = null
++                hintStage = 0
++            }
++        }
++    }
++
+     Text(
+-        "${found.size} of ${spots.size} differences found. Tap a real change in the second professional illustration.",
+-        style = MaterialTheme.typography.bodySmall,
++        if (allFound) "All ${spots.size} differences found." else "$foundCount of ${spots.size} differences found",
++        style = MaterialTheme.typography.titleMedium,
+         fontWeight = FontWeight.SemiBold,
+     )
++    LinearProgressIndicator(
++        progress = { if (spots.isEmpty()) 0f else foundCount.toFloat() / spots.size },
++        modifier = Modifier.fillMaxWidth(),
++    )
++    Text(
++        "Compare both scenes and tap the actual changed detail. The answer locations are never listed below the pictures.",
++        style = MaterialTheme.typography.bodySmall,
++    )
++
+     BoxWithConstraints(Modifier.fillMaxWidth()) {
+         val narrow = maxWidth < 720.dp
+-        val picture: @Composable (String, Bitmap, Boolean, Modifier) -> Unit = { label, bitmap, changed, pictureModifier ->
++        val picture: @Composable (String, Bitmap, Modifier) -> Unit = { label, bitmap, pictureModifier ->
+             Column(pictureModifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                 Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                 Canvas(
+@@ -772,27 +831,35 @@
+                         .aspectRatio(illustration.asset.aspectRatio)
+                         .background(Color.White, RoundedCornerShape(16.dp))
+                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+-                        .then(if (changed) Modifier.pointerInput(activity.id, progress.foundPuzzleIds) {
++                        .pointerInput(activity.id, progress.foundPuzzleIds, allFound) {
+                             detectTapGestures { tapped ->
+-                                val normalizedX = tapped.x / size.width * 1000f
+-                                val normalizedY = tapped.y / size.height * 1000f
+-                                val spot = spots.firstOrNull {
+-                                    hypot(normalizedX - it.x, normalizedY - it.y) <= it.radius
+-                                }
+-                                if (spot != null) repository.setWorkbookPuzzleFound(pageKey, "${activity.id}:${spot.id}", true)
++                                handleTap(tapped, size.width.toFloat(), size.height.toFloat())
+                             }
+-                        } else Modifier),
++                        },
+                 ) {
+                     drawIllustrationBitmap(bitmap)
+-                    if (changed) {
+-                        val scaleX = size.width / 1000f
+-                        val scaleY = size.height / 1000f
+-                        spots.filter { "${activity.id}:${it.id}" in progress.foundPuzzleIds }.forEach { spot ->
++                    val scaleX = size.width / 1000f
++                    val scaleY = size.height / 1000f
++                    spots.filter { it.id in foundIds }.forEach { spot ->
++                        drawCircle(
++                            color = Color(0xFF2E7D32),
++                            radius = spot.radius * minOf(scaleX, scaleY) * .78f,
++                            center = Offset(spot.x * scaleX, spot.y * scaleY),
++                            style = Stroke(width = 4f),
++                        )
++                        drawCircle(
++                            color = Color(0x332E7D32),
++                            radius = spot.radius * minOf(scaleX, scaleY) * .66f,
++                            center = Offset(spot.x * scaleX, spot.y * scaleY),
++                        )
++                    }
++                    hintSpotId?.let { hintId ->
++                        spots.firstOrNull { it.id == hintId }?.let { spot ->
+                             drawCircle(
+-                                color = Color(0xFF2E7D32),
+-                                radius = spot.radius * minOf(scaleX, scaleY) * .72f,
++                                color = hintColor,
++                                radius = spot.radius * minOf(scaleX, scaleY) * 1.15f,
+                                 center = Offset(spot.x * scaleX, spot.y * scaleY),
+-                                style = Stroke(width = 4f),
++                                style = Stroke(width = 5f),
+                             )
+                         }
+                     }
+@@ -801,18 +868,63 @@
+         }
+         if (narrow) {
+             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+-                picture("Original", illustration.master, false, Modifier.fillMaxWidth())
+-                picture("Changed picture", illustration.changed, true, Modifier.fillMaxWidth())
++                picture("Original", illustration.master, Modifier.fillMaxWidth())
++                picture("Changed picture", illustration.changed, Modifier.fillMaxWidth())
+             }
+         } else {
+             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+-                picture("Original", illustration.master, false, Modifier.weight(1f))
+-                picture("Changed picture", illustration.changed, true, Modifier.weight(1f))
++                picture("Original", illustration.master, Modifier.weight(1f))
++                picture("Changed picture", illustration.changed, Modifier.weight(1f))
++            }
++        }
++    }
++
++    Card(
++        colors = CardDefaults.cardColors(
++            containerColor = if (allFound) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
++        ),
++    ) {
++        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
++            Text(feedback, fontWeight = FontWeight.SemiBold)
++            if (wrongTaps > 0 && !allFound) {
++                Text("Careful tries: $wrongTaps", style = MaterialTheme.typography.labelSmall)
+             }
+         }
+     }
+-    if (found.isNotEmpty()) Text(found.joinToString(" • ") { "✓ ${it.label}" }, style = MaterialTheme.typography.bodySmall)
+-    OutlinedButton(onClick = { repository.clearWorkbookPuzzle(pageKey, activity.id) }) { Text("Reset differences") }
++
++    BoxWithConstraints(Modifier.fillMaxWidth()) {
++        val controls: @Composable () -> Unit = {
++            OutlinedButton(
++                enabled = !allFound && foundCount < spots.size,
++                onClick = {
++                    val next = spots.firstOrNull { it.id !in foundIds } ?: return@OutlinedButton
++                    if (hintStage % 2 == 0) {
++                        hintSpotId = null
++                        feedback = "Hint: look in the ${quadrant(next)}."
++                    } else {
++                        hintSpotId = next.id
++                        feedback = "A gentle ring now marks the search area—not the exact changed object."
++                    }
++                    hintStage += 1
++                },
++            ) { Text("Hint") }
++            OutlinedButton(
++                enabled = foundCount > 0 || wrongTaps > 0,
++                onClick = {
++                    repository.clearWorkbookPuzzle(pageKey, activity.id)
++                    wrongTaps = 0
++                    hintStage = 0
++                    hintSpotId = null
++                    feedback = "Puzzle reset. Tap a difference in either picture."
++                },
++            ) { Text("Reset") }
++        }
++        if (maxWidth < 390.dp) {
++            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
++        } else {
++            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
++        }
++    }
+ }
+ 
+ @Composable
+@@ -885,98 +997,223 @@
+     repository: CompanionHubRepository,
+ ) {
+     val illustration = rememberWorkbookIllustration(activity)
+-    val regions = illustration.asset.regions
++    val regions = illustration.asset.colorRegions
++    val usedNumbers = illustration.asset.colorNumbersUsed.ifEmpty { regions.map { it.number }.distinct().sorted() }
+     val firstIncomplete = regions.firstOrNull { region ->
+         progress.selectedColors[workbookRegionKey(activity.id, region.id)] != workbookNumberColors[region.number]
+-    }?.number ?: 1
+-    val selectedNumber =
