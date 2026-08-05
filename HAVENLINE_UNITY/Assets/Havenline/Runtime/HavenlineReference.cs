@@ -13,9 +13,10 @@ namespace Havenline
         public const string ScenePath = "Assets/Havenline/Scenes/FrozenOutpost.unity";
         public const string ReferenceApkSha256 = "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67";
 
-        public const float CameraSize = 10.35f;
-        public static readonly Vector3 CameraOffset = new(0f, 6.45f, 6.45f);
-        public const float CameraFocusHeight = 0.88f;
+        // Premium playable framing: closer characters with a lower, more dimensional angle.
+        public const float CameraSize = 9.45f;
+        public static readonly Vector3 CameraOffset = new(0f, 5.25f, 8.15f);
+        public const float CameraFocusHeight = 0.82f;
         public const float CameraLookAhead = 0.62f;
         public const float CameraFollowSharpness = 8.6f;
         public const float TurnSharpness = 16f;
