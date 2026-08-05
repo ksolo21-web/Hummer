@@ -69,8 +69,10 @@ cp MyStudyCompanion/build/reports/workbook/color-by-number-premium-v5-contact-sh
   "$RELEASE/metadata/COLOR-BY-NUMBER-PREMIUM-VISUAL-REVIEW.jpg"
 cp MyStudyCompanion/app/src/main/assets/workbook/manifest.json \
   "$RELEASE/metadata/WORKBOOK-MANIFEST-SOURCE.json"
-cp .msc-build/0.15.17-interactive-paint.patch \
-  "$RELEASE/metadata/INTERACTION-PATCH.txt"
+cp .msc-build/0.15.17-interactive-editor.kt.gz.b64 \
+  "$RELEASE/metadata/INTERACTIVE-EDITOR-SOURCE.kt.gz.b64"
+sha256sum MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt \
+  > "$RELEASE/metadata/INTERACTIVE-EDITOR-SOURCE-SHA256.txt"
 
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$PHONE" > "$RELEASE/metadata/PHONE-SIGNING-CI.txt"
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$WEAR" > "$RELEASE/metadata/WEAR-SIGNING-CI.txt"
