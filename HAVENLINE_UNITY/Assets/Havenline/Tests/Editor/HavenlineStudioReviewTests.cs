@@ -1,8 +1,12 @@
 using System;
 using System.IO;
+using System.Linq;
 using Havenline.Editor;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Havenline.Tests
 {
@@ -27,9 +31,38 @@ namespace Havenline.Tests
             Assert.That(new FileInfo(wide).Length, Is.GreaterThan(100_000));
             Assert.That(new FileInfo(close).Length, Is.GreaterThan(100_000));
 
+            ValidateTopHudCards();
             ValidatePremiumProof(wide, "wide phone proof");
             ValidatePremiumProof(close, "close phone proof");
             ValidatePremiumProof(foldable, "foldable proof");
+        }
+
+        private static void ValidateTopHudCards()
+        {
+            var images = SceneManager.GetActiveScene()
+                .GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<Image>(true))
+                .ToArray();
+            var topNames = new[] { "ResourcesPanel", "ObjectivePanel", "FurnacePanel" };
+            foreach (var name in topNames)
+            {
+                var image = images.SingleOrDefault(candidate => candidate.name == name);
+                Assert.That(image, Is.Not.Null, "Shipping HUD is missing " + name);
+                Assert.That(image.color.a, Is.GreaterThanOrEqualTo(0.99f),
+                    name + " must be opaque enough to prevent world props reading through as UI glyphs.");
+                Assert.That(image.sprite, Is.Not.Null, name + " has no rounded panel sprite.");
+                Assert.That(AssetDatabase.GetAssetPath(image.sprite), Does.Contain("HAVENLINE_UI_TopPanel.asset"),
+                    name + " is not using the dedicated top-status panel sprite.");
+                var texture = image.sprite.texture;
+                var centerAlpha = texture.GetPixel(texture.width / 2, texture.height / 2).a;
+                Assert.That(centerAlpha, Is.GreaterThanOrEqualTo(0.96f),
+                    name + " panel texture remains too translucent at its center.");
+            }
+
+            var context = images.SingleOrDefault(candidate => candidate.name == "ContextPanel");
+            Assert.That(context, Is.Not.Null);
+            Assert.That(AssetDatabase.GetAssetPath(context.sprite), Does.Contain("HAVENLINE_UI_Panel.asset"),
+                "Context UI should retain the lighter standard overlay instead of using the heavy top card.");
         }
 
         private static void ValidatePremiumProof(string path, string label)
