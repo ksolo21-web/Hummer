@@ -1,0 +1,169 @@
+--- a/MyStudyCompanion/CHANGELOG.md
++++ b/MyStudyCompanion/CHANGELOG.md
+@@ -1,5 +1,15 @@
+ # Changelog
+ 
++## 0.15.15-smart-ai-activity-rebuild-private
++
++- Replaced the disconnected guided-response path with a secure, cloud-first conversational study assistant using the existing authenticated backend and OpenAI Responses API.
++- Added app-managed multi-turn context, current Daily Text/weekly meeting/Family Worship context, verified local official-source excerpts, direct-answer quality checks, tailored follow-up questions, and an explicit private-offline mode.
++- Kept OpenAI credentials off the phone, disabled provider-side response storage for study requests, and restricted web research to JW.org and Watchtower Online Library.
++- Rebuilt all 16 color-by-number pages as curated child-friendly scenes with large meaningful closed regions, reliable tap masks, limited palettes, visible progress, hints, undo/redo, reset, and a completed-picture reveal.
++- Reworked find-the-differences interaction so both pictures are tappable, answers are not exposed in a list, feedback is immediate, hints are staged, and completion is tracked visually.
++- Updated printable PDF output to use the same curated line art, region numbering, and completed colors as the Android activity.
++- Increased phone version code to 48 and Wear OS version code to 360165001 for an in-place upgrade from 0.15.14.
++
+ ## 0.12.1-grounded-links-private
+ 
+ - Enforced a verified source marker at the end of every substantive AI answer paragraph, not merely somewhere in the answer.
+--- a/MyStudyCompanion/app/build.gradle.kts
++++ b/MyStudyCompanion/app/build.gradle.kts
+@@ -45,8 +45,8 @@
+         applicationId = "com.mystudycompanion.app"
+         minSdk = 26
+         targetSdk = 36
+-        versionCode = 47
+-        versionName = "0.15.14-private-alpha-vote-persistence"
++        versionCode = 48
++        versionName = "0.15.15-private-alpha-smart-ai-activity-rebuild"
+         val backendBaseUrl = providers.gradleProperty("MSC_BACKEND_BASE_URL").orElse("").get()
+         val googleWebClientId = providers.gradleProperty("MSC_GOOGLE_WEB_CLIENT_ID").orElse("").get()
+         val localOwnerMode = providers.gradleProperty("MSC_LOCAL_OWNER_MODE").orElse("false").get().toBoolean()
+--- a/MyStudyCompanion/wear/build.gradle.kts
++++ b/MyStudyCompanion/wear/build.gradle.kts
+@@ -35,8 +35,8 @@
+         applicationId = "com.mystudycompanion.app"
+         minSdk = 30
+         targetSdk = 36
+-        versionCode = 360164001
+-        versionName = "0.15.14-wear-private-alpha-vote-persistence"
++        versionCode = 360165001
++        versionName = "0.15.15-wear-private-alpha-smart-ai-activity-rebuild"
+         vectorDrawables.useSupportLibrary = true
+     }
+ 
+--- /dev/null
++++ b/MyStudyCompanion/tools/verify_curated_workbook.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Fail-closed quality gate for the rebuilt workbook activities."""
++from __future__ import annotations
++
++import json
++from collections import Counter
++from pathlib import Path
++
++from PIL import Image
++
++ROOT = Path(__file__).resolve().parents[1]
++WORKBOOK = ROOT / "app/src/main/assets/workbook"
++MANIFEST = WORKBOOK / "manifest.json"
++EDITOR = ROOT / "app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt"
++CATALOG = ROOT / "app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt"
++
++
++def fail(message: str) -> None:
++    raise SystemExit(f"FAIL: {message}")
++
++
++def main() -> None:
++    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
++    if data.get("version") != 4 or data.get("colorByNumberVersion") != 2:
++        fail("manifest must use workbook version 4 and curated color-by-number version 2")
++    assets = data.get("assets")
++    if not isinstance(assets, list) or len(assets) != 16:
++        fail("exactly 16 curated workbook assets are required")
++    palette = {int(item["number"]): item for item in data.get("palette", [])}
++    if not 6 <= len(palette) <= 9:
++        fail("the shared palette must contain 6-9 clearly differentiated colors")
++
++    ids: set[str] = set()
++    minimum_region = 10**9
++    maximum_region_count = 0
++    for asset in assets:
++        asset_id = str(asset.get("id", ""))
++        if not asset_id or asset_id in ids:
++            fail(f"duplicate or blank asset id: {asset_id!r}")
++        ids.add(asset_id)
++        folder = WORKBOOK / asset_id
++        master_path = folder / "color-master.webp"
++        line_path = folder / "color-line.png"
++        mask_path = folder / "color-region-mask.png"
++        for required in (master_path, line_path, mask_path):
++            if not required.is_file() or required.stat().st_size < 500:
++                fail(f"missing or empty curated asset: {required.relative_to(ROOT)}")
++
++        master = Image.open(master_path).convert("RGB")
++        line = Image.open(line_path).convert("L")
++        mask = Image.open(mask_path).convert("RGB")
++        if master.size != line.size or master.size != mask.size:
++            fail(f"{asset_id}: master, line, and mask dimensions differ")
++        if master.width < 480 or master.height < 700:
++            fail(f"{asset_id}: curated images are below the minimum activity resolution")
++
++        regions = asset.get("colorRegions")
++        if not isinstance(regions, list) or not 8 <= len(regions) <= 24:
++            fail(f"{asset_id}: expected 8-24 large color regions")
++        if asset.get("colorRegionCount") != len(regions):
++            fail(f"{asset_id}: colorRegionCount does not match colorRegions")
++        maximum_region_count = max(maximum_region_count, len(regions))
++
++        expected_ids = {int(region["id"]) for region in regions}
++        mask_counts = Counter(pixel[0] for pixel in mask.get_flattened_data() if pixel[0] > 0)
++        if set(mask_counts) != expected_ids:
++            fail(f"{asset_id}: mask IDs and manifest IDs differ")
++        numbers_used = sorted({int(region["number"]) for region in regions})
++        if numbers_used != sorted(asset.get("colorNumbersUsed", [])):
++            fail(f"{asset_id}: colorNumbersUsed is inaccurate")
++        if not set(numbers_used).issubset(palette):
++            fail(f"{asset_id}: a region uses an undefined palette number")
++
++        for region in regions:
++            region_id = int(region["id"])
++            count = mask_counts[region_id]
++            minimum_region = min(minimum_region, count)
++            if count < 900:
++                fail(f"{asset_id} region {region_id}: {count} pixels is too small for reliable child tapping")
++            if int(region.get("pixelCount", -1)) != count:
++                fail(f"{asset_id} region {region_id}: pixelCount is inaccurate")
++            x, y = int(region["centerX"]), int(region["centerY"])
++            if not (0 <= x < 1000 and 0 <= y < 1000):
++                fail(f"{asset_id} region {region_id}: normalized center is outside the picture")
++            pixel_x = min(mask.width - 1, int(x / 1000 * mask.width))
++            pixel_y = min(mask.height - 1, int(y / 1000 * mask.height))
++            if mask.getpixel((pixel_x, pixel_y))[0] != region_id:
++                fail(f"{asset_id} region {region_id}: number marker is not inside its tappable region")
++            if not str(region.get("label", "")).strip():
++                fail(f"{asset_id} region {region_id}: meaningful label is required")
++
++        dark_line_pixels = sum(1 for value in line.get_flattened_data() if value < 100)
++        if dark_line_pixels < 3_000:
++            fail(f"{asset_id}: line art is too faint or incomplete")
++
++    editor = EDITOR.read_text(encoding="utf-8")
++    required_editor_markers = (
++        "Tap a difference in either picture.",
++        "pointerInput(activity.id, progress.foundPuzzleIds, allFound)",
++        "The answer locations are never listed below the pictures.",
++        "buildColorOverlay(illustration.colorMask",
++        "regionAt(\n                        illustration.colorMask",
++        "undoWorkbookColor",
++        "redoWorkbookColor",
++        "Picture complete—great careful work!",
++    )
++    for marker in required_editor_markers:
++        if marker not in editor:
++            fail(f"interactive activity marker is missing: {marker}")
++    if "spots.forEach" in editor[editor.index("private fun FindDifferencesActivity"):editor.index("private fun MatchingActivity")]:
++        fail("find-the-differences must not reveal every answer as a visible list")
++
++    catalog = CATALOG.read_text(encoding="utf-8")
++    for marker in ("colorRegions", "colorRegionCount", "colorNumbersUsed", "pixelCount >= 900"):
++        if marker not in catalog:
++            fail(f"catalog quality gate is missing: {marker}")
++
++    print(
++        "PASS: 16 curated color-by-number scenes verified; "
++        f"minimum tappable region={minimum_region} pixels; maximum regions per page={maximum_region_count}."
++    )
++    print("PASS: find-the-differences uses two tappable scenes, staged hints, immediat
