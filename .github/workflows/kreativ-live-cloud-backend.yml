@@ -1,0 +1,419 @@
+name: Deploy and Verify KREATIV Live Cloud Backend
+
+on:
+  push:
+    branches: [ agent/msc-0.15.12-vote-widget-fix ]
+    paths:
+      - '.github/workflows/kreativ-live-cloud-backend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: kreativ-live-cloud-backend
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+  EXPECTED_PROJECT_ID: my-study-companion-abc01
+  KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
+
+jobs:
+  deploy-and-live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: my-study-companion-private
+
+    steps:
+      - name: Check out exact branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/msc-0.15.12-vote-widget-fix
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate protected deployment identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in GCP_PROJECT_ID GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing protected environment variable: $name" >&2
+              exit 1
+            fi
+          done
+          if [[ "$GCP_PROJECT_ID" != "$EXPECTED_PROJECT_ID" ]]; then
+            echo "Refusing to touch unexpected project: $GCP_PROJECT_ID" >&2
+            exit 1
+          fi
+
+      - id: auth
+        name: Authenticate with Google Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '>= 523.0.0'
+
+      - name: Install Firebase deployment and test tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global firebase-tools@15.1.0
+          mkdir -p .kreativ-cloud-test
+          cd .kreativ-cloud-test
+          npm init -y >/dev/null
+          npm install --save-exact @firebase/rules-unit-testing@5.0.0 firebase@12.8.0 firebase-admin@13.6.0 >/dev/null
+
+      - name: Fetch the exact currently deployed Firestore rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud projects describe "$GCP_PROJECT_ID" >/dev/null
+          gcloud firestore databases describe --database='(default)' --project "$GCP_PROJECT_ID" >/dev/null
+          ACCESS_TOKEN="$(gcloud auth print-access-token)"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://firebaserules.googleapis.com/v1/projects/${GCP_PROJECT_ID}/releases/cloud.firestore" \
+            > .kreativ-cloud-test/live-release-before.json
+          RULESET_NAME="$(jq -r '.rulesetName // empty' .kreativ-cloud-test/live-release-before.json)"
+          if [[ -z "$RULESET_NAME" ]]; then
+            cat .kreativ-cloud-test/live-release-before.json >&2
+            echo 'The live Firestore release did not contain a ruleset name.' >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://firebaserules.googleapis.com/v1/${RULESET_NAME}?view=FULL" \
+            > .kreativ-cloud-test/live-ruleset-before.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('.kreativ-cloud-test/live-ruleset-before.json').read_text())
+          files = data.get('source', {}).get('files', [])
+          candidates = [f for f in files if f.get('name', '').endswith('firestore.rules')]
+          if not candidates and len(files) == 1:
+              candidates = files
+          if len(candidates) != 1 or not candidates[0].get('content'):
+              raise SystemExit(f'Could not identify one live Firestore rules file: {[f.get("name") for f in files]}')
+          Path('.kreativ-cloud-test/firestore.rules.before').write_text(candidates[0]['content'], encoding='utf-8')
+          PY
+          test -s .kreativ-cloud-test/firestore.rules.before
+          grep -Fq 'service cloud.firestore' .kreativ-cloud-test/firestore.rules.before
+          grep -Fq 'match /databases/{database}/documents' .kreativ-cloud-test/firestore.rules.before
+          sha256sum .kreativ-cloud-test/firestore.rules.before | tee .kreativ-cloud-test/live-rules-before.sha256
+
+      - name: Merge only the private KREATIV owner paths into the live rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          before_path = Path('.kreativ-cloud-test/firestore.rules.before')
+          after_path = Path('.kreativ-cloud-test/firestore.rules.merged')
+          source = before_path.read_text(encoding='utf-8')
+
+          block = '''
+
+              // KREATIV Studio: each signed-in user can access only their own private studio.
+              match /kreativUsers/{userId} {
+                allow create, read, update, delete: if request.auth != null && request.auth.uid == userId;
+
+                match /projects/{projectId} {
+                  allow create, read, update, delete: if request.auth != null && request.auth.uid == userId;
+                }
+
+                match /state/{documentId} {
+                  allow create, read, update, delete: if request.auth != null && request.auth.uid == userId;
+                }
+              }
+          '''
+
+          marker = 'match /kreativUsers/{userId}'
+          if marker in source:
+              after_path.write_text(source, encoding='utf-8')
+              print('KREATIV owner rules were already present; preserving the live source unchanged.')
+              raise SystemExit(0)
+
+          anchor = 'match /databases/{database}/documents'
+          anchor_pos = source.find(anchor)
+          if anchor_pos < 0:
+              raise SystemExit('Could not locate the Firestore database match block.')
+          open_pos = source.find('{', anchor_pos + len(anchor))
+          if open_pos < 0:
+              raise SystemExit('Could not locate the opening brace for the database match block.')
+
+          depth = 0
+          i = open_pos
+          quote = None
+          line_comment = False
+          block_comment = False
+          close_pos = None
+          while i < len(source):
+              ch = source[i]
+              nxt = source[i + 1] if i + 1 < len(source) else ''
+              if line_comment:
+                  if ch == '\n':
+                      line_comment = False
+                  i += 1
+                  continue
+              if block_comment:
+                  if ch == '*' and nxt == '/':
+                      block_comment = False
+                      i += 2
+                  else:
+                      i += 1
+                  continue
+              if quote:
+                  if ch == '\\':
+                      i += 2
+                      continue
+                  if ch == quote:
+                      quote = None
+                  i += 1
+                  continue
+              if ch == '/' and nxt == '/':
+                  line_comment = True
+                  i += 2
+                  continue
+              if ch == '/' and nxt == '*':
+                  block_comment = True
+                  i += 2
+                  continue
+              if ch in ('\"', "'"):
+                  quote = ch
+                  i += 1
+                  continue
+              if ch == '{':
+                  depth += 1
+              elif ch == '}':
+                  depth -= 1
+                  if depth == 0:
+                      close_pos = i
+                      break
+              i += 1
+
+          if close_pos is None:
+              raise SystemExit('Could not locate the closing brace for the database match block.')
+
+          merged = source[:close_pos] + block + source[close_pos:]
+          if merged.count(marker) != 1:
+              raise SystemExit('KREATIV rules were not inserted exactly once.')
+          if merged.replace(block, '', 1) != source:
+              raise SystemExit('The merge changed content outside the KREATIV block.')
+          after_path.write_text(merged, encoding='utf-8')
+          print('Inserted one isolated KREATIV owner-only rule block into the exact live rules.')
+          PY
+          grep -Fq 'match /kreativUsers/{userId}' .kreativ-cloud-test/firestore.rules.merged
+          grep -Fq 'request.auth.uid == userId' .kreativ-cloud-test/firestore.rules.merged
+          sha256sum .kreativ-cloud-test/firestore.rules.merged | tee .kreativ-cloud-test/merged-rules.sha256
+          cat > .kreativ-cloud-test/firebase.json <<'JSON'
+          {
+            "firestore": {
+              "rules": "firestore.rules.merged"
+            },
+            "emulators": {
+              "firestore": { "host": "127.0.0.1", "port": 8080 },
+              "ui": { "enabled": false },
+              "singleProjectMode": true
+            }
+          }
+          JSON
+
+      - name: Prove owner access and isolation in the Firestore emulator
+        shell: bash
+        working-directory: .kreativ-cloud-test
+        run: |
+          set -euo pipefail
+          cat > test-rules.mjs <<'JS'
+          import fs from 'node:fs';
+          import {
+            initializeTestEnvironment,
+            assertSucceeds,
+            assertFails,
+          } from '@firebase/rules-unit-testing';
+          import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+
+          const projectId = 'demo-kreativ-live-rules';
+          const uid = 'kreativ-owner-test';
+          const env = await initializeTestEnvironment({
+            projectId,
+            firestore: {
+              host: '127.0.0.1',
+              port: 8080,
+              rules: fs.readFileSync('firestore.rules.merged', 'utf8'),
+            },
+          });
+
+          try {
+            const ownerDb = env.authenticatedContext(uid, { email: 'owner@example.test' }).firestore();
+            const intruderDb = env.authenticatedContext('other-user', { email: 'other@example.test' }).firestore();
+            const guestDb = env.unauthenticatedContext().firestore();
+
+            const root = doc(ownerDb, `kreativUsers/${uid}`);
+            const project = doc(ownerDb, `kreativUsers/${uid}/projects/project-1`);
+            const state = doc(ownerDb, `kreativUsers/${uid}/state/settings`);
+
+            await assertSucceeds(setDoc(root, { ownerUid: uid, schemaVersion: 1 }));
+            await assertSucceeds(setDoc(project, { name: 'Cloud test project' }));
+            await assertSucceeds(setDoc(state, { theme: 'dark' }));
+            await assertSucceeds(getDoc(root));
+            await assertSucceeds(getDoc(project));
+            await assertSucceeds(getDoc(state));
+            await assertSucceeds(deleteDoc(project));
+
+            await assertFails(setDoc(doc(intruderDb, `kreativUsers/${uid}/projects/blocked`), { blocked: false }));
+            await assertFails(getDoc(doc(intruderDb, `kreativUsers/${uid}/state/settings`)));
+            await assertFails(setDoc(doc(guestDb, `kreativUsers/${uid}`), { blocked: false }));
+            console.log('PASS: KREATIV owner CRUD works and cross-user/guest access is denied.');
+          } finally {
+            await env.cleanup();
+          }
+          JS
+          firebase emulators:exec \
+            --only firestore \
+            --project demo-kreativ-live-rules \
+            --config firebase.json \
+            'node test-rules.mjs'
+
+      - name: Deploy only the merged Firestore rules
+        shell: bash
+        working-directory: .kreativ-cloud-test
+        run: |
+          set -euo pipefail
+          firebase \
+            --project "$GCP_PROJECT_ID" \
+            --config firebase.json \
+            deploy --only firestore:rules --non-interactive
+
+      - name: Verify the live release contains the exact merged rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_sha="$(sha256sum .kreativ-cloud-test/firestore.rules.merged | awk '{print $1}')"
+          verified=0
+          for attempt in 1 2 3 4 5 6; do
+            ACCESS_TOKEN="$(gcloud auth print-access-token)"
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              "https://firebaserules.googleapis.com/v1/projects/${GCP_PROJECT_ID}/releases/cloud.firestore" \
+              > .kreativ-cloud-test/live-release-after.json
+            RULESET_NAME="$(jq -r '.rulesetName // empty' .kreativ-cloud-test/live-release-after.json)"
+            if [[ -n "$RULESET_NAME" ]]; then
+              curl --fail --silent --show-error \
+                -H "Authorization: Bearer $ACCESS_TOKEN" \
+                "https://firebaserules.googleapis.com/v1/${RULESET_NAME}?view=FULL" \
+                > .kreativ-cloud-test/live-ruleset-after.json
+              python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('.kreativ-cloud-test/live-ruleset-after.json').read_text())
+          files = data.get('source', {}).get('files', [])
+          candidates = [f for f in files if f.get('name', '').endswith('firestore.rules')]
+          if not candidates and len(files) == 1:
+              candidates = files
+          if len(candidates) == 1 and candidates[0].get('content'):
+              Path('.kreativ-cloud-test/firestore.rules.after').write_text(candidates[0]['content'], encoding='utf-8')
+          PY
+              if [[ -s .kreativ-cloud-test/firestore.rules.after ]]; then
+                actual_sha="$(sha256sum .kreativ-cloud-test/firestore.rules.after | awk '{print $1}')"
+                if [[ "$actual_sha" == "$expected_sha" ]] && grep -Fq 'match /kreativUsers/{userId}' .kreativ-cloud-test/firestore.rules.after; then
+                  verified=1
+                  break
+                fi
+              fi
+            fi
+            sleep 5
+          done
+          if [[ "$verified" != 1 ]]; then
+            echo 'The deployed release could not be verified as the exact merged rules.' >&2
+            exit 1
+          fi
+          echo "PASS: deployed Firestore rules SHA-256 $expected_sha"
+
+      - name: Run authenticated CRUD against the actual production Firestore
+        shell: bash
+        working-directory: .kreativ-cloud-test
+        run: |
+          set -euo pipefail
+          cat > live-smoke.mjs <<'JS'
+          import admin from 'firebase-admin';
+
+          const projectId = process.env.GCP_PROJECT_ID;
+          const apiKey = process.env.KREATIV_FIREBASE_API_KEY;
+          const uid = `kreativ-cloud-smoke-${Date.now()}`;
+          admin.initializeApp({ projectId });
+
+          let created = false;
+          try {
+            const customToken = await admin.auth().createCustomToken(uid);
+            const signIn = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ token: customToken, returnSecureToken: true }),
+            });
+            if (!signIn.ok) throw new Error(`Firebase Auth exchange failed: ${signIn.status} ${await signIn.text()}`);
+            const auth = await signIn.json();
+            created = true;
+            const idToken = auth.idToken;
+            const docUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/kreativUsers/${uid}/state/settings`;
+            const write = await fetch(`${docUrl}?updateMask.fieldPaths=cloudSmoke`, {
+              method: 'PATCH',
+              headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json' },
+              body: JSON.stringify({ fields: { cloudSmoke: { stringValue: 'verified-live' } } }),
+            });
+            if (!write.ok) throw new Error(`Live Firestore write failed: ${write.status} ${await write.text()}`);
+            const read = await fetch(docUrl, { headers: { authorization: `Bearer ${idToken}` } });
+            if (!read.ok) throw new Error(`Live Firestore read failed: ${read.status} ${await read.text()}`);
+            const body = await read.json();
+            if (body?.fields?.cloudSmoke?.stringValue !== 'verified-live') {
+              throw new Error('Live Firestore returned the wrong smoke-test value.');
+            }
+            const remove = await fetch(docUrl, { method: 'DELETE', headers: { authorization: `Bearer ${idToken}` } });
+            if (!remove.ok) throw new Error(`Live Firestore cleanup failed: ${remove.status} ${await remove.text()}`);
+            console.log(`PASS: authenticated production CRUD succeeded for ${uid}.`);
+          } finally {
+            if (created) {
+              try { await admin.auth().deleteUser(uid); } catch (error) { console.error('Auth cleanup warning:', error.message); }
+            }
+            await admin.app().delete();
+          }
+          JS
+          node live-smoke.mjs | tee live-smoke-result.txt
+          grep -Fq 'PASS: authenticated production CRUD succeeded' live-smoke-result.txt
+
+      - name: Upload backend verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: KREATIV-live-cloud-backend-verification
+          path: |
+            .kreativ-cloud-test/firestore.rules.before
+            .kreativ-cloud-test/firestore.rules.merged
+            .kreativ-cloud-test/firestore.rules.after
+            .kreativ-cloud-test/live-release-before.json
+            .kreativ-cloud-test/live-release-after.json
+            .kreativ-cloud-test/live-rules-before.sha256
+            .kreativ-cloud-test/merged-rules.sha256
+            .kreativ-cloud-test/live-smoke-result.txt
+          if-no-files-found: warn
+          retention-days: 30
