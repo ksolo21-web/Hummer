@@ -4,6 +4,6 @@ namespace Havenline.Editor
     {
         public const string Current = "0.1.0-review.15";
         public const string Purpose =
-            "Normalize furnace particle curves and author their real hierarchy scales, then validate effective world size exactly as rendered.";
+            "Validate normalized furnace particle curves, authored hierarchy scales, effective rendered world-size measurement, gameplay integrity and unchanged premium gates.";
     }
 }
