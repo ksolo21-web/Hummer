@@ -124,7 +124,7 @@ fun HomeScreen(viewModel: KreativViewModel, user: AppUser) {
                 val wide = maxWidth >= 720.dp
                 if (wide) {
                     Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        GreetingCard(user, settings.fromKalebMessage, Modifier.weight(1.35f))
+                        GreetingCard(user, settings.fromKalebMessage, viewModel.cloudAccessAvailable, Modifier.weight(1.35f))
                         Image(
                             painter = painterResource(R.drawable.kreativ_icon_source),
                             contentDescription = "KREATIV Studio",
@@ -136,7 +136,7 @@ fun HomeScreen(viewModel: KreativViewModel, user: AppUser) {
                         )
                     }
                 } else {
-                    GreetingCard(user, settings.fromKalebMessage, Modifier.fillMaxWidth())
+                    GreetingCard(user, settings.fromKalebMessage, viewModel.cloudAccessAvailable, Modifier.fillMaxWidth())
                 }
             }
         }
@@ -207,7 +207,7 @@ fun HomeScreen(viewModel: KreativViewModel, user: AppUser) {
 }
 
 @Composable
-private fun GreetingCard(user: AppUser, fromKaleb: String, modifier: Modifier) {
+private fun GreetingCard(user: AppUser, fromKaleb: String, cloudAvailable: Boolean, modifier: Modifier) {
     val tokens = LocalKreativTokens.current
     ElevatedCard(modifier, shape = RoundedCornerShape(28.dp)) {
         Column(
@@ -244,7 +244,7 @@ private fun GreetingCard(user: AppUser, fromKaleb: String, modifier: Modifier) {
                     )
                 }
             }
-            CloudStateBadge(synced = !user.isLocalPreview)
+            CloudStateBadge(synced = !user.isLocalPreview && cloudAvailable)
             Text(
                 if (user.isOliviaOwner) "Take your time, trust your hand, and create something only you could make."
                 else "Create freely, learn deliberately, and keep every step of the journey.",
@@ -665,14 +665,30 @@ fun SettingsScreen(viewModel: KreativViewModel, user: AppUser) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    if (user.isLocalPreview) "Device-only preview."
+                    else if (viewModel.cloudAccessAvailable) "Cloud backup is connected."
+                    else "Google sign-in succeeded. Device autosave is active; Firebase cloud permission is not available yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Button(
                     onClick = viewModel::syncAllUserData,
-                    enabled = viewModel.isCloudConfigured && !viewModel.isBusy,
+                    enabled = viewModel.cloudAccessAvailable && !viewModel.isBusy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Default.CloudSync, null)
                     Spacer(Modifier.width(8.dp))
                     Text("Back up the full studio")
+                }
+                if (!user.isLocalPreview && !viewModel.cloudAccessAvailable) {
+                    OutlinedButton(
+                        onClick = viewModel::retryCloudConnection,
+                        enabled = !viewModel.isBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Retry cloud connection")
+                    }
                 }
                 OutlinedButton(onClick = viewModel::signOut) { Text("Sign out") }
             }

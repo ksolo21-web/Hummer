@@ -69,6 +69,8 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     var aiPrompt by mutableStateOf("")
     var isBusy by mutableStateOf(false)
         private set
+    var cloudAccessAvailable by mutableStateOf(false)
+        private set
     var message by mutableStateOf<String?>(null)
         private set
     var inputStatus by mutableStateOf("Touch precision mode")
@@ -112,8 +114,12 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
             isBusy = true
             container.authRepository.signInWithGoogle(activity)
                 .onSuccess { signedIn ->
-                    message = "Welcome home, ${signedIn.displayName}."
-                    restoreFromCloud()
+                    val cloudReady = restoreFromCloud()
+                    message = if (cloudReady) {
+                        "Welcome home, ${signedIn.displayName}. Cloud backup is connected."
+                    } else {
+                        "Welcome home, ${signedIn.displayName}. Signed in successfully. Device autosave is active while cloud backup authorization is repaired."
+                    }
                 }
                 .onFailure { message = it.message ?: "Google sign-in failed." }
             isBusy = false
@@ -123,6 +129,7 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     fun signOut() {
         viewModelScope.launch {
             container.authRepository.signOut()
+            cloudAccessAvailable = false
             currentProject = null
             screen = StudioScreen.HOME
         }
@@ -404,15 +411,23 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
 
     fun syncCurrentProject() {
         val project = currentProject ?: return
+        if (!cloudAccessAvailable) {
+            message = cloudUnavailableMessage()
+            return
+        }
         viewModelScope.launch {
             isBusy = true
             container.cloudSyncRepository.upload(project)
                 .onSuccess { synced ->
+                    cloudAccessAvailable = true
                     currentProject = container.projectRepository.save(synced)
                     backupUserState()
                     message = "Project safely synced."
                 }
-                .onFailure { message = it.message ?: "Cloud sync failed." }
+                .onFailure {
+                    cloudAccessAvailable = false
+                    message = cloudUnavailableMessage()
+                }
             isBusy = false
         }
     }
@@ -420,6 +435,10 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
     fun syncAllUserData() {
         if (!isCloudConfigured) {
             message = "Sign in with the configured Google account before syncing the full studio."
+            return
+        }
+        if (!cloudAccessAvailable) {
+            message = cloudUnavailableMessage()
             return
         }
         viewModelScope.launch {
@@ -432,9 +451,11 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
                 }
                 backupUserState()
             }.onSuccess {
+                cloudAccessAvailable = true
                 message = "Every local project, lesson milestone, and studio setting is backed up."
             }.onFailure {
-                message = it.message ?: "Full studio sync failed."
+                cloudAccessAvailable = false
+                message = cloudUnavailableMessage()
             }
             isBusy = false
         }
@@ -489,19 +510,40 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
         viewModelScope.launch {
             val updated = transform(settings.value)
             container.settingsRepository.update { updated }
-            if (isCloudConfigured) {
+            if (isCloudConfigured && cloudAccessAvailable) {
                 container.cloudSyncRepository.backupUserState(updated, lessonProgress.value)
+                    .onFailure { cloudAccessAvailable = false }
             }
         }
     }
 
     fun setTheme(theme: StudioThemeId) = updateSettings { it.copy(themeId = theme) }
 
-    private suspend fun restoreFromCloud() {
-        if (!isCloudConfigured) return
+    fun retryCloudConnection() {
+        viewModelScope.launch {
+            isBusy = true
+            val cloudReady = restoreFromCloud()
+            message = if (cloudReady) {
+                "Cloud backup is connected."
+            } else {
+                cloudUnavailableMessage()
+            }
+            isBusy = false
+        }
+    }
+
+    private suspend fun restoreFromCloud(): Boolean {
+        if (!isCloudConfigured) {
+            cloudAccessAvailable = false
+            return false
+        }
         val restoredProjects = container.cloudSyncRepository.restoreProjects().getOrElse {
-            message = "Signed in, but cloud artwork could not be restored yet: ${it.message ?: "unknown error"}"
-            emptyList()
+            cloudAccessAvailable = false
+            return false
+        }
+        val cloudState = container.cloudSyncRepository.restoreUserState().getOrElse {
+            cloudAccessAvailable = false
+            return false
         }
         restoredProjects.forEach { remote ->
             val local = container.projectRepository.get(remote.id)
@@ -509,10 +551,10 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
                 container.projectRepository.save(remote.copy(syncState = SyncState.SYNCED))
             }
         }
-        container.cloudSyncRepository.restoreUserState().getOrNull()?.let { cloudState ->
-            cloudState.settings?.let { restored -> container.settingsRepository.update { restored } }
-            if (cloudState.progress.isNotEmpty()) {
-                val merged = (lessonProgress.value + cloudState.progress)
+        cloudState?.let { restoredState ->
+            restoredState.settings?.let { restored -> container.settingsRepository.update { restored } }
+            if (restoredState.progress.isNotEmpty()) {
+                val merged = (lessonProgress.value + restoredState.progress)
                     .groupBy { it.lessonId }
                     .map { (lessonId, entries) ->
                         val mastered = entries.flatMap { it.masteredStepIndices }.toSet()
@@ -529,15 +571,18 @@ class KreativViewModel(private val container: KreativContainer) : ViewModel() {
                 container.lessonProgressRepository.replaceAll(merged)
             }
         }
-        if (restoredProjects.isNotEmpty()) {
-            message = "Welcome home. ${restoredProjects.size} cloud project${if (restoredProjects.size == 1) "" else "s"} checked and restored."
-        }
+        cloudAccessAvailable = true
+        return true
     }
 
     private suspend fun backupUserState() {
-        if (!isCloudConfigured) return
+        if (!isCloudConfigured || !cloudAccessAvailable) return
         container.cloudSyncRepository.backupUserState(settings.value, lessonProgress.value)
+            .onFailure { cloudAccessAvailable = false }
     }
+
+    private fun cloudUnavailableMessage(): String =
+        "Cloud backup is not authorized yet. Your work remains safely stored on this device."
 
     private fun openProjectInternal(project: KreativProject) {
         currentProject = project
