@@ -1,0 +1,30 @@
+name: HAVENLINE Review 15 Apply
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - .github/workflows/havenline-apply-review-15.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+      - run: python .github/scripts/havenline_visual_patch15.py
+      - run: |
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineProceduralArtStudio.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneGate.cs
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineStudioRevision.cs
+          git commit -m "Scale HAVENLINE furnace effects for camera output"
+          git push origin HEAD:havenline-unity-reference-rebuild
