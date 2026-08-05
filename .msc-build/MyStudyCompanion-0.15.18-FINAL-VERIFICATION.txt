@@ -1,0 +1,82 @@
+MY STUDY COMPANION 0.15.18 — FINAL RELEASE VERIFICATION
+======================================================
+
+Release source
+--------------
+Repository: ksolo21-web/Hummer
+Branch: agent/msc-0.15.15-ai-activity-rebuild
+Final release-engineering commit: 319a80680fc362115d0856d77671fa115eca60ef
+GitHub Actions run: 31036130506
+CI signing-input artifact: 8942855784
+CI artifact SHA-256: f5dfba5654ea9bd76a8ba1d17f2cb5554cf7124eee013551aba644dbbec402eb
+CI result: SUCCESS
+
+Automated validation
+--------------------
+PASS: backend test suite — 54 passed, 1 skipped.
+PASS: web/PWA tests — 9 passed.
+PASS: Android phone unit tests and compilation.
+PASS: Wear OS unit tests and compilation.
+PASS: Android lint-vital release gates.
+PASS: 0.15.15 smart activity reconstruction.
+PASS: 0.15.16 release truth gate.
+PASS: 0.15.17 premium interactive paint and transformed touch alignment.
+PASS: 0.15.18 responsive real-data widget rebuild.
+PASS: exact Firebase google-services.json checksum.
+PASS: registered Android OAuth certificate binding.
+
+Phone APK
+---------
+File: MyStudyCompanion-0.15.18-Premium-Widgets-FIXED.apk
+Package: com.mystudycompanion.app
+Version code: 51
+Version name: 0.15.18-private-alpha-premium-widgets
+SHA-256: b0d5062385038a52c5f03916539a7db5c71bc7e7f3d486c2b35d117cccd97e0f
+APK Signature Scheme v2: PASS
+APK Signature Scheme v3: PASS
+Signer certificate SHA-1: 1997d421d177215a44f9651ce53dbaec152fbc49
+Signer certificate SHA-256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+16 KiB ZIP alignment: PASS
+Payload parity: all 1,719 non-signature entries are byte-identical to the fully tested CI APK.
+
+Wear OS APK
+-----------
+File: MyStudyCompanion-Wear-0.15.18-Premium-Widgets-FIXED.apk
+Package: com.mystudycompanion.app
+Version code: 360168001
+Version name: 0.15.18-wear-private-alpha-premium-widgets
+SHA-256: 3278388e16877ca3f1b16dbd30f701c449382e2298adc49aad30253941b79569
+APK Signature Scheme v3: PASS
+Signer certificate SHA-1: 1997d421d177215a44f9651ce53dbaec152fbc49
+Signer certificate SHA-256: 13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c
+16 KiB ZIP alignment: PASS
+Payload parity: all 581 non-signature entries are byte-identical to the fully tested CI APK.
+
+Update and Google compatibility
+-------------------------------
+PASS: the phone package name matches the installed application identity.
+PASS: version code 51 is higher than the accepted 0.15.10 version code 43.
+PASS: the recovered permanent signing certificate exactly matches the accepted 0.15.10 APK and Firebase OAuth registration.
+PASS: Google Sign-In, Firebase Auth, Firestore, Firebase App Check configuration, cloud synchronization code, and local fallback behavior remain packaged.
+PASS: the accepted Google web OAuth client, Firebase app ID, project number, project ID, and storage bucket remain unchanged.
+
+Cloud truth
+-----------
+No legitimate Cloud Run .run.app endpoint was available to validate for this build.
+Therefore Smart Online is intentionally truth-gated OFF rather than pointed at Firebase Hosting or falsely described as working.
+No Firebase Hosting URL is packaged as BACKEND_BASE_URL.
+The existing remote deployment was not modified or deleted.
+Google Sign-In, Firebase Auth, Firestore household data, and cloud sync are separate from Smart Online and remain configured.
+
+Installation
+------------
+Install MyStudyCompanion-0.15.18-Premium-Widgets-FIXED.apk directly over the currently installed app.
+DO NOT uninstall the current app first.
+Do not install either withdrawn 0.15.17 APK or the CI artifact named SIGNING-INPUT-NOT-INSTALLABLE.
+The Wear APK is only for the Wear OS device.
+
+Physical-device acceptance
+--------------------------
+Cryptographic update safety, package identity, Firebase/OAuth configuration, compilation, tests, payload parity, and alignment are verified.
+A real-device tap-through cannot be performed by CI. After updating, verify Google Sign-In, household/Firestore access, the repaired widgets, voting persistence, Family Worship date selection, responsive scrolling, and the interactive workbook editor on the Fold.
+Smart Online should honestly report unavailable until a real Cloud Run endpoint is deployed and validated.
