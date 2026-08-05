@@ -1,0 +1,133 @@
+name: KREATIV 0.1.9 Signed Google Drive Release
+
+on:
+  push:
+    branches: [ agent/kreativ-studio-v0.1 ]
+    paths:
+      - '.github/workflows/kreativ-019-signed-drive-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID: 949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com
+  ORG_GRADLE_PROJECT_KREATIV_OLIVIA_FIREBASE_UID: ${{ secrets.KREATIV_OLIVIA_FIREBASE_UID }}
+  ORG_GRADLE_PROJECT_KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
+  ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID: 1:949620144971:android:63fec0446e8549d25946ce
+  ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID: my-study-companion-abc01
+  ORG_GRADLE_PROJECT_KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
+  ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD: ${{ secrets.KREATIV_PRIVATE_ALPHA_STORE_PASSWORD }}
+  ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEY_ALIAS }}
+  ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_PASSWORD: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEY_PASSWORD }}
+
+jobs:
+  signed-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/kreativ-studio-v0.1
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+
+      - name: Restore registered KREATIV signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.KREATIV_PRIVATE_ALPHA_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_B64 ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_PASSWORD; do
+            test -n "${!name:-}" || { echo "Missing required signing secret: $name" >&2; exit 1; }
+          done
+          mkdir -p "$RUNNER_TEMP/kreativ-signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/kreativ-signing/kreativ-private-alpha.jks"
+          echo "ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_FILE=$RUNNER_TEMP/kreativ-signing/kreativ-private-alpha.jks" >> "$GITHUB_ENV"
+
+      - name: Set 0.1.9 install identity
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('app/build.gradle.kts')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('versionCode = 9', 'versionCode = 10', 1)
+          text = text.replace('versionName = "0.1.8"', 'versionName = "0.1.9"', 1)
+          if 'versionCode = 10' not in text or 'versionName = "0.1.9"' not in text:
+              raise SystemExit('Could not apply the 0.1.9 version identity.')
+          path.write_text(text, encoding='utf-8')
+          Path('VERSION').write_text('0.1.9\n', encoding='utf-8')
+          PY
+
+      - name: Verify source and registered signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'DocumentCloudBackupRepository' app/src/main/java/com/kreativstudio/app/KreativContainer.kt
+          grep -Fq 'Connect Google Drive backup' app/src/main/java/com/kreativstudio/app/ui/Screens.kt
+          keytool -list -v \
+            -keystore "$ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_FILE" \
+            -storepass "$ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_STORE_PASSWORD" \
+            -alias "$ORG_GRADLE_PROJECT_KREATIV_PRIVATE_ALPHA_KEY_ALIAS" > signer.txt
+          grep -Fq 'SHA1: 5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59' signer.txt
+          grep -Fq 'SHA256: 07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D' signer.txt
+
+      - name: Test and build authenticated update
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon lintDebug testDebugUnitTest assemblePrivateAlpha
+          grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_GOOGLE_WEB_CLIENT_ID" app/build/generated
+          grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_FIREBASE_APP_ID" app/build/generated
+          grep -R -Fq "$ORG_GRADLE_PROJECT_KREATIV_FIREBASE_PROJECT_ID" app/build/generated
+
+      - name: Verify package and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APK="$(find app/build/outputs/apk/privateAlpha -name '*.apk' -type f -print -quit)"
+          test -f "$APK"
+          mkdir -p release
+          cp "$APK" release/KREATIV-Studio-0.1.9-Google-Drive-Signed.apk
+          "$SDK_ROOT/build-tools/36.0.0/aapt" dump badging release/KREATIV-Studio-0.1.9-Google-Drive-Signed.apk > release/IDENTITY.txt
+          grep -q "package: name='com.kreativstudio.app'" release/IDENTITY.txt
+          grep -q "versionCode='10'" release/IDENTITY.txt
+          grep -q "versionName='0.1.9-private-alpha'" release/IDENTITY.txt
+          "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose --print-certs release/KREATIV-Studio-0.1.9-Google-Drive-Signed.apk > release/SIGNATURE.txt
+          grep -Fqi '5c79a8f7529b0a93a269aab1676bae9bceb61459' release/SIGNATURE.txt
+          "$SDK_ROOT/build-tools/36.0.0/zipalign" -c -P 16 -v 4 release/KREATIV-Studio-0.1.9-Google-Drive-Signed.apk > release/ZIPALIGN.txt
+          sha256sum release/KREATIV-Studio-0.1.9-Google-Drive-Signed.apk > release/SHA256SUMS.txt
+
+      - name: Commit version bump after successful signed build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add VERSION app/build.gradle.kts
+          if ! git diff --cached --quiet; then
+            git commit -m 'Release KREATIV 0.1.9 signed Google Drive update'
+            git push origin HEAD:agent/kreativ-studio-v0.1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: KREATIV-Studio-0.1.9-Google-Drive-Signed
+          path: release
+          retention-days: 14
+          if-no-files-found: error
