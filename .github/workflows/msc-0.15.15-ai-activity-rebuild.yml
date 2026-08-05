@@ -9,6 +9,8 @@ on:
       - .msc-build/0.15.15-patch/**
       - .msc-build/apply-0.15.15-ai-activity-rebuild.sh
       - .msc-build/build-0.15.15-ai-activity-rebuild.sh
+      - .msc-build/generate-0.15.15-professional-color-by-number.py
+      - .msc-build/generate-0.15.15-recognizable-color-by-number.py
   workflow_dispatch:
 
 permissions:
@@ -17,7 +19,7 @@ permissions:
 
 concurrency:
   group: msc-01515-smart-ai-activities
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -177,7 +179,7 @@ jobs:
             MSC_HOUSEHOLD_ID=kaleb-family
             MSC_ORGANIZER_USER_ID=${{ env.ORGANIZER_USER_ID }}
             MSC_SCHEDULER_SERVICE_ACCOUNT_EMAIL=${{ env.GCP_SCHEDULER_SERVICE_ACCOUNT }}
-            MSC_OPENAI_MODEL=gpt-5.4
+            MSC_OPENAI_MODEL=gpt-5.6
             MSC_MAX_AI_REQUESTS_PER_HOUR=60
             MSC_MINIMUM_PHONE_VERSION_CODE=48
             MSC_MINIMUM_WEAR_VERSION_CODE=360165001
