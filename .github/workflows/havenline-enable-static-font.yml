@@ -1,0 +1,60 @@
+name: HAVENLINE Static Font Activation
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - .github/workflows/havenline-enable-static-font.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+      - name: Activate owned static HUD font
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineProceduralArtStudio.cs")
+          source = path.read_text(encoding="utf-8")
+          old = (
+              "        private static void GenerateFont()\n"
+              "        {\n"
+              "            AssetDatabase.DeleteAsset(FontPath);\n"
+              "            var font = Font.CreateDynamicFontFromOSFont(\n"
+              "                new[] { \"Roboto\", \"Noto Sans\", \"DejaVu Sans\", \"Arial\", \"sans-serif\" },\n"
+              "                32);\n"
+              "            if (font == null)\n"
+              "                throw new InvalidOperationException(\"No supported system font was available for HAVENLINE UI generation.\");\n"
+              "            font.name = \"HAVENLINE_UI_Rounded\";\n"
+              "            AssetDatabase.CreateAsset(font, FontPath);\n"
+              "        }"
+          )
+          new = (
+              "        private static void GenerateFont()\n"
+              "        {\n"
+              "            HavenlineStudioBitmapFont.Generate(FontPath);\n"
+              "        }"
+          )
+          if old not in source:
+              raise SystemExit("Dynamic font generation block was not found")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
+      - name: Commit static font activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineProceduralArtStudio.cs
+          git commit -m "Use owned static bitmap font for premium HUD"
+          git push origin HEAD:havenline-unity-reference-rebuild
