@@ -77,6 +77,38 @@ namespace Havenline.Tests
         }
 
         [Test]
+        public void MixedResourcesOccupyOnePhysicalCarryStackWithoutOverlap()
+        {
+            var presenterObject = Create("CarryPresenter");
+            var presenter = presenterObject.AddComponent<HavenlineCarryVisual>();
+            var wood = CreateSlots("Wood", 4);
+            var stone = CreateSlots("Stone", 4);
+            var metal = CreateSlots("Metal", 4);
+            var fuel = CreateSlots("Fuel", 4);
+            presenter.Configure(wood, stone, metal, fuel);
+
+            presenter.Apply(new HavenlineInventorySnapshot
+            {
+                wood = 1,
+                stone = 1,
+                metal = 1,
+                fuel = 0
+            }, 3, 4);
+
+            for (var index = 0; index < 4; index++)
+            {
+                var active = (wood[index].activeSelf ? 1 : 0) +
+                             (stone[index].activeSelf ? 1 : 0) +
+                             (metal[index].activeSelf ? 1 : 0) +
+                             (fuel[index].activeSelf ? 1 : 0);
+                Assert.That(active, Is.EqualTo(index < 3 ? 1 : 0), $"Physical carry slot {index} overlapped.");
+            }
+            Assert.That(wood[0].activeSelf, Is.True);
+            Assert.That(stone[1].activeSelf, Is.True);
+            Assert.That(metal[2].activeSelf, Is.True);
+        }
+
+        [Test]
         public void FurnaceReceivesOneResourceAtATimeAndUpgrades()
         {
             var inventoryObject = Create("DeliveryInventory");
@@ -98,7 +130,47 @@ namespace Havenline.Tests
             Assert.That(furnace.Stored(ResourceKind.Wood), Is.EqualTo(18));
             Assert.That(furnace.Stored(ResourceKind.Stone), Is.EqualTo(6));
             Assert.That(furnace.Level, Is.GreaterThanOrEqualTo(2));
-            Assert.That(furnace.WarmthRadius, Is.GreaterThan(4f));
+            Assert.That(furnace.WarmthRadius, Is.GreaterThanOrEqualTo(8f));
+        }
+
+        [Test]
+        public void DamagedFurnacePrioritizesProximityRepairUsingCarriedWood()
+        {
+            var inventoryObject = Create("RepairInventory");
+            var inventory = inventoryObject.AddComponent<HavenlineInventory>();
+            inventory.Configure(null, null, 4);
+            inventory.Add(ResourceKind.Wood, 2);
+
+            var furnaceObject = Create("RepairableFurnace");
+            var furnace = furnaceObject.AddComponent<HavenlineFurnace>();
+            furnace.Configure(null, null, null);
+            furnace.Damage(100f);
+            var damaged = furnace.Durability;
+
+            Assert.That(furnace.NeedsRepair, Is.True);
+            Assert.That(furnace.ActionKind, Is.EqualTo(AutomaticActionKind.Repair));
+            Assert.That(furnace.RepairOne(inventory), Is.True);
+            Assert.That(furnace.Durability, Is.GreaterThan(damaged));
+            Assert.That(inventory[ResourceKind.Wood], Is.EqualTo(1));
+        }
+
+        [Test]
+        public void LevelTwoWarmthActuallyReachesTheFrozenSurvivor()
+        {
+            var furnaceObject = Create("WarmthFurnace");
+            var furnace = furnaceObject.AddComponent<HavenlineFurnace>();
+            furnace.Configure(null, null, null);
+            furnace.Restore(new HavenlineFurnaceSnapshot
+            {
+                level = 2,
+                wood = 18,
+                stone = 6
+            });
+
+            var horizontalDistance = Vector2.Distance(
+                new Vector2(Reference.Furnace.x, Reference.Furnace.z),
+                new Vector2(Reference.Survivor.x, Reference.Survivor.z));
+            Assert.That(furnace.WarmthRadius, Is.GreaterThanOrEqualTo(horizontalDistance));
         }
 
         [Test]
@@ -153,6 +225,14 @@ namespace Havenline.Tests
             Assert.That(site.DeliveredStone, Is.EqualTo(3));
             Assert.That(completed.activeSelf, Is.True);
             Assert.That(inventory.Total, Is.Zero);
+        }
+
+        private GameObject[] CreateSlots(string prefix, int count)
+        {
+            var slots = new GameObject[count];
+            for (var index = 0; index < count; index++)
+                slots[index] = Create($"{prefix}_{index}");
+            return slots;
         }
 
         private GameObject Create(string name)
