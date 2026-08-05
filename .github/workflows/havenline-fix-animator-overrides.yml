@@ -1,0 +1,66 @@
+name: HAVENLINE Persist Animator Overrides
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/havenline-fix-animator-overrides.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-authoring:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out active HAVENLINE branch
+        uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 0
+
+      - name: Persist imported-model animator controller overrides
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs')
+          source = path.read_text(encoding='utf-8')
+          old = '''        private static Animator EnsureAnimator(GameObject visual, string controllerPath)
+        {
+            var animator = visual.GetComponentInChildren<Animator>(true) ?? visual.AddComponent<Animator>();
+            animator.runtimeAnimatorController = Load<AnimatorController>(controllerPath);
+            animator.applyRootMotion = false;
+            animator.updateMode = AnimatorUpdateMode.Normal;
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            return animator;
+        }
+'''
+          new = '''        private static Animator EnsureAnimator(GameObject visual, string controllerPath)
+        {
+            var animator = visual.GetComponentInChildren<Animator>(true) ?? visual.AddComponent<Animator>();
+            animator.runtimeAnimatorController = Load<AnimatorController>(controllerPath);
+            animator.applyRootMotion = false;
+            animator.updateMode = AnimatorUpdateMode.Normal;
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            EditorUtility.SetDirty(animator);
+            if (PrefabUtility.IsPartOfPrefabInstance(animator))
+                PrefabUtility.RecordPrefabInstancePropertyModifications(animator);
+            return animator;
+        }
+'''
+          if old not in source:
+              raise SystemExit('Expected EnsureAnimator implementation was not found.')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+
+      - name: Commit animator persistence correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "HAVENLINE Production Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs
+          git commit -m "Persist production animator controller overrides"
+          git push origin HEAD:havenline-unity-reference-rebuild
