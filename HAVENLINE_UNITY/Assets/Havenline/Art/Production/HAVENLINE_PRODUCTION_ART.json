@@ -1,29 +1,59 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "artVersion": "0.0.0-blocked",
   "approved": false,
   "approvedBy": "",
-  "approvalNote": "Production art has not yet been committed. This manifest intentionally blocks release-candidate builds until the finished HAVENLINE art set replaces every prototype asset.",
+  "approvalNote": "Production art has not yet been committed. This manifest intentionally blocks release-candidate builds until every premium cartoon character, structure, environment, UI, animation, VFX and audio asset is complete and visually approved.",
+
   "playerModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Player.fbx",
   "survivorModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Survivor.fbx",
   "wolfModel": "Assets/Havenline/Art/Production/Enemies/HAVENLINE_Wolf.fbx",
-  "furnaceModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace.fbx",
+
+  "furnaceModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L1.fbx",
+  "furnaceLevel2Model": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L2.fbx",
+  "furnaceLevel3Model": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L3.fbx",
+  "furnaceLevel4Model": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Furnace_L4.fbx",
   "campfireModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Campfire.fbx",
   "tentModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Tent.fbx",
+  "storageModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Storage.fbx",
+  "barricadeModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_Barricade.fbx",
+  "forestGateModel": "Assets/Havenline/Art/Production/Structures/HAVENLINE_ForestGate.fbx",
+
   "backpackModel": "Assets/Havenline/Art/Production/Props/HAVENLINE_Backpack.fbx",
   "logModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Log.fbx",
+  "stoneResourceModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Stone.fbx",
+  "metalResourceModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Metal.fbx",
+  "fuelResourceModel": "Assets/Havenline/Art/Production/Resources/HAVENLINE_Fuel.fbx",
   "pineModelA": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Pine_A.fbx",
   "pineModelB": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Pine_B.fbx",
   "rockModelA": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Rock_A.fbx",
   "rockModelB": "Assets/Havenline/Art/Production/Environment/HAVENLINE_Rock_B.fbx",
+  "environmentPrefab": "Assets/Havenline/Art/Production/Environment/HAVENLINE_FrozenOutpost_Environment.prefab",
+
+  "snowMaterial": "Assets/Havenline/Art/Production/Materials/HAVENLINE_Snow.mat",
+  "iceMaterial": "Assets/Havenline/Art/Production/Materials/HAVENLINE_Ice.mat",
+  "warmthMaterial": "Assets/Havenline/Art/Production/Materials/HAVENLINE_Warmth.mat",
   "hudAtlas": "Assets/Havenline/Art/Production/UI/HAVENLINE_HUD_Atlas.png",
   "uiFont": "Assets/Havenline/Art/Production/UI/HAVENLINE_UI_Font.ttf",
+  "hudPrefab": "Assets/Havenline/Art/Production/UI/HAVENLINE_GameplayHUD.prefab",
+  "pauseMenuPrefab": "Assets/Havenline/Art/Production/UI/HAVENLINE_PauseSettings.prefab",
+
   "playerController": "Assets/Havenline/Art/Production/Animation/HAVENLINE_Player.controller",
   "survivorController": "Assets/Havenline/Art/Production/Animation/HAVENLINE_Survivor.controller",
   "wolfController": "Assets/Havenline/Art/Production/Animation/HAVENLINE_Wolf.controller",
+
+  "fireVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_FurnaceFire.prefab",
+  "snowfallVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_Snowfall.prefab",
+  "gatherVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_GatherImpact.prefab",
+  "buildVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_BuildImpact.prefab",
+  "hitVfxPrefab": "Assets/Havenline/Art/Production/VFX/HAVENLINE_CombatHit.prefab",
+
   "audioMixer": "Assets/Havenline/Art/Production/Audio/HAVENLINE_Audio.mixer",
-  "minimumEnvironmentModels": 20,
-  "minimumTextureFiles": 24,
-  "minimumAnimationClips": 28,
-  "minimumAudioClips": 30
+  "audioRigPrefab": "Assets/Havenline/Art/Production/Audio/HAVENLINE_AudioRig.prefab",
+
+  "minimumEnvironmentModels": 28,
+  "minimumTextureFiles": 36,
+  "minimumAnimationClips": 32,
+  "minimumAudioClips": 36,
+  "minimumMaterials": 18
 }
