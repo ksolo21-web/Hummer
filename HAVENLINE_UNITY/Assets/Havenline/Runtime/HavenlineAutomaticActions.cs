@@ -18,10 +18,6 @@ namespace Havenline
         Combat = 9
     }
 
-    /// <summary>
-    /// Every gameplay object the survivor can use automatically derives from this class.
-    /// Targets register themselves, avoiding repeated FindObjects calls while playing.
-    /// </summary>
     public abstract class HavenlineInteractable : MonoBehaviour
     {
         private static readonly HashSet<HavenlineInteractable> Registered = new();
@@ -58,10 +54,6 @@ namespace Havenline
         public virtual void OnDeselected(HavenlinePlayerController actor) { }
     }
 
-    /// <summary>
-    /// Selects one nearby action from world context. The player supplies movement only;
-    /// gathering, delivery, rescue, construction, repair and combat are automatic.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class HavenlineAutomaticActionController : MonoBehaviour
     {
@@ -107,7 +99,7 @@ namespace Havenline
             }
 
             var distance = HorizontalDistance(player.transform.position, current.InteractionPoint);
-            if (!current.isActiveAndEnabled || !current.CanInteract(player) ||
+            if (!current.isActiveAndEnabled || !CanContinueCurrent() ||
                 distance > current.InteractionRange + targetHysteresis)
             {
                 SetCurrent(null);
@@ -129,7 +121,7 @@ namespace Havenline
 
         private void SelectBestTarget()
         {
-            if (current != null && current.isActiveAndEnabled && current.CanInteract(player))
+            if (current != null && current.isActiveAndEnabled && CanContinueCurrent())
             {
                 var retainedDistance = HorizontalDistance(player.transform.position, current.InteractionPoint);
                 if (retainedDistance <= current.InteractionRange + targetHysteresis)
@@ -163,6 +155,19 @@ namespace Havenline
             }
 
             SetCurrent(best);
+        }
+
+        private bool CanContinueCurrent()
+        {
+            if (current == null)
+                return false;
+
+            // Selecting a survivor changes its state from Trapped to Rescuing. Keep that
+            // context alive while progress is below 100%, then release it on completion.
+            if (current.ActionKind == AutomaticActionKind.Rescue)
+                return current.NormalizedProgress >= 0f && current.NormalizedProgress < 0.999f;
+
+            return current.CanInteract(player);
         }
 
         private void SetCurrent(HavenlineInteractable target)
