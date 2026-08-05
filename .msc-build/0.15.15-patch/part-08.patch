@@ -1,0 +1,188 @@
+ied JW.org or Watchtower Online Library material in the current source library to answer that safely. Refresh official sources or switch to Smart Online AI."
++            } else {
++                "I do not have enough verified material stored offline to answer that safely. Reconnect, refresh official sources, or use Smart Online AI when available."
++            }
++            return AnswerResult(
++                answer = safeMessage,
++                citations = emptyList(),
++                providerLabel = "Private source guidance",
++            )
++        }
++        val prompt = AiPromptBuilder.build(question, passages)
++        val initial = providerRouter.generate(prompt)
++        val validatedInitial = runCatching {
++            AiGroundingValidator.validateAndResolve(initial.first, passages)
++        }
++        val (grounded, provider) = if (validatedInitial.isSuccess) {
++            validatedInitial.getOrThrow() to initial.second
++        } else {
++            val guided = providerRouter.generateGuided(prompt)
++            AiGroundingValidator.validateAndResolve(guided.first, passages) to guided.second
++        }
++        val usedCitations = grounded.usedPassageIndexes
++            .map(passages::get)
++            .map { it.citation() }
++            .distinctBy { it.url }
++            .take(5)
++        return AnswerResult(
++            answer = grounded.body,
++            citations = usedCitations,
++            providerLabel = provider.label,
++        )
++    }
++
++    private suspend fun saveAssistantMessage(answer: String, citations: List<StudyCitation>) {
++        dao.upsertAiMessage(
++            AiStudyMessage(
++                id = UUID.randomUUID().toString(),
++                role = AiMessageRole.ASSISTANT,
++                body = answer,
++                citations = citations,
++                createdAtEpochMillis = System.currentTimeMillis(),
++            ).toEntity(),
++        )
+     }
+ 
+     private fun setError(message: String) {
+         mutableRequestState.value = mutableRequestState.value.copy(error = message)
+     }
++
++    private data class AnswerResult(
++        val answer: String,
++        val citations: List<StudyCitation>,
++        val providerLabel: String,
++        val followUps: List<String> = emptyList(),
++        val usedFallback: Boolean = false,
++    )
++
++    private class SmartOnlineUnavailableException(
++        message: String,
++        cause: Throwable? = null,
++    ) : IllegalStateException(message, cause)
++
++    private fun Throwable.safeUserDetail(): String = when {
++        message?.contains("403") == true -> "The app has not finished registering with the private service. Try again after a moment."
++        message?.contains("429") == true -> "The hourly assistant limit was reached. Try again later."
++        message?.contains("status 5") == true -> "The private AI service reported a temporary error."
++        else -> "Check the connection and private-service configuration."
++    }
++
++    companion object {
++        private const val PREFERENCES_NAME = "ai_assistant_preferences"
++        private const val KEY_MODE = "assistant_mode"
++        private const val KEY_CLOUD_SESSION_ID = "cloud_session_id"
++    }
+ }
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
+@@ -35,6 +35,7 @@
+ import androidx.compose.material3.Card
+ import androidx.compose.material3.CardDefaults
+ import androidx.compose.material3.CircularProgressIndicator
++import androidx.compose.material3.FilterChip
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.IconButton
+ import androidx.compose.material3.LinearProgressIndicator
+@@ -56,6 +57,8 @@
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.unit.dp
+ import androidx.lifecycle.compose.collectAsStateWithLifecycle
++import com.mystudycompanion.app.ai.AiAssistantMode
++import com.mystudycompanion.app.ai.AiAssistantState
+ import com.mystudycompanion.app.ai.AiStudyRepository
+ import com.mystudycompanion.app.ai.runtime.AiRuntimeState
+ import com.mystudycompanion.app.ai.runtime.ProviderAvailability
+@@ -79,6 +82,7 @@
+     val messages by repository.messages.collectAsStateWithLifecycle(initialValue = emptyList())
+     val requestState by repository.requestState.collectAsStateWithLifecycle()
+     val runtime by repository.runtimeState.collectAsStateWithLifecycle()
++    val assistant by repository.assistantState.collectAsStateWithLifecycle()
+     val scope = rememberCoroutineScope()
+     var question by rememberSaveable { mutableStateOf("") }
+     val modelImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+@@ -96,6 +100,8 @@
+     val statusCard: @Composable (Modifier) -> Unit = { cardModifier ->
+         RuntimeStatusCard(
+             runtime = runtime,
++            assistant = assistant,
++            onModeChange = repository::setAssistantMode,
+             onRefresh = { scope.launch { repository.refreshOfficialSources(force = true) } },
+             onCheckRuntime = { scope.launch { repository.refreshRuntime() } },
+             onDownloadGemini = { scope.launch { repository.downloadGeminiNano() } },
+@@ -121,6 +127,7 @@
+                     onQuestionChange = { question = it },
+                     sending = requestState.isSending,
+                     error = requestState.error,
++                    assistant = assistant,
+                     onSend = {
+                         val value = question
+                         question = ""
+@@ -146,6 +153,7 @@
+                 onQuestionChange = { question = it },
+                 sending = requestState.isSending,
+                 error = requestState.error,
++                assistant = assistant,
+                 onSend = {
+                     val value = question
+                     question = ""
+@@ -170,6 +178,7 @@
+     onQuestionChange: (String) -> Unit,
+     sending: Boolean,
+     error: String?,
++    assistant: AiAssistantState,
+     onSend: () -> Unit,
+     onClearError: () -> Unit,
+     onClear: () -> Unit,
+@@ -181,7 +190,7 @@
+             Column(Modifier.weight(1f)) {
+                 Text("Study Assistant", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                 Text(
+-                    "On-device AI grounded only in verified JW.org and Watchtower Online Library material.",
++                    "Smart conversational help with verified JW.org and Watchtower Online Library research, plus a private offline fallback.",
+                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                 )
+             }
+@@ -206,7 +215,26 @@
+                         verticalAlignment = Alignment.CenterVertically,
+                     ) {
+                         CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+-                        Text("Searching verified local sources and preparing the answer…")
++                        Text(
++                            if (assistant.mode == AiAssistantMode.PRIVATE_OFFLINE) {
++                                "Reading verified offline sources and preparing the answer…"
++                            } else {
++                                "Researching official sources and preparing a conversational answer…"
++                            },
++                        )
++                    }
++                }
++            }
++            if (!sending && assistant.followUpQuestions.isNotEmpty()) {
++                item {
++                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
++                        Text("Continue the conversation", fontWeight = FontWeight.SemiBold)
++                        assistant.followUpQuestions.forEach { followUp ->
++                            OutlinedButton(
++                                onClick = { onQuestionChange(followUp) },
++                                modifier = Modifier.fillMaxWidth(),
++                            ) { Text(followUp) }
++                        }
+                     }
+                 }
+             }
+@@ -245,6 +273,8 @@
+ @Composable
+ private fun RuntimeStatusCard(
+     runtime: AiRuntimeState,
++    assistant: AiAssistantState,
++    onModeChange: (AiAssistantMode) -> Unit,
+     onRefresh: () -> Unit,
+     onCheckRuntime: () -> Unit,
+     onDownloadGemini: () -> Unit,
+@@ -259,10 +289,12 @@
+                 Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                 Column(Modifier.weight(1f)) {
+                     Text("AI system", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+-                    val activeLabel = if (runtime.online && runtime.activeProvider.kind == com.mystudycompanion.app.ai.runtime.AiProviderKind.GUIDED_OFFLINE) {
+-                        "Online source-guided mode"
+-                    } else runtime.activ
