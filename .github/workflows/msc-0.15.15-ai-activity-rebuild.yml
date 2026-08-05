@@ -22,16 +22,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_PROJECT_ID: my-study-companion-abc01
   GCP_REGION: us-central1
   CLOUD_RUN_SERVICE: my-study-companion-private
-  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
-  GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
-  GCP_SCHEDULER_SERVICE_ACCOUNT: ${{ vars.GCP_SCHEDULER_SERVICE_ACCOUNT }}
-  FIREBASE_PROJECT_NUMBER: ${{ vars.MSC_FIREBASE_PROJECT_NUMBER }}
-  FIREBASE_ANDROID_APP_ID: ${{ vars.MSC_FIREBASE_ANDROID_APP_ID }}
-  ORGANIZER_USER_ID: ${{ vars.MSC_ORGANIZER_USER_ID }}
+  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+  GCP_RUNTIME_SERVICE_ACCOUNT: msc-backend-runtime@my-study-companion-abc01.iam.gserviceaccount.com
+  FIREBASE_PROJECT_NUMBER: '949620144971'
+  FIREBASE_ANDROID_APP_ID: 1:949620144971:android:617dfde7340cd0995946ce
 
 jobs:
   build-deploy-and-verify:
@@ -79,7 +77,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
 
-      - name: Validate protected deployment configuration
+      - name: Validate documented deployment configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -88,12 +86,10 @@ jobs:
             GCP_WORKLOAD_IDENTITY_PROVIDER \
             GCP_DEPLOY_SERVICE_ACCOUNT \
             GCP_RUNTIME_SERVICE_ACCOUNT \
-            GCP_SCHEDULER_SERVICE_ACCOUNT \
             FIREBASE_PROJECT_NUMBER \
-            FIREBASE_ANDROID_APP_ID \
-            ORGANIZER_USER_ID; do
+            FIREBASE_ANDROID_APP_ID; do
             if [[ -z "${!name:-}" ]]; then
-              echo "Missing required protected environment variable: $name" >&2
+              echo "Missing required deployment value: $name" >&2
               exit 1
             fi
           done
@@ -133,7 +129,7 @@ jobs:
           (cd MyStudyCompanion/backend && python -m pytest -q)
 
       - id: auth
-        name: Authenticate with Google Workload Identity Federation
+        name: Authenticate with documented Workload Identity Federation
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
@@ -146,24 +142,25 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
           version: '>= 523.0.0'
 
-      - name: Verify private identities and server secrets
+      - name: Verify runtime identity and server secrets
         shell: bash
         run: |
           set -euo pipefail
           gcloud iam service-accounts describe "$GCP_RUNTIME_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
-          gcloud iam service-accounts describe "$GCP_SCHEDULER_SERVICE_ACCOUNT" --project "$GCP_PROJECT_ID" >/dev/null
           for secret in msc-admin-token msc-openai-api-key msc-content-signing-key; do
             gcloud secrets describe "$secret" --project "$GCP_PROJECT_ID" >/dev/null
           done
 
       - id: deploy_backend
-        name: Deploy 0.15.15 Smart Online private service
+        name: Deploy 0.15.15 GPT-5.6 Smart Online private service
         uses: google-github-actions/deploy-cloudrun@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
           region: ${{ env.GCP_REGION }}
           service: ${{ env.CLOUD_RUN_SERVICE }}
           source: MyStudyCompanion/backend
+          env_vars_update_strategy: merge
+          secrets_update_strategy: merge
           env_vars: |-
             MSC_ENV=production
             MSC_PERSISTENCE_BACKEND=firestore
@@ -177,8 +174,6 @@ jobs:
             MSC_REQUIRE_USER_AUTH=true
             MSC_ALLOWED_ORIGINS=https://${{ env.GCP_PROJECT_ID }}.web.app,https://${{ env.GCP_PROJECT_ID }}.firebaseapp.com
             MSC_HOUSEHOLD_ID=kaleb-family
-            MSC_ORGANIZER_USER_ID=${{ env.ORGANIZER_USER_ID }}
-            MSC_SCHEDULER_SERVICE_ACCOUNT_EMAIL=${{ env.GCP_SCHEDULER_SERVICE_ACCOUNT }}
             MSC_OPENAI_MODEL=gpt-5.6
             MSC_MAX_AI_REQUESTS_PER_HOUR=60
             MSC_MINIMUM_PHONE_VERSION_CODE=48
