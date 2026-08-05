@@ -14,15 +14,45 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Create disposable source-snapshot signer
+        id: signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR="$RUNNER_TEMP/msc-source-snapshot"
+          mkdir -p "$DIR"
+          keytool -genkeypair -noprompt \
+            -keystore "$DIR/snapshot.jks" \
+            -storepass 'snapshot-only' \
+            -keypass 'snapshot-only' \
+            -alias 'snapshot' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion Source Snapshot, O=My Study Companion, C=US'
+          echo "store_file=$DIR/snapshot.jks" >> "$GITHUB_OUTPUT"
+
       - name: Reconstruct cumulative source
         shell: bash
         env:
           MSC_SMART_ONLINE_VALIDATED: false
+          MSC_RELEASE_STORE_FILE: ${{ steps.signer.outputs.store_file }}
+          MSC_RELEASE_STORE_PASSWORD: snapshot-only
+          MSC_RELEASE_KEY_ALIAS: snapshot
+          MSC_RELEASE_KEY_PASSWORD: snapshot-only
         run: |
           set -euo pipefail
           bash .msc-build/prepare-0.15.8-google-credential-compat.sh
@@ -41,6 +71,7 @@ jobs:
             MyStudyCompanion/backend/app/config.py \
             MyStudyCompanion/app/src/main/assets/workbook/manifest.json \
             source-snapshot/
+
       - uses: actions/upload-artifact@v6
         with:
           name: msc-0.15.16-source-snapshot
