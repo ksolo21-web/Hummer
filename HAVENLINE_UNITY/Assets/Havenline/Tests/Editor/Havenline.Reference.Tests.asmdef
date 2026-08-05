@@ -3,9 +3,7 @@
   "rootNamespace": "Havenline.Tests",
   "references": [
     "Havenline.Reference.Runtime",
-    "Havenline.Reference.Editor",
-    "UnityEngine.TestRunner",
-    "UnityEditor.TestRunner"
+    "Havenline.Reference.Editor"
   ],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],
