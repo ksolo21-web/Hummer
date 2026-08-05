@@ -71,6 +71,7 @@ namespace Havenline.Tests
         }
 
         [Test]
+        [Timeout(900000)]
         public void ProductionManifestHasStrictBlockedOrApprovedLifecycleState()
         {
             Assert.That(File.Exists(HavenlinePremiumBuildGate.ManifestPath), Is.True);
@@ -93,25 +94,40 @@ namespace Havenline.Tests
             Assert.That(manifest.approvedBy, Is.Not.Null.And.Not.Empty);
             Assert.That(manifest.approvalNote, Does.Contain("Revision 25"));
             Assert.That(manifest.approvalNote, Does.Contain("device-test"));
+
+            HavenlineCiBuildEntryPoints.PrepareGeneratedProductionContent();
             var production = HavenlinePremiumBuildGate.InspectProductionContent();
             Assert.That(production.Passed, Is.True,
-                "Approved production manifest failed the complete premium content gate:\n - " +
+                "Approved production manifest failed after deterministic clean-checkout preparation:\n - " +
                 string.Join("\n - ", production.Failures));
         }
 
         [Test]
-        public void DeviceTestAndVerifiedReleaseAreSeparateBuildStages()
+        public void DeviceTestAndVerifiedReleaseAreSeparatePreparedBuildStages()
         {
-            var deviceTest = typeof(HavenlineBuildPipeline).GetMethod(
+            var legacyDeviceTest = typeof(HavenlineBuildPipeline).GetMethod(
                 nameof(HavenlineBuildPipeline.BuildAndroidReviewCandidate));
-            var verifiedRelease = typeof(HavenlineBuildPipeline).GetMethod(
+            var legacyVerifiedRelease = typeof(HavenlineBuildPipeline).GetMethod(
                 nameof(HavenlineBuildPipeline.BuildVerifiedReleaseCandidate));
-            Assert.That(deviceTest, Is.Not.Null);
-            Assert.That(verifiedRelease, Is.Not.Null);
-            Assert.That(deviceTest!.IsStatic, Is.True);
-            Assert.That(verifiedRelease!.IsStatic, Is.True);
-            Assert.That(deviceTest.ReturnType, Is.EqualTo(typeof(void)));
-            Assert.That(verifiedRelease.ReturnType, Is.EqualTo(typeof(void)));
+            var preparedDeviceTest = typeof(HavenlineCiBuildEntryPoints).GetMethod(
+                nameof(HavenlineCiBuildEntryPoints.BuildAndroidDeviceTest));
+            var preparedVerifiedRelease = typeof(HavenlineCiBuildEntryPoints).GetMethod(
+                nameof(HavenlineCiBuildEntryPoints.BuildVerifiedRelease));
+            var preparation = typeof(HavenlineCiBuildEntryPoints).GetMethod(
+                nameof(HavenlineCiBuildEntryPoints.PrepareGeneratedProductionContent));
+
+            Assert.That(legacyDeviceTest, Is.Not.Null);
+            Assert.That(legacyVerifiedRelease, Is.Not.Null);
+            Assert.That(preparedDeviceTest, Is.Not.Null);
+            Assert.That(preparedVerifiedRelease, Is.Not.Null);
+            Assert.That(preparation, Is.Not.Null);
+            Assert.That(preparedDeviceTest!.IsStatic, Is.True);
+            Assert.That(preparedVerifiedRelease!.IsStatic, Is.True);
+            Assert.That(preparation!.IsStatic, Is.True);
+            Assert.That(preparedDeviceTest.ReturnType, Is.EqualTo(typeof(void)));
+            Assert.That(preparedVerifiedRelease.ReturnType, Is.EqualTo(typeof(void)));
+            Assert.That(preparation.ReturnType, Is.EqualTo(typeof(void)));
+            Assert.That(preparedDeviceTest.Name, Is.Not.EqualTo(preparedVerifiedRelease.Name));
         }
     }
 }
