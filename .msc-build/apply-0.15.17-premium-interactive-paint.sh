@@ -19,13 +19,28 @@ export MSC_SMART_ONLINE_VALIDATED="$SMART_ONLINE_VALIDATED"
 # family schedule, AI activity, and Smart Online truth-gate repairs.
 bash .msc-build/apply-0.15.16-release-truth.sh
 
-PATCH_FILE=".msc-build/0.15.17-interactive-paint.patch"
-test -s "$PATCH_FILE"
-grep -Fq 'detectTransformGestures' "$PATCH_FILE"
-grep -Fq 'inverseWorkbookPoint' "$PATCH_FILE"
-grep -Fq 'repository.selectWorkbookColorNumber(pageKey, activity.id, nextNumber)' "$PATCH_FILE"
-patch --dry-run -p1 --batch --forward < "$PATCH_FILE"
-patch -p1 --batch --forward < "$PATCH_FILE"
+EDITOR_PAYLOAD=".msc-build/0.15.17-interactive-editor.kt.gz.b64"
+EDITOR_FILE="MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt"
+EDITOR_PARTS=(
+  .msc-build/0.15.17-interactive-editor.part00.b64
+  .msc-build/0.15.17-interactive-editor.part01.b64
+  .msc-build/0.15.17-interactive-editor.part02.b64
+  .msc-build/0.15.17-interactive-editor.part03.b64
+  .msc-build/0.15.17-interactive-editor.part04.b64
+)
+echo '0a3415dabc876ebe4059ec9ef86b81956636d7def659dd6ff33d8ec098e4ff41  .msc-build/0.15.17-interactive-editor.part00.b64' | sha256sum -c -
+echo '3a9915235e481ec48d11140377aaefaaf1c72e21eb7bb8eb762d551191b9ec5d  .msc-build/0.15.17-interactive-editor.part01.b64' | sha256sum -c -
+echo 'c1a70bf6fad493094363e4708344d45b7dc1c57c32d58a98906107c83b4d1567  .msc-build/0.15.17-interactive-editor.part02.b64' | sha256sum -c -
+echo '6a8449bd2905ed9efb2ab0335412d80474645bccf9c6f48fbeafa29831ba9de8  .msc-build/0.15.17-interactive-editor.part03.b64' | sha256sum -c -
+echo '826915070ca1d52c660f2515508f78e70bc36125fcfb326a4264dd9613609cf2  .msc-build/0.15.17-interactive-editor.part04.b64' | sha256sum -c -
+cat "${EDITOR_PARTS[@]}" > "$EDITOR_PAYLOAD"
+echo '158c53868cd32245b9a3526a603abfbf71b0dce9fd9462a08b2d7761d66d1d26  '"$EDITOR_PAYLOAD" | sha256sum -c -
+base64 --decode "$EDITOR_PAYLOAD" | gzip -dc > "$EDITOR_FILE"
+echo '4fa1f07c12706d9bd0431771fa9e5410c736eb698aef64f7a4230b15b1827e17  '"$EDITOR_FILE" | sha256sum -c -
+grep -Fq 'detectTransformGestures' "$EDITOR_FILE"
+grep -Fq 'inverseWorkbookPoint' "$EDITOR_FILE"
+grep -Fq 'clampWorkbookPan' "$EDITOR_FILE"
+grep -Fq 'repository.selectWorkbookColorNumber(pageKey, activity.id, nextNumber)' "$EDITOR_FILE"
 
 GENERATOR=".msc-build/generate-0.15.17-premium-paint-by-number.py"
 base64 --decode .msc-build/0.15.17-premium-paint-generator.py.gz.b64 | gzip -dc > "$GENERATOR"
