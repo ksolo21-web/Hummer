@@ -3,17 +3,17 @@ package com.kreativstudio.app.cloud
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
-import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import com.kreativstudio.app.model.AppSettings
 import com.kreativstudio.app.model.KreativProject
 import com.kreativstudio.app.model.LessonProgress
 import com.kreativstudio.app.model.ProjectAttachment
 import com.kreativstudio.app.model.SyncState
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
@@ -26,16 +26,16 @@ class CloudSyncRepository(
     private val firebaseReady: Boolean,
 ) {
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
-    private val appCheckMutex = Mutex()
 
     @Volatile
-    private var appCheckTokenReady = false
+    var lastFailureMessage: String? = null
+        private set
 
     val isConfigured: Boolean
         get() = firebaseReady && runCatching { FirebaseAuth.getInstance().currentUser != null }.getOrDefault(false)
 
-    suspend fun upload(project: KreativProject): Result<KreativProject> = runCatching {
-        val userId = requireCloudSession()
+    suspend fun upload(project: KreativProject): Result<KreativProject> = cloudOperation {
+        val userId = requireUserId()
         val storage = FirebaseStorage.getInstance()
         val cloudAttachments = project.attachments.map { attachment ->
             backupAttachment(storage, userId, project.id, attachment)
@@ -66,13 +66,17 @@ class CloudSyncRepository(
         project.copy(syncState = SyncState.SYNCED, updatedAt = cloudCopy.updatedAt)
     }
 
-    suspend fun restoreProjects(): Result<List<KreativProject>> = runCatching {
-        val userId = requireCloudSession()
+    suspend fun restoreProjects(): Result<List<KreativProject>> = cloudOperation {
+        val userId = requireUserId()
         val snapshot = FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("projects")
             .get().await()
         val storage = FirebaseStorage.getInstance()
+
+        // Verify Storage upload/read/delete before the UI enables cloud backup.
+        verifyStorageAccess(storage, userId)
+
         snapshot.documents.mapNotNull { document ->
             val storagePath = document.getString("storagePath") ?: return@mapNotNull null
             runCatching {
@@ -92,8 +96,8 @@ class CloudSyncRepository(
     suspend fun backupUserState(
         settings: AppSettings,
         progress: List<LessonProgress>,
-    ): Result<Unit> = runCatching {
-        val userId = requireCloudSession()
+    ): Result<Unit> = cloudOperation {
+        val userId = requireUserId()
         FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("private").document("studioState")
@@ -108,13 +112,23 @@ class CloudSyncRepository(
         Unit
     }
 
-    suspend fun restoreUserState(): Result<CloudUserState?> = runCatching {
-        val userId = requireCloudSession()
-        val document = FirebaseFirestore.getInstance()
+    suspend fun restoreUserState(): Result<CloudUserState?> = cloudOperation {
+        val userId = requireUserId()
+        val reference = FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("private").document("studioState")
-            .get().await()
-        if (!document.exists()) return@runCatching null
+
+        // Merge a harmless field so connection success proves Firestore write and read access.
+        reference.set(
+            mapOf(
+                "lastConnectionCheckAt" to System.currentTimeMillis(),
+                "schemaVersion" to 1,
+            ),
+            SetOptions.merge(),
+        ).await()
+
+        val document = reference.get().await()
+        if (!document.exists()) return@cloudOperation null
         val settings = document.getString("settingsJson")
             ?.let { runCatching { json.decodeFromString<AppSettings>(it) }.getOrNull() }
         val progress = document.getString("progressJson")
@@ -124,6 +138,20 @@ class CloudSyncRepository(
                 }.getOrDefault(emptyList())
             }.orEmpty()
         CloudUserState(settings = settings, progress = progress)
+    }
+
+    private suspend fun verifyStorageAccess(storage: FirebaseStorage, userId: String) {
+        val probe = storage.reference.child("users/$userId/private/kreativ-connectivity.probe")
+        probe.putBytes("KREATIV_CLOUD_CHECK".encodeToByteArray()).await()
+        try {
+            probe.getMetadata().await()
+        } finally {
+            try {
+                probe.delete().await()
+            } catch (_: Throwable) {
+                // Upload plus metadata read already proved access; a stale probe is harmless.
+            }
+        }
     }
 
     private suspend fun backupAttachment(
@@ -172,18 +200,46 @@ class CloudSyncRepository(
         }.getOrElse { attachment }
     }
 
-    private suspend fun requireCloudSession(): String {
-        val userId = requireUserId()
-        ensureFreshAppCheckToken()
-        return userId
+    private suspend fun <T> cloudOperation(block: suspend () -> T): Result<T> {
+        return try {
+            val value = block()
+            lastFailureMessage = null
+            Result.success(value)
+        } catch (error: Throwable) {
+            lastFailureMessage = describeFailure(error)
+            Result.failure(error)
+        }
     }
 
-    private suspend fun ensureFreshAppCheckToken() {
-        if (appCheckTokenReady) return
-        appCheckMutex.withLock {
-            if (appCheckTokenReady) return@withLock
-            FirebaseAppCheck.getInstance().getAppCheckToken(true).await()
-            appCheckTokenReady = true
+    private fun describeFailure(error: Throwable): String {
+        val causes = generateSequence(error as Throwable?) { it.cause }.toList()
+        causes.filterIsInstance<FirebaseFirestoreException>().firstOrNull()?.let { firestore ->
+            return when (firestore.code) {
+                FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+                    "Firestore rejected this signed-in account (PERMISSION_DENIED)."
+                FirebaseFirestoreException.Code.UNAUTHENTICATED ->
+                    "Firestore did not receive a valid Firebase sign-in session (UNAUTHENTICATED)."
+                FirebaseFirestoreException.Code.UNAVAILABLE ->
+                    "Firestore is temporarily unavailable. Check the internet connection and retry."
+                else -> "Firestore connection failed (${firestore.code.name})."
+            }
+        }
+        causes.filterIsInstance<StorageException>().firstOrNull()?.let { storage ->
+            return when (storage.errorCode) {
+                StorageException.ERROR_NOT_AUTHENTICATED ->
+                    "Cloud Storage did not receive a valid Firebase sign-in session."
+                StorageException.ERROR_NOT_AUTHORIZED ->
+                    "Cloud Storage rejected this signed-in account."
+                StorageException.ERROR_RETRY_LIMIT_EXCEEDED ->
+                    "Cloud Storage could not connect after several retries."
+                else -> "Cloud Storage connection failed (code ${storage.errorCode})."
+            }
+        }
+        val detail = causes.firstNotNullOfOrNull { it.message?.trim()?.takeIf(String::isNotEmpty) }
+        return if (detail != null) {
+            "Firebase connection failed: ${detail.take(180)}"
+        } else {
+            "Firebase connection failed (${error::class.java.simpleName})."
         }
     }
 
