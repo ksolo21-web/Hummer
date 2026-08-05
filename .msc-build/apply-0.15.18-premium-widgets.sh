@@ -11,9 +11,9 @@ MSC_SMART_ONLINE_VALIDATED="${MSC_SMART_ONLINE_VALIDATED:-false}" \
 
 PAYLOAD=".msc-build/0.15.18-widget-rebuild.py.gz.b64"
 PATCHER=".msc-build/apply-0.15.18-premium-widgets.py"
-echo '671bfbf88c0d59b5a7d11001eb1cbb3ca32b4e90c390f81d9f1e9e82dd3cab5c  '"$PAYLOAD" | sha256sum -c -
+echo '4afa9d5b6f628afdbc4c116e3480f2bff249b142b2bbc84daa30c538c8455182  '"$PAYLOAD" | sha256sum -c -
 base64 --decode "$PAYLOAD" | gzip -dc > "$PATCHER"
-echo '737dd56fb1af95363d4052aa7d7f9b3d5187a6240554272ec744d34a5fb22507  '"$PATCHER" | sha256sum -c -
+echo '708050bed229100d9fd7ca9c496c72fa22212bf69efa60cefa3309588bc3daf6  '"$PATCHER" | sha256sum -c -
 python3 -m py_compile "$PATCHER"
 python3 "$PATCHER"
 
