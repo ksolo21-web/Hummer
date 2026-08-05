@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "artVersion": "0.1.0-premium-device-test-r25",
+  "artVersion": "0.1.0-premium-device-test-r27",
   "approved": true,
   "approvedBy": "HAVENLINE Studio Review",
-  "approvalNote": "Revision 25 wide, close, and foldable proof was visually accepted after source, EditMode, and PlayMode validation. Approved for premium ARM64 device-test packaging only; verified release still requires physical-device acceptance.",
+  "approvalNote": "Revision 25 wide, close, and foldable visual proof remains accepted. Revision 27 source, EditMode, PlayMode, and clean-checkout deterministic production preparation passed. Approved for premium ARM64 device-test packaging only; verified release still requires physical-device acceptance.",
 
   "playerModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Player.obj",
   "survivorModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Survivor.obj",
