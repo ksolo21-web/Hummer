@@ -1,11 +1,9 @@
 package com.kreativstudio.app
 
 import android.app.Application
-import android.os.Build
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.appcheck.FirebaseAppCheck
-import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 
 class KreativApplication : Application() {
@@ -42,48 +40,21 @@ class KreativApplication : Application() {
                 FirebaseApp.initializeApp(this, options)
             }
             val ready = FirebaseApp.getApps(this).isNotEmpty()
-            if (ready) configureAppCheck()
+            if (ready) configureAppCheckForDistributionChannel()
             ready
         }.getOrDefault(false)
     }
 
-    private fun configureAppCheck() {
-        val appCheck = FirebaseAppCheck.getInstance()
-        val provider = if (isProbablyEmulator()) {
-            DebugAppCheckProviderFactory.getInstance()
-        } else {
-            PlayIntegrityAppCheckProviderFactory.getInstance()
-        }
-        appCheck.installAppCheckProviderFactory(provider)
-        appCheck.setTokenAutoRefreshEnabled(true)
-    }
-
     /**
-     * Debug App Check is reserved for emulator test runs. A debug-signed APK installed on a
-     * physical phone must still use Play Integrity; otherwise every reinstall creates a new,
-     * unregistered debug token and Firebase rejects otherwise valid signed-in requests.
+     * Play Integrity is valid for the future Google Play release. Debug and private-alpha APKs
+     * are deliberately sideloaded, so they must not be hard-gated by PLAY_RECOGNIZED attestation.
+     * Firebase Authentication plus owner-only Firestore and Storage rules protect those builds.
      */
-    private fun isProbablyEmulator(): Boolean {
-        val fingerprint = Build.FINGERPRINT.lowercase()
-        val model = Build.MODEL.lowercase()
-        val manufacturer = Build.MANUFACTURER.lowercase()
-        val brand = Build.BRAND.lowercase()
-        val device = Build.DEVICE.lowercase()
-        val product = Build.PRODUCT.lowercase()
-        val hardware = Build.HARDWARE.lowercase()
-
-        return fingerprint.startsWith("generic") ||
-            "emulator" in fingerprint ||
-            "vbox" in fingerprint ||
-            "test-keys" in fingerprint && "sdk" in product ||
-            "google_sdk" in model ||
-            "emulator" in model ||
-            "android sdk built for" in model ||
-            "genymotion" in manufacturer ||
-            (brand.startsWith("generic") && device.startsWith("generic")) ||
-            product.contains("sdk_gphone") ||
-            product.startsWith("sdk") ||
-            hardware.contains("goldfish") ||
-            hardware.contains("ranchu")
+    private fun configureAppCheckForDistributionChannel() {
+        if (BuildConfig.BUILD_TYPE != "release") return
+        FirebaseAppCheck.getInstance().apply {
+            installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+            setTokenAutoRefreshEnabled(true)
+        }
     }
 }
