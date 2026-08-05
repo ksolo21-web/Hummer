@@ -5,7 +5,8 @@ on:
     branches:
       - havenline-unity-reference-rebuild
     paths:
-      - 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json'
+      - 'HAVENLINE_UNITY/**'
+      - '.github/workflows/havenline-unity-android-build.yml'
   workflow_dispatch:
     inputs:
       mode:
@@ -64,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: HAVENLINE_UNITY/Library
-          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json') }}
+          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json', 'HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineRenderProofGate.cs') }}
           restore-keys: |
             havenline-premium-unity-6000.3.18f1-android-
 
@@ -85,7 +86,7 @@ jobs:
           collectUnityLogs: true
           streamUnityLogs: true
 
-      - name: Locate and verify premium APK and proof outputs
+      - name: Locate and verify APK, rendered proof, and evidence
         id: verify
         shell: bash
         env:
@@ -96,10 +97,12 @@ jobs:
             expected='HAVENLINE-premium-release-candidate-arm64.apk'
             expected_release='true'
             expected_performance='true'
+            expected_human_approval='true'
           else
             expected='HAVENLINE-premium-device-test-arm64.apk'
             expected_release='false'
             expected_performance='false'
+            expected_human_approval='false'
           fi
 
           apk="$(find "$GITHUB_WORKSPACE" -type f -name "$expected" -print -quit)"
@@ -127,24 +130,53 @@ jobs:
           proof_dir="$(find "$GITHUB_WORKSPACE" -type d -path '*/Builds/Review' -print -quit)"
           test -n "$proof_dir"
           evidence="$proof_dir/HAVENLINE-premium-evidence.json"
-          test -f "$proof_dir/HAVENLINE-premium-frozen-outpost.png"
-          test -f "$proof_dir/HAVENLINE-premium-close-camera.png"
-          test -f "$evidence"
+          render_report="$proof_dir/HAVENLINE-render-proof-report.json"
+
+          required_proofs=(
+            HAVENLINE-premium-frozen-outpost.png
+            HAVENLINE-premium-close-camera.png
+            HAVENLINE-premium-phone-wide.png
+            HAVENLINE-premium-tablet.png
+            HAVENLINE-premium-fold-unfolded.png
+            HAVENLINE-premium-night-readability.png
+          )
+          for proof in "${required_proofs[@]}"; do
+            test -s "$proof_dir/$proof"
+          done
+          test -s "$render_report"
+          test -s "$evidence"
+
+          jq -e '.schemaVersion == 1' "$render_report"
+          jq -e '.automatedPassed == true and .qualityGatePassed == true' "$render_report"
+          jq -e '.frames | length == 6 and all(.[]; .passed == true)' "$render_report"
+          jq -e '.wideClosePerceptualDifference >= 0.055' "$render_report"
+          jq -e '.closeToWideDetailRatio >= 0.92' "$render_report"
+          jq -e --argjson expected "$expected_human_approval" '.humanApprovalRequired == $expected' "$render_report"
+          if [ "$BUILD_MODE" = "verified_release" ]; then
+            jq -e '.humanApprovalPassed == true' "$render_report"
+          fi
 
           jq -e '.premiumArtContract == true' "$evidence"
+          jq -e '.visualQualityContract == true' "$evidence"
           jq -e '.automaticActionContract == true' "$evidence"
           jq -e '.gatheringContract == true and .carryingContract == true and .depositContract == true' "$evidence"
           jq -e '.helperContract == true and .constructionContract == true and .defenseContract == true' "$evidence"
           jq -e --argjson expected "$expected_release" '.releaseCandidate == $expected' "$evidence"
           jq -e --argjson expected "$expected_performance" '.performanceContract == $expected' "$evidence"
 
+          proof_set_sha="$(jq -r '.proofSetSha256' "$render_report")"
+          test -n "$proof_set_sha"
+          test "$proof_set_sha" != "null"
+
           echo "apk=$apk" >> "$GITHUB_OUTPUT"
           echo "sha256=$calculated_sha" >> "$GITHUB_OUTPUT"
           echo "size=$size" >> "$GITHUB_OUTPUT"
           echo "proof_dir=$proof_dir" >> "$GITHUB_OUTPUT"
+          echo "proof_set_sha=$proof_set_sha" >> "$GITHUB_OUTPUT"
           echo "Verified premium HAVENLINE package: $apk"
           echo "Size: $size bytes"
           echo "SHA-256: $calculated_sha"
+          echo "Rendered proof-set SHA-256: $proof_set_sha"
 
       - name: Write build summary
         shell: bash
@@ -160,12 +192,14 @@ jobs:
             echo '- Graphics APIs: `Vulkan`, `OpenGLES3` fallback'
             echo '- APK bytes: `${{ steps.verify.outputs.size }}`'
             echo '- APK SHA-256: `${{ steps.verify.outputs.sha256 }}`'
+            echo '- Rendered proof-set SHA-256: `${{ steps.verify.outputs.proof_set_sha }}`'
             echo '- Commit: `${{ github.sha }}`'
             echo '- Deterministic production preparation: `passed`'
             echo '- Premium content and functional gates: `passed`'
+            echo '- Rendered visual quality gate: `passed`'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload verified premium HAVENLINE APK and proof
+      - name: Upload verified premium HAVENLINE APK and rendered proof
         uses: actions/upload-artifact@v4
         with:
           name: HAVENLINE-Premium-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}-ARM64-${{ github.run_number }}
@@ -176,8 +210,8 @@ jobs:
             **/HAVENLINE-premium-device-test-arm64.apk.sha256
             **/HAVENLINE-premium-release-candidate-arm64.apk
             **/HAVENLINE-premium-release-candidate-arm64.apk.sha256
-            **/Builds/Review/HAVENLINE-premium-frozen-outpost.png
-            **/Builds/Review/HAVENLINE-premium-close-camera.png
+            **/Builds/Review/HAVENLINE-premium-*.png
+            **/Builds/Review/HAVENLINE-render-proof-report.json
             **/Builds/Review/HAVENLINE-premium-evidence.json
 
       - name: Upload complete Unity diagnostics on failure
