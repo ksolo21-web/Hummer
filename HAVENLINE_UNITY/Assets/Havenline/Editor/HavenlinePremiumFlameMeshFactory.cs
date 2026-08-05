@@ -18,6 +18,13 @@ namespace Havenline.Editor
         internal const string EmberMeshPath =
             "Assets/Havenline/Art/Production/Environment/Premium/HAVENLINE_FurnaceEmber.asset";
 
+        internal static readonly Color FlameOuterBase = new(0.68f, 0.085f, 0.012f, 1f);
+        internal static readonly Color FlameOuterEmission = new(1.05f, 0.105f, 0.014f, 1f);
+        internal static readonly Color FlameInnerBase = new(1f, 0.32f, 0.030f, 1f);
+        internal static readonly Color FlameInnerEmission = new(1.42f, 0.34f, 0.030f, 1f);
+
+        private static bool shadersWarmed;
+
         internal static void Ensure()
         {
             HavenlinePremiumVisualAssets.Ensure();
@@ -29,17 +36,22 @@ namespace Havenline.Editor
             CreateOrUpdateMesh(EmberMeshPath, CreateEmberMesh());
             TuneEmissiveMaterial(
                 HavenlinePremiumVisualAssets.FlameOuterMaterialPath,
-                new Color(0.38f, 0.045f, 0.008f, 1f),
-                new Color(1.20f, 0.115f, 0.014f, 1f),
-                0.08f);
+                FlameOuterBase,
+                FlameOuterEmission,
+                0.07f);
             TuneEmissiveMaterial(
                 HavenlinePremiumVisualAssets.FlameInnerMaterialPath,
-                new Color(0.88f, 0.20f, 0.018f, 1f),
-                new Color(1.85f, 0.46f, 0.038f, 1f),
-                0.10f);
+                FlameInnerBase,
+                FlameInnerEmission,
+                0.08f);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            if (!shadersWarmed)
+            {
+                Shader.WarmupAllShaders();
+                shadersWarmed = true;
+            }
         }
 
         internal static Mesh RequireFlameTongue()
