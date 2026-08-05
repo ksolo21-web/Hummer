@@ -608,17 +608,6 @@ fun MentorScreen(viewModel: KreativViewModel) {
 @Composable
 fun SettingsScreen(viewModel: KreativViewModel, user: AppUser) {
     val settings by viewModel.settings.collectAsState()
-    val createCloudBackupLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/zip"),
-    ) { uri ->
-        if (uri != null) viewModel.connectDocumentCloudBackup(uri)
-        else viewModel.showMessage("Cloud backup setup was cancelled.")
-    }
-    val restoreCloudBackupLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) viewModel.restoreDocumentCloudBackup(uri)
-    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -671,56 +660,37 @@ fun SettingsScreen(viewModel: KreativViewModel, user: AppUser) {
                 user.email?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 AssistChip(onClick = {}, label = { Text(if (user.isOliviaOwner) "Olivia owner profile" else if (user.isLocalPreview) "Local preview" else "Google account") }, leadingIcon = { Icon(Icons.Default.Lock, null) })
                 Text(
-            "Google sign-in is active. KREATIV now uses a cloud file you own instead of the blocked Firestore path.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            if (viewModel.documentCloudBackupConnected) {
-                "Google Drive backup is connected. Tap below to update it with all projects, lesson progress, settings, and readable attachments."
-            } else {
-                "Tap Connect, then choose Google Drive in Android's file picker. KREATIV will keep secure access to that backup file."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Button(
-            onClick = {
-                if (viewModel.documentCloudBackupConnected) {
-                    viewModel.syncAllUserData()
-                } else {
-                    createCloudBackupLauncher.launch("KREATIV-Studio-Backup.kreativstudio")
-                }
-            },
-            enabled = !viewModel.isBusy,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.CloudSync, null)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                if (viewModel.documentCloudBackupConnected) "Back up the full studio now"
-                else "Connect Google Drive backup",
-            )
-        }
-        OutlinedButton(
-            onClick = {
-                restoreCloudBackupLauncher.launch(
-                    arrayOf("application/zip", "application/octet-stream", "*/*"),
+                    if (viewModel.isGoogleConfigured) "Google Credential Manager and Firebase Authentication are configured."
+                    else "The sign-in implementation is present; private Firebase/OAuth values are intentionally not embedded in source control.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            },
-            enabled = !viewModel.isBusy,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.Download, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Restore a studio backup")
-        }
-        Text(
-            "Select Google Drive—not device storage—for off-device protection.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedButton(onClick = viewModel::signOut) { Text("Sign out") }
+                Text(
+                    if (user.isLocalPreview) "Device-only preview."
+                    else if (viewModel.cloudAccessAvailable) "Cloud backup is connected."
+                    else "Google sign-in succeeded. Device autosave is active. ${viewModel.cloudFailureDetail ?: "Cloud access has not been verified yet."}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = viewModel::syncAllUserData,
+                    enabled = viewModel.cloudAccessAvailable && !viewModel.isBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.CloudSync, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Back up the full studio")
+                }
+                if (!user.isLocalPreview && !viewModel.cloudAccessAvailable) {
+                    OutlinedButton(
+                        onClick = viewModel::retryCloudConnection,
+                        enabled = !viewModel.isBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Retry cloud connection")
+                    }
+                }
+                OutlinedButton(onClick = viewModel::signOut) { Text("Sign out") }
             }
         }
     }
