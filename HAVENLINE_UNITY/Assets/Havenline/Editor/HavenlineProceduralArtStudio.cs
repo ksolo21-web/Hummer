@@ -195,8 +195,6 @@ namespace Havenline.Editor
             warmth.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             AssetDatabase.CreateAsset(warmth, warmthPath);
 
-            DuplicateMaterial("Snow", "HAVENLINE_Snow");
-            DuplicateMaterial("Ice", "HAVENLINE_Ice");
             AssetDatabase.SaveAssets();
         }
 
