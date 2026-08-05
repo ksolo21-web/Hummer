@@ -200,14 +200,7 @@ namespace Havenline.Editor
 
         private static void GenerateFont()
         {
-            AssetDatabase.DeleteAsset(FontPath);
-            var font = Font.CreateDynamicFontFromOSFont(
-                new[] { "Roboto", "Noto Sans", "DejaVu Sans", "Arial", "sans-serif" },
-                32);
-            if (font == null)
-                throw new InvalidOperationException("No supported system font was available for HAVENLINE UI generation.");
-            font.name = "HAVENLINE_UI_Rounded";
-            AssetDatabase.CreateAsset(font, FontPath);
+            HavenlineStudioBitmapFont.Generate(FontPath);
         }
 
         private static void GenerateAnimations()
