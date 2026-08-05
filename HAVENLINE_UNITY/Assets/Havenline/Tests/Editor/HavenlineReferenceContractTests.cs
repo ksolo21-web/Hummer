@@ -71,18 +71,32 @@ namespace Havenline.Tests
         }
 
         [Test]
-        public void ProductionManifestRemainsBlockedUntilFinishedArtExists()
+        public void ProductionManifestHasStrictBlockedOrApprovedLifecycleState()
         {
             Assert.That(File.Exists(HavenlinePremiumBuildGate.ManifestPath), Is.True);
             var json = File.ReadAllText(HavenlinePremiumBuildGate.ManifestPath);
             var manifest = JsonUtility.FromJson<HavenlinePremiumBuildGate.ProductionArtManifest>(json);
             Assert.That(manifest, Is.Not.Null);
             Assert.That(manifest.schemaVersion, Is.EqualTo(HavenlinePremiumBuildGate.CurrentSchemaVersion));
-            Assert.That(manifest.approved, Is.False);
-            Assert.That(manifest.artVersion, Does.Contain("blocked"));
             Assert.That(manifest.minimumEnvironmentModels, Is.GreaterThanOrEqualTo(28));
             Assert.That(manifest.minimumAnimationClips, Is.GreaterThanOrEqualTo(32));
             Assert.That(manifest.minimumAudioClips, Is.GreaterThanOrEqualTo(36));
+
+            if (!manifest.approved)
+            {
+                Assert.That(manifest.artVersion, Does.Contain("blocked"));
+                Assert.That(manifest.approvedBy, Is.Null.Or.Empty);
+                return;
+            }
+
+            Assert.That(manifest.artVersion, Does.Not.Contain("blocked"));
+            Assert.That(manifest.approvedBy, Is.Not.Null.And.Not.Empty);
+            Assert.That(manifest.approvalNote, Does.Contain("Revision 25"));
+            Assert.That(manifest.approvalNote, Does.Contain("device-test"));
+            var production = HavenlinePremiumBuildGate.InspectProductionContent();
+            Assert.That(production.Passed, Is.True,
+                "Approved production manifest failed the complete premium content gate:\n - " +
+                string.Join("\n - ", production.Failures));
         }
 
         [Test]
