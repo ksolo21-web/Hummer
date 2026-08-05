@@ -9,15 +9,21 @@ namespace Havenline.Editor
     /// <summary>
     /// Generates purpose-built UI sprites instead of stretching the complete HUD atlas over
     /// every Image. Panels keep stable sliced corners while controls remain true circles.
+    /// The top status row uses a separate near-opaque rounded panel so world props cannot
+    /// read through objective/resource cards as stray glyphs on narrow foldable layouts.
     /// </summary>
     internal static class HavenlineStudioUiAssets
     {
         private const int TextureSize = 128;
         private const string Root = "Assets/Havenline/Art/Production/UI";
         private const string PanelPath = Root + "/HAVENLINE_UI_Panel.asset";
+        private const string TopPanelPath = Root + "/HAVENLINE_UI_TopPanel.asset";
         private const string ControlPath = Root + "/HAVENLINE_UI_Control.asset";
         private const string WarmthPath = Root + "/HAVENLINE_UI_Warmth.asset";
         private const string SolidPath = Root + "/HAVENLINE_UI_Solid.asset";
+
+        internal const byte StandardPanelInteriorAlpha = 208;
+        internal const byte TopPanelInteriorAlpha = 248;
 
         private static bool generated;
 
@@ -34,6 +40,11 @@ namespace Havenline.Editor
         internal static bool ShouldSlice(string imageName) =>
             !IsControl(imageName) && !IsWarmth(imageName) && !IsSolid(imageName);
 
+        internal static bool IsTopStatusPanel(string name) =>
+            string.Equals(name, "ResourcesPanel", StringComparison.Ordinal) ||
+            string.Equals(name, "ObjectivePanel", StringComparison.Ordinal) ||
+            string.Equals(name, "FurnacePanel", StringComparison.Ordinal);
+
         private static void Ensure()
         {
             if (generated)
@@ -41,6 +52,7 @@ namespace Havenline.Editor
             generated = true;
             Directory.CreateDirectory(Root);
             CreateSpriteAsset(PanelPath, UiShape.Panel);
+            CreateSpriteAsset(TopPanelPath, UiShape.TopPanel);
             CreateSpriteAsset(ControlPath, UiShape.Control);
             CreateSpriteAsset(WarmthPath, UiShape.Warmth);
             CreateSpriteAsset(SolidPath, UiShape.Solid);
@@ -49,6 +61,7 @@ namespace Havenline.Editor
 
         private static string PathFor(string imageName)
         {
+            if (IsTopStatusPanel(imageName)) return TopPanelPath;
             if (IsControl(imageName)) return ControlPath;
             if (IsWarmth(imageName)) return WarmthPath;
             if (IsSolid(imageName)) return SolidPath;
@@ -86,7 +99,7 @@ namespace Havenline.Editor
             texture.Apply(false, false);
             AssetDatabase.CreateAsset(texture, path);
 
-            var border = shape == UiShape.Panel
+            var border = shape is UiShape.Panel or UiShape.TopPanel
                 ? new Vector4(28f, 28f, 28f, 28f)
                 : Vector4.zero;
             var sprite = Sprite.Create(
@@ -115,13 +128,16 @@ namespace Havenline.Editor
                 (x + 0.5f) / TextureSize * 2f - 1f,
                 (y + 0.5f) / TextureSize * 2f - 1f);
 
-            if (shape == UiShape.Panel)
+            if (shape is UiShape.Panel or UiShape.TopPanel)
             {
                 var outside = RoundedBoxDistance(centered, new Vector2(0.93f, 0.93f), 0.20f);
                 if (outside > 0f)
                     return new Color32(255, 255, 255, 0);
                 var edge = Mathf.Clamp01(-outside / 0.085f);
-                var alpha = (byte)Mathf.RoundToInt(Mathf.Lerp(255f, 208f, edge));
+                var interiorAlpha = shape == UiShape.TopPanel
+                    ? TopPanelInteriorAlpha
+                    : StandardPanelInteriorAlpha;
+                var alpha = (byte)Mathf.RoundToInt(Mathf.Lerp(255f, interiorAlpha, edge));
                 return new Color32(255, 255, 255, alpha);
             }
 
@@ -145,6 +161,7 @@ namespace Havenline.Editor
         private enum UiShape
         {
             Panel,
+            TopPanel,
             Control,
             Warmth,
             Solid
