@@ -1,0 +1,194 @@
+ions: list[AiCitation] = Field(min_length=1, max_length=30)
++    followUpQuestions: list[str] = Field(default_factory=list, max_length=3)
++    modelLabel: str = Field(default="Smart Online AI", min_length=1, max_length=120)
+     generatedAtEpochSeconds: int
+     policyVersion: int = Field(default=AI_POLICY_VERSION, ge=AI_POLICY_VERSION, le=AI_POLICY_VERSION)
+     sourcePolicy: str = Field(default=AI_SOURCE_POLICY, pattern=r"^JW_ORG_ONLY$")
+--- a/MyStudyCompanion/backend/admin/bootstrap_private_environment.py
++++ b/MyStudyCompanion/backend/admin/bootstrap_private_environment.py
+@@ -62,7 +62,7 @@
+                     "MSC_FIREBASE_PROJECT_ID=",
+                     "MSC_FIREBASE_ANDROID_APP_ID=",
+                     "MSC_OPENAI_API_KEY=",
+-                    "MSC_OPENAI_MODEL=gpt-5.1",
++                    "MSC_OPENAI_MODEL=gpt-5.4",
+                     "MSC_MAX_AI_REQUESTS_PER_HOUR=30",
+                     "MSC_MINIMUM_PHONE_VERSION_CODE=13",
+                     "MSC_MINIMUM_WEAR_VERSION_CODE=360090001",
+--- a/MyStudyCompanion/backend/app/services/openai_study_service.py
++++ b/MyStudyCompanion/backend/app/services/openai_study_service.py
+@@ -2,7 +2,6 @@
+ 
+ import json
+ import re
+-import time
+ from dataclasses import dataclass
+ from typing import Any
+ 
+@@ -22,6 +21,9 @@
+     response_id: str
+     answer: str
+     citations: list[AiCitation]
++    follow_up_questions: list[str]
++    model_label: str
++
+ 
+ @dataclass(frozen=True)
+ class PreparationReviewResult:
+@@ -41,59 +43,83 @@
+         request: AiStudyRequest,
+         previous_response_id: str | None,
+     ) -> StudyAssistantResult:
++        del previous_response_id  # Conversation context is supplied by the app; no provider-side state is required.
+         api_key = self.settings.openai_api_key.get_secret_value().strip()
+         if not api_key:
+             raise StudyAssistantError("The private AI service has not been configured")
+-        body: dict[str, Any] = {
+-            "model": self.settings.openai_model,
+-            "store": True,
+-            "instructions": _INSTRUCTIONS,
+-            "input": _build_input(request),
+-            "tools": [
+-                {
+-                    "type": "web_search",
+-                    "filters": {"allowed_domains": ["jw.org", "wol.jw.org"]},
+-                }
+-            ],
+-            "tool_choice": "required",
+-            "include": ["web_search_call.action.sources"],
+-            "reasoning": {"effort": "medium"},
+-        }
+-        if previous_response_id:
+-            body["previous_response_id"] = previous_response_id
+-        timeout = httpx.Timeout(connect=15, read=120, write=30, pool=15)
+-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+-            response = await client.post(
+-                self.ENDPOINT,
+-                headers={
+-                    "Authorization": f"Bearer {api_key}",
+-                    "Content-Type": "application/json",
++
++        last_error = "The AI service did not produce a usable answer"
++        for attempt in range(2):
++            body: dict[str, Any] = {
++                "model": self.settings.openai_model,
++                "store": False,
++                "instructions": _INSTRUCTIONS + (
++                    "\n\nQUALITY RETRY: The prior attempt was rejected. Answer the exact user question directly, "
++                    "use concrete information from the approved sources, and return valid structured output."
++                    if attempt else ""
++                ),
++                "input": _build_input(request),
++                "tools": [
++                    {
++                        "type": "web_search",
++                        "filters": {"allowed_domains": ["jw.org", "wol.jw.org"]},
++                        "search_context_size": "high" if request.requestedDepth == "deep" else "medium",
++                    }
++                ],
++                "tool_choice": "required",
++                "include": ["web_search_call.action.sources"],
++                "reasoning": {"effort": "medium"},
++                "text": {
++                    "format": {
++                        "type": "json_schema",
++                        "name": "study_answer",
++                        "strict": True,
++                        "schema": {
++                            "type": "object",
++                            "properties": {
++                                "answer": {"type": "string", "minLength": 40, "maxLength": 12000},
++                                "follow_up_questions": {
++                                    "type": "array",
++                                    "items": {"type": "string", "minLength": 3, "maxLength": 240},
++                                    "maxItems": 3,
++                                },
++                            },
++                            "required": ["answer", "follow_up_questions"],
++                            "additionalProperties": False,
++                        },
++                    }
+                 },
+-                json=body,
++            }
++            payload = await self._post(body, api_key, operation="OpenAI study request")
++            response_id = str(payload.get("id") or "")
++            if not response_id:
++                last_error = "The AI service returned no response identifier"
++                continue
++            output_text, citations = _extract_answer_and_citations(payload)
++            try:
++                structured = json.loads(output_text)
++                answer = str(structured["answer"]).strip()
++                follow_ups = [" ".join(str(item).split()) for item in structured["follow_up_questions"]]
++            except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
++                last_error = f"The AI service returned invalid structured output: {error}"
++                continue
++            follow_ups = [item for item in follow_ups if 3 <= len(item) <= 240][:3]
++            if not _answer_is_substantive(request.question, answer):
++                last_error = "The AI answer was generic or did not address the question"
++                continue
++            if not citations:
++                last_error = "The AI service returned no verifiable official citations"
++                continue
++            _require_answer_urls_are_cited(answer, citations)
++            model = str(payload.get("model") or self.settings.openai_model).strip()
++            return StudyAssistantResult(
++                response_id=response_id,
++                answer=answer,
++                citations=citations[:30],
++                follow_up_questions=follow_ups,
++                model_label=f"Smart Online • {model}",
+             )
+-        if response.status_code not in range(200, 300):
+-            request_id = response.headers.get("x-request-id", "unknown")
+-            safe = response.text[:400].replace("\n", " ")
+-            raise StudyAssistantError(
+-                f"OpenAI request failed ({response.status_code}, request {request_id}): {safe}",
+-            )
+-        payload = response.json()
+-        response_id = str(payload.get("id") or "")
+-        if not response_id:
+-            raise StudyAssistantError("The AI service returned no response identifier")
+-        answer, citations = _extract_answer_and_citations(payload)
+-        if not answer.strip():
+-            raise StudyAssistantError("The AI service returned an empty answer")
+-        if len(answer) > 20_000:
+-            raise StudyAssistantError("The AI service returned an oversized answer")
+-        if not citations:
+-            raise StudyAssistantError("The AI service returned no verifiable official citations")
+-        _require_answer_urls_are_cited(answer, citations)
+-        return StudyAssistantResult(
+-            response_id=response_id,
+-            answer=answer.strip(),
+-            citations=citations[:30],
+-        )
++        raise StudyAssistantError(last_error)
+ 
+     async def review_preparation(
+         self,
+@@ -111,6 +137,7 @@
+                 {
+                     "type": "web_search",
+                     "filters": {"allowed_domains": ["jw.org", "wol.jw.org"]},
++                    "search_context_size": "medium",
+                 }
+             ],
+             "tool_choice": "required",
+@@ -133,23 +160,7 @@
+                 }
+             },
+         }
+-        timeout = httpx.Timeout(connect=15, read=120, write=30, pool=15)
+-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+-            response = await client.post(
+-                self.ENDPOINT,
+-                headers={
+-                    "Authorization": f"Bearer {api_key}",
+-                    "Content-Type": "application/json",
+-                },
+-                json=body,
+-            )
+-        if response.status_code not in range(200, 300):
+-            request_id = response.headers.get("x-request-id", "unknown")
+-            safe = response.text[:400].repla
