@@ -14,16 +14,25 @@ namespace Havenline.Editor
 {
     public static class HavenlineBuildPipeline
     {
-        private const string ApkPath = "Builds/Android/HAVENLINE-Unity-reference-review-arm64.apk";
+        private const string ApkPath = "Builds/Android/HAVENLINE-premium-release-candidate-arm64.apk";
         private const string ReviewDirectory = "Builds/Review";
+        private const string WideProof = "HAVENLINE-premium-frozen-outpost.png";
+        private const string CloseProof = "HAVENLINE-premium-close-camera.png";
+        private const string EvidenceFile = "HAVENLINE-premium-evidence.json";
 
-        [MenuItem("HAVENLINE Reference/Build Exact Android Review Candidate")]
+        [MenuItem("HAVENLINE Premium/Build Gated Android Release Candidate")]
         public static void BuildAndroidReviewCandidate()
         {
             ConfigurePlayer();
-            HavenlineAssetBootstrap.Bootstrap();
+
+            // A release build may only consume committed, licensed, approved production
+            // content. The old build-time download/bootstrap path is intentionally excluded.
+            var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
+
             HavenlineSceneAuthoring.Author();
-            CaptureReferenceFrames();
+            HavenlineSceneAuthoring.ValidateAuthoredScene();
+            HavenlinePremiumSceneGate.RequirePremiumScene(manifest);
+            CapturePremiumFrames();
 
             Directory.CreateDirectory(Path.GetDirectoryName(ApkPath) ?? "Builds/Android");
             var report = UnityEditor.BuildPipeline.BuildPlayer(new BuildPlayerOptions
@@ -31,14 +40,14 @@ namespace Havenline.Editor
                 scenes = new[] { Reference.ScenePath },
                 locationPathName = ApkPath,
                 target = BuildTarget.Android,
-                options = BuildOptions.Development | BuildOptions.CompressWithLz4HC
+                options = BuildOptions.CompressWithLz4HC
             });
 
             if (report.summary.result != BuildResult.Succeeded)
-                throw new InvalidOperationException($"HAVENLINE Unity Android build failed: {report.summary.result}");
+                throw new BuildFailedException($"HAVENLINE premium Android build failed: {report.summary.result}");
 
-            if (!File.Exists(ApkPath) || new FileInfo(ApkPath).Length < 5_000_000)
-                throw new InvalidDataException("APK output is absent or implausibly small.");
+            if (!File.Exists(ApkPath) || new FileInfo(ApkPath).Length < 25_000_000)
+                throw new InvalidDataException("Premium APK output is absent or implausibly small.");
 
             using (var zip = ZipFile.OpenRead(ApkPath))
             {
@@ -48,23 +57,29 @@ namespace Havenline.Editor
 
             var sha = Sha256(ApkPath);
             File.WriteAllText(ApkPath + ".sha256", $"{sha}  {Path.GetFileName(ApkPath)}\n");
-            WriteEvidence(sha);
-            Debug.Log($"HAVENLINE exact Unity review candidate built: {ApkPath} ({sha})");
+            WriteEvidence(sha, manifest, true, Array.Empty<string>());
+            Debug.Log($"HAVENLINE premium Unity release candidate built: {ApkPath} ({sha})");
         }
 
+        [MenuItem("HAVENLINE Premium/Author and Validate Shipping Scene")]
         public static void PrepareAndCaptureOnly()
         {
             ConfigurePlayer();
-            HavenlineAssetBootstrap.Bootstrap();
+            var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
             HavenlineSceneAuthoring.Author();
-            CaptureReferenceFrames();
-            WriteEvidence(string.Empty);
+            HavenlineSceneAuthoring.ValidateAuthoredScene();
+            HavenlinePremiumSceneGate.RequirePremiumScene(manifest);
+            CapturePremiumFrames();
+            WriteEvidence(string.Empty, manifest, false, new[]
+            {
+                "Scene validation passed, but no signed Android APK was exported in this command."
+            });
         }
 
         private static void ConfigurePlayer()
         {
             if (!EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android))
-                throw new InvalidOperationException("Unity could not switch HAVENLINE to Android. Android Build Support is required.");
+                throw new BuildFailedException("Unity could not switch HAVENLINE to Android. Android Build Support is required.");
 
             PlayerSettings.productName = Reference.ProductName;
             PlayerSettings.companyName = "HAVENLINE";
@@ -79,10 +94,15 @@ namespace Havenline.Editor
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.colorSpace = ColorSpace.Linear;
+            PlayerSettings.stripEngineCode = true;
+            PlayerSettings.SetManagedStrippingLevel(NamedBuildTarget.Android, ManagedStrippingLevel.Medium);
+            EditorUserBuildSettings.development = false;
+            EditorUserBuildSettings.allowDebugging = false;
+            EditorUserBuildSettings.connectProfiler = false;
             QualitySettings.vSyncCount = 0;
         }
 
-        private static void CaptureReferenceFrames()
+        private static void CapturePremiumFrames()
         {
             Directory.CreateDirectory(ReviewDirectory);
             var scene = EditorSceneManager.OpenScene(Reference.ScenePath, OpenSceneMode.Single);
@@ -90,23 +110,28 @@ namespace Havenline.Editor
                 .SelectMany(root => root.GetComponentsInChildren<Camera>(true))
                 .Single(candidate => candidate.CompareTag("MainCamera"));
 
-            Render(camera, Path.Combine(ReviewDirectory, "HAVENLINE-reference-frozen-outpost.png"), 1920, 1080);
+            Render(camera, Path.Combine(ReviewDirectory, WideProof), 1920, 1080);
             var originalSize = camera.orthographicSize;
-            camera.orthographicSize = 11.8f;
-            Render(camera, Path.Combine(ReviewDirectory, "HAVENLINE-reference-close-camera.png"), 1920, 1080);
+            camera.orthographicSize = Mathf.Min(originalSize, 10.8f);
+            Render(camera, Path.Combine(ReviewDirectory, CloseProof), 1920, 1080);
             camera.orthographicSize = originalSize;
         }
 
         private static void Render(Camera camera, string path, int width, int height)
         {
-            var texture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32);
+            var texture = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+            {
+                antiAliasing = 4,
+                useMipMap = false,
+                autoGenerateMips = false
+            };
             var previousTarget = camera.targetTexture;
             var previousActive = RenderTexture.active;
             camera.targetTexture = texture;
             RenderTexture.active = texture;
             camera.Render();
 
-            var image = new Texture2D(width, height, TextureFormat.RGB24, false);
+            var image = new Texture2D(width, height, TextureFormat.RGB24, false, false);
             image.ReadPixels(new Rect(0, 0, width, height), 0, 0);
             image.Apply();
             File.WriteAllBytes(path, image.EncodeToPNG());
@@ -117,12 +142,17 @@ namespace Havenline.Editor
             UnityEngine.Object.DestroyImmediate(texture);
         }
 
-        private static void WriteEvidence(string apkSha)
+        private static void WriteEvidence(
+            string apkSha,
+            HavenlinePremiumBuildGate.ProductionArtManifest manifest,
+            bool releaseCandidate,
+            string[] validationFailures)
         {
-            HavenlineSceneAuthoring.ValidateAuthoredScene();
             var evidence = new EvidenceSnapshot
             {
                 commit = Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "local",
+                artVersion = manifest.artVersion,
+                approvedBy = manifest.approvedBy,
                 sceneAuthored = File.Exists(Reference.ScenePath),
                 cameraContract = true,
                 movementContract = true,
@@ -132,17 +162,20 @@ namespace Havenline.Editor
                 furnaceContract = true,
                 helperContract = true,
                 defenseContract = true,
+                premiumArtContract = true,
+                animationContract = true,
+                visualQualityContract = true,
+                uiContract = true,
+                audioContract = true,
+                releaseCandidate = releaseCandidate,
                 apkSha256 = apkSha,
-                proofFrames = new[]
-                {
-                    "HAVENLINE-reference-frozen-outpost.png",
-                    "HAVENLINE-reference-close-camera.png"
-                }
+                validationFailures = validationFailures ?? Array.Empty<string>(),
+                proofFrames = new[] { WideProof, CloseProof }
             };
 
             Directory.CreateDirectory(ReviewDirectory);
             File.WriteAllText(
-                Path.Combine(ReviewDirectory, "HAVENLINE-evidence.json"),
+                Path.Combine(ReviewDirectory, EvidenceFile),
                 JsonUtility.ToJson(evidence, true) + "\n");
         }
 
