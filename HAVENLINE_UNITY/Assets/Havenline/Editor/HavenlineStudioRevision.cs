@@ -4,6 +4,6 @@ namespace Havenline.Editor
     {
         public const string Current = "0.1.0-review.13";
         public const string Purpose =
-            "Use deterministic fixed furnace particle base sizes while preserving soft materials, motion variation, authored placement and unchanged visual limits.";
+            "Validate deterministic fixed furnace particle sizes, soft transparent materials, authored door and chimney placement, complete shelters and unchanged premium gates.";
     }
 }
