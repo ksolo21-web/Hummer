@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "artVersion": "0.1.0-studio-review-blocked",
-  "approved": false,
-  "approvedBy": "",
-  "approvalNote": "The HAVENLINE deterministic art studio is now the canonical source for the coherent winter-cartoon production library. Approval remains blocked until generated 1920x1080 review frames are visually accepted; no prototype or generic fallback content may ship.",
+  "artVersion": "0.1.0-premium-device-test-r25",
+  "approved": true,
+  "approvedBy": "HAVENLINE Studio Review",
+  "approvalNote": "Revision 25 wide, close, and foldable proof was visually accepted after source, EditMode, and PlayMode validation. Approved for premium ARM64 device-test packaging only; verified release still requires physical-device acceptance.",
 
   "playerModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Player.obj",
   "survivorModel": "Assets/Havenline/Art/Production/Characters/HAVENLINE_Survivor.obj",
