@@ -35,7 +35,7 @@ if updated < 2:
     raise SystemExit(f'expected GPT-5.4 markers in at least config and bootstrap files; updated {updated}')
 PY
 
-python3 .msc-build/generate-0.15.15-professional-color-by-number.py
+python3 .msc-build/generate-0.15.15-recognizable-color-by-number.py
 python3 MyStudyCompanion/tools/verify_curated_workbook.py
 
 python3 - <<'PY'
@@ -78,6 +78,12 @@ checks = {
     Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt'): [
         'colorRegions',
         'pixelCount >= 900',
+    ],
+    Path('.msc-build/generate-0.15.15-recognizable-color-by-number.py'): [
+        'palette_number = str(numbers[region_id])',
+        'safe[:margin, :] = False',
+        'image = pencil_source(rgb)',
+        'recognizable-pencil-source-v4',
     ],
     Path('MyStudyCompanion/app/build.gradle.kts'): [
         'versionCode = 48',
@@ -131,8 +137,11 @@ else:
             f'{manifest_path}: expected colorByNumberVersion 2, '
             f'found {manifest.get("colorByNumberVersion")!r}'
         )
-    if manifest.get('colorByNumberQuality') != 'professional-source-art-v3':
-        missing.append(f'{manifest_path}: professional-source-art-v3 quality marker is missing')
+    if manifest.get('colorByNumberQuality') != 'recognizable-pencil-source-v4':
+        missing.append(f'{manifest_path}: recognizable-pencil-source-v4 quality marker is missing')
+    design = manifest.get('colorByNumberDesign', {})
+    if design.get('visibleNumbers') != 'palette numbers 1-8 rather than internal region ids':
+        missing.append(f'{manifest_path}: palette-correct visible-number guarantee is missing')
     assets = manifest.get('assets', [])
     if len(assets) != 16:
         missing.append(f'{manifest_path}: expected 16 assets, found {len(assets)}')
@@ -142,18 +151,33 @@ else:
             missing.append(
                 f'{manifest_path}: asset {item.get("id")!r} has {len(regions)} regions; expected 14-20'
             )
-        if len(set(item.get('colorNumbersUsed', []))) < 5:
+        numbers_used = set(item.get('colorNumbersUsed', []))
+        if len(numbers_used) < 5:
             missing.append(f'{manifest_path}: asset {item.get("id")!r} uses fewer than five palette colors')
+        if not numbers_used.issubset(set(range(1, 9))):
+            missing.append(f'{manifest_path}: asset {item.get("id")!r} contains a number outside the 1-8 palette')
         for region in regions:
             if int(region.get('pixelCount', 0)) < 6_000:
                 missing.append(
                     f'{manifest_path}: asset {item.get("id")!r} region {region.get("id")!r} '
                     'is below the 6,000-pixel playability floor'
                 )
+            if int(region.get('number', 0)) not in range(1, 9):
+                missing.append(
+                    f'{manifest_path}: asset {item.get("id")!r} region {region.get("id")!r} '
+                    'uses an invalid visible palette number'
+                )
+            center_x = int(region.get('centerX', -1))
+            center_y = int(region.get('centerY', -1))
+            if not 40 <= center_x <= 960 or not 32 <= center_y <= 968:
+                missing.append(
+                    f'{manifest_path}: asset {item.get("id")!r} region {region.get("id")!r} '
+                    'places its number outside the normalized visual safe area'
+                )
         for name in ('color-master.webp', 'color-line.png', 'color-region-mask.png'):
             asset_path = Path('MyStudyCompanion/app/src/main/assets/workbook', str(item.get('id', '')), name)
             if not asset_path.is_file():
-                missing.append(f'{asset_path}: professional color activity asset is missing')
+                missing.append(f'{asset_path}: recognizable color activity asset is missing')
 
 preview = Path('MyStudyCompanion/build/reports/workbook/color-by-number-professional-contact-sheet.jpg')
 if not preview.is_file():
@@ -162,7 +186,7 @@ if not preview.is_file():
 if missing:
     raise SystemExit('FAIL: 0.15.15 source gate found the following problems:\n- ' + '\n- '.join(missing))
 
-print(f'PASS: all {sum(len(markers) for markers in checks.values())} source markers and professional activity assets are present.')
+print(f'PASS: all {sum(len(markers) for markers in checks.values())} source markers and recognizable activity assets are present.')
 PY
 
 echo 'Applied My Study Companion 0.15.15 smart AI and activity rebuild.'
