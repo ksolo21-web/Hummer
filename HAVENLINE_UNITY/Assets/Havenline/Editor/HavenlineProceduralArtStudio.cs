@@ -224,8 +224,14 @@ namespace Havenline.Editor
 
         private static void GenerateVfx()
         {
+            HavenlinePremiumParticleAssets.Ensure();
             CreateParticlePrefab(VfxRoot + "/HAVENLINE_FurnaceFire.prefab", "FurnaceFire",
-                Orange, Amber, 160, 1.1f, 1.0f, new Vector3(0.28f, 0.64f, 0.28f), false, true);
+                Orange, Amber, 96, 0.65f, 0.28f, new Vector3(0.18f, 0.10f, 0.18f), false, true);
+            CreateParticlePrefab(VfxRoot + "/HAVENLINE_FurnaceSparks.prefab", "FurnaceSparks",
+                Amber, Orange, 48, 0.55f, 0.075f, new Vector3(0.12f, 0.04f, 0.12f), false, true);
+            CreateParticlePrefab(VfxRoot + "/HAVENLINE_FurnaceSmoke.prefab", "FurnaceSmoke",
+                new Color(0.22f,0.28f,0.32f,0.34f), new Color(0.08f,0.12f,0.16f,0f),
+                40, 2.25f, 0.34f, new Vector3(0.18f,0.08f,0.18f), true, true);
             CreateParticlePrefab(VfxRoot + "/HAVENLINE_Snowfall.prefab", "Snowfall",
                 Color.white, new Color(0.68f,0.85f,1f), 420, 7.5f, 0.10f, new Vector3(26f, 1f, 30f), true, false);
             CreateParticlePrefab(VfxRoot + "/HAVENLINE_GatherImpact.prefab", "GatherImpact",
@@ -654,36 +660,108 @@ namespace Havenline.Editor
             var root = new GameObject("HAVENLINE_" + name);
             try
             {
+                var isSnow = name == "Snowfall";
+                var isFire = name == "FurnaceFire";
+                var isSparks = name == "FurnaceSparks";
+                var isSmoke = name == "FurnaceSmoke";
+
                 var particles = root.AddComponent<ParticleSystem>();
                 var main = particles.main;
-                main.loop = looping || name == "Snowfall";
+                main.loop = looping || isSnow;
                 main.playOnAwake = true;
                 main.maxParticles = maxParticles;
-                main.startLifetime = lifetime;
-                main.startSpeed = name == "Snowfall" ? 1.6f : 1.15f;
-                main.startSize = size;
-                main.simulationSpace = worldSimulation ? ParticleSystemSimulationSpace.World : ParticleSystemSimulationSpace.Local;
+                main.simulationSpace = worldSimulation
+                    ? ParticleSystemSimulationSpace.World
+                    : ParticleSystemSimulationSpace.Local;
                 main.startColor = new ParticleSystem.MinMaxGradient(start, end);
-                main.gravityModifier = name == "Snowfall" ? 0.05f : 0.18f;
+                main.startRotation = new ParticleSystem.MinMaxCurve(-0.35f, 0.35f);
+                main.startLifetime = isFire
+                    ? new ParticleSystem.MinMaxCurve(0.34f, 0.68f)
+                    : isSparks
+                        ? new ParticleSystem.MinMaxCurve(0.28f, 0.58f)
+                        : isSmoke
+                            ? new ParticleSystem.MinMaxCurve(1.7f, 2.6f)
+                            : new ParticleSystem.MinMaxCurve(lifetime * 0.82f, lifetime * 1.18f);
+                main.startSpeed = isSnow
+                    ? new ParticleSystem.MinMaxCurve(1.15f, 1.75f)
+                    : isFire
+                        ? new ParticleSystem.MinMaxCurve(0.30f, 0.78f)
+                        : isSparks
+                            ? new ParticleSystem.MinMaxCurve(1.10f, 2.10f)
+                            : isSmoke
+                                ? new ParticleSystem.MinMaxCurve(0.24f, 0.52f)
+                                : new ParticleSystem.MinMaxCurve(0.72f, 1.22f);
+                main.startSize = isFire
+                    ? new ParticleSystem.MinMaxCurve(0.12f, 0.34f)
+                    : isSparks
+                        ? new ParticleSystem.MinMaxCurve(0.035f, 0.09f)
+                        : isSmoke
+                            ? new ParticleSystem.MinMaxCurve(0.18f, 0.42f)
+                            : new ParticleSystem.MinMaxCurve(size * 0.72f, size * 1.18f);
+                main.gravityModifier = isSnow ? 0.04f : isSparks ? 0.26f : isSmoke ? -0.018f : isFire ? -0.06f : 0.16f;
 
                 var emission = particles.emission;
-                emission.rateOverTime = name == "Snowfall" ? 230f : looping ? 85f : 0f;
-                if (!looping && name != "Snowfall")
-                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Min(maxParticles, 36)) });
+                emission.rateOverTime = isSnow ? 210f : isFire ? 42f : isSparks ? 12f : isSmoke ? 6.5f : looping ? 34f : 0f;
+                if (!looping && !isSnow)
+                    emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Min(maxParticles, 30)) });
+
                 var shape = particles.shape;
-                shape.shapeType = name == "Snowfall" ? ParticleSystemShapeType.Box : ParticleSystemShapeType.Cone;
+                shape.shapeType = isSnow ? ParticleSystemShapeType.Box : ParticleSystemShapeType.Cone;
                 shape.scale = shapeScale;
-                shape.angle = name == "FurnaceFire" ? 16f : 36f;
+                shape.radius = isFire ? 0.12f : isSparks ? 0.08f : isSmoke ? 0.14f : 0.22f;
+                shape.angle = isFire ? 8f : isSparks ? 20f : isSmoke ? 10f : 32f;
+
                 var color = particles.colorOverLifetime;
                 color.enabled = true;
                 var gradient = new Gradient();
                 gradient.SetKeys(
-                    new[] { new GradientColorKey(start,0f), new GradientColorKey(end,1f) },
-                    new[] { new GradientAlphaKey(0f,0f), new GradientAlphaKey(1f,0.12f), new GradientAlphaKey(0f,1f) });
+                    new[]
+                    {
+                        new GradientColorKey(start, 0f),
+                        new GradientColorKey(Color.Lerp(start, end, 0.48f), 0.48f),
+                        new GradientColorKey(end, 1f)
+                    },
+                    isSmoke
+                        ? new[]
+                        {
+                            new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.34f, 0.18f),
+                            new GradientAlphaKey(0.20f, 0.66f), new GradientAlphaKey(0f, 1f)
+                        }
+                        : new[]
+                        {
+                            new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.96f, 0.12f),
+                            new GradientAlphaKey(0.72f, 0.64f), new GradientAlphaKey(0f, 1f)
+                        });
                 color.color = gradient;
+
+                var sizeLifetime = particles.sizeOverLifetime;
+                sizeLifetime.enabled = isFire || isSmoke;
+                if (sizeLifetime.enabled)
+                {
+                    sizeLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                        new Keyframe(0f, isSmoke ? 0.38f : 0.55f),
+                        new Keyframe(0.55f, 1f),
+                        new Keyframe(1f, isSmoke ? 1.42f : 0.18f)));
+                }
+
+                var noise = particles.noise;
+                noise.enabled = isFire || isSmoke;
+                if (noise.enabled)
+                {
+                    noise.strength = isSmoke ? 0.18f : 0.12f;
+                    noise.frequency = isSmoke ? 0.42f : 0.72f;
+                    noise.scrollSpeed = 0.24f;
+                    noise.damping = true;
+                }
+
                 var renderer = root.GetComponent<ParticleSystemRenderer>();
-                renderer.sharedMaterial = LoadMaterial(name == "Snowfall" ? "Snow" : name == "FurnaceFire" ? "Orange" : "Amber");
-                renderer.renderMode = ParticleSystemRenderMode.Billboard;
+                renderer.sharedMaterial = HavenlinePremiumParticleAssets.Resolve(name);
+                renderer.renderMode = isFire || isSparks
+                    ? ParticleSystemRenderMode.Stretch
+                    : ParticleSystemRenderMode.Billboard;
+                renderer.lengthScale = isSparks ? 2.4f : isFire ? 1.15f : 1f;
+                renderer.velocityScale = isSparks ? 0.38f : isFire ? 0.18f : 0f;
+                renderer.sortMode = ParticleSystemSortMode.Distance;
                 PrefabUtility.SaveAsPrefabAsset(root, path);
             }
             finally

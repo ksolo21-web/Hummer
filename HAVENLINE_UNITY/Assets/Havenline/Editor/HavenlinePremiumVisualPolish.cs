@@ -227,12 +227,29 @@ namespace Havenline.Editor
 
             CreateMeshObject(root.transform, "FabricShell",
                 HavenlinePremiumVisualAssets.ShelterShellPath,
-                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Blue.mat",
+                HavenlinePremiumVisualAssets.ShelterFabricMaterialPath,
                 Vector3.zero, Vector3.one, Quaternion.identity);
+            CreateMeshObject(root.transform, "BaseSkirt",
+                HavenlinePremiumVisualAssets.FurnaceBodyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Navy.mat",
+                new Vector3(0f, 0.01f, 0f), new Vector3(1.02f, 0.10f, 0.94f), Quaternion.identity);
             CreateMeshObject(root.transform, "SnowRoof",
                 HavenlinePremiumVisualAssets.ShelterSnowCapPath,
                 HavenlinePremiumVisualAssets.PaleSnowMaterialPath,
                 Vector3.zero, Vector3.one, Quaternion.identity);
+            CreateMeshObject(root.transform, "RidgeBeam",
+                HavenlinePremiumVisualAssets.FurnaceChimneyPath,
+                "Assets/Havenline/Art/Production/Materials/HAVENLINE_Navy.mat",
+                new Vector3(0f, 2.72f, 0f), new Vector3(0.13f, 2.16f, 0.13f),
+                Quaternion.Euler(90f, 0f, 0f));
+            for (var side = -1; side <= 1; side += 2)
+            {
+                CreateMeshObject(root.transform, side < 0 ? "LeftFrontTrim" : "RightFrontTrim",
+                    HavenlinePremiumVisualAssets.FurnaceChimneyPath,
+                    "Assets/Havenline/Art/Production/Materials/HAVENLINE_Navy.mat",
+                    new Vector3(side * 1.58f, 0.08f, 1.69f),
+                    new Vector3(0.10f, 1.10f, 0.10f), Quaternion.identity);
+            }
             CreateMeshObject(root.transform, "DoorFrame",
                 HavenlinePremiumVisualAssets.FurnaceBodyPath,
                 "Assets/Havenline/Art/Production/Materials/HAVENLINE_Amber.mat",

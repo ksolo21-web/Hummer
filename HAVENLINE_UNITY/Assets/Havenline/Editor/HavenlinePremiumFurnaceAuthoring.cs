@@ -13,10 +13,10 @@ namespace Havenline.Editor
     internal static class HavenlinePremiumFurnaceAuthoring
     {
         private const string MaterialRoot = "Assets/Havenline/Art/Production/Materials";
-        private const string Metal = MaterialRoot + "/HAVENLINE_Metal.mat";
-        private const string MetalLight = MaterialRoot + "/HAVENLINE_MetalLight.mat";
-        private const string Navy = MaterialRoot + "/HAVENLINE_Navy.mat";
-        private const string Blue = MaterialRoot + "/HAVENLINE_Blue.mat";
+        private const string Metal = HavenlinePremiumVisualAssets.FurnaceDarkMaterialPath;
+        private const string MetalLight = HavenlinePremiumVisualAssets.FurnaceSteelMaterialPath;
+        private const string Navy = HavenlinePremiumVisualAssets.FurnaceDarkMaterialPath;
+        private const string Blue = HavenlinePremiumVisualAssets.FurnaceEnamelMaterialPath;
         private const string Amber = MaterialRoot + "/HAVENLINE_Amber.mat";
         private const string Orange = MaterialRoot + "/HAVENLINE_Orange.mat";
 

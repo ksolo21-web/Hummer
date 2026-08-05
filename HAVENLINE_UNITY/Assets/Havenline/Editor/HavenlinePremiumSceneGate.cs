@@ -323,6 +323,28 @@ namespace Havenline.Editor
                     failures.Add($"Superseded imported tent visual is still active: {oldTentName}.");
             }
 
+            foreach (var effectName in new[] { "FurnaceFireVFX", "FurnaceSparksVFX", "FurnaceSmokeVFX" })
+            {
+                var effectObject = objects.SingleOrDefault(item => item.name == effectName);
+                var particles = effectObject?.GetComponentInChildren<ParticleSystem>(true);
+                if (particles == null)
+                {
+                    failures.Add($"Shipping furnace is missing authored effect: {effectName}.");
+                    continue;
+                }
+                var materialPath = AssetDatabase.GetAssetPath(
+                    particles.GetComponent<ParticleSystemRenderer>().sharedMaterial);
+                if (!materialPath.Contains("/VFX/Materials/", StringComparison.Ordinal))
+                    failures.Add($"{effectName} is not using a soft transparent HAVENLINE particle material.");
+            }
+            var fireEffect = objects.SingleOrDefault(item => item.name == "FurnaceFireVFX")
+                ?.GetComponentInChildren<ParticleSystem>(true);
+            if (fireEffect != null && fireEffect.main.startSize.constantMax > 0.45f)
+                failures.Add("Furnace fire particles are oversized and obscure the machine silhouette.");
+            var smokeEffect = objects.SingleOrDefault(item => item.name == "FurnaceSmokeVFX");
+            if (smokeEffect != null && smokeEffect.transform.localPosition.y < 2.4f)
+                failures.Add("Furnace smoke must originate above the authored chimney.");
+
             var renderers = scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<Renderer>(true))
                 .ToArray();

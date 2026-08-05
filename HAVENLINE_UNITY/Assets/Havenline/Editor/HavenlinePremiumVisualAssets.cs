@@ -17,6 +17,14 @@ namespace Havenline.Editor
         internal const string FurnaceChimneyPath = Root + "/HAVENLINE_FurnaceChimney.asset";
         internal const string ShelterShellPath = Root + "/HAVENLINE_ShelterShell.asset";
         internal const string ShelterSnowCapPath = Root + "/HAVENLINE_ShelterSnowCap.asset";
+        internal const string FurnaceDarkMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_FurnaceDark.mat";
+        internal const string FurnaceSteelMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_FurnaceSteel.mat";
+        internal const string FurnaceEnamelMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_FurnaceEnamel.mat";
+        internal const string ShelterFabricMaterialPath =
+            "Assets/Havenline/Art/Production/Materials/HAVENLINE_ShelterFabric.mat";
         internal const string PaleSnowMaterialPath =
             "Assets/Havenline/Art/Production/Materials/HAVENLINE_PaleSnow.mat";
         internal const string SnowPathMaterialPath =
@@ -50,7 +58,27 @@ namespace Havenline.Editor
                 CreateMeshIfMissing(ShelterShellPath, CreateTentMesh(
                     "HAVENLINE_ShelterShell", 3.9f, 2.65f, 3.3f));
                 CreateMeshIfMissing(ShelterSnowCapPath, CreateTentRoofCapMesh(
-                    "HAVENLINE_ShelterSnowCap", 3.9f, 2.65f, 3.3f, 0.72f));
+                    "HAVENLINE_ShelterSnowCap", 3.9f, 2.65f, 3.3f, 0.52f));
+                CreateMaterialIfMissing(
+                    FurnaceDarkMaterialPath,
+                    new Color(0.042f, 0.062f, 0.078f, 1f),
+                    0.50f,
+                    string.Empty);
+                CreateMaterialIfMissing(
+                    FurnaceSteelMaterialPath,
+                    new Color(0.24f, 0.32f, 0.37f, 1f),
+                    0.58f,
+                    string.Empty);
+                CreateMaterialIfMissing(
+                    FurnaceEnamelMaterialPath,
+                    new Color(0.035f, 0.16f, 0.24f, 1f),
+                    0.40f,
+                    string.Empty);
+                CreateMaterialIfMissing(
+                    ShelterFabricMaterialPath,
+                    new Color(0.038f, 0.105f, 0.17f, 1f),
+                    0.10f,
+                    string.Empty);
                 CreateMaterialIfMissing(
                     PaleSnowMaterialPath,
                     new Color(0.965f, 0.985f, 1f, 1f),
