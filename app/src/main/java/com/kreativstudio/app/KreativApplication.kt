@@ -1,6 +1,7 @@
 package com.kreativstudio.app
 
 import android.app.Application
+import android.os.Build
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.appcheck.FirebaseAppCheck
@@ -47,11 +48,42 @@ class KreativApplication : Application() {
     }
 
     private fun configureAppCheck() {
-        val provider = if (BuildConfig.DEBUG) {
+        val appCheck = FirebaseAppCheck.getInstance()
+        val provider = if (isProbablyEmulator()) {
             DebugAppCheckProviderFactory.getInstance()
         } else {
             PlayIntegrityAppCheckProviderFactory.getInstance()
         }
-        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(provider)
+        appCheck.installAppCheckProviderFactory(provider)
+        appCheck.setTokenAutoRefreshEnabled(true)
+    }
+
+    /**
+     * Debug App Check is reserved for emulator test runs. A debug-signed APK installed on a
+     * physical phone must still use Play Integrity; otherwise every reinstall creates a new,
+     * unregistered debug token and Firebase rejects otherwise valid signed-in requests.
+     */
+    private fun isProbablyEmulator(): Boolean {
+        val fingerprint = Build.FINGERPRINT.lowercase()
+        val model = Build.MODEL.lowercase()
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        val brand = Build.BRAND.lowercase()
+        val device = Build.DEVICE.lowercase()
+        val product = Build.PRODUCT.lowercase()
+        val hardware = Build.HARDWARE.lowercase()
+
+        return fingerprint.startsWith("generic") ||
+            "emulator" in fingerprint ||
+            "vbox" in fingerprint ||
+            "test-keys" in fingerprint && "sdk" in product ||
+            "google_sdk" in model ||
+            "emulator" in model ||
+            "android sdk built for" in model ||
+            "genymotion" in manufacturer ||
+            (brand.startsWith("generic") && device.startsWith("generic")) ||
+            product.contains("sdk_gphone") ||
+            product.startsWith("sdk") ||
+            hardware.contains("goldfish") ||
+            hardware.contains("ranchu")
     }
 }
