@@ -1,0 +1,21 @@
+name: Cancel stale My Study Companion 0.15.17 runs
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.17-cancel-stale.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-01517-premium-interactive-paint
+  cancel-in-progress: true
+
+jobs:
+  release-slot:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Stale 0.15.17 attempts cancelled; final corrected build slot released.'
