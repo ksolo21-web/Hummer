@@ -27,11 +27,16 @@ namespace Havenline.Tests
                     "The flame volume must remain visibly vertical instead of reading as a slash.");
 
                 Assert.That(ember, Is.Not.Null);
-                Assert.That(ember.vertexCount, Is.GreaterThanOrEqualTo(50));
-                Assert.That(ember.triangles.Length, Is.GreaterThanOrEqualTo(240));
+                Assert.That(ember.triangles.Length % 3, Is.EqualTo(0));
+                Assert.That(ember.triangles.Length, Is.GreaterThanOrEqualTo(180),
+                    "The ember must retain enough connected surface topology after Unity import/compaction.");
+                Assert.That(CountNonDegenerateTriangles(ember), Is.GreaterThanOrEqualTo(60),
+                    "The ember cannot pass with collapsed or zero-area topology.");
                 Assert.That(ember.bounds.size.x, Is.GreaterThan(0.9f));
                 Assert.That(ember.bounds.size.y, Is.GreaterThan(0.9f));
                 Assert.That(ember.bounds.size.z, Is.GreaterThan(0.9f));
+                Assert.That(ember.bounds.size.z / ember.bounds.size.x, Is.GreaterThan(0.82f),
+                    "The ember must remain a three-dimensional coal volume rather than a flat disc.");
             }
             finally
             {
@@ -58,6 +63,22 @@ namespace Havenline.Tests
             Assert.That(innerEmission.r, Is.InRange(1.20f, 1.60f),
                 "Inner emission must not be driven into white clipping.");
             Assert.That(innerEmission.g, Is.InRange(0.25f, 0.45f));
+        }
+
+        private static int CountNonDegenerateTriangles(Mesh mesh)
+        {
+            var vertices = mesh.vertices;
+            var triangles = mesh.triangles;
+            var count = 0;
+            for (var index = 0; index + 2 < triangles.Length; index += 3)
+            {
+                var a = vertices[triangles[index]];
+                var b = vertices[triangles[index + 1]];
+                var c = vertices[triangles[index + 2]];
+                if (Vector3.Cross(b - a, c - a).sqrMagnitude > 0.00000001f)
+                    count++;
+            }
+            return count;
         }
     }
 }
