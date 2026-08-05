@@ -1,0 +1,158 @@
+gn = Paint.Align.CENTER
++                    typeface = android.graphics.Typeface.DEFAULT_BOLD
++                    textSize = (15f * minOf(sx, sy)).coerceIn(11f, 22f)
++                }
++                regions.forEach { region ->
++                    val expected = workbookNumberColors[region.number]
++                    if (progress.selectedColors[workbookRegionKey(activity.id, region.id)] != expected) {
++                        val x = region.centerX * sx
++                        val y = region.centerY * sy
++                        paint.style = Paint.Style.FILL
++                        paint.color = AndroidColor.WHITE
++                        composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .82f, paint)
++                        paint.style = Paint.Style.STROKE
++                        paint.strokeWidth = 2f
++                        paint.color = AndroidColor.rgb(35, 42, 47)
++                        composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .82f, paint)
++                        paint.style = Paint.Style.FILL
++                        composeCanvas.nativeCanvas.drawText(
++                            region.number.toString(),
++                            x,
++                            y - (paint.ascent() + paint.descent()) / 2f,
++                            paint,
++                        )
++                    }
++                }
++            }
++            hintRegionId?.let { id ->
++                regions.firstOrNull { it.id == id }?.let { region ->
++                    drawCircle(
++                        color = hintColor,
++                        radius = 30f * minOf(sx, sy),
++                        center = Offset(region.centerX * sx, region.centerY * sy),
++                        style = Stroke(width = 5f),
++                    )
+                 }
+             }
+         }
+     }
+-    val completed = regions.count { progress.selectedColors[workbookRegionKey(activity.id, it.id)] == workbookNumberColors[it.number] }
+-    val allComplete = completed == regions.size
+-    Text(
+-        if (allComplete) "Picture complete — every professional illustration region is correct and saved." else "$completed of ${regions.size} regions complete",
+-        fontWeight = FontWeight.SemiBold,
+-        color = if (allComplete) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+-    )
++
++    Card(
++        colors = CardDefaults.cardColors(
++            containerColor = if (allComplete) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
++        ),
++    ) {
++        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
++            Text(feedback, fontWeight = FontWeight.SemiBold)
++            if (wrongTaps > 0 && !allComplete) {
++                Text("Careful tries: $wrongTaps", style = MaterialTheme.typography.labelSmall)
++            }
++        }
++    }
++
+     BoxWithConstraints(Modifier.fillMaxWidth()) {
+         val controls: @Composable () -> Unit = {
+-            OutlinedButton(enabled = undoAvailable, onClick = { repository.undoWorkbookColor(pageKey, activity.id) }) { Icon(Icons.Outlined.Undo, null); Spacer(Modifier.width(5.dp)); Text("Undo fill") }
+-            OutlinedButton(enabled = redoAvailable, onClick = { repository.redoWorkbookColor(pageKey, activity.id) }) { Icon(Icons.Outlined.Redo, null); Spacer(Modifier.width(5.dp)); Text("Redo fill") }
+-            OutlinedButton(onClick = { repository.resetWorkbookColors(pageKey, activity.id) }) { Icon(Icons.Outlined.RestartAlt, null); Spacer(Modifier.width(5.dp)); Text("Reset picture") }
++            OutlinedButton(
++                enabled = !allComplete && firstIncomplete != null,
++                onClick = {
++                    val target = regions.firstOrNull { region ->
++                        region.number == selectedNumber &&
++                            progress.selectedColors[workbookRegionKey(activity.id, region.id)] != workbookNumberColors[region.number]
++                    } ?: firstIncomplete
++                    if (target != null) {
++                        repository.selectWorkbookColorNumber(pageKey, activity.id, target.number)
++                        hintRegionId = target.id
++                        feedback = "Hint: find the gently circled shape marked ${target.number}."
++                    }
++                },
++            ) { Text("Hint") }
++            OutlinedButton(
++                enabled = undoAvailable,
++                onClick = { repository.undoWorkbookColor(pageKey, activity.id) },
++            ) { Icon(Icons.Outlined.Undo, null); Spacer(Modifier.width(5.dp)); Text("Undo") }
++            OutlinedButton(
++                enabled = redoAvailable,
++                onClick = { repository.redoWorkbookColor(pageKey, activity.id) },
++            ) { Icon(Icons.Outlined.Redo, null); Spacer(Modifier.width(5.dp)); Text("Redo") }
++            OutlinedButton(
++                enabled = completed > 0 || wrongTaps > 0,
++                onClick = {
++                    repository.resetWorkbookColors(pageKey, activity.id)
++                    wrongTaps = 0
++                    hintRegionId = null
++                    feedback = "Picture reset. Choose a color, then tap its numbered shapes."
++                },
++            ) { Icon(Icons.Outlined.RestartAlt, null); Spacer(Modifier.width(5.dp)); Text("Reset") }
++        }
++        if (maxWidth < 520.dp) {
++            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
++        } else {
++            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
+         }
+-        if (maxWidth < 430.dp) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { controls() } else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { controls() }
+     }
+ }
+ 
+@@ -1215,21 +1452,31 @@
+     val asset = WorkbookIllustrationCatalog.assetFor(context, activity)
+     val master = loadAssetBitmap(context, asset.masterPath)
+     val line = loadAssetBitmap(context, asset.linePath)
+-    val mask = loadAssetBitmap(context, asset.regionMaskPath)
++    val curatedLine = loadAssetBitmap(context, asset.colorLinePath)
+     val destination = android.graphics.RectF(left, top, left + width, top + height)
+     val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+     if (activity.kind == WorkbookActivityKind.COLOR_BY_NUMBER && includeCompletedWork) {
+-        val overlay = buildColorOverlay(LoadedWorkbookIllustration(asset, master, transparentLineBitmap(line), mask, master), activity.id, progress.selectedColors)
++        val curatedMask = loadAssetBitmap(context, asset.colorRegionMaskPath)
++        val overlay = buildColorOverlay(curatedMask, activity.id, progress.selectedColors)
+         canvas.drawRect(destination, Paint().apply { color = AndroidColor.WHITE })
+         canvas.drawBitmap(overlay, null, destination, bitmapPaint)
+-        canvas.drawBitmap(transparentLineBitmap(line), null, destination, bitmapPaint)
++        canvas.drawBitmap(transparentLineBitmap(curatedLine), null, destination, bitmapPaint)
+     } else {
+-        canvas.drawBitmap(if (activity.kind == WorkbookActivityKind.COLOR_BY_NUMBER || activity.kind == WorkbookActivityKind.DRAWING) line else master, null, destination, bitmapPaint)
++        canvas.drawBitmap(
++            when (activity.kind) {
++                WorkbookActivityKind.COLOR_BY_NUMBER -> curatedLine
++                WorkbookActivityKind.DRAWING -> line
++                else -> master
++            },
++            null,
++            destination,
++            bitmapPaint,
++        )
+     }
+     if (activity.kind == WorkbookActivityKind.COLOR_BY_NUMBER) {
+         val numberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AndroidColor.rgb(28,39,48); textAlign = Paint.Align.CENTER; typeface = android.graphics.Typeface.DEFAULT_BOLD; textSize = 10f }
+         val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AndroidColor.WHITE }
+-        asset.regions.forEach { region ->
++        asset.colorRegions.forEach { region ->
+             val expected = workbookNumberColors[region.number]
+             if (!includeCompletedWork || progress.selectedColors[workbookRegionKey(activity.id, region.id)] != expected) {
+                 val x = left + region.centerX / 1000f * width
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt
+@@ -15,6 +15,7 @@
+ data class WorkbookIllustrationRegion(
+     val id: String,
+     val number: Int,
++    val label: String = "Color region",
+     val centerX: Int,
+     val centerY: Int,
+     val pixelCount: Int,
+@@ -34,7 +35,12 @@
+     val id: String,
+     val title: String,
+     val aspectRatio: Float,
+-    val regions: List<WorkbookIllustrationRegion>,
++    /** Legacy segmentation data retained only for compatibility with older saved w
