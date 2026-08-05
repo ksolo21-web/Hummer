@@ -12,25 +12,18 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  GCP_PROJECT_ID: my-study-companion-abc01
+  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+  GCP_DEPLOY_SERVICE_ACCOUNT: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+
 jobs:
   inspect-live-rules:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: my-study-companion-private
-    env:
-      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
     steps:
       - uses: actions/checkout@v6
-
-      - name: Validate protected configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          for name in GCP_PROJECT_ID GCP_WORKLOAD_IDENTITY_PROVIDER GCP_DEPLOY_SERVICE_ACCOUNT; do
-            test -n "${!name:-}" || { echo "Missing $name" >&2; exit 1; }
-          done
 
       - id: auth
         name: Authenticate with Google Workload Identity Federation
@@ -90,8 +83,10 @@ jobs:
                   'release': name,
                   'ruleset': ruleset_name,
                   'fileCount': len(files),
-                  'allowsKreativNamespace': '/kreativ/' in joined or 'kreativProjects' in joined,
-                  'allowsOwnedUserTree': 'match /users/{userId}/{document=**}' in joined,
+                  'allowsKreativProjectMetadata': 'match /projects/{projectId}' in joined,
+                  'allowsKreativPrivateState': 'match /private/{documentId}' in joined,
+                  'allowsKreativStorageProjects': '/projects/{fileName}' in joined,
+                  'allowsKreativStoragePrivate': '/private/{fileName}' in joined,
                   'containsUsersCollection': 'match /users/' in joined,
               })
 
