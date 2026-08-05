@@ -1,61 +1,47 @@
-name: HAVENLINE Persist Animator Overrides
+name: HAVENLINE Animator Override Fix
 
 on:
   push:
     branches:
       - havenline-unity-reference-rebuild
     paths:
-      - '.github/workflows/havenline-fix-animator-overrides.yml'
+      - .github/workflows/havenline-fix-animator-overrides.yml
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  patch-authoring:
+  patch:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out active HAVENLINE branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: havenline-unity-reference-rebuild
           fetch-depth: 0
-
-      - name: Persist imported-model animator controller overrides
-        shell: python
+      - name: Patch scene authoring
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
-
-          path = Path('HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs')
-          source = path.read_text(encoding='utf-8')
-          old = '''        private static Animator EnsureAnimator(GameObject visual, string controllerPath)
-        {
-            var animator = visual.GetComponentInChildren<Animator>(true) ?? visual.AddComponent<Animator>();
-            animator.runtimeAnimatorController = Load<AnimatorController>(controllerPath);
-            animator.applyRootMotion = false;
-            animator.updateMode = AnimatorUpdateMode.Normal;
-            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-            return animator;
-        }
-'''
-          new = '''        private static Animator EnsureAnimator(GameObject visual, string controllerPath)
-        {
-            var animator = visual.GetComponentInChildren<Animator>(true) ?? visual.AddComponent<Animator>();
-            animator.runtimeAnimatorController = Load<AnimatorController>(controllerPath);
-            animator.applyRootMotion = false;
-            animator.updateMode = AnimatorUpdateMode.Normal;
-            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-            EditorUtility.SetDirty(animator);
-            if (PrefabUtility.IsPartOfPrefabInstance(animator))
-                PrefabUtility.RecordPrefabInstancePropertyModifications(animator);
-            return animator;
-        }
-'''
-          if old not in source:
-              raise SystemExit('Expected EnsureAnimator implementation was not found.')
-          path.write_text(source.replace(old, new), encoding='utf-8')
-
-      - name: Commit animator persistence correction
+          path = Path("HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs")
+          source = path.read_text(encoding="utf-8")
+          needle = (
+              "            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;\n"
+              "            return animator;"
+          )
+          replacement = (
+              "            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;\n"
+              "            EditorUtility.SetDirty(animator);\n"
+              "            if (PrefabUtility.IsPartOfPrefabInstance(animator))\n"
+              "                PrefabUtility.RecordPrefabInstancePropertyModifications(animator);\n"
+              "            return animator;"
+          )
+          if needle not in source:
+              raise SystemExit("Animator authoring target was not found")
+          path.write_text(source.replace(needle, replacement, 1), encoding="utf-8")
+          PY
+      - name: Commit correction
         shell: bash
         run: |
           set -euo pipefail
