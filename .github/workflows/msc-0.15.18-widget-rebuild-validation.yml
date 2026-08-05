@@ -129,7 +129,7 @@ jobs:
           set -euo pipefail
           bash .msc-build/apply-0.15.18-premium-widgets.sh
 
-      - name: Prove widget layout policy and cumulative Android compilation
+      - name: Prove widget data layouts and cumulative Android compilation
         shell: bash
         run: |
           set -euo pipefail
@@ -143,22 +143,40 @@ jobs:
               :wear:compileDebugKotlin
           ) 2>&1 | tee release-0.15.18-widget-validation/metadata/ANDROID-COMPILE-AND-TEST.txt
 
-      - name: Enforce no-StackView no-clipping and no-APK gates
+      - name: Enforce real-data Glance widgets no collection deck and no unsafe APK
         shell: bash
         run: |
           set -euo pipefail
-          WIDGET='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt'
+          RECEIVERS='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/StudyCompanionWidgets.kt'
+          DATA_WIDGETS='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt'
           MANIFEST='MyStudyCompanion/app/src/main/AndroidManifest.xml'
-          test -s "$WIDGET"
-          grep -Fq 'getAppWidgetOptions' "$WIDGET"
-          grep -Fq 'OPTION_APPWIDGET_MIN_WIDTH' "$WIDGET"
-          grep -Fq 'OPTION_APPWIDGET_MIN_HEIGHT' "$WIDGET"
-          grep -Fq 'widget_dashboard_tall' "$WIDGET"
-          ! grep -Fq 'StackView' "$WIDGET"
-          ! grep -Fq 'RemoteViewsService' "$WIDGET"
+          test -s "$RECEIVERS"
+          test -s "$DATA_WIDGETS"
+
+          grep -Fq 'GlanceAppWidgetReceiver' "$RECEIVERS"
+          grep -Fq 'override val glanceAppWidget = DailyStudyWidget()' "$RECEIVERS"
+          grep -Fq 'override val glanceAppWidget = WeeklyStudyWidget()' "$RECEIVERS"
+          grep -Fq 'override val glanceAppWidget = FamilyWorshipWidget()' "$RECEIVERS"
+          grep -Fq 'override val glanceAppWidget = CompanionDashboardWidget()' "$RECEIVERS"
+
+          grep -Fq 'class CompanionDashboardWidget : GlanceAppWidget()' "$DATA_WIDGETS"
+          grep -Fq 'SizeMode.Responsive' "$DATA_WIDGETS"
+          grep -Fq 'LocalSize.current' "$DATA_WIDGETS"
+          grep -Fq 'loadWidgetData(context)' "$DATA_WIDGETS"
+          grep -Fq 'dailyReference(data)' "$DATA_WIDGETS"
+          grep -Fq 'weekly.bibleReading' "$DATA_WIDGETS"
+          grep -Fq 'family.scheduledDate' "$DATA_WIDGETS"
+          grep -Fq 'CompanionDashboardMode.TALL' "$DATA_WIDGETS"
+          grep -Fq 'getGlanceIds(CompanionDashboardWidget::class.java)' "$DATA_WIDGETS"
+
+          ! grep -Fq 'AppWidgetProvider' "$RECEIVERS"
+          ! grep -Fq 'RemoteViews' "$RECEIVERS"
+          ! grep -Fq 'StackView' "$RECEIVERS"
+          ! grep -Fq 'RemoteViewsService' "$RECEIVERS"
           ! grep -Fq 'CompanionPagerService' "$MANIFEST"
           test ! -e MyStudyCompanion/app/src/main/res/layout/widget_pager.xml
           test ! -e MyStudyCompanion/app/src/main/res/layout/widget_pager_page.xml
+
           for layout in \
             widget_summary.xml \
             widget_dashboard_compact.xml \
@@ -169,19 +187,24 @@ jobs:
             grep -Fq 'android:fontFamily="sans-serif' "$path"
             grep -Fq 'android:ellipsize="end"' "$path"
           done
+
           if find . -type f -name '*.apk' -print -quit | grep -q .; then
             echo 'Validation must not publish or package a fallback-signed APK.' >&2
             exit 1
           fi
-          cat > release-0.15.18-widget-validation/metadata/NO-UNSAFE-RELEASE.txt <<'EOF'
+          cat > release-0.15.18-widget-validation/metadata/NO-UNSAFE-RELEASE.txt <<'EOF_STATUS'
+          PASS: all four existing widget provider identities now use responsive Glance.
+          PASS: the dashboard reads Room-backed Daily Text, weekly study, and Family Worship data.
+          PASS: the StackView/RemoteViewsService collection deck has been removed.
+          PASS: compact, standard, wide, and tall widget size modes compile and are unit tested.
           PASS: source and Android resources compiled without building an APK.
           PASS: no disposable signer or replacement signing identity was used.
           PASS: no Firebase Hosting address was substituted for the Cloud Run API.
           PASS: no Cloud Run, Firebase Auth, App Check, Firestore, or server secret was changed.
           PASS: only a future canonical signer-verified connected workflow may publish 0.15.18.
-          EOF
+          EOF_STATUS
 
-      - name: Preserve reconstructed app source for real-data widget integration review
+      - name: Preserve reconstructed app source for widget review
         shell: bash
         run: |
           set -euo pipefail
