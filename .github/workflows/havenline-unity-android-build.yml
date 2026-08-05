@@ -74,6 +74,8 @@ jobs:
           androidExportType: androidPackage
           buildMethod: Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate
           allowDirtyBuild: true
+          collectUnityLogs: true
+          streamUnityLogs: true
 
       - name: Locate and verify APK and proof outputs
         id: verify
@@ -142,15 +144,16 @@ jobs:
             **/Builds/Review/HAVENLINE-reference-close-camera.png
             **/Builds/Review/HAVENLINE-evidence.json
 
-      - name: Upload Unity logs on failure
+      - name: Upload complete Unity diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: HAVENLINE-Unity-failure-logs-${{ github.run_number }}
-          if-no-files-found: ignore
+          name: HAVENLINE-Unity-diagnostics-${{ github.run_number }}
+          if-no-files-found: warn
           retention-days: 14
           path: |
-            **/Logs/**
-            **/build/**
-            **/Builds/**
-            **/Library/PackageCache/**/Logs/**
+            Logs/UnityDiagnostics/**
+            HAVENLINE_UNITY/Logs/**
+            HAVENLINE_UNITY/build/**
+            HAVENLINE_UNITY/Builds/**
+            HAVENLINE_UNITY/Library/PackageCache/**/Logs/**
