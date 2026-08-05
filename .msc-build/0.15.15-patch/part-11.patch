@@ -1,0 +1,162 @@
+ progress.selectedColorNumbers[activity.id] ?: firstIncomplete
+-    var feedback by rememberSaveable(activity.id) { mutableStateOf("") }
++    }
++    val selectedNumber = progress.selectedColorNumbers[activity.id]
++        ?.takeIf { it in usedNumbers }
++        ?: firstIncomplete?.number
++        ?: usedNumbers.firstOrNull()
++        ?: 1
++    var feedback by rememberSaveable(activity.id) { mutableStateOf("Choose a color, then tap a shape carrying that number.") }
++    var wrongTaps by rememberSaveable(activity.id) { mutableStateOf(0) }
++    var hintRegionId by rememberSaveable(activity.id) { mutableStateOf<String?>(null) }
+     val overlay = remember(illustration.asset.id, activity.id, progress.selectedColors) {
+-        buildColorOverlay(illustration, activity.id, progress.selectedColors)
++        buildColorOverlay(illustration.colorMask, activity.id, progress.selectedColors)
+     }
+     val undoAvailable = progress.colorUndo.any { it.activityId == activity.id }
+     val redoAvailable = progress.colorRedo.any { it.activityId == activity.id }
++    val completed = regions.count {
++        progress.selectedColors[workbookRegionKey(activity.id, it.id)] == workbookNumberColors[it.number]
++    }
++    val allComplete = regions.isNotEmpty() && completed == regions.size
+ 
+     Text(
+-        "Choose a numbered color, then tap a closed region in the professional illustration. Correct fills save immediately.",
++        "This rebuilt page uses a small set of large, meaningful closed shapes—no jagged photo fragments or tiny slivers.",
+         style = MaterialTheme.typography.bodySmall,
+     )
+-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+-        activity.colorRegions.forEach { entry ->
+-            val number = entry.substringBefore('•').trim().toIntOrNull() ?: return@forEach
++    Text("$completed of ${regions.size} shapes complete", fontWeight = FontWeight.SemiBold)
++    LinearProgressIndicator(
++        progress = { if (regions.isEmpty()) 0f else completed.toFloat() / regions.size },
++        modifier = Modifier.fillMaxWidth(),
++    )
++
++    Row(
++        Modifier.horizontalScroll(rememberScrollState()),
++        horizontalArrangement = Arrangement.spacedBy(8.dp),
++    ) {
++        usedNumbers.forEach { number ->
+             val colorValue = workbookNumberColors[number] ?: return@forEach
++            val remaining = regions.count { region ->
++                region.number == number &&
++                    progress.selectedColors[workbookRegionKey(activity.id, region.id)] != colorValue
++            }
+             FilterChip(
+                 selected = selectedNumber == number,
+-                onClick = { feedback = "Color $number selected"; repository.selectWorkbookColorNumber(pageKey, activity.id, number) },
+-                leadingIcon = { Box(Modifier.size(20.dp).background(Color(colorValue), CircleShape).border(1.dp, MaterialTheme.colorScheme.onSurface, CircleShape)) },
+-                label = { Text(entry) },
++                onClick = {
++                    feedback = "${illustration.paletteLabels[number] ?: "Color"} $number selected—$remaining shapes left."
++                    hintRegionId = null
++                    repository.selectWorkbookColorNumber(pageKey, activity.id, number)
++                },
++                leadingIcon = {
++                    Box(
++                        Modifier
++                            .size(24.dp)
++                            .background(Color(colorValue), CircleShape)
++                            .border(1.dp, MaterialTheme.colorScheme.onSurface, CircleShape),
++                    )
++                },
++                label = {
++                    Text("$number ${illustration.paletteLabels[number] ?: "Color"} • $remaining")
++                },
+             )
+         }
+     }
+-    if (feedback.isNotBlank()) Text(feedback, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
++
++    val hintColor = MaterialTheme.colorScheme.tertiary
++
+     Canvas(
+         modifier = Modifier
+             .fillMaxWidth()
+             .aspectRatio(illustration.asset.aspectRatio)
+             .background(Color.White, RoundedCornerShape(18.dp))
+             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
+-            .pointerInput(activity.id, progress.selectedColors, selectedNumber) {
++            .pointerInput(activity.id, progress.selectedColors, selectedNumber, allComplete) {
+                 detectTapGestures { tapped ->
+-                    val regionId = regionAt(illustration.mask, tapped, size.width.toFloat(), size.height.toFloat()) ?: return@detectTapGestures
+-                    val region = regions.firstOrNull { it.id == regionId } ?: return@detectTapGestures
+-                    if (selectedNumber != region.number) {
+-                        feedback = "That closed region is number ${region.number}. Select color ${region.number}."
++                    if (allComplete) return@detectTapGestures
++                    val regionId = regionAt(
++                        illustration.colorMask,
++                        tapped,
++                        size.width.toFloat(),
++                        size.height.toFloat(),
++                    ) ?: run {
++                        wrongTaps += 1
++                        feedback = "Tap inside one of the outlined shapes."
+                         return@detectTapGestures
+                     }
++                    val region = regions.firstOrNull { it.id == regionId } ?: return@detectTapGestures
+                     val key = workbookRegionKey(activity.id, region.id)
+                     val expected = workbookNumberColors[region.number] ?: return@detectTapGestures
+-                    val applied = repository.applyWorkbookColor(pageKey, activity.id, key, region.number, expected)
+-                    feedback = if (applied) "Correct — region ${region.id} saved" else "That region is already complete"
++                    if (progress.selectedColors[key] == expected) {
++                        feedback = "That ${region.label} is already colored."
++                        return@detectTapGestures
++                    }
++                    if (selectedNumber != region.number) {
++                        wrongTaps += 1
++                        feedback = "Almost—this ${region.label} carries number ${region.number}. Choose color ${region.number}."
++                        return@detectTapGestures
++                    }
++                    val applied = repository.applyWorkbookColor(
++                        pageKey,
++                        activity.id,
++                        key,
++                        region.number,
++                        expected,
++                    )
++                    feedback = if (applied) {
++                        if (completed + 1 == regions.size) "Picture complete—great careful work!" else "Correct—the ${region.label} is filled."
++                    } else {
++                        "That shape is already complete."
++                    }
++                    hintRegionId = null
+                 }
+             },
+     ) {
+         drawRect(Color.White)
+-        drawIllustrationBitmap(overlay)
+-        drawIllustrationBitmap(illustration.line)
++        if (allComplete) {
++            drawIllustrationBitmap(illustration.colorMaster)
++        } else {
++            drawIllustrationBitmap(overlay)
++            drawIllustrationBitmap(illustration.colorLine)
++        }
+         val sx = size.width / 1000f
+         val sy = size.height / 1000f
+-        drawIntoCanvas { composeCanvas ->
+-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+-                textAlign = Paint.Align.CENTER
+-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+-                textSize = (13f * minOf(sx, sy)).coerceIn(9f, 18f)
+-            }
+-            regions.forEach { region ->
+-                val expected = workbookNumberColors[region.number]
+-                if (progress.selectedColors[workbookRegionKey(activity.id, region.id)] != expected) {
+-                    val x = region.centerX * sx
+-                    val y = region.centerY * sy
+-                    paint.color = AndroidColor.WHITE
+-                    composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .72f, paint)
+-                    paint.style = Paint.Style.STROKE
+-                    paint.strokeWidth = 1.4f
+-                    paint.color = AndroidColor.rgb(35, 42, 47)
+-                    composeCanvas.nativeCanvas.drawCircle(x, y, paint.textSize * .72f, paint)
+-                    paint.style = Paint.Style.FILL
+-                    composeCanvas.nativeCanvas.drawText(region.number.toString(), x, y - (paint.ascent() + paint.descent()) / 2f, paint)
++        if (!allComplete) {
++            drawIntoCanvas { composeCanvas ->
++                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++                    textAli
