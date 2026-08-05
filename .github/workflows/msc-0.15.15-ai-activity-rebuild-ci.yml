@@ -9,6 +9,8 @@ on:
       - .msc-build/0.15.15-patch/**
       - .msc-build/apply-0.15.15-ai-activity-rebuild.sh
       - .msc-build/build-0.15.15-ai-activity-rebuild.sh
+      - .msc-build/generate-0.15.15-professional-color-by-number.py
+      - .msc-build/generate-0.15.15-recognizable-color-by-number.py
   workflow_dispatch:
 
 permissions:
@@ -16,7 +18,7 @@ permissions:
 
 concurrency:
   group: msc-01515-smart-ai-activities-ci
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-and-verify:
