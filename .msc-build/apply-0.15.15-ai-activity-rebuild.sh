@@ -19,7 +19,7 @@ if text.count('0.14.1') < 3:
 path.write_text(text.replace('0.14.1', '0.15.15'), encoding='utf-8')
 PY
 
-python3 MyStudyCompanion/tools/generate_curated_color_by_number.py
+python3 .msc-build/generate-0.15.15-professional-color-by-number.py
 python3 MyStudyCompanion/tools/verify_curated_workbook.py
 
 python3 - <<'PY'
@@ -105,24 +105,38 @@ else:
             f'{manifest_path}: expected colorByNumberVersion 2, '
             f'found {manifest.get("colorByNumberVersion")!r}'
         )
+    if manifest.get('colorByNumberQuality') != 'professional-source-art-v3':
+        missing.append(f'{manifest_path}: professional-source-art-v3 quality marker is missing')
     assets = manifest.get('assets', [])
     if len(assets) != 16:
         missing.append(f'{manifest_path}: expected 16 assets, found {len(assets)}')
     for item in assets:
         regions = item.get('colorRegions', [])
-        if not 8 <= len(regions) <= 24:
+        if not 14 <= len(regions) <= 20:
             missing.append(
-                f'{manifest_path}: asset {item.get("id")!r} has {len(regions)} regions; expected 8-24'
+                f'{manifest_path}: asset {item.get("id")!r} has {len(regions)} regions; expected 14-20'
             )
+        if len(set(item.get('colorNumbersUsed', []))) < 5:
+            missing.append(f'{manifest_path}: asset {item.get("id")!r} uses fewer than five palette colors')
+        for region in regions:
+            if int(region.get('pixelCount', 0)) < 6_000:
+                missing.append(
+                    f'{manifest_path}: asset {item.get("id")!r} region {region.get("id")!r} '
+                    'is below the 6,000-pixel playability floor'
+                )
         for name in ('color-master.webp', 'color-line.png', 'color-region-mask.png'):
             asset_path = Path('MyStudyCompanion/app/src/main/assets/workbook', str(item.get('id', '')), name)
             if not asset_path.is_file():
-                missing.append(f'{asset_path}: curated activity asset is missing')
+                missing.append(f'{asset_path}: professional color activity asset is missing')
+
+preview = Path('MyStudyCompanion/build/reports/workbook/color-by-number-professional-contact-sheet.jpg')
+if not preview.is_file():
+    missing.append(f'{preview}: release visual-review sheet is missing')
 
 if missing:
     raise SystemExit('FAIL: 0.15.15 source gate found the following problems:\n- ' + '\n- '.join(missing))
 
-print(f'PASS: all {sum(len(markers) for markers in checks.values())} source markers and curated activity assets are present.')
+print(f'PASS: all {sum(len(markers) for markers in checks.values())} source markers and professional activity assets are present.')
 PY
 
 echo 'Applied My Study Companion 0.15.15 smart AI and activity rebuild.'
