@@ -59,10 +59,32 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
 
-      - name: Reconstruct 0.15.18 and replace the broken StackView widgets
+      - name: Reconstruct the accepted cumulative source through 0.15.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+          bash .msc-build/apply-0.15.10-household-date-recovery.sh
+          bash .msc-build/apply-0.15.11-local-family-generator.sh
+          bash .msc-build/apply-0.15.13-family-schedule-regression-audit.sh
+          bash .msc-build/apply-0.15.12-family-vote-widgets.sh
+          bash .msc-build/apply-0.15.12-widget-compile-fix.sh
+          bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
+
+      - name: Apply 0.15.15 through the 0.15.18 responsive widget rebuild
         shell: bash
         env:
-          # This is source validation only. It does not claim or deploy Smart Online.
+          # Source validation only. This does not claim or deploy Smart Online.
           MSC_SMART_ONLINE_VALIDATED: 'false'
         run: |
           set -euo pipefail
@@ -119,6 +141,16 @@ jobs:
           PASS: no Cloud Run, Firebase Auth, App Check, Firestore, or server secret was changed.
           PASS: only a future canonical signer-verified connected workflow may publish 0.15.18.
           EOF
+
+      - name: Preserve reconstructed app source for real-data widget integration review
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf release-0.15.18-widget-validation/metadata/APP-SOURCE-0.15.18.tgz \
+            MyStudyCompanion/app/src/main/java \
+            MyStudyCompanion/app/src/main/res \
+            MyStudyCompanion/app/src/main/AndroidManifest.xml \
+            MyStudyCompanion/app/build.gradle.kts
 
       - name: Upload widget source and compile evidence only
         uses: actions/upload-artifact@v6
