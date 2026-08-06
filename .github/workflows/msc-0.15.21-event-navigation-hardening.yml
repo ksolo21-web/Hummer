@@ -1,0 +1,315 @@
+name: My Study Companion 0.15.21 Event Navigation Hardening
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .msc-build/0.15.21-event-navigation-hardening.patch
+      - .msc-build/apply-0.15.21-event-navigation-hardening.sh
+      - .github/workflows/msc-0.15.21-event-navigation-hardening.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-01521-event-navigation-hardening
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Check out cumulative repair branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            Pillow==12.2.0 numpy==2.4.2 scipy==1.17.0 scikit-image==0.26.0
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          test -s "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar"
+          test -x "$SDK_ROOT/build-tools/36.0.0/zipalign"
+          test -x "$SDK_ROOT/build-tools/36.0.0/aapt"
+
+      - name: Create isolated non-release CI signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNING_DIR="$RUNNER_TEMP/msc-01521-staging-signing"
+          mkdir -p "$SIGNING_DIR"
+          PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$PASSWORD"
+          keytool -genkeypair -noprompt \
+            -keystore "$SIGNING_DIR/staging.jks" \
+            -storepass "$PASSWORD" \
+            -keypass "$PASSWORD" \
+            -alias 'msc-01521-staging-not-release' \
+            -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=My Study Companion 0.15.21 Signing Input Only, OU=Never Install, O=My Study Companion, C=US'
+          {
+            echo "MSC_RELEASE_STORE_FILE=$SIGNING_DIR/staging.jks"
+            echo "MSC_RELEASE_STORE_PASSWORD=$PASSWORD"
+            echo 'MSC_RELEASE_KEY_ALIAS=msc-01521-staging-not-release'
+            echo "MSC_RELEASE_KEY_PASSWORD=$PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Reconstruct accepted cumulative source through 0.15.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+          bash .msc-build/apply-0.15.10-household-date-recovery.sh
+          bash .msc-build/apply-0.15.11-local-family-generator.sh
+          bash .msc-build/apply-0.15.13-family-schedule-regression-audit.sh
+          bash .msc-build/apply-0.15.12-family-vote-widgets.sh
+          bash .msc-build/apply-0.15.12-widget-compile-fix.sh
+          bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
+
+      - name: Normalize accepted 0.15.14 release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path, code, name in (
+              (Path('MyStudyCompanion/app/build.gradle.kts'), '47', '0.15.14-private-alpha-vote-persistence'),
+              (Path('MyStudyCompanion/wear/build.gradle.kts'), '360164001', '0.15.14-wear-private-alpha-vote-persistence'),
+          ):
+              text = path.read_text(encoding='utf-8')
+              text, a = re.subn(r'versionCode\s*=\s*\d+', f'versionCode = {code}', text, count=1)
+              text, b = re.subn(r'versionName\s*=\s*"[^"]+"', f'versionName = "{name}"', text, count=1)
+              if a != 1 or b != 1:
+                  raise SystemExit(f'Could not normalize {path}')
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Apply every accepted patch through 0.15.21
+        shell: bash
+        run: |
+          set -euo pipefail
+          MSC_SMART_ONLINE_VALIDATED=false bash .msc-build/apply-0.15.18-premium-widgets.sh
+          bash .msc-build/apply-0.15.21-event-navigation-hardening.sh
+
+      - name: Restore and verify Firebase and Google OAuth configuration
+        id: google
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' | sha256sum -c -
+          WEB_CLIENT_ID="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text())
+          clients = {item['client_info']['android_client_info']['package_name']: item for item in data['client']}
+          canonical = clients['com.mystudycompanion.app']
+          android = [item for item in canonical['oauth_client'] if item['client_type'] == 1]
+          web = [item for item in canonical['oauth_client'] if item['client_type'] == 3]
+          assert len(android) == 1
+          assert android[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web) == 1
+          assert web[0]['client_id'].endswith('.apps.googleusercontent.com')
+          print(web[0]['client_id'])
+          PY
+          )"
+          echo "web_client_id=$WEB_CLIENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Validate exact Events open path and deferred activity loading
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          parent = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt').read_text(encoding='utf-8')
+          editor = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt').read_text(encoding='utf-8')
+          click_start = parent.index('onOpenInteractive = {')
+          click_end = parent.index('},', click_start)
+          click = parent[click_start:click_end]
+          assert 'interactivePageKey = page.key' in click
+          assert 'setActiveWorkbook' not in click
+          assert 'if (interactiveBook?.pages?.any { it.key == page.key } == true)' in click
+          assert 'private fun CompanionHubRepository.setActiveWorkbookSafely' in editor
+          assert 'LaunchedEffect(book.id, page.key)' in editor
+          assert 'repository.setActiveWorkbookSafely(book.id, page.key)' in editor
+          assert 'var expandedActivityId by rememberSaveable(book.id, page.key)' in editor
+          assert 'val loadsInteractiveWorkspace = when (activity.kind)' in editor
+          assert 'Text("Start activity")' in editor
+          assert 'Text("Close activity")' in editor
+          assert 'repository.setActiveWorkbook(book.id, book.pages[pageIndex].key)' not in editor
+          assert 'repository.setActiveWorkbook(book.id, key)' not in editor
+          print('PASS: Events button opens the dialog before persistence and heavy workspaces are deferred.')
+          PY
+
+      - name: Validate workbook assets and cumulative crash guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          from PIL import Image
+
+          root = Path('MyStudyCompanion/app/src/main/assets/workbook')
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          assert len(manifest['assets']) == 16
+          failures = []
+          for asset in manifest['assets']:
+              base = root / asset['id']
+              for name in (
+                  'master.webp', 'difference-changed.webp',
+                  'color-master.webp', 'color-line.png', 'color-region-mask.png',
+                  'drawing-step-1.webp', 'drawing-step-2.webp',
+              ):
+                  path = base / name
+                  if not path.is_file():
+                      failures.append(f'{path}: missing')
+                      continue
+                  try:
+                      with Image.open(path) as image:
+                          image.verify()
+                  except Exception as error:
+                      failures.append(f'{path}: {error}')
+          if failures:
+              raise SystemExit('Workbook asset failures:\n- ' + '\n- '.join(failures))
+
+          editor = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt').read_text(encoding='utf-8')
+          for marker in (
+              'private data class LoadedDifferenceIllustration',
+              'private data class LoadedColorIllustration',
+              'loadWorkbookAssetSafely',
+              'The word-search grid is incomplete.',
+              'if (steps.isEmpty())',
+          ):
+              assert marker in editor
+          print('PASS: all workbook assets decode and cumulative 0.15.20 crash guards remain present.')
+          PY
+
+      - name: Run backend and web regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check \
+            -r MyStudyCompanion/backend/requirements.txt \
+            -r MyStudyCompanion/backend/requirements-dev.txt
+          (cd MyStudyCompanion/backend && python3 -m pytest -q)
+          for file in MyStudyCompanionWeb/*.js; do node --check "$file"; done
+          node --test MyStudyCompanionWeb/*.test.mjs
+
+      - name: Run Android tests and build signing inputs
+        shell: bash
+        env:
+          WEB_CLIENT_ID: ${{ steps.google.outputs.web_client_id }}
+        run: |
+          set -euo pipefail
+          pushd MyStudyCompanion >/dev/null
+          gradle --no-daemon --stacktrace \
+            :app:testDebugUnitTest \
+            :wear:testDebugUnitTest
+          gradle --no-daemon --stacktrace \
+            -PMSC_BACKEND_BASE_URL='' \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$WEB_CLIENT_ID" \
+            :app:assemblePrivateAlpha \
+            :wear:assemblePrivateAlpha
+          popd >/dev/null
+
+      - name: Verify and package non-installable signing inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          BUILD_TOOLS="$SDK_ROOT/build-tools/36.0.0"
+          PHONE_SOURCE='MyStudyCompanion/app/build/outputs/apk/privateAlpha/app-privateAlpha.apk'
+          WEAR_SOURCE='MyStudyCompanion/wear/build/outputs/apk/privateAlpha/wear-privateAlpha.apk'
+          test -s "$PHONE_SOURCE"
+          test -s "$WEAR_SOURCE"
+          RELEASE='release-0.15.21-signing-input'
+          rm -rf "$RELEASE"
+          mkdir -p "$RELEASE/phone" "$RELEASE/wear" "$RELEASE/metadata"
+          PHONE="$RELEASE/phone/MyStudyCompanion-phone-0.15.21-SIGNING-INPUT-NOT-INSTALLABLE.apk"
+          WEAR="$RELEASE/wear/MyStudyCompanion-wear-0.15.21-SIGNING-INPUT-NOT-INSTALLABLE.apk"
+          cp "$PHONE_SOURCE" "$PHONE"
+          cp "$WEAR_SOURCE" "$WEAR"
+          "$BUILD_TOOLS/aapt" dump badging "$PHONE" | tee "$RELEASE/metadata/PHONE-IDENTITY.txt"
+          "$BUILD_TOOLS/aapt" dump badging "$WEAR" | tee "$RELEASE/metadata/WEAR-IDENTITY.txt"
+          grep -Fq "package: name='com.mystudycompanion.app' versionCode='54' versionName='0.15.21-private-alpha-event-navigation-hardening'" "$RELEASE/metadata/PHONE-IDENTITY.txt"
+          grep -Fq "package: name='com.mystudycompanion.app' versionCode='360171001' versionName='0.15.21-wear-private-alpha-event-navigation-hardening'" "$RELEASE/metadata/WEAR-IDENTITY.txt"
+          java -jar "$BUILD_TOOLS/lib/apksigner.jar" verify --verbose --print-certs "$PHONE" > "$RELEASE/metadata/PHONE-STAGING-SIGNATURE.txt"
+          java -jar "$BUILD_TOOLS/lib/apksigner.jar" verify --verbose --print-certs "$WEAR" > "$RELEASE/metadata/WEAR-STAGING-SIGNATURE.txt"
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$PHONE" > "$RELEASE/metadata/PHONE-ALIGNMENT.txt"
+          "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$WEAR" > "$RELEASE/metadata/WEAR-ALIGNMENT.txt"
+          grep -Fq 'BACKEND_BASE_URL = ""' MyStudyCompanion/app/build/generated/source/buildConfig/privateAlpha/com/mystudycompanion/app/BuildConfig.java
+          grep -Fq 'versionCode = 54' MyStudyCompanion/app/build.gradle.kts
+          grep -Fq 'smartOnlineConfigured = smartOnlineValidated || online' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
+          grep -Fq 'if (interactiveBook?.pages?.any { it.key == page.key } == true)' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt
+          grep -Fq 'repository.setActiveWorkbookSafely(book.id, page.key)' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+          grep -Fq 'Text("Start activity")' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt "$RELEASE/metadata/AiStudyRepository.kt"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/widget/DailyStudyWidget.kt "$RELEASE/metadata/DailyStudyWidget.kt"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt "$RELEASE/metadata/EventNotebooksSection.kt"
+          cp MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt "$RELEASE/metadata/InteractiveWorkbookEditor.kt"
+          cat > "$RELEASE/metadata/DO-NOT-INSTALL.txt" <<'NOTE'
+          THESE APKs USE AN ISOLATED CI SIGNER AND MUST NOT BE INSTALLED.
+          They preserve the complete cumulative source through 0.15.20 and add only the 0.15.21 Events navigation hardening.
+          Final user-facing APKs must be signed offline with the recovered canonical certificate.
+          NOTE
+          (
+            cd "$RELEASE"
+            sha256sum phone/*.apk wear/*.apk > metadata/SHA256SUMS-STAGING.txt
+            sha256sum -c metadata/SHA256SUMS-STAGING.txt
+          )
+
+      - name: Upload tested signing inputs only
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.21-event-navigation-hardening-SIGNING-INPUT-NOT-INSTALLABLE
+          path: release-0.15.21-signing-input
+          retention-days: 3
+          if-no-files-found: error
