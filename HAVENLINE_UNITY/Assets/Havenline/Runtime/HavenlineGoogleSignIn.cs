@@ -28,6 +28,9 @@ namespace Havenline
         menuName = "HAVENLINE/Identity/Google Sign-In Configuration")]
     public sealed class HavenlineGoogleSignInConfiguration : ScriptableObject
     {
+        public const string DurableIdentityContract = "verified Google subject id";
+        public const string SigningCertificateContract = "signing certificate SHA-256";
+
         [SerializeField] private string androidPackageName = "";
         [SerializeField] private string webClientId = "";
         [SerializeField] private string firebaseProjectId = "";
