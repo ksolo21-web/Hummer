@@ -15,6 +15,7 @@ STATUS_CANDIDATES = (
     "sf3d-pipeline-status.json",
 )
 SF3D_COMMIT = "ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2"
+FOUR_VIEW_CONFIRMATION = "I-REVIEWED-FOUR-VIEWS"
 TOOL_ROOT = pathlib.Path(__file__).resolve().parent
 CHARACTER1_REJECTION = TOOL_ROOT / "character1-seed9101-visual-rejection.json"
 
@@ -118,9 +119,17 @@ def validate_candidate_policy(
         )
 
     candidate = load_json(policy_path)
+    require_equal(candidate.get("schemaVersion"), 2, f"{character} candidate schema")
     require_equal(candidate.get("character"), character, f"{character} candidate character")
     if candidate.get("humanVisualApprovalRequired") is not True:
         raise RuntimeError(f"{character} candidate bypassed human visual approval")
+    if candidate.get("acceptedForUnityReview") is not True:
+        raise RuntimeError(f"{character} candidate was not explicitly accepted for Unity review")
+    require_equal(
+        candidate.get("humanVisualReviewStatus"),
+        "pending-unity-review",
+        f"{character} candidate review status",
+    )
     if candidate.get("approved") is not False:
         raise RuntimeError(f"{character} candidate was prematurely approved")
     if candidate.get("unityIntegrated") is not False:
@@ -132,6 +141,17 @@ def validate_candidate_policy(
         "accepted-for-unity-review",
         f"{character} Blender visual review status",
     )
+    require_equal(
+        blender_review.get("confirmation"),
+        FOUR_VIEW_CONFIRMATION,
+        f"{character} four-view confirmation",
+    )
+    if len(str(blender_review.get("reviewedBy", "")).strip()) < 3:
+        raise RuntimeError(f"{character} candidate has no reviewer identity")
+    if len(str(blender_review.get("reviewedUtc", "")).strip()) < 10:
+        raise RuntimeError(f"{character} candidate has no review timestamp")
+    if len(str(blender_review.get("reviewNote", "")).strip()) < 20:
+        raise RuntimeError(f"{character} candidate has no meaningful four-view review note")
 
     artifact_id = str(artifact.get("id", ""))
     digest = str(artifact.get("digest", ""))
@@ -320,7 +340,7 @@ def main() -> int:
         source_entries.append(entry)
 
     source_set = {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "characters": source_entries,
         "character1RejectedArtifactPolicy": str(CHARACTER1_REJECTION.as_posix()),
         "blenderCandidatePolicies": {
