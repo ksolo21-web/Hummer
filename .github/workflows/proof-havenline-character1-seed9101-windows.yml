@@ -14,8 +14,10 @@ on:
       - '.tooling/havenline-girls-multiview/remove_spatial_outliers.py'
       - '.tooling/havenline-character-production/prepare_mobile_source_mesh.py'
       - '.tooling/havenline-character-production/rig_animate_character.py'
+      - '.tooling/havenline-character-production/rig_animate_character_export_only.py'
       - '.tooling/havenline-character-production/reference_face_refinement.py'
       - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/render_character_proofs_cpu.py'
       - '.tooling/havenline-character-production/validate_character_asset.py'
 
 permissions:
