@@ -11,6 +11,8 @@ on:
       - 'settings.gradle.kts'
       - 'gradle/**'
       - 'gradle.properties'
+      - 'firebase/**'
+      - 'scripts/kreativ_firebase_repair.py'
       - '.github/workflows/kreativ-auth-cloud-root-fix-build.yml'
 
 permissions:
@@ -35,6 +37,46 @@ jobs:
     steps:
       - name: Check out root-fix source
         uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Validate guarded Firebase repair utility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/kreativ_firebase_repair.py
+          python - <<'PY'
+          import importlib.util
+          import sys
+
+          path = "scripts/kreativ_firebase_repair.py"
+          spec = importlib.util.spec_from_file_location("repair", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["repair"] = module
+          spec.loader.exec_module(module)
+
+          source = """rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /users/{uid}/study/{doc} {
+                allow read: if request.auth.uid == uid;
+              }
+            }
+          }
+          """
+          fragment = (
+              "match /users/{uid}/kreativPrivate/{doc} { "
+              "allow read: if request.auth.uid == uid; }"
+          )
+          merged = module.merge_managed_rules(source, fragment, "cloud.firestore")
+          assert "study" in merged
+          assert "kreativPrivate" in merged
+          assert merged.count(module.BEGIN_MARKER) == 1
+          assert module.merge_managed_rules(merged, fragment, "cloud.firestore") == merged
+          PY
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -68,7 +110,7 @@ jobs:
           Commit: $GITHUB_SHA
           Package: com.kreativstudio.app
           Version: 0.1.10-dev (versionCode 10)
-          Result: Android source compiled and unit tests passed.
+          Result: Firebase repair utility, Android compilation, and unit tests passed.
           Distribution status: BLOCKED.
           This job does not publish an APK and does not claim that live Firebase,
           OAuth certificate registration, or cloud permissions are repaired.
