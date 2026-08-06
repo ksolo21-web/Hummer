@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "character": "Character1",
+  "source": "character_output/Character1/Character1_spatial.glb",
+  "output": "character_output/Character1/Character1_mobile_source.glb",
+  "success": true,
+  "humanVisualApprovalRequired": true,
+  "approved": false,
+  "reduction": {
+    "targetFaces": 34000,
+    "maximumFaces": 39000,
+    "minimumFaces": 14000,
+    "preserveObjectFaceThreshold": 500,
+    "facesBefore": {
+      "geometry_0": 81526
+    },
+    "facesAfter": {
+      "geometry_0": 34000
+    },
+    "totalFacesBefore": 81526,
+    "totalFacesAfter": 34000,
+    "preservedObjects": [],
+    "reducibleObjects": [
+      "geometry_0"
+    ],
+    "firstPassRatio": 0.41704486912150723,
+    "secondPassRatio": 1.0
+  },
+  "outputBytes": 7940752
+}

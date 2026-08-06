@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 6,
+  "character": "Character1",
+  "seed": 9101,
+  "sourceMode": "actionless-v2-dominant-floor-cleaned-mobile-production",
+  "sourceGenerator": "trellis-community/TRELLIS",
+  "sourceReconstructionMode": "clean-multi-image",
+  "blenderRuntime": {
+    "schemaVersion": 1,
+    "expectedVersion": [
+      4,
+      5,
+      12
+    ],
+    "actualVersion": [
+      4,
+      5,
+      12
+    ],
+    "versionString": "4.5.12 LTS",
+    "releaseLine": "4.5 LTS",
+    "verified": true
+  },
+  "proofRenderRuntime": {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 24,
+    "blenderVersion": "4.5.12 LTS",
+    "displayIndependent": true,
+    "cyclesAddonEnabled": true
+  },
+  "floorFacesRemoved": 15060,
+  "mobileSourceFaces": 34000,
+  "productionVertices": 101848,
+  "productionGlbSha256": "fbf5655b585bf1a2c3726a6973062c6607821137a0d9d4633999e0fd6a1ea2ce",
+  "machinePassed": true,
+  "approved": false,
+  "unityIntegrated": false,
+  "humanVisualApprovalRequired": true
+}

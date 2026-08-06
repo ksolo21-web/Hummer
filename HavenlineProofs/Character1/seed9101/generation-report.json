@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 2,
+  "character": "Character1",
+  "generator": "trellis-community/TRELLIS",
+  "mode": "clean-multi-image",
+  "seed": 9101,
+  "meshSimplify": 0.72,
+  "textureSize": 2048,
+  "success": true,
+  "attempts": [
+    {
+      "attempt": 1,
+      "success": true,
+      "copiedFiles": [
+        "character_output/Character1/seed-9101/clean_trellis_00.glb",
+        "character_output/Character1/seed-9101/clean_trellis_01.mp4"
+      ],
+      "rawResult": "({'video': '/tmp/gradio/76c75f39e197b437e7d530197ae6932338ff1d7cbd505098499e042de3ef51c0/sample.mp4', 'subtitles': None}, '/tmp/gradio/793353423f63134950ea516a05460e7ddc5de265a469b7b8292ea7c1ad81b5a6/sample.glb', '/tmp/gradio/793353423f63134950ea516a05460e7ddc5de265a469b7b8292ea7c1ad81b5a6/sample.glb')"
+    }
+  ],
+  "humanVisualApprovalRequired": true,
+  "selectedGlb": "character_output/Character1/seed-9101/Character1_raw.glb",
+  "selectedBytes": 6678464,
+  "cleanViews": [
+    {
+      "view": "front",
+      "cropBoxPixels": [
+        5,
+        10,
+        125,
+        250
+      ],
+      "sourceSize": [
+        512,
+        362
+      ],
+      "output": "character_output/Character1/seed-9101/clean_view_1_front.png",
+      "outputSize": [
+        1024,
+        1024
+      ],
+      "neighborPosePixelsIncluded": false,
+      "captionPixelsIncluded": false
+    },
+    {
+      "view": "three-quarter",
+      "cropBoxPixels": [
+        145,
+        10,
+        258,
+        250
+      ],
+      "sourceSize": [
+        512,
+        362
+      ],
+      "output": "character_output/Character1/seed-9101/clean_view_2_three-quarter.png",
+      "outputSize": [
+        1024,
+        1024
+      ],
+      "neighborPosePixelsIncluded": false,
+      "captionPixelsIncluded": false
+    },
+    {
+      "view": "side",
+      "cropBoxPixels": [
+        276,
+        10,
+        367,
+        250
+      ],
+      "sourceSize": [
+        512,
+        362
+      ],
+      "output": "character_output/Character1/seed-9101/clean_view_3_side.png",
+      "outputSize": [
+        1024,
+        1024
+      ],
+      "neighborPosePixelsIncluded": false,
+      "captionPixelsIncluded": false
+    },
+    {
+      "view": "back",
+      "cropBoxPixels": [
+        400,
+        10,
+        510,
+        250
+      ],
+      "sourceSize": [
+        512,
+        362
+      ],
+      "output": "character_output/Character1/seed-9101/clean_view_4_back.png",
+      "outputSize": [
+        1024,
+        1024
+      ],
+      "neighborPosePixelsIncluded": false,
+      "captionPixelsIncluded": false
+    }
+  ],
+  "sourceSheet": "character_output/Character1/seed-9101/Character1_approved_turnaround.jpg"
+}
