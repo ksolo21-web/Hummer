@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Create real skinned 3D facial details for the approved HAVENLINE lead characters.
+"""Add restrained, real 3D facial accents to HAVENLINE lead reconstructions.
 
-The earlier image-mapped oval face patch was visually unacceptable: it pasted a circular
-portrait over an otherwise useful reconstruction. This module keeps the reconstructed head
-and adds only modeled details that the approved sheets require—glasses, eyes, beard and
-mouth accents. Every detail is ordinary mesh geometry that is weighted to the Head bone by
-the existing deterministic binder; nothing faces the camera or behaves as a billboard.
+The approved lead references already survive the reconstructed head texture and silhouette.
+This pass therefore adds only thin glasses and, for Character 1, a subtle beard outline.
+It deliberately does not replace the eyes, mouth, or face with separate portrait geometry.
+Every accent is ordinary mesh geometry that the existing deterministic binder weights to
+the Head bone; no element faces the camera or behaves as a billboard.
 """
 
 import math
@@ -14,7 +14,7 @@ import bpy
 from mathutils import Vector
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def quantile(values, fraction):
@@ -30,7 +30,7 @@ def quantile(values, fraction):
     return ordered[lower] * (1.0 - blend) + ordered[upper] * blend
 
 
-def make_material(name, rgba, roughness=0.7, metallic=0.0):
+def make_material(name, rgba, roughness=0.72):
     material = bpy.data.materials.new(name)
     material.use_nodes = True
     material.diffuse_color = rgba
@@ -41,43 +41,15 @@ def make_material(name, rgba, roughness=0.7, metallic=0.0):
         if principled.inputs.get("Roughness"):
             principled.inputs["Roughness"].default_value = roughness
         if principled.inputs.get("Metallic"):
-            principled.inputs["Metallic"].default_value = metallic
+            principled.inputs["Metallic"].default_value = 0.0
     return material
 
 
-def apply_material(obj, material):
-    obj.data.materials.append(material)
-    for polygon in obj.data.polygons:
-        polygon.material_index = 0
-        polygon.use_smooth = True
-
-
-def apply_scale(obj):
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    obj.select_set(False)
-
-
-def ellipsoid(name, location, scale, material, segments=28, rings=18):
-    bpy.ops.mesh.primitive_uv_sphere_add(
-        segments=segments,
-        ring_count=rings,
-        location=location,
-    )
-    obj = bpy.context.object
-    obj.name = name
-    obj.scale = scale
-    apply_scale(obj)
-    apply_material(obj, material)
-    return obj
-
-
-def curve_object(name, points, bevel_depth, material, cyclic=False, resolution=3):
+def curve_object(name, points, bevel_depth, material, cyclic=False):
     curve_data = bpy.data.curves.new(name + "Curve", "CURVE")
     curve_data.dimensions = "3D"
-    curve_data.resolution_u = resolution
-    curve_data.bevel_resolution = 3
+    curve_data.resolution_u = 2
+    curve_data.bevel_resolution = 2
     curve_data.bevel_depth = bevel_depth
     spline = curve_data.splines.new("POLY")
     spline.points.add(len(points) - 1)
@@ -92,8 +64,8 @@ def curve_object(name, points, bevel_depth, material, cyclic=False, resolution=3
 
 def ellipse_ring(name, center_x, center_y, center_z, radius_x, radius_z, material, thickness):
     points = []
-    for index in range(40):
-        angle = math.tau * index / 40.0
+    for index in range(44):
+        angle = math.tau * index / 44.0
         points.append(
             (
                 center_x + math.cos(angle) * radius_x,
@@ -105,6 +77,8 @@ def ellipse_ring(name, center_x, center_y, center_z, radius_x, radius_z, materia
 
 
 def convert_and_join(objects, name):
+    if not objects:
+        return None
     converted = []
     for obj in objects:
         bpy.ops.object.select_all(action="DESELECT")
@@ -123,6 +97,7 @@ def convert_and_join(objects, name):
     joined.name = name
     joined["havenlineApprovedReferenceSurface"] = True
     joined["havenlineModeledFaceDetails"] = True
+    joined["havenlineDetailStrategy"] = "restrained reconstruction-preserving accents"
     return joined
 
 
@@ -132,11 +107,11 @@ def face_frame(character, meshes, bounds):
     height = max(maximum.z - minimum.z, 0.001)
     width = max(maximum.x - minimum.x, 0.001)
     center_x = (minimum.x + maximum.x) * 0.5
-    eye_fraction = 0.892 if character == "Character1" else 0.884
+    eye_fraction = 0.884 if character == "Character1" else 0.878
     eye_z = minimum.z + height * eye_fraction
-    sample_min_z = minimum.z + height * 0.76
+    sample_min_z = minimum.z + height * 0.75
     sample_max_z = minimum.z + height * 0.965
-    sample_half_width = min(width * 0.19, height * 0.105)
+    sample_half_width = min(width * 0.22, height * 0.115)
     samples = []
     for obj in meshes:
         matrix = obj.matrix_world
@@ -169,170 +144,90 @@ def face_frame(character, meshes, bounds):
     }
 
 
-def add_eye_details(character, frame, created, frame_material, iris_material, pupil_material, highlight_material):
+def add_glasses(character, frame, created, material):
     height = frame["height"]
     center_x = frame["centerX"]
     eye_z = frame["eyeZ"]
     front_y = frame["frontY"]
-    eye_offset = height * (0.0315 if character == "Character1" else 0.0300)
-    lens_x = height * (0.0355 if character == "Character1" else 0.0330)
-    lens_z = height * (0.0260 if character == "Character1" else 0.0270)
-    frame_thickness = height * (0.0046 if character == "Character1" else 0.0036)
+    if character == "Character1":
+        eye_offset = height * 0.0275
+        lens_x = height * 0.0220
+        lens_z = height * 0.0160
+        thickness = height * 0.0018
+    else:
+        eye_offset = height * 0.0255
+        lens_x = height * 0.0215
+        lens_z = height * 0.0165
+        thickness = height * 0.0016
 
+    glasses_y = front_y - height * 0.0025
     for side in (-1, 1):
-        eye_x = center_x + side * eye_offset
-        created.append(
-            ellipsoid(
-                f"{character}_Iris_{side}",
-                (eye_x, front_y - height * 0.0070, eye_z),
-                (height * 0.0100, height * 0.0045, height * 0.0130),
-                iris_material,
-            )
-        )
-        created.append(
-            ellipsoid(
-                f"{character}_Pupil_{side}",
-                (eye_x, front_y - height * 0.0110, eye_z),
-                (height * 0.0047, height * 0.0026, height * 0.0064),
-                pupil_material,
-                24,
-                16,
-            )
-        )
-        created.append(
-            ellipsoid(
-                f"{character}_EyeHighlight_{side}",
-                (
-                    eye_x - side * height * 0.0028,
-                    front_y - height * 0.0132,
-                    eye_z + height * 0.0045,
-                ),
-                (height * 0.0018, height * 0.0012, height * 0.0023),
-                highlight_material,
-                18,
-                12,
-            )
-        )
         created.append(
             ellipse_ring(
                 f"{character}_Glasses_{side}",
-                eye_x,
-                front_y - height * 0.0150,
+                center_x + side * eye_offset,
+                glasses_y,
                 eye_z,
                 lens_x,
                 lens_z,
-                frame_material,
-                frame_thickness,
+                material,
+                thickness,
             )
         )
 
-    bridge_left = center_x - eye_offset + lens_x * 0.82
-    bridge_right = center_x + eye_offset - lens_x * 0.82
+    bridge_left = center_x - eye_offset + lens_x * 0.94
+    bridge_right = center_x + eye_offset - lens_x * 0.94
     created.append(
         curve_object(
             f"{character}_GlassesBridge",
             [
-                (bridge_left, front_y - height * 0.0150, eye_z + height * 0.0010),
-                (center_x, front_y - height * 0.0170, eye_z - height * 0.0010),
-                (bridge_right, front_y - height * 0.0150, eye_z + height * 0.0010),
+                (bridge_left, glasses_y, eye_z),
+                (center_x, glasses_y - height * 0.0010, eye_z - height * 0.0007),
+                (bridge_right, glasses_y, eye_z),
             ],
-            frame_thickness * 0.85,
-            frame_material,
+            thickness * 0.78,
+            material,
         )
     )
 
 
-def add_character1_beard(character, frame, created, beard_material, mouth_material):
+def add_character1_beard(frame, created, material):
     height = frame["height"]
+    minimum = frame["minimum"]
     x = frame["centerX"]
-    y = frame["frontY"] - height * 0.0090
-    beard_points = [
-        (x - height * 0.050, y, height * 0.862),
-        (x - height * 0.047, y - height * 0.002, height * 0.833),
-        (x - height * 0.030, y - height * 0.004, height * 0.812),
-        (x, y - height * 0.005, height * 0.801),
-        (x + height * 0.030, y - height * 0.004, height * 0.812),
-        (x + height * 0.047, y - height * 0.002, height * 0.833),
-        (x + height * 0.050, y, height * 0.862),
-    ]
-    created.append(
-        curve_object(
-            f"{character}_BeardJaw",
-            beard_points,
-            height * 0.0125,
-            beard_material,
-        )
-    )
-    mustache_z = height * 0.845
-    created.append(
-        curve_object(
-            f"{character}_MustacheLeft",
-            [
-                (x - height * 0.003, y - height * 0.006, mustache_z),
-                (x - height * 0.018, y - height * 0.008, mustache_z + height * 0.003),
-                (x - height * 0.034, y - height * 0.006, mustache_z - height * 0.002),
-            ],
-            height * 0.0060,
-            beard_material,
-        )
-    )
-    created.append(
-        curve_object(
-            f"{character}_MustacheRight",
-            [
-                (x + height * 0.003, y - height * 0.006, mustache_z),
-                (x + height * 0.018, y - height * 0.008, mustache_z + height * 0.003),
-                (x + height * 0.034, y - height * 0.006, mustache_z - height * 0.002),
-            ],
-            height * 0.0060,
-            beard_material,
-        )
-    )
-    created.append(
-        curve_object(
-            f"{character}_Mouth",
-            [
-                (x - height * 0.019, y - height * 0.010, height * 0.827),
-                (x, y - height * 0.012, height * 0.824),
-                (x + height * 0.019, y - height * 0.010, height * 0.827),
-            ],
-            height * 0.0028,
-            mouth_material,
-        )
-    )
+    y = frame["frontY"] - height * 0.0015
+    z = lambda fraction: minimum.z + height * fraction
 
-
-def add_character2_expression(character, frame, created, brow_material, mouth_material):
-    height = frame["height"]
-    x = frame["centerX"]
-    y = frame["frontY"] - height * 0.013
-    eye_z = frame["eyeZ"]
+    created.append(
+        curve_object(
+            "Character1_BeardJaw",
+            [
+                (x - height * 0.039, y, z(0.856)),
+                (x - height * 0.034, y - height * 0.0010, z(0.832)),
+                (x - height * 0.021, y - height * 0.0016, z(0.815)),
+                (x, y - height * 0.0020, z(0.808)),
+                (x + height * 0.021, y - height * 0.0016, z(0.815)),
+                (x + height * 0.034, y - height * 0.0010, z(0.832)),
+                (x + height * 0.039, y, z(0.856)),
+            ],
+            height * 0.0042,
+            material,
+        )
+    )
+    mustache_z = z(0.846)
     for side in (-1, 1):
-        eye_x = x + side * height * 0.0300
         created.append(
             curve_object(
-                f"{character}_Brow_{side}",
+                f"Character1_Mustache_{side}",
                 [
-                    (eye_x - height * 0.020, y, eye_z + height * 0.027),
-                    (eye_x, y - height * 0.002, eye_z + height * 0.031),
-                    (eye_x + height * 0.020, y, eye_z + height * 0.026),
+                    (x + side * height * 0.002, y - height * 0.0015, mustache_z),
+                    (x + side * height * 0.014, y - height * 0.0020, mustache_z + height * 0.0015),
+                    (x + side * height * 0.026, y - height * 0.0012, mustache_z - height * 0.0010),
                 ],
-                height * 0.0032,
-                brow_material,
+                height * 0.0021,
+                material,
             )
         )
-    created.append(
-        curve_object(
-            f"{character}_Mouth",
-            [
-                (x - height * 0.020, y, height * 0.823),
-                (x, y - height * 0.003, height * 0.818),
-                (x + height * 0.020, y, height * 0.823),
-            ],
-            height * 0.0027,
-            mouth_material,
-        )
-    )
 
 
 def create_modeled_face_details(character, meshes, bounds):
@@ -344,28 +239,30 @@ def create_modeled_face_details(character, meshes, bounds):
         }, None
 
     frame = face_frame(character, meshes, bounds)
-    black = make_material(f"{character}_GlassesMaterial", (0.008, 0.007, 0.006, 1.0), 0.36)
-    iris_color = (0.095, 0.030, 0.010, 1.0) if character == "Character1" else (0.13, 0.048, 0.016, 1.0)
-    iris = make_material(f"{character}_IrisMaterial", iris_color, 0.38)
-    pupil = make_material(f"{character}_PupilMaterial", (0.001, 0.001, 0.001, 1.0), 0.32)
-    highlight = make_material(f"{character}_HighlightMaterial", (0.96, 0.95, 0.91, 1.0), 0.22)
-    mouth = make_material(f"{character}_MouthMaterial", (0.11, 0.025, 0.018, 1.0), 0.70)
+    frame_material = make_material(
+        f"{character}_GlassesMaterial",
+        (0.012, 0.010, 0.008, 1.0),
+        0.42,
+    )
     created = []
-    add_eye_details(character, frame, created, black, iris, pupil, highlight)
+    add_glasses(character, frame, created, frame_material)
 
+    details = ["thin glasses frames"]
     if character == "Character1":
-        beard = make_material(f"{character}_BeardMaterial", (0.018, 0.010, 0.006, 1.0), 0.78)
-        add_character1_beard(character, frame, created, beard, mouth)
-    else:
-        brow = make_material(f"{character}_BrowMaterial", (0.025, 0.012, 0.008, 1.0), 0.76)
-        add_character2_expression(character, frame, created, brow, mouth)
+        beard_material = make_material(
+            "Character1_BeardMaterial",
+            (0.020, 0.011, 0.007, 1.0),
+            0.78,
+        )
+        add_character1_beard(frame, created, beard_material)
+        details.extend(["subtle beard outline", "subtle mustache"])
 
     joined = convert_and_join(created, f"{character}_ModeledFaceDetails")
     return {
         "schemaVersion": SCHEMA_VERSION,
-        "applied": True,
-        "mode": "modeled 3D reference details",
-        "source": "approved character turnaround sheet",
+        "applied": joined is not None,
+        "mode": "restrained modeled 3D reference accents",
+        "source": "approved character turnaround sheet plus reconstructed facial surface",
         "faceFrame": {
             "centerX": frame["centerX"],
             "frontY": frame["frontY"],
@@ -373,10 +270,7 @@ def create_modeled_face_details(character, meshes, bounds):
             "sampleCount": frame["sampleCount"],
         },
         "modeledObjectsJoined": len(created),
-        "details": (
-            ["glasses", "irises", "pupils", "eye highlights", "beard", "mustache", "mouth"]
-            if character == "Character1"
-            else ["glasses", "irises", "pupils", "eye highlights", "eyebrows", "mouth"]
-        ),
+        "details": details,
+        "preservedReconstructionFeatures": ["eyes", "eyelids", "nose", "mouth", "cheeks", "skin texture"],
         "surfaceType": "real skinned mesh geometry; never camera-facing; no portrait patch",
     }, joined
