@@ -17,159 +17,51 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: havenline-unity-reference-rebuild
-      - name: Correct topology ownership and face placement
+          fetch-depth: 0
+      - name: Replace portrait patches with modeled lead details
         shell: python
         run: |
           from pathlib import Path
 
-          root = Path('.tooling/havenline-character-production')
-          module_path = root / 'reference_face_refinement.py'
-          module = module_path.read_text(encoding='utf-8')
+          path = Path('.tooling/havenline-character-production/reference_face_refinement.py')
+          source = path.read_text(encoding='utf-8')
 
-          exact_replacements = [
-              ('REFINEMENT_SCHEMA_VERSION = 2', 'REFINEMENT_SCHEMA_VERSION = 3'),
-              ('"center_z_fraction": 0.884', '"center_z_fraction": 0.825'),
-              ('"center_z_fraction": 0.880', '"center_z_fraction": 0.832'),
-              (
-                  '"u_min": 0.095,\n        "u_max": 0.210,\n        "v_min": 0.740,\n        "v_max": 0.925',
-                  '"u_min": 0.115,\n        "u_max": 0.202,\n        "v_min": 0.738,\n        "v_max": 0.884',
-              ),
-              (
-                  '"u_min": 0.095,\n        "u_max": 0.220,\n        "v_min": 0.735,\n        "v_max": 0.925',
-                  '"u_min": 0.110,\n        "u_max": 0.210,\n        "v_min": 0.735,\n        "v_max": 0.895',
-              ),
-              (
-                  '"u_min": 0.395,\n        "u_max": 0.575,\n        "v_min": 0.765,\n        "v_max": 0.935',
-                  '"u_min": 0.423,\n        "u_max": 0.530,\n        "v_min": 0.770,\n        "v_max": 0.885',
-              ),
-              (
-                  '"u_min": 0.385,\n        "u_max": 0.590,\n        "v_min": 0.755,\n        "v_max": 0.930',
-                  '"u_min": 0.405,\n        "u_max": 0.520,\n        "v_min": 0.745,\n        "v_max": 0.890',
-              ),
-          ]
-          for old, new in exact_replacements:
-              if old not in module:
-                  raise SystemExit(f'Module replacement anchor not found: {old!r}')
-              module = module.replace(old, new, 1)
-          if module.count('"center_z_fraction": 0.852') != 2:
-              raise SystemExit('Expected two female center-height anchors')
-          module = module.replace('"center_z_fraction": 0.852', '"center_z_fraction": 0.812')
-
-          cleanup_start = module.index('def cleanup_disconnected_components(')
-          cleanup_end = module.index('\ndef reference_source', cleanup_start)
-          cleanup_lines = [
-              'def cleanup_disconnected_components(meshes, world_bounds):',
-              '    """Record sanitizer ownership without re-segmenting exported UV seams."""',
-              '    minimum, maximum = world_bounds(meshes)',
-              '    span = max(maximum.x - minimum.x, maximum.y - minimum.y, maximum.z - minimum.z, 1e-6)',
-              '    return {',
-              '        "schemaVersion": REFINEMENT_SCHEMA_VERSION,',
-              '        "sceneSpan": span,',
-              '        "objects": [',
-              '            {',
-              '                "object": obj.name,',
-              '                "vertices": len(obj.data.vertices),',
-              '                "polygons": len(obj.data.polygons),',
-              '                "componentsRemoved": 0,',
-              '                "verticesRemoved": 0,',
-              '                "reason": "topology already repaired by sanitize_character_mesh.py; UV seam duplicates preserved",',
-              '            }',
-              '            for obj in meshes',
-              '        ],',
-              '        "componentsRemoved": 0,',
-              '        "verticesRemoved": 0,',
-              '        "topologyOwner": "sanitize_character_mesh.py",',
-              '    }',
-              '',
-          ]
-          module = module[:cleanup_start] + '\n'.join(cleanup_lines) + module[cleanup_end:]
-
-          sampling_start = module.index('    depth_samples = []\n', module.index('def create_reference_face_surface'))
-          sampling_end = module.index('    displaced = 0\n', sampling_start)
-          adaptive_lines = [
-              '    depth_samples = []',
-              '    sample_strategy = None',
-              '    for multiplier in (1.45, 2.0, 2.8, 3.6):',
-              '        candidates = []',
-              '        for obj in meshes:',
-              '            for vertex in obj.data.vertices:',
-              '                point = obj.matrix_world @ vertex.co',
-              '                dx = (point.x - center_x) / max(half_width * multiplier, 1e-6)',
-              '                dz = (point.z - center_z) / max(half_height * multiplier, 1e-6)',
-              '                if dx * dx + dz * dz <= 1.0:',
-              '                    candidates.append(point.y)',
-              '        if len(candidates) > len(depth_samples):',
-              '            depth_samples = candidates',
-              '            sample_strategy = f"ellipse-{multiplier:.2f}x"',
-              '        if len(depth_samples) >= 40:',
-              '            break',
-              '',
-              '    if len(depth_samples) < 10:',
-              '        head_floor = minimum.z + height * 0.72',
-              '        x_limit = max(half_width * 3.4, (maximum.x - minimum.x) * 0.34)',
-              '        fallback = []',
-              '        for obj in meshes:',
-              '            for vertex in obj.data.vertices:',
-              '                point = obj.matrix_world @ vertex.co',
-              '                if point.z >= head_floor and abs(point.x - center_x) <= x_limit:',
-              '                    fallback.append(point.y)',
-              '        if fallback:',
-              '            depth_samples = fallback',
-              '            sample_strategy = "upper-head-band-fallback"',
-              '',
-              '    if not depth_samples:',
-              '        depth_samples = [',
-              '            (obj.matrix_world @ vertex.co).y',
-              '            for obj in meshes',
-              '            for vertex in obj.data.vertices',
-              '        ]',
-              '        sample_strategy = "whole-character-emergency-fallback"',
-              '    if not depth_samples:',
-              '        raise RuntimeError(f"No vertices were available for {character} facial refinement")',
-              '',
-              '    measured_front = quantile(depth_samples, 0.10)',
-              '    shell_edge_y = measured_front - 0.008',
-              '    shell_bulge = 0.014',
-              '    backing_y = shell_edge_y + 0.012',
-              '',
-          ]
-          module = module[:sampling_start] + '\n'.join(adaptive_lines) + module[sampling_end:]
-
-          report_anchor = '        "sourceKind": profile["source"],\n'
-          report_insert = (
-              '        "sourceKind": profile["source"],\n'
-              '        "depthSampleCount": len(depth_samples),\n'
-              '        "depthSampleStrategy": sample_strategy,\n'
+          import_anchor = 'from mathutils import Vector\n'
+          import_replacement = (
+              'from mathutils import Vector\n\n'
+              'import modeled_face_details\n'
           )
-          if '"depthSampleCount"' not in module:
-              if report_anchor not in module:
-                  raise SystemExit('Face report anchor was not found')
-              module = module.replace(report_anchor, report_insert, 1)
+          if 'import modeled_face_details' not in source:
+              if import_anchor not in source:
+                  raise SystemExit('Vector import anchor was not found')
+              source = source.replace(import_anchor, import_replacement, 1)
 
-          compile(module, str(module_path), 'exec')
-          module_path.write_text(module, encoding='utf-8')
-
-          sanitizer_path = root / 'sanitize_character_mesh.py'
-          sanitizer = sanitizer_path.read_text(encoding='utf-8')
-          sanitizer_anchor = 'vertices <= 64 and faces <= 128 and largest <= scale * 0.06'
-          if sanitizer_anchor not in sanitizer:
-              raise SystemExit('Sanitizer threshold anchor was not found')
-          sanitizer = sanitizer.replace(
-              sanitizer_anchor,
-              'vertices <= 64 and faces <= 128 and largest <= scale * 0.065',
-              1,
+          function_anchor = 'def create_reference_face_surface(character, root, meshes, bounds):\n'
+          function_replacement = (
+              'def create_reference_face_surface(character, root, meshes, bounds):\n'
+              '    if character in ("Character1", "Character2"):\n'
+              '        return modeled_face_details.create_modeled_face_details(\n'
+              '            character,\n'
+              '            meshes,\n'
+              '            bounds,\n'
+              '        )\n\n'
           )
-          compile(sanitizer, str(sanitizer_path), 'exec')
-          sanitizer_path.write_text(sanitizer, encoding='utf-8')
-      - name: Commit corrected refinement
+          if 'return modeled_face_details.create_modeled_face_details' not in source:
+              if function_anchor not in source:
+                  raise SystemExit('Face refinement function anchor was not found')
+              source = source.replace(function_anchor, function_replacement, 1)
+
+          compile(source, str(path), 'exec')
+          path.write_text(source, encoding='utf-8')
+      - name: Commit modeled lead refinement
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            .tooling/havenline-character-production/reference_face_refinement.py \
-            .tooling/havenline-character-production/sanitize_character_mesh.py
+          git add .tooling/havenline-character-production/reference_face_refinement.py
           git diff --cached --check
-          git commit -m 'Correct Havenline topology and face refinement'
+          git commit -m 'Use modeled 3D face details for Havenline leads'
+          git fetch origin havenline-unity-reference-rebuild
+          git rebase origin/havenline-unity-reference-rebuild
           git push origin HEAD:havenline-unity-reference-rebuild
