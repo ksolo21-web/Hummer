@@ -83,9 +83,6 @@ def orient_upright(meshes) -> dict:
     rotation = Matrix.Identity(4)
     repair = "none"
 
-    # TripoSR arrives with body height on Blender Y and its face toward +X after the pitch
-    # correction. Apply pitch first, then yaw, so every production character faces -Y—the
-    # front direction already used by the approved TRELLIS leads and the Unity review camera.
     if dominant_axis == 1 and extents[1] >= z_extent * 1.35:
         pitch = Matrix.Rotation(math.radians(-90.0), 4, "X")
         yaw = Matrix.Rotation(math.radians(-90.0), 4, "Z")
@@ -117,6 +114,54 @@ def orient_upright(meshes) -> dict:
         "standingAxisVerified": True,
         "frontAxisVerified": repair == "none" or dominant_axis == 1,
         "uprightDirectionRule": "TripoSR uses -90 degrees X for upright, then -90 degrees Z so the approved front faces -Y",
+    }
+
+
+def weld_and_repair_topology(obj, global_span: float) -> dict:
+    """Weld exact reconstruction duplicates before connected-component analysis.
+
+    TripoSR/xatlas can duplicate every triangle vertex for UV/material boundaries. Without
+    a spatial weld, a long ribbon is seen as hundreds of harmless individual triangles and
+    survives the debris gate. UV data is stored per loop, so welding coincident geometry does
+    not erase the texture seams.
+    """
+
+    mesh = obj.data
+    before_vertices = len(mesh.vertices)
+    before_edges = len(mesh.edges)
+    before_faces = len(mesh.polygons)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    weld_distance = max(global_span * 0.00001, 1e-8)
+    degenerate_distance = max(global_span * 0.000001, 1e-9)
+    if bm.verts:
+        bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=weld_distance)
+    if bm.edges:
+        bmesh.ops.dissolve_degenerate(
+            bm,
+            dist=degenerate_distance,
+            edges=list(bm.edges),
+        )
+    if bm.faces:
+        bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.validate(verbose=False)
+    mesh.update()
+    return {
+        "verticesBefore": before_vertices,
+        "verticesAfter": len(mesh.vertices),
+        "verticesWelded": max(0, before_vertices - len(mesh.vertices)),
+        "edgesBefore": before_edges,
+        "edgesAfter": len(mesh.edges),
+        "facesBefore": before_faces,
+        "facesAfter": len(mesh.polygons),
+        "weldDistance": weld_distance,
+        "degenerateDistance": degenerate_distance,
+        "faceNormalsRecalculated": True,
     }
 
 
@@ -198,9 +243,6 @@ def should_remove(metrics, global_span: float) -> tuple[bool, str | None]:
     ):
         return True, "needle-like disconnected reconstruction island"
 
-    # Dense line debris can have hundreds of triangles while still being effectively
-    # one-dimensional. Legitimate clothing, hair, straps and limbs remain thicker in at
-    # least two axes and therefore do not satisfy these strict ratios and thickness limits.
     if (
         vertices <= 1200
         and largest >= scale * 0.20
@@ -231,6 +273,7 @@ def sanitize_object(obj, global_span: float):
     mesh = obj.data
     mesh.validate(verbose=False)
     mesh.update()
+    topology = weld_and_repair_topology(obj, global_span)
     components = component_vertices(mesh)
 
     vertex_to_component = {}
@@ -267,6 +310,8 @@ def sanitize_object(obj, global_span: float):
         bm.verts.ensure_lookup_table()
         delete_verts = [bm.verts[index] for index in sorted(removed_vertex_indices)]
         bmesh.ops.delete(bm, geom=delete_verts, context="VERTS")
+        if bm.faces:
+            bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
         bm.to_mesh(mesh)
         bm.free()
         mesh.validate(verbose=False)
@@ -274,6 +319,7 @@ def sanitize_object(obj, global_span: float):
 
     return {
         "object": obj.name,
+        "topologyRepair": topology,
         "componentsBefore": len(components),
         "componentsRemoved": len(removed),
         "verticesRemoved": len(removed_vertex_indices),
@@ -315,7 +361,7 @@ def main() -> int:
     report_path = output / "mesh-sanitization-report.json"
     cleaned_path = output / f"{args.character}_sanitized.glb"
     report = {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "character": args.character,
         "source": str(source),
         "success": False,
@@ -344,6 +390,9 @@ def main() -> int:
             objects=object_reports,
             componentsRemoved=sum(item["componentsRemoved"] for item in object_reports),
             verticesRemoved=sum(item["verticesRemoved"] for item in object_reports),
+            verticesWelded=sum(
+                item["topologyRepair"]["verticesWelded"] for item in object_reports
+            ),
         )
         report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(report, indent=2))
