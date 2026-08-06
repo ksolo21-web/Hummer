@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: havenline-production-characters-${{ github.ref }}
@@ -25,13 +26,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Materialize checksum-pinned approved references
         run: python3 .tooling/havenline-character-reference-payload/materialize_references.py
-      - name: Verify complete polished production toolchain
+      - name: Verify hybrid reconstruction toolchain
         shell: bash
         run: |
           set -euo pipefail
           root=.tooling/havenline-character-production
           required=(
-            "$root/generate_polished_character_v4.py"
+            "$root/prepare_triposr_character_input.py"
+            "$root/sanitize_character_mesh.py"
             "$root/rig_animate_character.py"
             "$root/render_character_proofs_v4.py"
             "$root/validate_character_asset.py"
@@ -48,36 +50,98 @@ jobs:
   generate-character:
     needs: preflight
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       max-parallel: 2
       matrix:
-        character: [Character1, Character2, Character3, Character4]
+        include:
+          - character: Character1
+            source_mode: recovered-trellis
+          - character: Character2
+            source_mode: recovered-trellis
+          - character: Character3
+            source_mode: local-triposr
+          - character: Character4
+            source_mode: local-triposr
     steps:
       - uses: actions/checkout@v4
       - name: Materialize checksum-pinned approved references
         run: python3 .tooling/havenline-character-reference-payload/materialize_references.py
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Restore exact polished raw mesh cache
+          python-version: '3.10'
+      - name: Restore exact hybrid raw mesh cache
         id: raw-cache
         uses: actions/cache@v4
         with:
           path: |
             character_output/${{ matrix.character }}/${{ matrix.character }}_raw.glb
             character_output/${{ matrix.character }}/generation-report.json
-            character_output/${{ matrix.character }}/*.png
-          key: havenline-polished-v4-${{ matrix.character }}-${{ hashFiles('.tooling/havenline-character-production/generate_polished_character_v4.py', '.tooling/havenline-character-reference-payload/**') }}
+            character_output/${{ matrix.character }}/triposr_input.*
+            character_output/${{ matrix.character }}/triposr_source/**
+          key: havenline-hybrid-v1-${{ matrix.character }}-${{ matrix.source_mode }}-${{ hashFiles('.tooling/havenline-character-production/prepare_triposr_character_input.py', '.tooling/havenline-character-reference-payload/**') }}
+      - name: Recover proven TRELLIS lead artifact
+        if: ${{ steps.raw-cache.outputs.cache-hit != 'true' && matrix.source_mode == 'recovered-trellis' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-${{ matrix.character }}-production-review
+          path: prior_character_review
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: 31087895186
+      - name: Restore proven TRELLIS lead mesh
+        if: ${{ steps.raw-cache.outputs.cache-hit != 'true' && matrix.source_mode == 'recovered-trellis' }}
+        shell: bash
+        env:
+          CHARACTER: ${{ matrix.character }}
+        run: |
+          set -euo pipefail
+          out="character_output/$CHARACTER"
+          mkdir -p "$out"
+          candidate="$(find prior_character_review -type f -name "${CHARACTER}_raw.glb" -size +0c -print -quit)"
+          test -n "$candidate"
+          cp "$candidate" "$out/${CHARACTER}_raw.glb"
+          prior_report="$(find prior_character_review -type f -name generation-report.json -print -quit || true)"
+          export PRIOR_REPORT="$prior_report"
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          character = os.environ['CHARACTER']
+          root = pathlib.Path('character_output') / character
+          raw = root / f'{character}_raw.glb'
+          prior_path = pathlib.Path(os.environ['PRIOR_REPORT']) if os.environ.get('PRIOR_REPORT') else None
+          prior = None
+          if prior_path and prior_path.is_file():
+              prior = json.loads(prior_path.read_text())
+          report = {
+              'schemaVersion': 5,
+              'character': character,
+              'generator': 'Recovered TRELLIS multi-view reconstruction',
+              'sourceMode': 'recovered-trellis',
+              'sourceRunId': '31087895186',
+              'success': True,
+              'selectedGlb': str(raw),
+              'selectedBytes': raw.stat().st_size,
+              'selectedSha256': hashlib.sha256(raw.read_bytes()).hexdigest(),
+              'priorGenerationReport': prior,
+              'requiresMeshSanitization': True,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'generation-report.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report, indent=2))
+          PY
       - name: Install Blender, validators and headless graphics
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip
-          python -m pip install pillow trimesh pygltflib numpy
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            git \
+            build-essential \
+            ninja-build \
+            ffmpeg \
             blender \
             python3-numpy \
             libegl1 \
@@ -87,6 +151,7 @@ jobs:
             libglx-mesa0 \
             libglu1-mesa \
             libopengl0 \
+            libglib2.0-0 \
             mesa-utils \
             xvfb \
             xauth
@@ -94,8 +159,106 @@ jobs:
             env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
             blender --background --factory-startup \
             --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
-      - name: Author polished approved-reference character mesh
+      - name: Restore TripoSR model cache
+        if: ${{ steps.raw-cache.outputs.cache-hit != 'true' && matrix.source_mode == 'local-triposr' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: havenline-triposr-model-v1
+      - name: Install local TripoSR CPU environment
+        if: ${{ steps.raw-cache.outputs.cache-hit != 'true' && matrix.source_mode == 'local-triposr' }}
+        shell: bash
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+        run: |
+          set -euo pipefail
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu \
+            torch==2.2.2 torchvision==0.17.2
+          git clone --depth 1 https://github.com/VAST-AI-Research/TripoSR.git triposr
+          cd triposr
+          python -m pip install \
+            'numpy<2' omegaconf==2.3.0 Pillow==10.1.0 einops==0.7.0 \
+            transformers==4.35.0 trimesh==4.0.5 rembg==2.0.57 \
+            huggingface-hub imageio imageio-ffmpeg xatlas==0.0.9 \
+            moderngl==5.10.0 onnxruntime
+          python -m pip install git+https://github.com/tatsy/torchmcubes.git
+      - name: Reconstruct girl character locally with TripoSR
+        id: reconstruct
+        if: ${{ steps.raw-cache.outputs.cache-hit != 'true' && matrix.source_mode == 'local-triposr' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          CHARACTER: ${{ matrix.character }}
+          HF_HUB_DISABLE_TELEMETRY: '1'
+          HF_HUB_DISABLE_XET: '1'
+          OMP_NUM_THREADS: '4'
+          MKL_NUM_THREADS: '4'
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/$CHARACTER"
+          mkdir -p "$out" "triposr_output/$CHARACTER"
+          python "$root/prepare_triposr_character_input.py" \
+            --character "$CHARACTER" \
+            --sheet "$root/references/${CHARACTER}.jpg" \
+            --output "$out/triposr_input.jpg"
+          cd triposr
+          python run.py "../$out/triposr_input.jpg" \
+            --device cpu \
+            --chunk-size 4096 \
+            --mc-resolution 160 \
+            --foreground-ratio 0.88 \
+            --model-save-format glb \
+            --bake-texture \
+            --texture-resolution 1024 \
+            --output-dir "../triposr_output/$CHARACTER"
+          cd ..
+          candidate="$(find "triposr_output/$CHARACTER" -type f -name '*.glb' -size +10000c -print -quit)"
+          test -n "$candidate"
+          cp "$candidate" "$out/${CHARACTER}_raw.glb"
+          mkdir -p "$out/triposr_source"
+          cp -a "triposr_output/$CHARACTER/." "$out/triposr_source/"
+          export CANDIDATE="$candidate"
+          python - <<'PY'
+          import hashlib, json, os, pathlib
+          from pygltflib import GLTF2
+          character = os.environ['CHARACTER']
+          root = pathlib.Path('character_output') / character
+          raw = root / f'{character}_raw.glb'
+          gltf = GLTF2().load_binary(str(raw))
+          report = {
+              'schemaVersion': 5,
+              'character': character,
+              'generator': 'VAST-AI-Research/TripoSR local CPU reconstruction',
+              'generatorLicense': 'MIT',
+              'sourceMode': 'local-triposr',
+              'success': True,
+              'selectedGlb': str(raw),
+              'selectedBytes': raw.stat().st_size,
+              'selectedSha256': hashlib.sha256(raw.read_bytes()).hexdigest(),
+              'materials': len(gltf.materials or []),
+              'textures': len(gltf.textures or []),
+              'images': len(gltf.images or []),
+              'textureBakingRequested': True,
+              'requiresMeshSanitization': True,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'generation-report.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report, indent=2))
+          PY
+      - name: Verify raw reconstruction exists
         id: generate
+        if: ${{ always() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="character_output/${{ matrix.character }}/${{ matrix.character }}_raw.glb"
+          test -s "$raw"
+          test -s "character_output/${{ matrix.character }}/generation-report.json"
+      - name: Remove disconnected reconstruction debris
+        id: sanitize
+        if: ${{ steps.generate.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         env:
@@ -106,23 +269,16 @@ jobs:
           set -euo pipefail
           root=.tooling/havenline-character-production
           out="character_output/${{ matrix.character }}"
-          raw="$out/${{ matrix.character }}_raw.glb"
-          mkdir -p "$out"
-          if [ -s "$raw" ]; then
-            echo "Reusing exact polished authored mesh cache: $raw"
-          else
-            xvfb-run -a -s '-screen 0 1920x1080x24' \
-              blender --background --factory-startup \
-              --python "$root/generate_polished_character_v4.py" -- \
-              --character '${{ matrix.character }}' \
-              --output "$out" \
-              --reference "$root/references/${{ matrix.character }}.jpg" \
-              --reason 'Segmented and loosely framed proof sets were rejected during visual review'
-          fi
-          test -s "$raw"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$root/sanitize_character_mesh.py" -- \
+            --character '${{ matrix.character }}' \
+            --input "$out/${{ matrix.character }}_raw.glb" \
+            --output "$out"
+          test -s "$out/${{ matrix.character }}_sanitized.glb"
       - name: Deterministically skin, rig, animate and build LODs
         id: rig
-        if: ${{ steps.generate.outcome == 'success' }}
+        if: ${{ steps.sanitize.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         env:
@@ -137,7 +293,7 @@ jobs:
             blender --background --factory-startup \
             --python "$root/rig_animate_character.py" -- \
             --character '${{ matrix.character }}' \
-            --input "$out/${{ matrix.character }}_raw.glb" \
+            --input "$out/${{ matrix.character }}_sanitized.glb" \
             --output "$out"
       - name: Render close neutral final-GLB proof angles
         id: proof
@@ -171,7 +327,10 @@ jobs:
         shell: python
         env:
           CHARACTER: ${{ matrix.character }}
+          SOURCE_MODE: ${{ matrix.source_mode }}
+          RECONSTRUCT_OUTCOME: ${{ steps.reconstruct.outcome }}
           GENERATE_OUTCOME: ${{ steps.generate.outcome }}
+          SANITIZE_OUTCOME: ${{ steps.sanitize.outcome }}
           RIG_OUTCOME: ${{ steps.rig.outcome }}
           PROOF_OUTCOME: ${{ steps.proof.outcome }}
           VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
@@ -179,22 +338,32 @@ jobs:
           import json, os, pathlib
           root = pathlib.Path('character_output') / os.environ['CHARACTER']
           root.mkdir(parents=True, exist_ok=True)
-          report_path = root / 'validation-report.json'
-          validation = json.loads(report_path.read_text()) if report_path.exists() else {}
+          validation_path = root / 'validation-report.json'
+          validation = json.loads(validation_path.read_text()) if validation_path.exists() else {}
           proof_path = root / 'proof-render-report.json'
           proof = json.loads(proof_path.read_text()) if proof_path.exists() else {}
+          sanitize_path = root / 'mesh-sanitization-report.json'
+          sanitization = json.loads(sanitize_path.read_text()) if sanitize_path.exists() else {}
           status = {
-              'schemaVersion': 4,
+              'schemaVersion': 5,
               'character': os.environ['CHARACTER'],
+              'sourceMode': os.environ['SOURCE_MODE'],
+              'reconstructOutcome': os.environ.get('RECONSTRUCT_OUTCOME', 'skipped'),
               'generateOutcome': os.environ.get('GENERATE_OUTCOME', 'skipped'),
+              'sanitizeOutcome': os.environ.get('SANITIZE_OUTCOME', 'skipped'),
               'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
               'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
               'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
-              'validation': validation,
+              'sanitization': {
+                  'success': sanitization.get('success'),
+                  'componentsRemoved': sanitization.get('componentsRemoved'),
+                  'verticesRemoved': sanitization.get('verticesRemoved'),
+              },
               'proofFraming': {
                   'expectedVerticalOccupancy': proof.get('expectedVerticalOccupancy'),
                   'ignoredHelperMeshes': proof.get('ignoredHelperMeshes', []),
               },
+              'validation': validation,
               'machinePassed': validation.get('passed') is True,
               'approved': False,
               'humanVisualReviewStatus': 'pending',
@@ -212,7 +381,7 @@ jobs:
           compression-level: 0
           retention-days: 30
       - name: Enforce complete machine pipeline
-        if: ${{ always() && (steps.generate.outcome != 'success' || steps.rig.outcome != 'success' || steps.proof.outcome != 'success' || steps.validate.outcome != 'success') }}
+        if: ${{ always() && (steps.generate.outcome != 'success' || steps.sanitize.outcome != 'success' || steps.rig.outcome != 'success' || steps.proof.outcome != 'success' || steps.validate.outcome != 'success') }}
         run: exit 1
 
   package-review-set:
@@ -225,7 +394,7 @@ jobs:
         with:
           pattern: HAVENLINE-Character*-production-review
           path: character_review_set
-      - name: Build immutable truthful review manifest
+      - name: Build immutable truthful hybrid review manifest
         shell: python
         env:
           SOURCE_COMMIT: ${{ github.sha }}
@@ -244,7 +413,7 @@ jobs:
                   })
           machine_passed = len(statuses) == 4 and all(item.get('machinePassed') is True for item in statuses)
           manifest = {
-              'schemaVersion': 4,
+              'schemaVersion': 5,
               'sourceCommit': os.environ['SOURCE_COMMIT'],
               'matrixResult': os.environ['MATRIX_RESULT'],
               'machinePassed': machine_passed,
