@@ -13,6 +13,9 @@ on:
       - '.tooling/havenline-character-production/finalize_sf3d_generation.py'
       - '.tooling/havenline-character-production/runtime-versions.json'
       - '.tooling/havenline-character-production/character1-seed9101-visual-rejection.json'
+      - '.tooling/havenline-character-production/character2-unity-review-candidate.json'
+      - '.tooling/havenline-character-production/stage_unity_character_review_sources.py'
+      - '.tooling/havenline-character-production/test_character_artifact_policy.py'
       - '.tooling/havenline-character-production/sanitize_character_mesh.py'
       - '.tooling/havenline-character-production/rig_animate_character.py'
       - '.tooling/havenline-character-production/rig_animate_character_export_only.py'
@@ -30,8 +33,64 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate-contract:
+    name: Validate SF3D recovery contract
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact HAVENLINE branch commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Validate runtime, rejection policy and executable route
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          root = Path('.tooling/havenline-character-production')
+          runtime = json.loads((root / 'runtime-versions.json').read_text())
+          rejection = json.loads((root / 'character1-seed9101-visual-rejection.json').read_text())
+          candidate = json.loads((root / 'character2-unity-review-candidate.json').read_text())
+          pipeline = (root / 'run_sf3d_character_pipeline.ps1').read_text()
+          workflow = Path('.github/workflows/generate-havenline-support-characters-sf3d.yml').read_text()
+
+          assert runtime['schemaVersion'] == 3
+          assert runtime['blender']['version'] == '4.5.12'
+          assert runtime['stableFast3D']['commit'] == 'ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2'
+          assert runtime['reconstruction']['Character1']['generator'] == 'Stability-AI/stable-fast-3d'
+          assert runtime['reconstruction']['Character2']['artifactId'] == 8973791027
+          assert runtime['reconstruction']['Character3']['generator'] == 'Stability-AI/stable-fast-3d'
+          assert runtime['reconstruction']['Character4']['generator'] == 'Stability-AI/stable-fast-3d'
+          assert rejection['artifact']['id'] == '8974534288'
+          assert rejection['humanVisualReview']['status'] == 'rejected'
+          assert rejection['acceptedForUnityReview'] is False
+          assert candidate['artifact']['id'] == '8973791027'
+          assert candidate['approved'] is False
+
+          for literal in (
+              "[ValidateSet('Character1', 'Character3', 'Character4')]",
+              "acceptedForUnityReview = $false",
+              "humanVisualApprovalRequired = $true",
+              "run_sf3d_character_pipeline.ps1",
+              "character1-seed9101-visual-rejection.json",
+          ):
+              if literal not in pipeline + workflow:
+                  raise SystemExit(f'Missing SF3D recovery literal: {literal}')
+          if '${{ runner.' in workflow:
+              raise SystemExit('runner context cannot be used before runner assignment.')
+          print('SF3D recovery contract passed before self-hosted runner assignment.')
+
+      - name: Run artifact rejection and substitution tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .tooling/havenline-character-production/test_character_artifact_policy.py
+
   generate-character:
     name: ${{ matrix.character }} SF3D RTX production proof
+    needs: validate-contract
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 240
     strategy:
@@ -97,5 +156,3 @@ jobs:
           if ($status.acceptedForUnityReview -or $status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
             throw 'Machine generation attempted to bypass Blender or Unity human visual review.'
           }
-
-# Normal Git ref push after removing invalid job-level runner context.
