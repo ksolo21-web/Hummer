@@ -1,0 +1,519 @@
+#!/usr/bin/env python3
+"""Remove a dominant reconstruction floor and its disconnected edge debris.
+
+Blender imports glTF/Unity Y-up assets as Z-up. The detector therefore operates in
+Blender world space, while the report also records the corresponding source-space axis.
+The cleanup fails closed unless one broad, thin, strongly aligned plane is unambiguous.
+After deleting that plane, conservative disconnected-component rules remove only the
+needle, ribbon, strap, tiny-fragment, and edge slivers that otherwise keep the scene
+bounds square and prevent the standing-orientation gate from running.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import pathlib
+import sys
+import traceback
+
+import bmesh
+import bpy
+from mathutils import Vector
+
+AXES = ("x", "y", "z")
+BIN_COUNT = 400
+NORMAL_ALIGNMENT_MINIMUM = 0.90
+THICKNESS_RATIOS = (0.0025, 0.0040, 0.0060, 0.0100)
+SOURCE_AXIS_FOR_BLENDER_AXIS = {"x": "x", "y": "z", "z": "y"}
+
+
+def cli_args() -> list[str]:
+    return sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--character", required=True)
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--output", required=True)
+    return parser.parse_args(cli_args())
+
+
+def clear_scene() -> None:
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete(use_global=False)
+
+
+def import_glb(path: pathlib.Path):
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+    if not meshes:
+        raise RuntimeError(f"No mesh objects imported from {path}")
+    return meshes
+
+
+def coordinate(value, axis: str) -> float:
+    return float(getattr(value, axis))
+
+
+def world_bounds(meshes):
+    points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
+    if not points:
+        raise RuntimeError("No mesh bounds were available")
+    minimum = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
+    maximum = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
+    return minimum, maximum
+
+
+def bounds_payload(meshes) -> dict:
+    minimum, maximum = world_bounds(meshes)
+    extent = maximum - minimum
+    return {
+        "minimum": list(minimum),
+        "maximum": list(maximum),
+        "extents": list(extent),
+        "width": extent.x,
+        "depth": extent.y,
+        "height": extent.z,
+    }
+
+
+def triangle_area(points) -> float:
+    if len(points) < 3:
+        return 0.0
+    origin = points[0]
+    area = 0.0
+    for index in range(1, len(points) - 1):
+        area += ((points[index] - origin).cross(points[index + 1] - origin)).length * 0.5
+    return float(area)
+
+
+def polygon_records(obj):
+    matrix = obj.matrix_world
+    normal_matrix = matrix.to_3x3()
+    records = []
+    for polygon in obj.data.polygons:
+        points = [matrix @ obj.data.vertices[index].co for index in polygon.vertices]
+        center = sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
+        normal = (normal_matrix @ polygon.normal).normalized()
+        records.append(
+            {
+                "index": polygon.index,
+                "points": points,
+                "center": center,
+                "normal": normal,
+                "area": triangle_area(points),
+            }
+        )
+    return records
+
+
+def bounds_for_points(points):
+    minimum = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
+    maximum = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
+    return minimum, maximum, maximum - minimum
+
+
+def peak_centres(records, axis: str, minimum_value: float, maximum_value: float):
+    span = max(maximum_value - minimum_value, 1e-6)
+    bins = [0.0] * BIN_COUNT
+    for record in records:
+        if abs(coordinate(record["normal"], axis)) < NORMAL_ALIGNMENT_MINIMUM:
+            continue
+        value = coordinate(record["center"], axis)
+        index = int((value - minimum_value) / span * BIN_COUNT)
+        index = max(0, min(BIN_COUNT - 1, index))
+        bins[index] += max(record["area"], 0.0)
+    ranked = sorted(range(BIN_COUNT), key=lambda index: bins[index], reverse=True)
+    centres = []
+    for index in ranked[:12]:
+        if bins[index] <= 0:
+            continue
+        centre = minimum_value + (index + 0.5) / BIN_COUNT * span
+        if any(abs(centre - existing) < span / BIN_COUNT * 2.0 for existing in centres):
+            continue
+        centres.append(centre)
+    return centres
+
+
+def candidate_for(obj, records, scene_minimum, scene_maximum, total_area, axis, peak, thickness_ratio):
+    scene_extent = scene_maximum - scene_minimum
+    scene_span = max(scene_extent.x, scene_extent.y, scene_extent.z, 1e-6)
+    half_thickness = scene_span * thickness_ratio * 0.5
+    selected = [
+        record
+        for record in records
+        if abs(coordinate(record["center"], axis) - peak) <= half_thickness
+        and abs(coordinate(record["normal"], axis)) >= NORMAL_ALIGNMENT_MINIMUM
+    ]
+    if len(selected) < 200:
+        return None
+    points = [point for record in selected for point in record["points"]]
+    minimum, maximum, extent = bounds_for_points(points)
+    other_axes = [value for value in AXES if value != axis]
+    coverage = {
+        other: coordinate(extent, other) / max(coordinate(scene_extent, other), 1e-6)
+        for other in other_axes
+    }
+    selected_area = sum(record["area"] for record in selected)
+    area_fraction = selected_area / max(total_area, 1e-9)
+    actual_thickness_ratio = coordinate(extent, axis) / scene_span
+    weighted_centre = sum(
+        coordinate(record["center"], axis) * record["area"] for record in selected
+    ) / max(selected_area, 1e-9)
+    variance = sum(
+        record["area"] * (coordinate(record["center"], axis) - weighted_centre) ** 2
+        for record in selected
+    ) / max(selected_area, 1e-9)
+    centre_standard_deviation = math.sqrt(max(variance, 0.0))
+    mean_alignment = sum(
+        abs(coordinate(record["normal"], axis)) * record["area"] for record in selected
+    ) / max(selected_area, 1e-9)
+    face_ratio = len(selected) / max(len(records), 1)
+
+    values = sorted(coverage.values())
+    if values[0] < 0.85 or values[1] < 0.90:
+        return None
+    if area_fraction < 0.15 or area_fraction > 0.88:
+        return None
+    if actual_thickness_ratio > 0.020:
+        return None
+    if centre_standard_deviation > scene_span * 0.006:
+        return None
+    if mean_alignment < 0.90 or face_ratio > 0.60:
+        return None
+
+    return {
+        "object": obj.name,
+        "blenderAxis": axis,
+        "axis": SOURCE_AXIS_FOR_BLENDER_AXIS[axis],
+        "axisSpace": "glTF/Unity source coordinates",
+        "peak": peak,
+        "weightedCentre": weighted_centre,
+        "thicknessRatioRequested": thickness_ratio,
+        "actualThicknessRatio": actual_thickness_ratio,
+        "centreStandardDeviation": centre_standard_deviation,
+        "faceIndices": [record["index"] for record in selected],
+        "facesSelected": len(selected),
+        "faceRatio": face_ratio,
+        "selectedArea": selected_area,
+        "areaFraction": area_fraction,
+        "meanNormalAlignment": mean_alignment,
+        "coverage": coverage,
+        "minimum": list(minimum),
+        "maximum": list(maximum),
+        "extent": list(extent),
+    }
+
+
+def candidate_score(candidate):
+    return (
+        candidate["areaFraction"],
+        min(candidate["coverage"].values()),
+        candidate["meanNormalAlignment"],
+        candidate["facesSelected"],
+        -candidate["actualThicknessRatio"],
+    )
+
+
+def same_sheet(first, second, scene_span: float) -> bool:
+    return (
+        first["object"] == second["object"]
+        and first["blenderAxis"] == second["blenderAxis"]
+        and abs(first["weightedCentre"] - second["weightedCentre"]) <= scene_span * 0.012
+    )
+
+
+def find_candidate(meshes, scene_minimum, scene_maximum):
+    scene_extent = scene_maximum - scene_minimum
+    scene_span = max(scene_extent.x, scene_extent.y, scene_extent.z, 1e-6)
+    candidates = []
+    diagnostics = []
+    for obj in meshes:
+        if len(obj.data.polygons) < 100:
+            continue
+        records = polygon_records(obj)
+        total_area = sum(record["area"] for record in records)
+        for axis in AXES:
+            peaks = peak_centres(
+                records,
+                axis,
+                coordinate(scene_minimum, axis),
+                coordinate(scene_maximum, axis),
+            )
+            diagnostics.append(
+                {"object": obj.name, "axis": axis, "peakCentres": peaks, "totalFaces": len(records)}
+            )
+            for peak in peaks:
+                for thickness_ratio in THICKNESS_RATIOS:
+                    candidate = candidate_for(
+                        obj,
+                        records,
+                        scene_minimum,
+                        scene_maximum,
+                        total_area,
+                        axis,
+                        peak,
+                        thickness_ratio,
+                    )
+                    if candidate is not None:
+                        candidates.append((obj, candidate))
+    if not candidates:
+        raise RuntimeError("No dominant broad planar layer was detected")
+    candidates.sort(key=lambda pair: candidate_score(pair[1]), reverse=True)
+    best_obj, best = candidates[0]
+    competing = [item for _, item in candidates[1:] if not same_sheet(best, item, scene_span)]
+    if competing:
+        second = competing[0]
+        if (
+            second["areaFraction"] >= best["areaFraction"] * 0.82
+            and min(second["coverage"].values()) >= min(best["coverage"].values()) - 0.04
+        ):
+            raise RuntimeError("Two dominant planar layers are too similar to delete safely")
+    return best_obj, best, [item for _, item in candidates], diagnostics
+
+
+def delete_faces_and_loose_vertices(obj, face_indices):
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_mode(type="FACE")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    for polygon in obj.data.polygons:
+        polygon.select = False
+    for index in face_indices:
+        obj.data.polygons[index].select = True
+    faces_before = len(obj.data.polygons)
+    vertices_before = len(obj.data.vertices)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.delete(type="FACE")
+    bpy.ops.mesh.select_mode(type="VERT")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.mesh.select_loose()
+    bpy.ops.mesh.delete(type="VERT")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obj.data.validate(verbose=False)
+    obj.data.update()
+    return {
+        "alignedFacesRemoved": faces_before - len(obj.data.polygons),
+        "alignedVerticesRemoved": vertices_before - len(obj.data.vertices),
+    }
+
+
+def component_vertices(mesh):
+    adjacency = [[] for _ in mesh.vertices]
+    for edge in mesh.edges:
+        a, b = edge.vertices
+        adjacency[a].append(b)
+        adjacency[b].append(a)
+    visited = set()
+    components = []
+    for start in range(len(mesh.vertices)):
+        if start in visited:
+            continue
+        stack = [start]
+        visited.add(start)
+        component = []
+        while stack:
+            current = stack.pop()
+            component.append(current)
+            for neighbor in adjacency[current]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        components.append(component)
+    return components
+
+
+def component_metrics(obj, component, face_count):
+    points = [obj.matrix_world @ obj.data.vertices[index].co for index in component]
+    minimum, maximum, extent = bounds_for_points(points)
+    ordered = sorted((max(extent.x, 0.0), max(extent.y, 0.0), max(extent.z, 0.0)))
+    return {
+        "vertices": len(component),
+        "faces": face_count,
+        "minimum": list(minimum),
+        "maximum": list(maximum),
+        "extents": list(extent),
+        "smallestExtent": ordered[0],
+        "middleExtent": ordered[1],
+        "largestExtent": ordered[2],
+        "boxVolume": ordered[0] * ordered[1] * ordered[2],
+    }
+
+
+def removal_reason(metrics, scale: float):
+    vertices = metrics["vertices"]
+    faces = metrics["faces"]
+    smallest = metrics["smallestExtent"]
+    middle = metrics["middleExtent"]
+    largest = metrics["largestExtent"]
+    volume = metrics["boxVolume"]
+    if vertices <= 4 and faces <= 2:
+        return "isolated triangle or quad debris"
+    if vertices <= 40 and largest >= scale * 0.11 and smallest <= scale * 0.015 and middle <= scale * 0.045 and volume <= scale**3 * 0.00035:
+        return "needle-like disconnected reconstruction island"
+    if vertices <= 1200 and largest >= scale * 0.20 and smallest <= scale * 0.006 and middle <= scale * 0.025 and largest >= max(middle, 1e-9) * 8.0 and volume <= scale**3 * 0.000045:
+        return "long densely-triangulated reconstruction sliver"
+    if vertices <= 1800 and largest >= scale * 0.30 and smallest <= scale * 0.0035 and middle <= scale * 0.060 and largest >= max(middle, 1e-9) * 5.0 and volume <= scale**3 * 0.000085:
+        return "paper-thin disconnected reconstruction ribbon"
+    if vertices <= 1000 and largest >= scale * 0.25 and smallest <= scale * 0.025 and middle <= scale * 0.12 and volume <= scale**3 * 0.0012:
+        return "disconnected elongated strap-like reconstruction artifact"
+    if vertices <= 64 and faces <= 128 and largest <= scale * 0.065:
+        return "small disconnected reconstruction fragment"
+    if vertices <= 10 and faces <= 8 and largest <= scale * 0.035:
+        return "sub-pixel disconnected fragment"
+    if vertices <= 24 and faces <= 32 and middle <= scale * 0.010 and largest <= scale * 0.150:
+        return "isolated floor-edge fragment"
+    return None
+
+
+def cleanup_disconnected_debris(obj, global_span: float):
+    mesh = obj.data
+    mesh.validate(verbose=False)
+    mesh.update()
+    components = component_vertices(mesh)
+    vertex_to_component = {}
+    for component_index, component in enumerate(components):
+        for vertex_index in component:
+            vertex_to_component[vertex_index] = component_index
+    faces_per_component = [0] * len(components)
+    for polygon in mesh.polygons:
+        if polygon.vertices:
+            component_index = vertex_to_component.get(polygon.vertices[0])
+            if component_index is not None:
+                faces_per_component[component_index] += 1
+    removed_indices = set()
+    removed_reports = []
+    for component_index, component in enumerate(components):
+        metrics = component_metrics(obj, component, faces_per_component[component_index])
+        reason = removal_reason(metrics, global_span)
+        if reason:
+            metrics["reason"] = reason
+            removed_reports.append(metrics)
+            removed_indices.update(component)
+    faces_before = len(mesh.polygons)
+    vertices_before = len(mesh.vertices)
+    if removed_indices:
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bm.verts.ensure_lookup_table()
+        bmesh.ops.delete(
+            bm,
+            geom=[bm.verts[index] for index in sorted(removed_indices)],
+            context="VERTS",
+        )
+        if bm.faces:
+            bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.validate(verbose=False)
+        mesh.update()
+    return {
+        "object": obj.name,
+        "componentsBefore": len(components),
+        "componentsRemoved": len(removed_reports),
+        "facesRemoved": faces_before - len(mesh.polygons),
+        "verticesRemoved": vertices_before - len(mesh.vertices),
+        "largestRemoved": sorted(
+            removed_reports,
+            key=lambda item: (item["vertices"], item["faces"]),
+            reverse=True,
+        )[:40],
+    }
+
+
+def export_glb(path: pathlib.Path, meshes) -> None:
+    bpy.ops.object.select_all(action="DESELECT")
+    surviving = [obj for obj in meshes if obj.type == "MESH" and len(obj.data.polygons) > 0]
+    if not surviving:
+        raise RuntimeError("Cleanup removed every mesh")
+    for obj in surviving:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = surviving[0]
+    bpy.ops.export_scene.gltf(
+        filepath=str(path),
+        export_format="GLB",
+        use_selection=True,
+        export_animations=False,
+    )
+    if not path.is_file() or path.stat().st_size == 0:
+        raise RuntimeError(f"No planar-cleaned GLB was exported to {path}")
+
+
+def without_indices(candidate):
+    result = dict(candidate)
+    result.pop("faceIndices", None)
+    return result
+
+
+def main() -> int:
+    args = parse_args()
+    root = pathlib.Path(args.output)
+    root.mkdir(parents=True, exist_ok=True)
+    output = root / f"{args.character}_extreme_plane_clean.glb"
+    report_path = root / "extreme-planar-face-report.json"
+    report = {
+        "schemaVersion": 3,
+        "character": args.character,
+        "source": args.input,
+        "output": str(output),
+        "success": False,
+        "detector": "dominant aligned plane plus conservative disconnected-debris cleanup",
+        "humanVisualApprovalRequired": True,
+    }
+    try:
+        clear_scene()
+        meshes = import_glb(pathlib.Path(args.input))
+        input_bounds = bounds_payload(meshes)
+        scene_span = max(input_bounds["extents"])
+        faces_before = sum(len(obj.data.polygons) for obj in meshes)
+        vertices_before = sum(len(obj.data.vertices) for obj in meshes)
+        minimum, maximum = world_bounds(meshes)
+        obj, candidate, candidates, diagnostics = find_candidate(meshes, minimum, maximum)
+        aligned = delete_faces_and_loose_vertices(obj, candidate["faceIndices"])
+        cleanup = [cleanup_disconnected_debris(mesh, scene_span) for mesh in meshes]
+        faces_after = sum(len(mesh.data.polygons) for mesh in meshes)
+        vertices_after = sum(len(mesh.data.vertices) for mesh in meshes)
+        if faces_after <= 0 or vertices_after <= 0:
+            raise RuntimeError(FCleanup removed the complete character mesh")
+        export_glb(output, meshes)
+        output_bounds = bounds_payload(
+            [mesh for mesh in meshes if mesh.type == "MESH" and len(mesh.data.polygons) > 0]
+        )
+        report.update(
+            success=True,
+            inputBounds=input_bounds,
+            outputBounds=output_bounds,
+            selectedCandidate=without_indices(candidate),
+            candidatesConsidered=[without_indices(item) for item in candidates],
+            peakDiagnostics=diagnostics,
+            deletion={
+                **aligned,
+                "cleanupFacesRemoved": sum(item["facesRemoved"] for item in cleanup),
+                "cleanupVerticesRemoved": sum(item["verticesRemoved"] for item in cleanup),
+                "facesBefore": faces_before,
+                "facesAfter": faces_after,
+                "facesRemoved": faces_before - faces_after,
+                "verticesBefore": vertices_before,
+                "verticesAfter": vertices_after,
+                "verticesRemoved": vertices_before - vertices_after,
+            },
+            disconnectedCleanup=cleanup,
+            outputBytes=output.stat().st_size,
+        )
+    except Exception as exc:
+        report.update(error=repr(exc), traceback=traceback.format_exc())
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2))
+    return 0 if report["success"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
