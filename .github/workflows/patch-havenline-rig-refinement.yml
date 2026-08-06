@@ -26,66 +26,54 @@ jobs:
           source = path.read_text(encoding='utf-8')
 
           import_anchor = 'import bpy\nfrom mathutils import Vector\n'
-          import_replacement = '''import bpy
-          from mathutils import Vector
-
-          SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
-          if str(SCRIPT_DIR) not in sys.path:
-              sys.path.insert(0, str(SCRIPT_DIR))
-          import reference_face_refinement as reference_refinement
-          '''
-          import_replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in import_replacement.splitlines()) + '\n'
+          import_replacement = (
+              'import bpy\n'
+              'from mathutils import Vector\n\n'
+              'SCRIPT_DIR = pathlib.Path(__file__).resolve().parent\n'
+              'if str(SCRIPT_DIR) not in sys.path:\n'
+              '    sys.path.insert(0, str(SCRIPT_DIR))\n'
+              'import reference_face_refinement as reference_refinement\n'
+          )
           if 'import reference_face_refinement as reference_refinement' not in source:
               if import_anchor not in source:
                   raise SystemExit('Import anchor was not found')
               source = source.replace(import_anchor, import_replacement, 1)
 
-          source = source.replace(
-              'approved_references = copy_approved_references(args.character, root)',
-              'approved_references = reference_refinement.copy_approved_references(args.character, root)',
-              1,
-          )
+          old_copy = 'approved_references = copy_approved_references(args.character, root)'
+          new_copy = 'approved_references = reference_refinement.copy_approved_references(args.character, root)'
+          if old_copy in source:
+              source = source.replace(old_copy, new_copy, 1)
 
-          old_block = '''        bounds = normalize(meshes)
-          face_refinement, face_object = create_reference_face_surface(
-              args.character,
-              root,
-              meshes,
-              bounds,
+          old_main = (
+              '        bounds = normalize(meshes)\n'
+              '        face_refinement, face_object = create_reference_face_surface(\n'
           )
-          '''
-          old_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in old_block.splitlines()) + '\n'
-          new_block = '''        pre_rig_cleanup = reference_refinement.cleanup_disconnected_components(
-              meshes,
-              world_bounds,
+          new_main = (
+              '        pre_rig_cleanup = reference_refinement.cleanup_disconnected_components(\n'
+              '            meshes,\n'
+              '            world_bounds,\n'
+              '        )\n'
+              '        bounds = normalize(meshes)\n'
+              '        face_refinement, face_object = reference_refinement.create_reference_face_surface(\n'
           )
-          bounds = normalize(meshes)
-          face_refinement, face_object = reference_refinement.create_reference_face_surface(
-              args.character,
-              root,
-              meshes,
-              bounds,
-          )
-          '''
-          new_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in new_block.splitlines()) + '\n'
           if 'pre_rig_cleanup = reference_refinement.cleanup_disconnected_components' not in source:
-              if old_block not in source:
-                  raise SystemExit('Rig main block was not found')
-              source = source.replace(old_block, new_block, 1)
+              if old_main not in source:
+                  raise SystemExit('Rig main anchor was not found')
+              source = source.replace(old_main, new_main, 1)
 
-          report_anchor = '''            approvedReferences=approved_references,
-              faceRefinement=face_refinement,
-          '''
-          report_anchor = '\n'.join(line[10:] if line.startswith('          ') else line for line in report_anchor.splitlines()) + '\n'
-          report_replacement = '''            approvedReferences=approved_references,
-              preRigCleanup=pre_rig_cleanup,
-              faceRefinement=face_refinement,
-          '''
-          report_replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in report_replacement.splitlines()) + '\n'
+          old_report = (
+              '            approvedReferences=approved_references,\n'
+              '            faceRefinement=face_refinement,\n'
+          )
+          new_report = (
+              '            approvedReferences=approved_references,\n'
+              '            preRigCleanup=pre_rig_cleanup,\n'
+              '            faceRefinement=face_refinement,\n'
+          )
           if 'preRigCleanup=pre_rig_cleanup' not in source:
-              if report_anchor not in source:
+              if old_report not in source:
                   raise SystemExit('Report anchor was not found')
-              source = source.replace(report_anchor, report_replacement, 1)
+              source = source.replace(old_report, new_report, 1)
 
           compile(source, str(path), 'exec')
           path.write_text(source, encoding='utf-8')
