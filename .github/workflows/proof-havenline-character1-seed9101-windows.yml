@@ -7,6 +7,16 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - '.github/workflows/proof-havenline-character1-seed9101-windows.yml'
+      - '.tooling/havenline-character-production/prove_character1_seed9101.sh'
+      - '.tooling/havenline-character-production/remove_extreme_planar_faces.py'
+      - '.tooling/havenline-character-production/remove_extreme_planar_faces_impl.py.txt'
+      - '.tooling/havenline-character-production/sanitize_character_mesh.py'
+      - '.tooling/havenline-girls-multiview/remove_spatial_outliers.py'
+      - '.tooling/havenline-character-production/prepare_mobile_source_mesh.py'
+      - '.tooling/havenline-character-production/rig_animate_character.py'
+      - '.tooling/havenline-character-production/reference_face_refinement.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
 
 permissions:
   contents: write
@@ -69,7 +79,7 @@ jobs:
           $blender = Get-ChildItem -Path $runtimeRoot -Filter blender.exe -Recurse | Select-Object -First 1
           if ($null -eq $blender) { throw 'Portable Blender executable was not found' }
           $blender.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          & $blender.FullName --background --factory-startup --python-expr "import bpy; assert bpy.app.version[:2] == (4, 5), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
+          & $blender.FullName --background --factory-startup --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
 
       - name: Build rigged mobile character and exact proofs
         shell: bash
@@ -96,6 +106,7 @@ jobs:
             proof_back.png \
             approved_reference_sheet.jpg \
             generation-report.json \
+            blender-runtime-report.json \
             extreme-planar-face-report.json \
             mesh-sanitization-report.json \
             spatial-outlier-report.json \
