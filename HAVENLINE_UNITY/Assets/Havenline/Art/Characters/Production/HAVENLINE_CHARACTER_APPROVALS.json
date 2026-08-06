@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "reviewContractVersion": "1.0",
+  "humanVisualApprovalRequired": true,
+  "characters": [
+    {
+      "character": "Character1",
+      "productionFbxPath": "Assets/Havenline/Art/Characters/Production/Character1/Character1_production.fbx",
+      "productionFbxSha256": "",
+      "unityReviewReportPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/unity-character-review-report.json",
+      "unityReviewReportSha256": "",
+      "machineProofStatusPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character1/machine-proof-status.json",
+      "machineProofStatusSha256": "",
+      "approvedReferencePath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character1/approved_reference_sheet.jpg",
+      "approvedReferenceSha256": "",
+      "approved": false,
+      "approvedBy": "",
+      "approvedUtc": "",
+      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+    },
+    {
+      "character": "Character2",
+      "productionFbxPath": "Assets/Havenline/Art/Characters/Production/Character2/Character2_production.fbx",
+      "productionFbxSha256": "",
+      "unityReviewReportPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/unity-character-review-report.json",
+      "unityReviewReportSha256": "",
+      "machineProofStatusPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character2/machine-proof-status.json",
+      "machineProofStatusSha256": "",
+      "approvedReferencePath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character2/approved_reference_sheet.jpg",
+      "approvedReferenceSha256": "",
+      "approved": false,
+      "approvedBy": "",
+      "approvedUtc": "",
+      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+    },
+    {
+      "character": "Character3",
+      "productionFbxPath": "Assets/Havenline/Art/Characters/Production/Character3/Character3_production.fbx",
+      "productionFbxSha256": "",
+      "unityReviewReportPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/unity-character-review-report.json",
+      "unityReviewReportSha256": "",
+      "machineProofStatusPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character3/machine-proof-status.json",
+      "machineProofStatusSha256": "",
+      "approvedReferencePath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character3/approved_reference_sheet.jpg",
+      "approvedReferenceSha256": "",
+      "approved": false,
+      "approvedBy": "",
+      "approvedUtc": "",
+      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+    },
+    {
+      "character": "Character4",
+      "productionFbxPath": "Assets/Havenline/Art/Characters/Production/Character4/Character4_production.fbx",
+      "productionFbxSha256": "",
+      "unityReviewReportPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/unity-character-review-report.json",
+      "unityReviewReportSha256": "",
+      "machineProofStatusPath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character4/machine-proof-status.json",
+      "machineProofStatusSha256": "",
+      "approvedReferencePath": "Assets/Havenline/Art/Characters/Production/ApprovalEvidence/Character4/approved_reference_sheet.jpg",
+      "approvedReferenceSha256": "",
+      "approved": false,
+      "approvedBy": "",
+      "approvedUtc": "",
+      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+    }
+  ]
+}
