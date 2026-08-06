@@ -1,0 +1,226 @@
+name: Process HAVENLINE Character 1 Seed 8101
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/process-havenline-character1-seed8101.yml'
+      - '.tooling/havenline-character-production/remove_planar_backdrops.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-character1-seed8101-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  process-seed8101:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download clean Character 1 seed 8101 package
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character1-clean-candidate-8101
+          path: source_package
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: 31112674451
+
+      - name: Stage generated candidate and immutable evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          mkdir -p "$out"
+          cp -a source_package/. "$out"/
+          test -s "$out/Character1_sanitized.glb"
+          test -s "$out/generation-report.json"
+          test -s "$out/mesh-sanitization-report.json"
+          test -s "$out/approved_reference_sheet.jpg"
+
+      - name: Install minimal EGL runtime, portable Blender, and validators
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libegl1 libgl1-mesa-dri libglx-mesa0
+          archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.2.3"
+          curl --fail --location --retry 5 --retry-delay 5 \
+            https://mirrors.dotsrc.org/blender/blender-release/Blender4.2/blender-4.2.3-linux-x64.tar.xz \
+            --output "$archive"
+          mkdir -p "$runtime"
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          test -x "$runtime/blender"
+          echo "$runtime" >> "$GITHUB_PATH"
+          "$runtime/blender" --background --factory-startup \
+            --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
+
+      - name: Remove the isolated full-height reconstruction slab
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/remove_planar_backdrops.py -- \
+            --character Character1 \
+            --input "$out/Character1_sanitized.glb" \
+            --output "$out"
+          test -s "$out/Character1_planar_clean.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/planar-backdrop-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 planar cleanup did not pass')
+          if report.get('planarBackdropsRemoved') != 1:
+              raise SystemExit('Character 1 cleanup did not remove exactly one backdrop')
+          if report.get('verticesRemoved', 0) <= 0:
+              raise SystemExit('Character 1 cleanup removed no backdrop vertices')
+          PY
+
+      - name: Rig cleaned Character 1 with Blender 4.2 compatibility patch
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          rig_script="$RUNNER_TEMP/rig_animate_character_blender42.py"
+          git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
+          python - "$rig_script" <<'PY'
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text()
+          old = 'scene.render.engine = "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"'
+          new = 'engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items}\n    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engines else "BLENDER_EEVEE"'
+          if old not in text:
+              raise SystemExit('Legacy EEVEE selection line was not found')
+          path.write_text(text.replace(old, new))
+          PY
+          blender --background --factory-startup \
+            --python "$rig_script" -- \
+            --character Character1 \
+            --input "$out/Character1_planar_clean.glb" \
+            --output "$out"
+          test -s "$out/Character1_production.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/rig-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 rig report did not pass')
+          PY
+
+      - name: Render exact Character 1 production proofs
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
+            --character Character1 \
+            --input "$out/Character1_production.glb" \
+            --output "$out"
+          for proof in front three-quarter side back; do test -s "$out/proof_${proof}.png"; done
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/proof-render-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 proof report did not pass')
+          PY
+
+      - name: Validate Character 1 production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character Character1 \
+            --directory character_output/Character1
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/validation-report.json').read_text())
+          if report.get('passed') is not True:
+              raise SystemExit('Character 1 validation did not pass')
+          PY
+
+      - name: Write truthful Character 1 status
+        if: ${{ always() }}
+        shell: python
+        run: |
+          import json, pathlib
+          root = pathlib.Path('character_output/Character1')
+          def load(name):
+              path = root / name
+              return json.loads(path.read_text()) if path.exists() else {}
+          generation = load('generation-report.json')
+          sanitization = load('mesh-sanitization-report.json')
+          planar = load('planar-backdrop-report.json')
+          rig = load('rig-report.json')
+          proof = load('proof-render-report.json')
+          validation = load('validation-report.json')
+          machine_passed = (
+              generation.get('success') is True
+              and sanitization.get('success') is True
+              and planar.get('success') is True
+              and planar.get('planarBackdropsRemoved') == 1
+              and rig.get('success') is True
+              and proof.get('success') is True
+              and validation.get('passed') is True
+              and all((root / f'proof_{name}.png').is_file() for name in ('front', 'three-quarter', 'side', 'back'))
+          )
+          status = {
+              'schemaVersion': 1,
+              'character': 'Character1',
+              'sourceRunId': '31112674451',
+              'seed': 8101,
+              'sourceMode': 'clean-trellis-multiview-plus-planar-backdrop-removal',
+              'meshSimplify': generation.get('meshSimplify'),
+              'textureSize': generation.get('textureSize'),
+              'planarVerticesRemoved': planar.get('verticesRemoved'),
+              'machinePassed': machine_passed,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          root.mkdir(parents=True, exist_ok=True)
+          (root / 'final-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          print(json.dumps(status, indent=2))
+
+      - name: Upload cleaned Character 1 review package
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Character1-seed8101-clean-review
+          path: character_output/Character1/**
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce truthful completion
+        if: ${{ always() }}
+        shell: python
+        run: |
+          import json, pathlib
+          status = json.loads(pathlib.Path('character_output/Character1/final-status.json').read_text())
+          if status.get('machinePassed') is not True:
+              raise SystemExit('Character 1 seed 8101 pipeline is incomplete')
+          if status.get('approved') is True:
+              raise SystemExit('Character 1 was prematurely marked approved')
