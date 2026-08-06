@@ -1,0 +1,125 @@
+name: Proof HAVENLINE Character 1 Seed 9101 Actionless v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/proof-havenline-character1-seed9101-actionless-v2.yml'
+      - '.tooling/havenline-character-production/prove_character1_seed9101.sh'
+      - '.tooling/havenline-character-production/remove_extreme_planar_faces.py'
+      - '.tooling/havenline-character-production/remove_extreme_planar_faces_impl.py.txt'
+      - '.tooling/havenline-character-production/sanitize_character_mesh.py'
+      - '.tooling/havenline-girls-multiview/remove_spatial_outliers.py'
+      - '.tooling/havenline-character-production/prepare_mobile_source_mesh.py'
+      - '.tooling/havenline-character-production/rig_animate_character.py'
+      - '.tooling/havenline-character-production/reference_face_refinement.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: havenline-character1-seed9101-actionless-proof-v2
+  cancel-in-progress: true
+
+jobs:
+  prove-seed9101-v2:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Clone Havenline branch directly
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch havenline-unity-reference-rebuild \
+            https://github.com/ksolo21-web/Hummer.git repo
+          cd repo
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/ksolo21-web/Hummer.git"
+
+      - name: Download immutable Character 1 seed 9101
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          mkdir -p source_package character_output/Character1
+          curl --fail --location --retry 5 --retry-delay 5 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip \
+            --output "$RUNNER_TEMP/character1-seed9101.zip"
+          unzip -q "$RUNNER_TEMP/character1-seed9101.zip" -d source_package
+          cp -a source_package/. character_output/Character1/
+          test -s character_output/Character1/Character1_raw.glb
+          test -s character_output/Character1/generation-report.json
+          test -s character_output/Character1/approved_reference_sheet.jpg
+
+      - name: Install Blender 4.2 and validation runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libegl1 libgl1-mesa-dri libglx-mesa0 unzip
+          archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.2.3"
+          curl --fail --location --retry 5 --retry-delay 5 \
+            https://mirrors.dotsrc.org/blender/blender-release/Blender4.2/blender-4.2.3-linux-x64.tar.xz \
+            --output "$archive"
+          mkdir -p "$runtime"
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          test -x "$runtime/blender"
+          echo "$runtime" >> "$GITHUB_PATH"
+          "$runtime/blender" --background --factory-startup \
+            --python-expr "import bpy; print('Blender:', bpy.app.version_string)"
+
+      - name: Build rigged mobile character and exact proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repo
+          bash .tooling/havenline-character-production/prove_character1_seed9101.sh
+
+      - name: Publish proof images and machine reports
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          proof_root=HavenlineProofs/Character1/seed9101
+          out=character_output/Character1
+          rm -rf "$proof_root"
+          mkdir -p "$proof_root"
+          for file in \
+            proof_front.png \
+            proof_three-quarter.png \
+            proof_side.png \
+            proof_back.png \
+            approved_reference_sheet.jpg \
+            generation-report.json \
+            extreme-planar-face-report.json \
+            mesh-sanitization-report.json \
+            spatial-outlier-report.json \
+            mobile-source-report.json \
+            rig-report.json \
+            proof-render-report.json \
+            validation-report.json \
+            actionless-seed9101-status.json; do
+            test -s "$out/$file"
+            cp "$out/$file" "$proof_root/$file"
+          done
+          git config user.name "HAVENLINE Proof Bot"
+          git config user.email "havenline-proof@users.noreply.github.com"
+          git add "$proof_root"
+          git commit -m "Publish Havenline Character 1 seed 9101 v2 proofs"
+          git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
