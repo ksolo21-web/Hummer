@@ -258,7 +258,7 @@ jobs:
           test -s "character_output/${{ matrix.character }}/generation-report.json"
       - name: Remove disconnected reconstruction debris
         id: sanitize
-        if: ${{ steps.generate.outcome == 'success' }}
+        if: ${{ always() && steps.generate.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         env:
@@ -278,7 +278,7 @@ jobs:
           test -s "$out/${{ matrix.character }}_sanitized.glb"
       - name: Deterministically skin, rig, animate and build LODs
         id: rig
-        if: ${{ steps.sanitize.outcome == 'success' }}
+        if: ${{ always() && steps.sanitize.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         env:
@@ -297,7 +297,7 @@ jobs:
             --output "$out"
       - name: Render close neutral final-GLB proof angles
         id: proof
-        if: ${{ steps.rig.outcome == 'success' }}
+        if: ${{ always() && steps.rig.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         env:
@@ -316,7 +316,7 @@ jobs:
             --output "$out"
       - name: Validate mesh, skin, clips, LODs, textures and proofs
         id: validate
-        if: ${{ steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
+        if: ${{ always() && steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
         continue-on-error: true
         run: |
           python .tooling/havenline-character-production/validate_character_asset.py \
