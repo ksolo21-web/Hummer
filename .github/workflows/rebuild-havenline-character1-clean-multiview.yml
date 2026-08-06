@@ -116,6 +116,12 @@ jobs:
             --input "$out/Character1_raw.glb" \
             --output "$out"
           test -s "$out/Character1_sanitized.glb"
+          python - "$out/mesh-sanitization-report.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 sanitization report did not pass')
+          PY
 
       - name: Remove detached spatial outliers
         id: spatial
@@ -134,6 +140,12 @@ jobs:
             --input "$out/Character1_sanitized.glb" \
             --output "$out"
           test -s "$out/Character1_spatial.glb"
+          python - "$out/spatial-outlier-report.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 spatial cleanup report did not pass')
+          PY
 
       - name: Rig, animate and rebuild LODs
         id: rig
@@ -146,14 +158,31 @@ jobs:
         run: |
           set -euo pipefail
           out="character_output/Character1/seed-${{ matrix.seed }}"
-          rig_script="$RUNNER_TEMP/rig_animate_character_clean.py"
+          rig_script="$RUNNER_TEMP/rig_animate_character_blender42.py"
           git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
           test -s "$rig_script"
+          python - "$rig_script" <<'PY'
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text()
+          old = 'scene.render.engine = "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"'
+          new = 'engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items}\n    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engines else "BLENDER_EEVEE"'
+          if old not in text:
+              raise SystemExit('Legacy rig EEVEE selection line was not found')
+          path.write_text(text.replace(old, new))
+          PY
           blender --background --factory-startup \
             --python "$rig_script" -- \
             --character Character1 \
             --input "$out/Character1_spatial.glb" \
             --output "$out"
+          test -s "$out/Character1_production.glb"
+          python - "$out/rig-report.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 rig report did not pass')
+          PY
 
       - name: Render clean Character 1 proof angles
         id: proof
@@ -171,6 +200,16 @@ jobs:
             --character Character1 \
             --input "$out/Character1_production.glb" \
             --output "$out"
+          test -s "$out/proof_front.png"
+          test -s "$out/proof_three-quarter.png"
+          test -s "$out/proof_side.png"
+          test -s "$out/proof_back.png"
+          python - "$out/proof-render-report.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 1 proof render report did not pass')
+          PY
 
       - name: Validate clean Character 1 candidate
         id: validate
@@ -181,6 +220,12 @@ jobs:
           python .tooling/havenline-character-production/validate_character_asset.py \
             --character Character1 \
             --directory "$out"
+          python - "$out/validation-report.json" <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          if report.get('passed') is not True:
+              raise SystemExit('Character 1 validation report did not pass')
+          PY
 
       - name: Copy approved reference beside proof package
         if: ${{ always() }}
@@ -224,7 +269,7 @@ jobs:
               and validation.get('passed') is True
           )
           status = {
-              'schemaVersion': 2,
+              'schemaVersion': 3,
               'character': 'Character1',
               'seed': int(os.environ['SEED']),
               'sourceMode': 'clean-non-overlapping-trellis-multiview',
