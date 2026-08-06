@@ -14,8 +14,10 @@ on:
       - '.tooling/havenline-girls-multiview/remove_spatial_outliers.py'
       - '.tooling/havenline-character-production/prepare_mobile_source_mesh.py'
       - '.tooling/havenline-character-production/rig_animate_character.py'
+      - '.tooling/havenline-character-production/rig_animate_character_export_only.py'
       - '.tooling/havenline-character-production/reference_face_refinement.py'
       - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/render_character_proofs_cpu.py'
       - '.tooling/havenline-character-production/validate_character_asset.py'
 
 permissions:
@@ -24,11 +26,11 @@ permissions:
 
 concurrency:
   group: havenline-character1-seed9101-actionless-proof-v2
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   prove-seed9101-v2:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - name: Clone Havenline branch directly
@@ -42,6 +44,7 @@ jobs:
           cd repo
           git remote set-url origin \
             "https://x-access-token:${GH_TOKEN}@github.com/ksolo21-web/Hummer.git"
+          git rev-parse HEAD | tee "$RUNNER_TEMP/havenline-source-commit.txt"
 
       - name: Download immutable Character 1 seed 9101
         shell: bash
@@ -68,8 +71,9 @@ jobs:
           set -euo pipefail
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            libegl1 libgl1-mesa-dri libglx-mesa0 unzip
+            libegl1 libgl1-mesa-dri libglx-mesa0 unzip xz-utils
           archive="$RUNNER_TEMP/blender-4.5.12-linux-x64.tar.xz"
           runtime="$RUNNER_TEMP/blender-4.5.12"
           curl --fail --location --retry 5 --retry-delay 5 \
@@ -84,12 +88,14 @@ jobs:
 
       - name: Build rigged mobile character and exact proofs
         shell: bash
+        env:
+          HAVENLINE_CYCLES_SAMPLES: '24'
         run: |
           set -euo pipefail
           cd repo
           bash .tooling/havenline-character-production/prove_character1_seed9101.sh
 
-      - name: Publish proof images and machine reports
+      - name: Publish proof images, reports, and production assets
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -100,6 +106,7 @@ jobs:
           out=character_output/Character1
           rm -rf "$proof_root"
           mkdir -p "$proof_root"
+          cp "$RUNNER_TEMP/havenline-source-commit.txt" "$proof_root/havenline-source-commit.txt"
           for file in \
             proof_front.png \
             proof_three-quarter.png \
@@ -115,12 +122,16 @@ jobs:
             rig-report.json \
             proof-render-report.json \
             validation-report.json \
-            actionless-seed9101-status.json; do
+            actionless-seed9101-status.json \
+            Character1_production.glb \
+            Character1_production.fbx \
+            Character1_LOD1.glb \
+            Character1_LOD2.glb; do
             test -s "$out/$file"
             cp "$out/$file" "$proof_root/$file"
           done
           git config user.name "HAVENLINE Proof Bot"
           git config user.email "havenline-proof@users.noreply.github.com"
           git add "$proof_root"
-          git commit -m "Publish Havenline Character 1 seed 9101 v2 proofs"
+          git commit -m "Publish Havenline Character 1 seed 9101 Ubuntu 24 proofs and production assets"
           git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
