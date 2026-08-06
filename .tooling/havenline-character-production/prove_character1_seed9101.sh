@@ -12,6 +12,10 @@ test -s "$out/approved_reference_sheet.jpg"
 export LIBGL_ALWAYS_SOFTWARE=1
 export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
 
+# Fail closed if a runner resolves a different Blender binary than the production pin.
+blender --background --factory-startup --python-expr "import bpy, json, pathlib; expected=(4, 5, 12); actual=tuple(bpy.app.version[:3]); assert actual == expected, f'Expected Blender {expected}, got {actual}: {bpy.app.version_string}'; report={'schemaVersion': 1, 'expectedVersion': list(expected), 'actualVersion': list(actual), 'versionString': bpy.app.version_string, 'releaseLine': '4.5 LTS', 'verified': True}; pathlib.Path(r'$out/blender-runtime-report.json').write_text(json.dumps(report, indent=2) + '\\n', encoding='utf-8'); print(json.dumps(report, indent=2))"
+test -s "$out/blender-runtime-report.json"
+
 blender --background --factory-startup \
   --python .tooling/havenline-character-production/remove_extreme_planar_faces.py -- \
   --character "$character" \
@@ -70,6 +74,7 @@ import json
 from pathlib import Path
 
 root = Path('character_output/Character1')
+runtime = json.loads((root / 'blender-runtime-report.json').read_text())
 plane = json.loads((root / 'extreme-planar-face-report.json').read_text())
 sanitize = json.loads((root / 'mesh-sanitization-report.json').read_text())
 spatial = json.loads((root / 'spatial-outlier-report.json').read_text())
@@ -79,6 +84,7 @@ proof = json.loads((root / 'proof-render-report.json').read_text())
 validation = json.loads((root / 'validation-report.json').read_text())
 
 checks = {
+    'Blender 4.5.12 LTS runtime': runtime.get('verified') is True and runtime.get('actualVersion') == [4, 5, 12],
     'floor cleanup': plane.get('success') is True,
     'source axis': plane.get('selectedCandidate', {}).get('axis') == 'y',
     'standing orientation': sanitize.get('orientation', {}).get('standingAxisVerified') is True,
@@ -101,10 +107,13 @@ if plane.get('deletion', {}).get('facesRemoved', 0) < 3000:
 
 production = root / 'Character1_production.glb'
 status = {
-    'schemaVersion': 4,
+    'schemaVersion': 5,
     'character': 'Character1',
     'seed': 9101,
     'sourceMode': 'actionless-v2-dominant-floor-cleaned-mobile-production',
+    'sourceGenerator': 'trellis-community/TRELLIS',
+    'sourceReconstructionMode': 'clean-multi-image',
+    'blenderRuntime': runtime,
     'floorFacesRemoved': plane.get('deletion', {}).get('facesRemoved'),
     'mobileSourceFaces': faces,
     'productionVertices': validation.get('metrics', {}).get('baseMesh', {}).get('vertices'),
