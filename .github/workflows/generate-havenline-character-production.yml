@@ -25,15 +25,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Materialize checksum-pinned approved references
         run: python3 .tooling/havenline-character-reference-payload/materialize_references.py
-      - name: Verify complete authored production toolchain
+      - name: Verify complete polished production toolchain
         shell: bash
         run: |
           set -euo pipefail
           root=.tooling/havenline-character-production
           required=(
-            "$root/generate_procedural_character.py"
+            "$root/generate_polished_character_v4.py"
             "$root/rig_animate_character.py"
-            "$root/render_character_proofs.py"
+            "$root/render_character_proofs_v4.py"
             "$root/validate_character_asset.py"
             "$root/references/materialization-report.json"
             "$root/references/Character1.jpg"
@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 150
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         character: [Character1, Character2, Character3, Character4]
     steps:
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Restore exact authored raw mesh cache
+      - name: Restore exact polished raw mesh cache
         id: raw-cache
         uses: actions/cache@v4
         with:
@@ -69,7 +69,7 @@ jobs:
             character_output/${{ matrix.character }}/${{ matrix.character }}_raw.glb
             character_output/${{ matrix.character }}/generation-report.json
             character_output/${{ matrix.character }}/*.png
-          key: havenline-rounded-v3-${{ matrix.character }}-${{ hashFiles('.tooling/havenline-character-production/generate_procedural_character.py', '.tooling/havenline-character-reference-payload/**') }}
+          key: havenline-polished-v4-${{ matrix.character }}-${{ hashFiles('.tooling/havenline-character-production/generate_polished_character_v4.py', '.tooling/havenline-character-reference-payload/**') }}
       - name: Install Blender, validators and headless graphics
         shell: bash
         run: |
@@ -94,7 +94,7 @@ jobs:
             env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
             blender --background --factory-startup \
             --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
-      - name: Author rounded approved-reference character mesh
+      - name: Author polished approved-reference character mesh
         id: generate
         continue-on-error: true
         shell: bash
@@ -109,15 +109,15 @@ jobs:
           raw="$out/${{ matrix.character }}_raw.glb"
           mkdir -p "$out"
           if [ -s "$raw" ]; then
-            echo "Reusing exact rounded authored mesh cache: $raw"
+            echo "Reusing exact polished authored mesh cache: $raw"
           else
             xvfb-run -a -s '-screen 0 1920x1080x24' \
               blender --background --factory-startup \
-              --python "$root/generate_procedural_character.py" -- \
+              --python "$root/generate_polished_character_v4.py" -- \
               --character '${{ matrix.character }}' \
               --output "$out" \
               --reference "$root/references/${{ matrix.character }}.jpg" \
-              --reason 'Prior hosted and blocky fallback proof sets were rejected during visual review'
+              --reason 'Segmented and loosely framed proof sets were rejected during visual review'
           fi
           test -s "$raw"
       - name: Deterministically skin, rig, animate and build LODs
@@ -139,7 +139,7 @@ jobs:
             --character '${{ matrix.character }}' \
             --input "$out/${{ matrix.character }}_raw.glb" \
             --output "$out"
-      - name: Render bright final-GLB proof angles
+      - name: Render close neutral final-GLB proof angles
         id: proof
         if: ${{ steps.rig.outcome == 'success' }}
         continue-on-error: true
@@ -154,7 +154,7 @@ jobs:
           out="character_output/${{ matrix.character }}"
           xvfb-run -a -s '-screen 0 1920x1080x24' \
             blender --background --factory-startup \
-            --python "$root/render_character_proofs.py" -- \
+            --python "$root/render_character_proofs_v4.py" -- \
             --character '${{ matrix.character }}' \
             --input "$out/${{ matrix.character }}_production.glb" \
             --output "$out"
@@ -181,14 +181,20 @@ jobs:
           root.mkdir(parents=True, exist_ok=True)
           report_path = root / 'validation-report.json'
           validation = json.loads(report_path.read_text()) if report_path.exists() else {}
+          proof_path = root / 'proof-render-report.json'
+          proof = json.loads(proof_path.read_text()) if proof_path.exists() else {}
           status = {
-              'schemaVersion': 3,
+              'schemaVersion': 4,
               'character': os.environ['CHARACTER'],
               'generateOutcome': os.environ.get('GENERATE_OUTCOME', 'skipped'),
               'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
               'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
               'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
               'validation': validation,
+              'proofFraming': {
+                  'expectedVerticalOccupancy': proof.get('expectedVerticalOccupancy'),
+                  'ignoredHelperMeshes': proof.get('ignoredHelperMeshes', []),
+              },
               'machinePassed': validation.get('passed') is True,
               'approved': False,
               'humanVisualReviewStatus': 'pending',
@@ -238,7 +244,7 @@ jobs:
                   })
           machine_passed = len(statuses) == 4 and all(item.get('machinePassed') is True for item in statuses)
           manifest = {
-              'schemaVersion': 3,
+              'schemaVersion': 4,
               'sourceCommit': os.environ['SOURCE_COMMIT'],
               'matrixResult': os.environ['MATRIX_RESULT'],
               'machinePassed': machine_passed,
