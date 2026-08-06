@@ -98,8 +98,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m unittest -v \
-            .tooling/havenline-character-production/test_character_artifact_policy.py
+          python3 .tooling/havenline-character-production/test_character_artifact_policy.py
 
       - name: Confirm obsolete reconstruction routes cannot execute
         shell: bash
