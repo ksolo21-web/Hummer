@@ -1,0 +1,215 @@
+name: Proof HAVENLINE Character 3 Actionless
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/proof-havenline-character3-actionless.yml'
+      - '.tooling/havenline-girls-multiview/run_refine_multiview_eyes_min12.py'
+      - '.tooling/havenline-girls-multiview/refine_multiview_eyes.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: havenline-character3-actionless-proof
+  cancel-in-progress: true
+
+jobs:
+  prove-character3:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Clone branch without marketplace actions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch havenline-unity-reference-rebuild \
+            https://github.com/ksolo21-web/Hummer.git repo
+          cd repo
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/ksolo21-web/Hummer.git"
+
+      - name: Download immutable Character 3 source through GitHub API
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          mkdir -p source_package character_output/Character3
+          curl --fail --location --retry 5 --retry-delay 5 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8970216817/zip \
+            --output "$RUNNER_TEMP/character3-source.zip"
+          unzip -q "$RUNNER_TEMP/character3-source.zip" -d source_package
+          out=character_output/Character3
+          source_glb="$(find source_package -type f -name Character3_spatial.glb -size +10000c -print -quit)"
+          reference="$(find source_package -type f -name approved_reference_sheet.jpg -size +1000c -print -quit)"
+          turnaround="$(find source_package -type f -name Character3_turnaround.jpg -size +1000c -print -quit)"
+          sanitize="$(find source_package -type f -name mesh-sanitization-report.json -print -quit)"
+          spatial="$(find source_package -type f -name spatial-outlier-report.json -print -quit)"
+          test -n "$source_glb"
+          test -n "$reference"
+          cp "$source_glb" "$out/Character3_spatial.glb"
+          cp "$reference" "$out/approved_reference_sheet.jpg"
+          if [ -n "$turnaround" ]; then cp "$turnaround" "$out/Character3_turnaround.jpg"; fi
+          if [ -n "$sanitize" ]; then cp "$sanitize" "$out/mesh-sanitization-report.json"; fi
+          if [ -n "$spatial" ]; then cp "$spatial" "$out/spatial-outlier-report.json"; fi
+
+      - name: Install portable Blender and minimal graphics runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libegl1 libgl1-mesa-dri libglx-mesa0 unzip
+          archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.2.3"
+          curl --fail --location --retry 5 --retry-delay 5 \
+            https://mirrors.dotsrc.org/blender/blender-release/Blender4.2/blender-4.2.3-linux-x64.tar.xz \
+            --output "$archive"
+          mkdir -p "$runtime"
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          test -x "$runtime/blender"
+          echo "$runtime" >> "$GITHUB_PATH"
+          "$runtime/blender" --background --factory-startup \
+            --python-expr "import bpy; print('Blender:', bpy.app.version_string)"
+
+      - name: Remove measured pale socket vertices and inset dark eyes
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character3
+          blender --background --factory-startup \
+            --python .tooling/havenline-girls-multiview/run_refine_multiview_eyes_min12.py -- \
+            --character Character3 \
+            --input "$out/Character3_spatial.glb" \
+            --output "$out"
+          test -s "$out/Character3_face_refined.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character3/multiview-eye-refinement-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 3 eye refinement failed')
+          removed = report.get('sourceVerticesRemoved', 0)
+          if not 24 <= removed <= 10000:
+              raise SystemExit(f'Character 3 socket deletion is unsafe: {removed}')
+          PY
+
+      - name: Rig with Blender 4.2 compatibility patch
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character3
+          rig_script="$RUNNER_TEMP/rig_animate_character_blender42.py"
+          git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
+          python - "$rig_script" <<'PY'
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text()
+          old = 'scene.render.engine = "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"'
+          new = 'engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items}\n    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engines else "BLENDER_EEVEE"'
+          if old not in text:
+              raise SystemExit('Legacy EEVEE selector was not found')
+          path.write_text(text.replace(old, new))
+          PY
+          blender --background --factory-startup \
+            --python "$rig_script" -- \
+            --character Character3 \
+            --input "$out/Character3_face_refined.glb" \
+            --output "$out"
+          test -s "$out/Character3_production.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character3/rig-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Character 3 rig report failed')
+          PY
+
+      - name: Render and validate exact production character
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character3
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
+            --character Character3 \
+            --input "$out/Character3_production.glb" \
+            --output "$out"
+          for proof in front three-quarter side back; do test -s "$out/proof_${proof}.png"; done
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character Character3 \
+            --directory "$out"
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root = pathlib.Path('character_output/Character3')
+          proof = json.loads((root / 'proof-render-report.json').read_text())
+          validation = json.loads((root / 'validation-report.json').read_text())
+          eye = json.loads((root / 'multiview-eye-refinement-report.json').read_text())
+          if proof.get('success') is not True:
+              raise SystemExit('Character 3 proof report failed')
+          if validation.get('passed') is not True:
+              raise SystemExit('Character 3 validation failed: ' + '; '.join(validation.get('failures', [])))
+          production = root / 'Character3_production.glb'
+          status = {
+              'schemaVersion': 15,
+              'character': 'Character3',
+              'sourceMode': 'actionless-local-front-percentile-min12-inset-eyes',
+              'socketVerticesRemoved': eye.get('sourceVerticesRemoved'),
+              'productionGlbSha256': hashlib.sha256(production.read_bytes()).hexdigest(),
+              'machinePassed': True,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'actionless-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          PY
+
+      - name: Push proof images and reports to dedicated proof branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          proof_root=HavenlineProofs/Character3/percentile-v2
+          rm -rf "$proof_root"
+          mkdir -p "$proof_root"
+          out=character_output/Character3
+          cp "$out"/proof_front.png "$proof_root"/
+          cp "$out"/proof_three-quarter.png "$proof_root"/
+          cp "$out"/proof_side.png "$proof_root"/
+          cp "$out"/proof_back.png "$proof_root"/
+          cp "$out"/approved_reference_sheet.jpg "$proof_root"/
+          cp "$out"/multiview-eye-refinement-report.json "$proof_root"/
+          cp "$out"/rig-report.json "$proof_root"/
+          cp "$out"/proof-render-report.json "$proof_root"/
+          cp "$out"/validation-report.json "$proof_root"/
+          cp "$out"/actionless-status.json "$proof_root"/
+          git config user.name "HAVENLINE Proof Bot"
+          git config user.email "havenline-proof@users.noreply.github.com"
+          git add "$proof_root"
+          git commit -m "Publish Havenline Character 3 percentile v2 proofs"
+          git push origin HEAD:refs/heads/havenline-proof-c3-percentile-v2 --force
