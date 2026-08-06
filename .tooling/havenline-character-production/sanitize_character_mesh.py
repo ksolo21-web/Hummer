@@ -266,7 +266,7 @@ def should_remove(metrics, global_span: float) -> tuple[bool, str | None]:
     ):
         return True, "disconnected elongated strap-like reconstruction artifact"
 
-    if vertices <= 64 and faces <= 128 and largest <= scale * 0.06:
+    if vertices <= 64 and faces <= 128 and largest <= scale * 0.065:
         return True, "small disconnected reconstruction fragment"
 
     if vertices <= 10 and faces <= 8 and largest <= scale * 0.035:

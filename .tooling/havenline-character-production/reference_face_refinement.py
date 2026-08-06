@@ -16,52 +16,52 @@ import bpy
 from mathutils import Vector
 
 
-REFINEMENT_SCHEMA_VERSION = 2
+REFINEMENT_SCHEMA_VERSION = 3
 
 PROFILES = {
     "Character1": {
         "source": "sheet",
-        "center_z_fraction": 0.884,
+        "center_z_fraction": 0.825,
         "center_x_offset": -0.004,
         "half_width": 0.096,
         "half_height": 0.102,
-        "u_min": 0.095,
-        "u_max": 0.210,
-        "v_min": 0.740,
-        "v_max": 0.925,
+        "u_min": 0.115,
+        "u_max": 0.202,
+        "v_min": 0.738,
+        "v_max": 0.884,
     },
     "Character2": {
         "source": "sheet",
-        "center_z_fraction": 0.880,
+        "center_z_fraction": 0.832,
         "center_x_offset": -0.004,
         "half_width": 0.098,
         "half_height": 0.104,
-        "u_min": 0.095,
-        "u_max": 0.220,
+        "u_min": 0.110,
+        "u_max": 0.210,
         "v_min": 0.735,
-        "v_max": 0.925,
+        "v_max": 0.895,
     },
     "Character3": {
         "source": "front",
-        "center_z_fraction": 0.852,
+        "center_z_fraction": 0.812,
         "center_x_offset": -0.006,
         "half_width": 0.082,
         "half_height": 0.091,
-        "u_min": 0.395,
-        "u_max": 0.575,
-        "v_min": 0.765,
-        "v_max": 0.935,
+        "u_min": 0.423,
+        "u_max": 0.530,
+        "v_min": 0.770,
+        "v_max": 0.885,
     },
     "Character4": {
         "source": "front",
-        "center_z_fraction": 0.852,
+        "center_z_fraction": 0.812,
         "center_x_offset": -0.004,
         "half_width": 0.085,
         "half_height": 0.093,
-        "u_min": 0.385,
-        "u_max": 0.590,
-        "v_min": 0.755,
-        "v_max": 0.930,
+        "u_min": 0.405,
+        "u_max": 0.520,
+        "v_min": 0.745,
+        "v_max": 0.890,
     },
 }
 
@@ -126,82 +126,27 @@ def connected_components(mesh):
 
 
 def cleanup_disconnected_components(meshes, world_bounds):
+    """Record sanitizer ownership without re-segmenting exported UV seams."""
     minimum, maximum = world_bounds(meshes)
     span = max(maximum.x - minimum.x, maximum.y - minimum.y, maximum.z - minimum.z, 1e-6)
-    report = {
+    return {
         "schemaVersion": REFINEMENT_SCHEMA_VERSION,
         "sceneSpan": span,
-        "objects": [],
+        "objects": [
+            {
+                "object": obj.name,
+                "vertices": len(obj.data.vertices),
+                "polygons": len(obj.data.polygons),
+                "componentsRemoved": 0,
+                "verticesRemoved": 0,
+                "reason": "topology already repaired by sanitize_character_mesh.py; UV seam duplicates preserved",
+            }
+            for obj in meshes
+        ],
         "componentsRemoved": 0,
         "verticesRemoved": 0,
+        "topologyOwner": "sanitize_character_mesh.py",
     }
-    for obj in meshes:
-        mesh = obj.data
-        components = connected_components(mesh)
-        if len(components) <= 1:
-            report["objects"].append(
-                {"object": obj.name, "componentsBefore": len(components), "componentsRemoved": 0}
-            )
-            continue
-        largest_index = max(range(len(components)), key=lambda index: len(components[index]))
-        remove_indices = set()
-        removed = []
-        for index, component in enumerate(components):
-            if index == largest_index:
-                continue
-            points = [obj.matrix_world @ mesh.vertices[vertex_index].co for vertex_index in component]
-            extent = Vector(
-                (
-                    max(point.x for point in points) - min(point.x for point in points),
-                    max(point.y for point in points) - min(point.y for point in points),
-                    max(point.z for point in points) - min(point.z for point in points),
-                )
-            )
-            largest_extent = max(extent.x, extent.y, extent.z)
-            volume = max(extent.x, 0.0) * max(extent.y, 0.0) * max(extent.z, 0.0)
-            if (
-                len(component) <= 96
-                and largest_extent <= span * 0.080
-                and volume <= span**3 * 0.0018
-            ):
-                remove_indices.update(component)
-                removed.append(
-                    {
-                        "componentIndex": index,
-                        "vertices": len(component),
-                        "extents": [extent.x, extent.y, extent.z],
-                        "largestExtent": largest_extent,
-                        "boxVolume": volume,
-                        "reason": "tiny disconnected reconstruction island before rigging",
-                    }
-                )
-        if remove_indices:
-            bm = bmesh.new()
-            bm.from_mesh(mesh)
-            bm.verts.ensure_lookup_table()
-            bmesh.ops.delete(
-                bm,
-                geom=[bm.verts[index] for index in sorted(remove_indices)],
-                context="VERTS",
-            )
-            if bm.faces:
-                bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
-            bm.to_mesh(mesh)
-            bm.free()
-            mesh.validate(verbose=False)
-            mesh.update()
-        item = {
-            "object": obj.name,
-            "componentsBefore": len(components),
-            "componentsRemoved": len(removed),
-            "verticesRemoved": len(remove_indices),
-            "removed": removed,
-        }
-        report["objects"].append(item)
-        report["componentsRemoved"] += len(removed)
-        report["verticesRemoved"] += len(remove_indices)
-    return report
-
 
 def reference_source(profile, root):
     if profile["source"] == "front":
@@ -226,23 +171,49 @@ def create_reference_face_surface(character, root, meshes, bounds):
     half_height = profile["half_height"]
 
     depth_samples = []
-    for obj in meshes:
-        for vertex in obj.data.vertices:
-            point = obj.matrix_world @ vertex.co
-            dx = (point.x - center_x) / max(half_width * 1.45, 1e-6)
-            dz = (point.z - center_z) / max(half_height * 1.45, 1e-6)
-            if dx * dx + dz * dz <= 1.0:
-                depth_samples.append(point.y)
-    if len(depth_samples) < 40:
-        raise RuntimeError(
-            f"Too few facial vertices were available for {character}: {len(depth_samples)}"
-        )
+    sample_strategy = None
+    for multiplier in (1.45, 2.0, 2.8, 3.6):
+        candidates = []
+        for obj in meshes:
+            for vertex in obj.data.vertices:
+                point = obj.matrix_world @ vertex.co
+                dx = (point.x - center_x) / max(half_width * multiplier, 1e-6)
+                dz = (point.z - center_z) / max(half_height * multiplier, 1e-6)
+                if dx * dx + dz * dz <= 1.0:
+                    candidates.append(point.y)
+        if len(candidates) > len(depth_samples):
+            depth_samples = candidates
+            sample_strategy = f"ellipse-{multiplier:.2f}x"
+        if len(depth_samples) >= 40:
+            break
+
+    if len(depth_samples) < 10:
+        head_floor = minimum.z + height * 0.72
+        x_limit = max(half_width * 3.4, (maximum.x - minimum.x) * 0.34)
+        fallback = []
+        for obj in meshes:
+            for vertex in obj.data.vertices:
+                point = obj.matrix_world @ vertex.co
+                if point.z >= head_floor and abs(point.x - center_x) <= x_limit:
+                    fallback.append(point.y)
+        if fallback:
+            depth_samples = fallback
+            sample_strategy = "upper-head-band-fallback"
+
+    if not depth_samples:
+        depth_samples = [
+            (obj.matrix_world @ vertex.co).y
+            for obj in meshes
+            for vertex in obj.data.vertices
+        ]
+        sample_strategy = "whole-character-emergency-fallback"
+    if not depth_samples:
+        raise RuntimeError(f"No vertices were available for {character} facial refinement")
 
     measured_front = quantile(depth_samples, 0.10)
-    shell_edge_y = measured_front + 0.035
-    shell_bulge = 0.017
-    backing_y = shell_edge_y + 0.015
-
+    shell_edge_y = measured_front - 0.008
+    shell_bulge = 0.014
+    backing_y = shell_edge_y + 0.012
     displaced = 0
     flatten_half_width = half_width * 1.18
     flatten_half_height = half_height * 1.18
@@ -334,6 +305,8 @@ def create_reference_face_surface(character, root, meshes, bounds):
         "applied": True,
         "reference": str(reference),
         "sourceKind": profile["source"],
+        "depthSampleCount": len(depth_samples),
+        "depthSampleStrategy": sample_strategy,
         "measuredFrontDepth": measured_front,
         "shellEdgeDepth": shell_edge_y,
         "shellCenterDepth": shell_edge_y - shell_bulge,
