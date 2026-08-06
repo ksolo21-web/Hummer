@@ -1,0 +1,164 @@
+name: HAVENLINE Character 1 Production Proof Runner
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/havenline-character1-proof-runner.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-character1-production-proof-runner
+  cancel-in-progress: true
+
+jobs:
+  prove-character1:
+    runs-on: ubuntu-slim
+    timeout-minutes: 30
+    steps:
+      - name: Check out current HAVENLINE production branch
+        uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 1
+
+      - name: Download immutable Character 1 TRELLIS seed 9101
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p source_package character_output/Character1
+          curl --fail --location --retry 5 --retry-delay 5 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip \
+            --output "$RUNNER_TEMP/character1-seed9101.zip"
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import zipfile
+          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'character1-seed9101.zip'
+          with zipfile.ZipFile(archive) as source:
+              source.extractall('source_package')
+          PY
+          cp -a source_package/. character_output/Character1/
+          test -s character_output/Character1/Character1_raw.glb
+          test -s character_output/Character1/generation-report.json
+          test -s character_output/Character1/approved_reference_sheet.jpg
+
+      - name: Install pinned Blender 4.5.12 and validation dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libegl1 libgl1-mesa-dri libglx-mesa0 \
+            libxfixes3 libxi6 libxkbcommon0 \
+            python3-pip xz-utils
+          python3 -m pip install --user --upgrade pip setuptools wheel
+          python3 -m pip install --user 'numpy<2' pillow trimesh pygltflib
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          archive="$RUNNER_TEMP/blender-4.5.12-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.5.12"
+          curl --fail --location --retry 5 --retry-delay 5 \
+            https://download.blender.org/release/Blender4.5/blender-4.5.12-linux-x64.tar.xz \
+            --output "$archive"
+          mkdir -p "$runtime"
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          test -x "$runtime/blender"
+          ldd "$runtime/blender" | tee "$RUNNER_TEMP/blender-ldd.txt"
+          if grep -q 'not found' "$RUNNER_TEMP/blender-ldd.txt"; then
+            echo 'Portable Blender has unresolved shared-library dependencies.' >&2
+            exit 1
+          fi
+          echo "$runtime" >> "$GITHUB_PATH"
+          "$runtime/blender" --background --factory-startup \
+            --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print('Pinned Blender:', bpy.app.version_string)"
+
+      - name: Build rigged mobile character and four exact production proofs
+        id: build
+        continue-on-error: true
+        shell: bash
+        env:
+          HAVENLINE_CYCLES_SAMPLES: '8'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          bash .tooling/havenline-character-production/prove_character1_seed9101.sh
+
+      - name: Record immutable workflow evidence
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          mkdir -p "$out"
+          git rev-parse HEAD > "$out/havenline-source-commit.txt"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          root = Path('character_output/Character1')
+          status = {
+              'schemaVersion': 2,
+              'workflowRunId': os.environ.get('GITHUB_RUN_ID'),
+              'workflowRunAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
+              'workflowSha': os.environ.get('GITHUB_SHA'),
+              'checkedOutHavenlineCommit': (root / 'havenline-source-commit.txt').read_text().strip(),
+              'runner': 'ubuntu-slim-default-branch-harness',
+              'buildOutcome': os.environ.get('BUILD_OUTCOME'),
+              'evidenceFiles': sorted(
+                  str(path.relative_to(root)).replace('\\', '/')
+                  for path in root.rglob('*')
+                  if path.is_file() and path.stat().st_size > 0
+              ),
+              'humanVisualApprovalRequired': True,
+              'approved': False,
+              'unityIntegrated': False,
+          }
+          (root / 'workflow-evidence-status.json').write_text(
+              json.dumps(status, indent=2) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(status, indent=2))
+          PY
+
+      - name: Upload complete Character 1 proof workspace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Character1-seed9101-production-review-${{ github.run_id }}
+          path: character_output/Character1/**
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce machine completion without visual approval
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          test "$BUILD_OUTCOME" = success
+          status=character_output/Character1/actionless-seed9101-status.json
+          test -s "$status"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          status = json.loads(Path('character_output/Character1/actionless-seed9101-status.json').read_text())
+          assert status['machinePassed'] is True
+          assert status['humanVisualApprovalRequired'] is True
+          assert status['approved'] is False
+          assert status['unityIntegrated'] is False
+          print('Character 1 machine proof passed. Human four-view review remains required.')
+          PY
