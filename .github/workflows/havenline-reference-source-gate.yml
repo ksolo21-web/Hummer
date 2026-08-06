@@ -150,6 +150,7 @@ jobs:
         shell: python
         run: |
           import json
+          import re
           from pathlib import Path
 
           root = Path("HAVENLINE_UNITY")
@@ -213,15 +214,26 @@ jobs:
           assert [entry["character"] for entry in entries] == [
               "Character1", "Character2", "Character3", "Character4"
           ]
+          sha256 = re.compile(r"^[0-9a-fA-F]{64}$")
+          hash_fields = (
+              "productionFbxSha256",
+              "unityReviewReportSha256",
+              "machineProofStatusSha256",
+              "approvedReferenceSha256",
+          )
           for entry in entries:
               character = entry["character"]
               expected = f"Assets/Havenline/Art/Characters/Production/{character}/{character}_production.fbx"
               assert entry["productionFbxPath"] == expected
-              assert entry["approved"] is False
-              assert entry["productionFbxSha256"] == ""
-              assert entry["unityReviewReportSha256"] == ""
-              assert entry["machineProofStatusSha256"] == ""
-              assert entry["approvedReferenceSha256"] == ""
+              assert entry["approvalNote"].strip()
+              if entry["approved"]:
+                  assert entry["approvedBy"].strip()
+                  assert entry["approvedUtc"].strip()
+                  assert all(sha256.fullmatch(entry[field]) for field in hash_fields)
+              else:
+                  assert entry["approvedBy"] == ""
+                  assert entry["approvedUtc"] == ""
+                  assert all(entry[field] == "" for field in hash_fields)
 
           print("HAVENLINE connected Unity project, four-character crew, and fail-closed approval contract passed.")
 
