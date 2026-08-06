@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "character": "Character2",
+  "artifact": {
+    "id": "8973791027",
+    "name": "HAVENLINE-Character2-production-review",
+    "digest": "sha256:051ce24ea949227f3bec154529421e35bf53a1e8e8607ec5fa705a345dc6eb5c",
+    "workflowRunId": "31115840677",
+    "workflowJobId": "92665237393",
+    "sourceHeadSha": "2773d269b52212b1de67908663787b2cedc432db"
+  },
+  "source": {
+    "generator": "Recovered TRELLIS multi-view reconstruction",
+    "priorGenerator": "trellis-community/TRELLIS",
+    "sourceMode": "recovered-trellis",
+    "sourceRunId": "31087895186",
+    "seed": 4102
+  },
+  "hashes": {
+    "productionFbxSha256": "64344f84154888f6bd03fde50789bde81ccb2e6599dfbd3bac5a380413950524",
+    "productionGlbSha256": "7f73a3bfbf3f17d6b86124aaa5f789852aefea164dea575e44ee0c384b6fa1d1",
+    "approvedReferenceSha256": "a3b492768c5d0bf9fb8cfc9cc294500590987f51e9b4c0668b8125537e7d72b8",
+    "proofFrontSha256": "4ec63c4a4db07a251e1eb9fca59d684b1a8e230c3ef873722c8d0b1a5cf2c3db",
+    "proofThreeQuarterSha256": "1e3b7abde2b38015470510b744512c3b30e9fb6136457e66d0f65570f19f27ca",
+    "proofSideSha256": "d89c6e3562dc7b5a973eecf7778b407b64367297f24ca12d41bd2d7dd6efc671",
+    "proofBackSha256": "bf3403f3ac7c1f8a32b7920e0c34fcf915d77b71e494542e8f6a447b86bad7c3"
+  },
+  "machineReview": {
+    "matrixJobPassed": true,
+    "rigPassed": true,
+    "proofRenderPassed": true,
+    "validationPassed": true,
+    "machinePassed": true
+  },
+  "blenderVisualReview": {
+    "status": "accepted-for-unity-review",
+    "reviewedUtc": "2026-08-06T19:45:00Z",
+    "strengths": [
+      "Four-view geometry is coherent with no identity drift.",
+      "Approved blue and orange outfit, fur trim, boots, backpack and bedroll remain readable.",
+      "Side and back construction are complete rather than flat or missing.",
+      "No visible floor sheet, disconnected debris, broken limbs or collapsed topology."
+    ],
+    "remainingConcerns": [
+      "Eyewear is less legible than the approved reference.",
+      "Facial fidelity is softened and one eye is heavily occluded by hair.",
+      "Final acceptance still requires four-view Unity URP and in-game scale review."
+    ]
+  },
+  "humanVisualApprovalRequired": true,
+  "humanVisualReviewStatus": "pending-unity-review",
+  "approved": false,
+  "unityIntegrated": false
+}
