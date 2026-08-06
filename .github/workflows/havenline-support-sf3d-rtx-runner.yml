@@ -2,6 +2,11 @@ name: HAVENLINE SF3D Recovery Characters RTX Runner
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Proof HAVENLINE Character 1 Seed 9101 Windows Fallback
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -12,8 +17,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate-trigger:
+    name: Validate guarded SF3D trigger
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.id == 31124270527 &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'havenline-unity-reference-rebuild' &&
+       github.event.workflow_run.repository.full_name == github.repository)
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Verify the trigger cannot be redirected to another repository or run
+        shell: python
+        run: |
+          import json
+          import os
+
+          event_name = os.environ['GITHUB_EVENT_NAME']
+          if event_name == 'workflow_dispatch':
+              print('Manual trusted dispatch accepted.')
+          else:
+              event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
+              run = event['workflow_run']
+              assert run['id'] == 31124270527
+              assert run['name'] == 'Proof HAVENLINE Character 1 Seed 9101 Windows Fallback'
+              assert run['conclusion'] == 'success'
+              assert run['head_branch'] == 'havenline-unity-reference-rebuild'
+              assert run['repository']['full_name'] == 'ksolo21-web/Hummer'
+              print(f"Trusted workflow rerun attempt {run['run_attempt']} accepted as SF3D trigger.")
+
   generate-character:
     name: ${{ matrix.character }} SF3D RTX production proof
+    needs: validate-trigger
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 240
     strategy:
@@ -36,11 +73,16 @@ jobs:
           ref: havenline-unity-reference-rebuild
           fetch-depth: 1
 
-      - name: Verify exact branch checkout
+      - name: Verify exact branch checkout and recovery contract
         shell: pwsh
         run: |
           $actual = (git rev-parse HEAD).Trim()
           if (-not $actual) { throw 'HAVENLINE checkout has no commit SHA.' }
+          $runtime = Get-Content '.tooling\havenline-character-production\runtime-versions.json' -Raw | ConvertFrom-Json
+          if ($runtime.schemaVersion -ne 3) { throw 'Unexpected HAVENLINE character runtime schema.' }
+          if ($runtime.reconstruction.Character1.generator -ne 'Stability-AI/stable-fast-3d') {
+            throw 'Character 1 is not routed through the SF3D recovery contract.'
+          }
           Write-Host "Checked out HAVENLINE commit: $actual"
 
       - name: Set up Python 3.10
