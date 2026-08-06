@@ -1,0 +1,19 @@
+name: Release Havenline Character Proof Runner
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/release-havenline-character-proof-runner.yml'
+
+concurrency:
+  group: havenline-character1-seed9101-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-stuck-marketplace-runner:
+    if: ${{ false }}
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo 'The marketplace processor is intentionally superseded by the actionless proof workflow.'
