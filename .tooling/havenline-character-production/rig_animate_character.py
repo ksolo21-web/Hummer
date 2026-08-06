@@ -305,6 +305,13 @@ def duplicate_lod(meshes, suffix, ratio):
         copy.data = original.data.copy()
         copy.name = original.name + suffix
         bpy.context.collection.objects.link(copy)
+
+        armature_object = None
+        for existing in list(copy.modifiers):
+            if existing.type == "ARMATURE":
+                armature_object = existing.object
+                copy.modifiers.remove(existing)
+
         modifier = copy.modifiers.new("MobileDecimate", "DECIMATE")
         modifier.ratio = ratio
         bpy.context.view_layer.objects.active = copy
@@ -313,7 +320,14 @@ def duplicate_lod(meshes, suffix, ratio):
             bpy.ops.object.modifier_apply(modifier=modifier.name)
         except RuntimeError as exception:
             print(f"LOD decimation warning for {copy.name}: {exception}")
-        copy.select_set(False)
+        finally:
+            copy.select_set(False)
+
+        if armature_object is not None:
+            armature = copy.modifiers.new("HumanoidRig", "ARMATURE")
+            armature.object = armature_object
+            armature.use_vertex_groups = True
+            armature.use_bone_envelopes = False
         duplicated.append(copy)
     return duplicated
 
@@ -365,8 +379,6 @@ def render_proofs(root, objects):
     bpy.context.collection.objects.link(camera)
     camera_data.type = "ORTHO"
     camera_data.ortho_scale = 2.25
-    camera.location = (0, -5.0, 0.92)
-    point_camera(camera, (0, 0, 0.92))
     bpy.context.scene.camera = camera
 
     light_data = bpy.data.lights.new("Key", "AREA")
@@ -374,6 +386,7 @@ def render_proofs(root, objects):
     light_data.size = 5
     light = bpy.data.objects.new("Key", light_data)
     light.location = (-3, -4, 6)
+    point_camera(light, (0, 0, 0.92))
     bpy.context.collection.objects.link(light)
 
     fill_data = bpy.data.lights.new("Fill", "AREA")
@@ -381,6 +394,7 @@ def render_proofs(root, objects):
     fill_data.size = 4
     fill = bpy.data.objects.new("Fill", fill_data)
     fill.location = (3, -2, 3)
+    point_camera(fill, (0, 0, 0.92))
     bpy.context.collection.objects.link(fill)
 
     scene = bpy.context.scene
@@ -389,25 +403,25 @@ def render_proofs(root, objects):
     scene.render.resolution_y = 1024
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
+    scene.frame_set(1)
     world = scene.world or bpy.data.worlds.new("World")
     scene.world = world
     world.color = (0.06, 0.07, 0.09)
 
-    original_rotations = {obj.name: obj.rotation_euler.copy() for obj in objects}
-    try:
-        for label, angle in (
-            ("front", 0),
-            ("three-quarter", math.radians(45)),
-            ("side", math.radians(90)),
-            ("back", math.radians(180)),
-        ):
-            for obj in objects:
-                obj.rotation_euler[2] = original_rotations[obj.name].z + angle
-            scene.render.filepath = str(root / f"proof_{label}.png")
-            bpy.ops.render.render(write_still=True)
-    finally:
-        for obj in objects:
-            obj.rotation_euler = original_rotations[obj.name]
+    radius = 5.0
+    target = (0, 0, 0.92)
+    views = (
+        ("front", (0, -radius, 0.92)),
+        ("three-quarter", (radius / math.sqrt(2), -radius / math.sqrt(2), 0.92)),
+        ("side", (radius, 0, 0.92)),
+        ("back", (0, radius, 0.92)),
+    )
+    for label, position in views:
+        camera.location = position
+        point_camera(camera, target)
+        bpy.context.view_layer.update()
+        scene.render.filepath = str(root / f"proof_{label}.png")
+        bpy.ops.render.render(write_still=True)
 
 
 def main():
