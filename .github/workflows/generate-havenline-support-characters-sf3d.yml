@@ -157,3 +157,5 @@ jobs:
           if ($status.acceptedForUnityReview -or $status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
             throw 'Machine generation attempted to bypass Blender or Unity human visual review.'
           }
+
+# Normal Git-data trigger for the canary-enabled SF3D recovery contract.
