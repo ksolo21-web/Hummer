@@ -26,111 +26,114 @@ jobs:
           module_path = root / 'reference_face_refinement.py'
           module = module_path.read_text(encoding='utf-8')
 
-          replacements = {
-              'REFINEMENT_SCHEMA_VERSION = 2': 'REFINEMENT_SCHEMA_VERSION = 3',
-              '"center_z_fraction": 0.884': '"center_z_fraction": 0.825',
-              '"u_min": 0.095,\n        "u_max": 0.210,\n        "v_min": 0.740,\n        "v_max": 0.925': '"u_min": 0.115,\n        "u_max": 0.202,\n        "v_min": 0.738,\n        "v_max": 0.884',
-              '"center_z_fraction": 0.880': '"center_z_fraction": 0.832',
-              '"u_min": 0.095,\n        "u_max": 0.220,\n        "v_min": 0.735,\n        "v_max": 0.925': '"u_min": 0.110,\n        "u_max": 0.210,\n        "v_min": 0.735,\n        "v_max": 0.895',
-              '"center_z_fraction": 0.852': '"center_z_fraction": 0.812',
-              '"u_min": 0.395,\n        "u_max": 0.575,\n        "v_min": 0.765,\n        "v_max": 0.935': '"u_min": 0.423,\n        "u_max": 0.530,\n        "v_min": 0.770,\n        "v_max": 0.885',
-              '"u_min": 0.385,\n        "u_max": 0.590,\n        "v_min": 0.755,\n        "v_max": 0.930': '"u_min": 0.405,\n        "u_max": 0.520,\n        "v_min": 0.745,\n        "v_max": 0.890',
-          }
-          for old, new in replacements.items():
+          exact_replacements = [
+              ('REFINEMENT_SCHEMA_VERSION = 2', 'REFINEMENT_SCHEMA_VERSION = 3'),
+              ('"center_z_fraction": 0.884', '"center_z_fraction": 0.825'),
+              ('"center_z_fraction": 0.880', '"center_z_fraction": 0.832'),
+              (
+                  '"u_min": 0.095,\n        "u_max": 0.210,\n        "v_min": 0.740,\n        "v_max": 0.925',
+                  '"u_min": 0.115,\n        "u_max": 0.202,\n        "v_min": 0.738,\n        "v_max": 0.884',
+              ),
+              (
+                  '"u_min": 0.095,\n        "u_max": 0.220,\n        "v_min": 0.735,\n        "v_max": 0.925',
+                  '"u_min": 0.110,\n        "u_max": 0.210,\n        "v_min": 0.735,\n        "v_max": 0.895',
+              ),
+              (
+                  '"u_min": 0.395,\n        "u_max": 0.575,\n        "v_min": 0.765,\n        "v_max": 0.935',
+                  '"u_min": 0.423,\n        "u_max": 0.530,\n        "v_min": 0.770,\n        "v_max": 0.885',
+              ),
+              (
+                  '"u_min": 0.385,\n        "u_max": 0.590,\n        "v_min": 0.755,\n        "v_max": 0.930',
+                  '"u_min": 0.405,\n        "u_max": 0.520,\n        "v_min": 0.745,\n        "v_max": 0.890',
+              ),
+          ]
+          for old, new in exact_replacements:
               if old not in module:
                   raise SystemExit(f'Module replacement anchor not found: {old!r}')
               module = module.replace(old, new, 1)
+          if module.count('"center_z_fraction": 0.852') != 2:
+              raise SystemExit('Expected two female center-height anchors')
+          module = module.replace('"center_z_fraction": 0.852', '"center_z_fraction": 0.812')
 
           cleanup_start = module.index('def cleanup_disconnected_components(')
           cleanup_end = module.index('\ndef reference_source', cleanup_start)
-          cleanup_function = '''def cleanup_disconnected_components(meshes, world_bounds):
-              """Do not re-segment exported glTF meshes after the sanitizer has repaired them.
-
-              glTF commonly duplicates vertices along UV and material seams. Treating those
-              duplicates as disconnected topology destroyed valid clothing and body surfaces
-              on Characters 3 and 4. The dedicated sanitizer owns all debris removal before
-              this stage; this function now records that invariant without changing geometry.
-              """
-              minimum, maximum = world_bounds(meshes)
-              span = max(maximum.x - minimum.x, maximum.y - minimum.y, maximum.z - minimum.z, 1e-6)
-              return {
-                  "schemaVersion": REFINEMENT_SCHEMA_VERSION,
-                  "sceneSpan": span,
-                  "objects": [
-                      {
-                          "object": obj.name,
-                          "vertices": len(obj.data.vertices),
-                          "polygons": len(obj.data.polygons),
-                          "componentsRemoved": 0,
-                          "verticesRemoved": 0,
-                          "reason": "topology already repaired by sanitize_character_mesh.py; UV seam duplicates preserved",
-                      }
-                      for obj in meshes
-                  ],
-                  "componentsRemoved": 0,
-                  "verticesRemoved": 0,
-                  "topologyOwner": "sanitize_character_mesh.py",
-              }
-          '''
-          cleanup_function = '\n'.join(
-              line[10:] if line.startswith('          ') else line
-              for line in cleanup_function.splitlines()
-          ) + '\n'
-          module = module[:cleanup_start] + cleanup_function + module[cleanup_end:]
+          cleanup_lines = [
+              'def cleanup_disconnected_components(meshes, world_bounds):',
+              '    """Record sanitizer ownership without re-segmenting exported UV seams."""',
+              '    minimum, maximum = world_bounds(meshes)',
+              '    span = max(maximum.x - minimum.x, maximum.y - minimum.y, maximum.z - minimum.z, 1e-6)',
+              '    return {',
+              '        "schemaVersion": REFINEMENT_SCHEMA_VERSION,',
+              '        "sceneSpan": span,',
+              '        "objects": [',
+              '            {',
+              '                "object": obj.name,',
+              '                "vertices": len(obj.data.vertices),',
+              '                "polygons": len(obj.data.polygons),',
+              '                "componentsRemoved": 0,',
+              '                "verticesRemoved": 0,',
+              '                "reason": "topology already repaired by sanitize_character_mesh.py; UV seam duplicates preserved",',
+              '            }',
+              '            for obj in meshes',
+              '        ],',
+              '        "componentsRemoved": 0,',
+              '        "verticesRemoved": 0,',
+              '        "topologyOwner": "sanitize_character_mesh.py",',
+              '    }',
+              '',
+          ]
+          module = module[:cleanup_start] + '\n'.join(cleanup_lines) + module[cleanup_end:]
 
           sampling_start = module.index('    depth_samples = []\n', module.index('def create_reference_face_surface'))
           sampling_end = module.index('    displaced = 0\n', sampling_start)
-          adaptive_sampling = '''    depth_samples = []
-              sample_strategy = None
-              for multiplier in (1.45, 2.0, 2.8, 3.6):
-                  candidates = []
-                  for obj in meshes:
-                      for vertex in obj.data.vertices:
-                          point = obj.matrix_world @ vertex.co
-                          dx = (point.x - center_x) / max(half_width * multiplier, 1e-6)
-                          dz = (point.z - center_z) / max(half_height * multiplier, 1e-6)
-                          if dx * dx + dz * dz <= 1.0:
-                              candidates.append(point.y)
-                  if len(candidates) > len(depth_samples):
-                      depth_samples = candidates
-                      sample_strategy = f"ellipse-{multiplier:.2f}x"
-                  if len(depth_samples) >= 40:
-                      break
-
-              if len(depth_samples) < 10:
-                  head_floor = minimum.z + height * 0.72
-                  x_limit = max(half_width * 3.4, (maximum.x - minimum.x) * 0.34)
-                  fallback = []
-                  for obj in meshes:
-                      for vertex in obj.data.vertices:
-                          point = obj.matrix_world @ vertex.co
-                          if point.z >= head_floor and abs(point.x - center_x) <= x_limit:
-                              fallback.append(point.y)
-                  if fallback:
-                      depth_samples = fallback
-                      sample_strategy = "upper-head-band-fallback"
-
-              if not depth_samples:
-                  depth_samples = [
-                      (obj.matrix_world @ vertex.co).y
-                      for obj in meshes
-                      for vertex in obj.data.vertices
-                  ]
-                  sample_strategy = "whole-character-emergency-fallback"
-              if not depth_samples:
-                  raise RuntimeError(f"No vertices were available for {character} facial refinement")
-
-              measured_front = quantile(depth_samples, 0.10)
-              shell_edge_y = measured_front - 0.008
-              shell_bulge = 0.014
-              backing_y = shell_edge_y + 0.012
-
-          '''
-          adaptive_sampling = '\n'.join(
-              line[10:] if line.startswith('          ') else line
-              for line in adaptive_sampling.splitlines()
-          )
-          module = module[:sampling_start] + adaptive_sampling + module[sampling_end:]
+          adaptive_lines = [
+              '    depth_samples = []',
+              '    sample_strategy = None',
+              '    for multiplier in (1.45, 2.0, 2.8, 3.6):',
+              '        candidates = []',
+              '        for obj in meshes:',
+              '            for vertex in obj.data.vertices:',
+              '                point = obj.matrix_world @ vertex.co',
+              '                dx = (point.x - center_x) / max(half_width * multiplier, 1e-6)',
+              '                dz = (point.z - center_z) / max(half_height * multiplier, 1e-6)',
+              '                if dx * dx + dz * dz <= 1.0:',
+              '                    candidates.append(point.y)',
+              '        if len(candidates) > len(depth_samples):',
+              '            depth_samples = candidates',
+              '            sample_strategy = f"ellipse-{multiplier:.2f}x"',
+              '        if len(depth_samples) >= 40:',
+              '            break',
+              '',
+              '    if len(depth_samples) < 10:',
+              '        head_floor = minimum.z + height * 0.72',
+              '        x_limit = max(half_width * 3.4, (maximum.x - minimum.x) * 0.34)',
+              '        fallback = []',
+              '        for obj in meshes:',
+              '            for vertex in obj.data.vertices:',
+              '                point = obj.matrix_world @ vertex.co',
+              '                if point.z >= head_floor and abs(point.x - center_x) <= x_limit:',
+              '                    fallback.append(point.y)',
+              '        if fallback:',
+              '            depth_samples = fallback',
+              '            sample_strategy = "upper-head-band-fallback"',
+              '',
+              '    if not depth_samples:',
+              '        depth_samples = [',
+              '            (obj.matrix_world @ vertex.co).y',
+              '            for obj in meshes',
+              '            for vertex in obj.data.vertices',
+              '        ]',
+              '        sample_strategy = "whole-character-emergency-fallback"',
+              '    if not depth_samples:',
+              '        raise RuntimeError(f"No vertices were available for {character} facial refinement")',
+              '',
+              '    measured_front = quantile(depth_samples, 0.10)',
+              '    shell_edge_y = measured_front - 0.008',
+              '    shell_bulge = 0.014',
+              '    backing_y = shell_edge_y + 0.012',
+              '',
+          ]
+          module = module[:sampling_start] + '\n'.join(adaptive_lines) + module[sampling_end:]
 
           report_anchor = '        "sourceKind": profile["source"],\n'
           report_insert = (
@@ -161,53 +164,55 @@ jobs:
 
           workflow_path = Path('.github/workflows/generate-havenline-character-production.yml')
           workflow = workflow_path.read_text(encoding='utf-8')
-          rig_anchor = '''            --input "$out/${{ matrix.character }}_sanitized.glb" \\
-            --output "$out"
-          - name: Render close neutral final-GLB proof angles
-          '''
-          rig_replacement = '''            --input "$out/${{ matrix.character }}_sanitized.glb" \\
-            --output "$out"
-          test -s "$out/${{ matrix.character }}_production.glb"
-          test -s "$out/${{ matrix.character }}_production.fbx"
-          test -s "$out/${{ matrix.character }}_LOD1.glb"
-          test -s "$out/${{ matrix.character }}_LOD2.glb"
-          test -s "$out/rig-report.json"
-          python - "$out/rig-report.json" <<'PY'
-          import json, pathlib, sys
-          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
-          if not report.get('success'):
-              raise SystemExit(report.get('error', 'rig report did not pass'))
-          PY
-      - name: Render close neutral final-GLB proof angles
-          '''
-          if 'test -s "$out/${{ matrix.character }}_production.glb"' not in workflow:
-              if rig_anchor not in workflow:
-                  raise SystemExit('Rig workflow anchor was not found')
-              workflow = workflow.replace(rig_anchor, rig_replacement, 1)
+          matrix_expression = '$' + '{{ matrix.character }}'
 
-          proof_anchor = '''            --input "$out/${{ matrix.character }}_production.glb" \\
-            --output "$out"
-          - name: Validate mesh, skin, clips, LODs, textures and proofs
-          '''
-          proof_replacement = '''            --input "$out/${{ matrix.character }}_production.glb" \\
-            --output "$out"
-          test -s "$out/proof_front.png"
-          test -s "$out/proof_three-quarter.png"
-          test -s "$out/proof_side.png"
-          test -s "$out/proof_back.png"
-          test -s "$out/proof-render-report.json"
-          python - "$out/proof-render-report.json" <<'PY'
-          import json, pathlib, sys
-          report = json.loads(pathlib.Path(sys.argv[1]).read_text())
-          if not report.get('success'):
-              raise SystemExit(report.get('error', 'proof report did not pass'))
-          PY
-      - name: Validate mesh, skin, clips, LODs, textures and proofs
-          '''
-          if 'test -s "$out/proof_front.png"' not in workflow:
-              if proof_anchor not in workflow:
-                  raise SystemExit('Proof workflow anchor was not found')
-              workflow = workflow.replace(proof_anchor, proof_replacement, 1)
+          rig_start = workflow.index('      - name: Deterministically skin, rig, animate and build LODs')
+          proof_start = workflow.index('      - name: Render close neutral final-GLB proof angles', rig_start)
+          rig_block = workflow[rig_start:proof_start]
+          if 'test -s "$out/' not in rig_block:
+              output_anchor = '            --output "$out"\n'
+              if output_anchor not in rig_block:
+                  raise SystemExit('Rig output anchor was not found')
+              tests = '\n'.join([
+                  f'          test -s "$out/{matrix_expression}_production.glb"',
+                  f'          test -s "$out/{matrix_expression}_production.fbx"',
+                  f'          test -s "$out/{matrix_expression}_LOD1.glb"',
+                  f'          test -s "$out/{matrix_expression}_LOD2.glb"',
+                  '          test -s "$out/rig-report.json"',
+                  '          python - "$out/rig-report.json" <<\'PY\'',
+                  '          import json, pathlib, sys',
+                  '          report = json.loads(pathlib.Path(sys.argv[1]).read_text())',
+                  '          if not report.get("success"):',
+                  '              raise SystemExit(report.get("error", "rig report did not pass"))',
+                  '          PY',
+                  '',
+              ])
+              rig_block = rig_block.replace(output_anchor, output_anchor + tests, 1)
+              workflow = workflow[:rig_start] + rig_block + workflow[proof_start:]
+
+          proof_start = workflow.index('      - name: Render close neutral final-GLB proof angles')
+          validate_start = workflow.index('      - name: Validate mesh, skin, clips, LODs, textures and proofs', proof_start)
+          proof_block = workflow[proof_start:validate_start]
+          if 'test -s "$out/proof_front.png"' not in proof_block:
+              output_anchor = '            --output "$out"\n'
+              if output_anchor not in proof_block:
+                  raise SystemExit('Proof output anchor was not found')
+              tests = '\n'.join([
+                  '          test -s "$out/proof_front.png"',
+                  '          test -s "$out/proof_three-quarter.png"',
+                  '          test -s "$out/proof_side.png"',
+                  '          test -s "$out/proof_back.png"',
+                  '          test -s "$out/proof-render-report.json"',
+                  '          python - "$out/proof-render-report.json" <<\'PY\'',
+                  '          import json, pathlib, sys',
+                  '          report = json.loads(pathlib.Path(sys.argv[1]).read_text())',
+                  '          if not report.get("success"):',
+                  '              raise SystemExit(report.get("error", "proof report did not pass"))',
+                  '          PY',
+                  '',
+              ])
+              proof_block = proof_block.replace(output_anchor, output_anchor + tests, 1)
+              workflow = workflow[:proof_start] + proof_block + workflow[validate_start:]
 
           workflow_path.write_text(workflow, encoding='utf-8')
       - name: Commit corrected production gates
