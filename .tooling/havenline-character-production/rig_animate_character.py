@@ -21,6 +21,11 @@ import traceback
 import bpy
 from mathutils import Vector
 
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+import reference_face_refinement as reference_refinement
+
 
 def args_after_separator():
     values = sys.argv
@@ -592,13 +597,22 @@ def main():
     report_path = root / "rig-report.json"
     report = {"schemaVersion": 2, "character": args.character, "success": False, "input": args.input, "outputs": []}
     try:
-        approved_references = copy_approved_references(args.character, root)
+        approved_references = reference_refinement.copy_approved_references(args.character, root)
         clear_scene()
         meshes = import_glb(pathlib.Path(args.input))
         if not meshes:
             raise RuntimeError("Generated GLB contains no mesh objects")
+        pre_rig_cleanup = reference_refinement.cleanup_disconnected_components(
+            meshes,
+            world_bounds,
+        )
         bounds = normalize(meshes)
-        face_refinement, face_object = create_reference_face_surface(args.character, root, meshes, bounds)
+        face_refinement, face_object = reference_refinement.create_reference_face_surface(
+            args.character,
+            root,
+            meshes,
+            bounds,
+        )
         if face_object is not None:
             meshes.append(face_object)
         rig = create_rig(args.character, bounds)
@@ -629,6 +643,7 @@ def main():
             bones=[bone.name for bone in rig.data.bones],
             animations=[action.name for action in actions],
             approvedReferences=approved_references,
+            preRigCleanup=pre_rig_cleanup,
             faceRefinement=face_refinement,
             outputs=[{"path": str(path), "bytes": path.stat().st_size} for path in outputs if path.is_file()],
         )
