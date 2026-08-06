@@ -3,9 +3,9 @@
 
 The neural mesh already contains eyelids and sclera. Previous spherical inserts protruded
 from the face and created a googly-eyed result. This pass uses thin matte oval discs placed
-flush against the reconstructed socket, preserving the existing eye shape while adding the
-missing dark iris and pupil. Each disc intentionally exceeds the production renderer's
-minimum skinned-mesh vertex count so it cannot be mistaken for helper geometry and hidden.
+just in front of each reconstructed socket's measured local surface, preserving the eye
+shape while adding the missing dark iris and pupil. Each disc exceeds the production
+renderer mesh threshold. Nothing behaves as a billboard or replaces the face.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def world_vertices(meshes):
 
 
 def quantile(values, fraction: float):
-    ordered = sorted(values)
+    ordered = sorted(float(value) for value in values)
     if not ordered:
         raise RuntimeError("Cannot compute face surface from an empty point set")
     index = max(0, min(len(ordered) - 1, int(round((len(ordered) - 1) * fraction))))
@@ -120,7 +120,7 @@ def oval_disc(name, location, radius_x, radius_z, material, segments):
     bpy.context.collection.objects.link(obj)
     apply_material(obj, material)
     obj["havenlineModeledEyeDetail"] = True
-    obj["havenlineEyeSurfaceType"] = "flat flush oval disc"
+    obj["havenlineEyeSurfaceType"] = "flat local-surface oval disc"
     obj["havenlineProductionCaptureEligible"] = len(mesh.vertices) >= 101
     return obj
 
@@ -140,36 +140,55 @@ def estimate_eye_frame(meshes):
     ]
     if len(upper) < 40:
         raise RuntimeError(f"Not enough facial samples to place eyes safely: {len(upper)}")
-    face_y = quantile([point.y for point in upper], 0.075)
     return {
         "minimum": minimum,
         "maximum": maximum,
         "height": height,
         "width": width,
         "centerX": bounds_center_x + height * 0.0080,
-        "faceY": face_y,
+        "coarseFaceY": quantile([point.y for point in upper], 0.075),
         "eyeZ": minimum.z + height * 0.854,
         "eyeOffsetX": min(height * 0.0305, width * 0.077),
         "sampleCount": len(upper),
     }
 
 
-def add_eyes(character, frame):
+def local_eye_surface(meshes, eye_x, eye_z, height):
+    radius_x = height * 0.0180
+    radius_z = height * 0.0200
+    samples = []
+    for point in world_vertices(meshes):
+        dx = (point.x - eye_x) / max(radius_x, 1e-6)
+        dz = (point.z - eye_z) / max(radius_z, 1e-6)
+        if dx * dx + dz * dz <= 1.0:
+            samples.append(point.y)
+    if len(samples) < 20:
+        raise RuntimeError(
+            f"Not enough local socket samples at x={eye_x:.6f}, z={eye_z:.6f}: {len(samples)}"
+        )
+    # Negative Y faces the proof camera. Use the local front percentile rather than a
+    # broad face percentile that can leave the discs hidden behind the sclera.
+    return quantile(samples, 0.015), len(samples)
+
+
+def add_eyes(character, frame, meshes):
     height = frame["height"]
-    iris = make_material(f"{character}_RefinedIris", (0.026, 0.008, 0.003, 1.0), 0.78)
-    pupil = make_material(f"{character}_RefinedPupil", (0.0010, 0.0010, 0.0012, 1.0), 0.82)
+    iris = make_material(f"{character}_RefinedIris", (0.021, 0.006, 0.002, 1.0), 0.80)
+    pupil = make_material(f"{character}_RefinedPupil", (0.0007, 0.0007, 0.0009, 1.0), 0.84)
     created = []
+    placements = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
-        iris_y = frame["faceY"] - height * 0.0010
-        pupil_y = iris_y - height * 0.00025
         z = frame["eyeZ"]
+        local_front_y, local_samples = local_eye_surface(meshes, x, z, height)
+        iris_y = local_front_y - height * 0.0024
+        pupil_y = iris_y - height * 0.00030
         created.append(
             oval_disc(
                 f"{character}_RefinedIris_{side}",
                 (x, iris_y, z),
-                height * 0.0091,
-                height * 0.0104,
+                height * 0.0102,
+                height * 0.0113,
                 iris,
                 128,
             )
@@ -178,18 +197,29 @@ def add_eyes(character, frame):
             oval_disc(
                 f"{character}_RefinedPupil_{side}",
                 (x, pupil_y, z),
-                height * 0.0038,
-                height * 0.0045,
+                height * 0.0041,
+                height * 0.0048,
                 pupil,
                 112,
             )
+        )
+        placements.append(
+            {
+                "side": side,
+                "x": x,
+                "z": z,
+                "localFrontY": local_front_y,
+                "irisY": iris_y,
+                "pupilY": pupil_y,
+                "localSampleCount": local_samples,
+            }
         )
     for obj in created:
         if len(obj.data.vertices) < 101:
             raise RuntimeError(
                 f"Production renderer would hide {obj.name}: only {len(obj.data.vertices)} vertices"
             )
-    return created
+    return created, placements
 
 
 def export_glb(path: pathlib.Path, meshes) -> None:
@@ -214,30 +244,31 @@ def main() -> int:
     output_path = output_root / f"{args.character}_face_refined.glb"
     report_path = output_root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 6,
+        "schemaVersion": 7,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
         "success": False,
-        "method": "flat matte iris and pupil discs placed flush in existing reconstructed sockets and sized above the production capture mesh threshold",
+        "method": "flat matte iris and pupil discs positioned from each socket's measured local front surface",
         "humanVisualApprovalRequired": True,
     }
     try:
         clear_scene()
         meshes = import_glb(pathlib.Path(args.input))
         frame = estimate_eye_frame(meshes)
-        created = add_eyes(args.character, frame)
+        created, placements = add_eyes(args.character, frame, meshes)
         all_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
         export_glb(output_path, all_meshes)
         report.update({
             "success": True,
             "eyeFrame": {
                 "centerX": frame["centerX"],
-                "faceY": frame["faceY"],
+                "coarseFaceY": frame["coarseFaceY"],
                 "eyeZ": frame["eyeZ"],
                 "eyeOffsetX": frame["eyeOffsetX"],
                 "sampleCount": frame["sampleCount"],
             },
+            "eyePlacements": placements,
             "modeledObjectsCreated": len(created),
             "modeledEyeVertexCounts": {obj.name: len(obj.data.vertices) for obj in created},
             "allModeledEyesProductionCaptureEligible": all(
