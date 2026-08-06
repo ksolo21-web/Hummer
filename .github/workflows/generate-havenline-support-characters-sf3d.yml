@@ -1,4 +1,4 @@
-name: Generate HAVENLINE Support Characters with SF3D RTX
+name: Generate HAVENLINE SF3D Recovery Characters on RTX
 
 on:
   workflow_dispatch:
@@ -7,10 +7,12 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - '.github/workflows/generate-havenline-support-characters-sf3d.yml'
+      - '.tooling/havenline-character-production/run_sf3d_character_pipeline.ps1'
       - '.tooling/havenline-character-production/run_sf3d_support_pipeline.ps1'
       - '.tooling/havenline-character-production/prepare_sf3d_character_input.py'
       - '.tooling/havenline-character-production/finalize_sf3d_generation.py'
       - '.tooling/havenline-character-production/runtime-versions.json'
+      - '.tooling/havenline-character-production/character1-seed9101-visual-rejection.json'
       - '.tooling/havenline-character-production/sanitize_character_mesh.py'
       - '.tooling/havenline-character-production/rig_animate_character.py'
       - '.tooling/havenline-character-production/rig_animate_character_export_only.py'
@@ -24,11 +26,11 @@ permissions:
   actions: read
 
 concurrency:
-  group: havenline-support-characters-sf3d-rtx
+  group: havenline-sf3d-recovery-characters-rtx
   cancel-in-progress: true
 
 jobs:
-  generate-support-character:
+  generate-character:
     name: ${{ matrix.character }} SF3D RTX production proof
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 240
@@ -37,6 +39,7 @@ jobs:
       max-parallel: 1
       matrix:
         character:
+          - Character1
           - Character3
           - Character4
     env:
@@ -68,10 +71,10 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          & .tooling\havenline-character-production\run_sf3d_support_pipeline.ps1 `
+          & .tooling\havenline-character-production\run_sf3d_character_pipeline.ps1 `
             -Character '${{ matrix.character }}'
 
-      - name: Upload complete support-character review evidence
+      - name: Upload complete character review evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -93,8 +96,6 @@ jobs:
           if ('${{ steps.pipeline.outcome }}' -ne 'success' -or -not $status.machinePassed) {
             throw '${{ matrix.character }} failed the SF3D/Blender machine pipeline. Evidence was preserved.'
           }
-          if ($status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
-            throw 'Machine generation attempted to bypass the human visual approval gate.'
+          if ($status.acceptedForUnityReview -or $status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
+            throw 'Machine generation attempted to bypass Blender or Unity human visual review.'
           }
-
-# Registration revision 2: expose self-hosted RTX runner readiness through a workflow-file push.
