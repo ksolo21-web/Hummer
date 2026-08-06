@@ -1,0 +1,215 @@
+name: Generate HAVENLINE Production Characters
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.tooling/havenline-character-production/**'
+      - '.tooling/havenline-character-production-request.json'
+      - '.github/workflows/generate-havenline-character-production.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: havenline-production-characters-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        name: Verify approved references and production scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          required=(
+            "$root/generate_character_mesh.py"
+            "$root/rig_animate_character.py"
+            "$root/validate_character_asset.py"
+            "$root/references/Character1.jpg"
+            "$root/references/Character2.jpg"
+            "$root/references/Character3.jpg"
+            "$root/references/Character4.jpg"
+          )
+          missing=()
+          for path in "${required[@]}"; do
+            [ -s "$path" ] || missing+=("$path")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing production input: %s\n' "${missing[@]}" >&2
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+
+  generate-character:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - character: Character1
+            seed: 4101
+          - character: Character2
+            seed: 4102
+          - character: Character3
+            seed: 4103
+          - character: Character4
+            seed: 4104
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install reconstruction, Blender and validation tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install 'gradio_client>=1.8,<2' pillow trimesh pygltflib numpy
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y blender
+          blender --version
+      - name: Generate multi-view textured mesh
+        id: generate
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          mkdir -p "$out"
+          python "$root/generate_character_mesh.py" \
+            --character '${{ matrix.character }}' \
+            --sheet "$root/references/${{ matrix.character }}.jpg" \
+            --output "$out" \
+            --seed '${{ matrix.seed }}'
+      - name: Optimize, humanoid-rig and animate
+        id: rig
+        if: ${{ steps.generate.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          blender --background --factory-startup \
+            --python "$root/rig_animate_character.py" -- \
+            --character '${{ matrix.character }}' \
+            --input "$out/${{ matrix.character }}_raw.glb" \
+            --output "$out"
+      - name: Validate mesh, rig, clips, LODs and proof
+        id: validate
+        if: ${{ steps.rig.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character '${{ matrix.character }}' \
+            --directory "character_output/${{ matrix.character }}"
+      - name: Write truthful matrix status
+        if: ${{ always() }}
+        shell: python
+        env:
+          CHARACTER: ${{ matrix.character }}
+          GENERATE_OUTCOME: ${{ steps.generate.outcome }}
+          RIG_OUTCOME: ${{ steps.rig.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          import json, os, pathlib
+          root = pathlib.Path('character_output') / os.environ['CHARACTER']
+          root.mkdir(parents=True, exist_ok=True)
+          report_path = root / 'validation-report.json'
+          validation = json.loads(report_path.read_text()) if report_path.exists() else {}
+          status = {
+              'schemaVersion': 1,
+              'character': os.environ['CHARACTER'],
+              'generateOutcome': os.environ.get('GENERATE_OUTCOME', 'skipped'),
+              'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
+              'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
+              'validation': validation,
+              'passed': validation.get('passed') is True,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'matrix-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          print(json.dumps(status, indent=2))
+      - name: Upload character review package
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: HAVENLINE-${{ matrix.character }}-production-review
+          path: character_output/${{ matrix.character }}/**
+          compression-level: 0
+          retention-days: 30
+      - name: Enforce complete character pipeline
+        if: ${{ always() && (steps.generate.outcome != 'success' || steps.rig.outcome != 'success' || steps.validate.outcome != 'success') }}
+        run: exit 1
+
+  package-review-set:
+    if: ${{ always() }}
+    needs: generate-character
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: HAVENLINE-Character*-production-review
+          path: character_review_set
+      - name: Build immutable review manifest
+        shell: python
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          MATRIX_RESULT: ${{ needs.generate-character.result }}
+        run: |
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('character_review_set')
+          statuses = [json.loads(path.read_text()) for path in sorted(root.rglob('matrix-status.json'))]
+          files = []
+          for path in sorted(root.rglob('*')):
+              if path.is_file():
+                  files.append({'path': str(path.relative_to(root)), 'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+          passed = len(statuses) == 4 and all(item.get('passed') is True for item in statuses)
+          manifest = {
+              'schemaVersion': 1,
+              'sourceCommit': os.environ['SOURCE_COMMIT'],
+              'matrixResult': os.environ['MATRIX_RESULT'],
+              'passed': passed,
+              'approved': False,
+              'unityIntegrated': False,
+              'characters': statuses,
+              'files': files,
+              'approvalRequiredBeforeUnityIntegration': True,
+          }
+          digest_source = json.dumps(manifest, sort_keys=True).encode()
+          manifest['reviewSetSha256'] = hashlib.sha256(digest_source).hexdigest()
+          root.mkdir(parents=True, exist_ok=True)
+          (root / 'HAVENLINE-character-production-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          print(json.dumps(manifest, indent=2))
+      - name: Package complete review set
+        run: |
+          tar --format=posix -C character_review_set -cf HAVENLINE-character-production-review.tar .
+          sha256sum HAVENLINE-character-production-review.tar > HAVENLINE-character-production-review.tar.sha256
+      - name: Upload complete review set
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-character-production-review
+          path: |
+            HAVENLINE-character-production-review.tar
+            HAVENLINE-character-production-review.tar.sha256
+            character_review_set/HAVENLINE-character-production-manifest.json
+          compression-level: 0
+          retention-days: 30
