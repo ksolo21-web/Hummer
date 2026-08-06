@@ -1,0 +1,205 @@
+name: Refine HAVENLINE Character 3 Subtle Eyes
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/refine-havenline-character3-subtle-eyes.yml'
+      - '.tooling/havenline-girls-multiview/refine_multiview_eyes.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-character3-subtle-eyes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refine-character3:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download exact successful Character 3 source package
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character3-final-visual-review
+          path: source_package
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: 31107341741
+
+      - name: Stage immutable Character 3 source and validation evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=character_output/Character3
+          mkdir -p "$out"
+          source_glb="$(find source_package -type f -name Character3_spatial.glb -size +10000c -print -quit)"
+          reference="$(find source_package -type f -name approved_reference_sheet.jpg -size +1000c -print -quit)"
+          turnaround="$(find source_package -type f -name Character3_turnaround.jpg -size +1000c -print -quit)"
+          sanitize="$(find source_package -type f -name mesh-sanitization-report.json -print -quit)"
+          spatial="$(find source_package -type f -name spatial-outlier-report.json -print -quit)"
+          test -n "$source_glb"
+          test -n "$reference"
+          cp "$source_glb" "$out/Character3_spatial.glb"
+          cp "$reference" "$out/approved_reference_sheet.jpg"
+          if [ -n "$turnaround" ]; then cp "$turnaround" "$out/Character3_turnaround.jpg"; fi
+          if [ -n "$sanitize" ]; then cp "$sanitize" "$out/mesh-sanitization-report.json"; fi
+          if [ -n "$spatial" ]; then cp "$spatial" "$out/spatial-outlier-report.json"; fi
+
+      - name: Install Blender and validators on alternate runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            blender python3-numpy libegl1 libgl1 libgl1-mesa-dri libglu1-mesa \
+            libglib2.0-0 mesa-utils xvfb xauth
+          xvfb-run -a -s '-screen 0 1280x1024x24' \
+            env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
+            blender --background --factory-startup \
+            --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
+
+      - name: Replace failed sockets with subtle Character 3 eyes
+        id: face
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character3
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python .tooling/havenline-girls-multiview/refine_multiview_eyes.py -- \
+            --character Character3 \
+            --input "$out/Character3_spatial.glb" \
+            --output "$out"
+          test -s "$out/Character3_face_refined.glb"
+
+      - name: Rig subtle-eye Character 3 and rebuild LODs
+        id: rig
+        if: ${{ always() && steps.face.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character3
+          rig_script="$RUNNER_TEMP/rig_animate_character_clean.py"
+          git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
+          test -s "$rig_script"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$rig_script" -- \
+            --character Character3 \
+            --input "$out/Character3_face_refined.glb" \
+            --output "$out"
+
+      - name: Render subtle-eye Character 3 proofs
+        id: proof
+        if: ${{ always() && steps.rig.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character3
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
+            --character Character3 \
+            --input "$out/Character3_production.glb" \
+            --output "$out"
+
+      - name: Validate subtle-eye Character 3 package
+        id: validate
+        if: ${{ always() && steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character Character3 \
+            --directory character_output/Character3
+
+      - name: Write truthful Character 3 status
+        if: ${{ always() }}
+        shell: python
+        env:
+          FACE_OUTCOME: ${{ steps.face.outcome }}
+          RIG_OUTCOME: ${{ steps.rig.outcome }}
+          PROOF_OUTCOME: ${{ steps.proof.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          import json, os, pathlib
+          root = pathlib.Path('character_output/Character3')
+          validation_path = root / 'validation-report.json'
+          validation = json.loads(validation_path.read_text()) if validation_path.exists() else {}
+          machine_passed = (
+              os.environ.get('FACE_OUTCOME') == 'success'
+              and os.environ.get('RIG_OUTCOME') == 'success'
+              and os.environ.get('PROOF_OUTCOME') == 'success'
+              and os.environ.get('VALIDATE_OUTCOME') == 'success'
+              and validation.get('passed') is True
+          )
+          status = {
+              'schemaVersion': 10,
+              'character': 'Character3',
+              'sourceRunId': '31107341741',
+              'sourceMode': 'alternate-runner-subtle-approved-eye-repair',
+              'faceOutcome': os.environ.get('FACE_OUTCOME', 'skipped'),
+              'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
+              'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
+              'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
+              'machinePassed': machine_passed,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'matrix-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          print(json.dumps(status, indent=2))
+
+      - name: Upload Character 3 subtle-eye visual package
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Character3-subtle-eye-review
+          path: character_output/Character3/**
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce Character 3 subtle-eye pipeline
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test '${{ steps.face.outcome }}' = success
+          test '${{ steps.rig.outcome }}' = success
+          test '${{ steps.proof.outcome }}' = success
+          test '${{ steps.validate.outcome }}' = success
+          python - <<'PY'
+          import json, pathlib
+          status = json.loads(pathlib.Path('character_output/Character3/matrix-status.json').read_text())
+          if status.get('machinePassed') is not True:
+              raise SystemExit('Character 3 subtle-eye machine pipeline did not pass')
+          if status.get('approved') is True:
+              raise SystemExit('Character 3 was prematurely marked approved')
+          PY
