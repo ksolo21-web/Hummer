@@ -27,18 +27,37 @@ _render_runtime = {
     "samples": None,
     "blenderVersion": implementation.bpy.app.version_string,
     "displayIndependent": True,
+    "cyclesAddonEnabled": False,
 }
+
+
+def enable_cycles() -> None:
+    """Register Blender's built-in Cycles add-on under --factory-startup."""
+    bpy = implementation.bpy
+    if "cycles" not in bpy.context.preferences.addons:
+        result = bpy.ops.preferences.addon_enable(module="cycles")
+        if "FINISHED" not in result:
+            raise RuntimeError(f"Unable to enable Blender Cycles add-on: {sorted(result)}")
+    _render_runtime["cyclesAddonEnabled"] = "cycles" in bpy.context.preferences.addons
+    if not _render_runtime["cyclesAddonEnabled"]:
+        raise RuntimeError("Blender reported success but the Cycles add-on is not registered")
 
 
 def configure_cpu_scene(center, size, minimum):
     scene, camera, target, radius = _original_configure_scene(center, size, minimum)
-    engines = {
-        item.identifier
-        for item in implementation.bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items
-    }
-    if "CYCLES" not in engines:
-        raise RuntimeError(f"Cycles is unavailable in this Blender runtime: {sorted(engines)}")
-    scene.render.engine = "CYCLES"
+    enable_cycles()
+    try:
+        scene.render.engine = "CYCLES"
+    except (TypeError, ValueError) as exc:
+        available = [
+            item.identifier
+            for item in implementation.bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items
+        ]
+        raise RuntimeError(
+            f"Cycles could not be selected after add-on registration; available engines: {available}"
+        ) from exc
+    if scene.render.engine != "CYCLES":
+        raise RuntimeError(f"Expected CYCLES, Blender selected {scene.render.engine}")
     scene.cycles.device = "CPU"
     scene.cycles.samples = max(8, int(os.environ.get("HAVENLINE_CYCLES_SAMPLES", "24")))
     scene.cycles.use_denoising = True
