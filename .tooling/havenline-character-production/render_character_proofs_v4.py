@@ -4,7 +4,9 @@
 Only meshes actually deformed by the imported humanoid armature participate in framing.
 This excludes Blender/glTF helper geometry such as the unit sphere that previously made
 the character occupy barely half of the proof. Animation is muted and the rest pose is
-restored before evaluated-vertex bounds are measured.
+restored before evaluated-vertex bounds are measured. The exact textured production GLB
+is also re-exported as a Unity-ready FBX with its media embedded, so Unity cannot silently
+replace the approved appearance with an untextured default material.
 """
 
 from __future__ import annotations
@@ -95,6 +97,40 @@ def evaluated_world_bounds(meshes):
     return minimum, maximum, evaluated_vertex_count
 
 
+def export_unity_fbx(root: pathlib.Path, character: str, meshes, armatures) -> dict:
+    destination = root / f"{character}_production.fbx"
+    bpy.ops.object.select_all(action="DESELECT")
+    selected = list(meshes) + list(armatures)
+    for obj in selected:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = armatures[0]
+    bpy.ops.export_scene.fbx(
+        filepath=str(destination),
+        use_selection=True,
+        path_mode="COPY",
+        embed_textures=True,
+        add_leaf_bones=False,
+        use_armature_deform_only=True,
+        bake_anim=True,
+        bake_anim_use_all_actions=True,
+        bake_anim_use_nla_strips=False,
+    )
+    bpy.ops.object.select_all(action="DESELECT")
+    if not destination.is_file() or destination.stat().st_size < 10_000:
+        raise RuntimeError(f"Unity FBX exporter did not create a usable file: {destination}")
+    binary = destination.read_bytes()
+    if not binary.startswith(b"Kaydara FBX Binary"):
+        raise RuntimeError("Unity FBX output is not a binary FBX container")
+    return {
+        "path": str(destination),
+        "bytes": destination.stat().st_size,
+        "sha256": hashlib.sha256(binary).hexdigest(),
+        "source": "exact imported textured production GLB",
+        "embeddedTexturesRequested": True,
+        "neutralPoseExported": True,
+    }
+
+
 def point_at(obj, target: Vector) -> None:
     obj.rotation_euler = (target - obj.location).to_track_quat("-Z", "Y").to_euler()
 
@@ -161,7 +197,6 @@ def configure_scene(center: Vector, size: Vector, minimum: Vector):
     camera = bpy.data.objects.new("HAVENLINE_ReviewCamera", camera_data)
     bpy.context.collection.objects.link(camera)
     camera_data.type = "ORTHO"
-    # 89–91% occupancy on the largest silhouette dimension, with safe hair/boot margin.
     camera_data.ortho_scale = max(size.z * 1.105, size.x * 1.18, size.y * 1.18, 1.78)
     camera_data.lens = 58
     scene.camera = camera
@@ -239,7 +274,7 @@ def main() -> int:
     root.mkdir(parents=True, exist_ok=True)
     report_path = root / "proof-render-report.json"
     report = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "character": args.character,
         "sourceAsset": args.input,
         "success": False,
@@ -266,6 +301,7 @@ def main() -> int:
                         "polygons": len(obj.data.polygons),
                     }
                 )
+        unity_fbx = export_unity_fbx(root, args.character, meshes, armatures)
         minimum, maximum, evaluated_vertices = evaluated_world_bounds(meshes)
         center = (minimum + maximum) * 0.5
         size = maximum - minimum
@@ -278,6 +314,7 @@ def main() -> int:
             ignoredHelperMeshes=ignored,
             armatures=len(armatures),
             evaluatedVertices=evaluated_vertices,
+            unityFbx=unity_fbx,
             cameraOrthoScale=camera.data.ortho_scale,
             expectedVerticalOccupancy=min(1.0, size.z / camera.data.ortho_scale),
             bounds={
