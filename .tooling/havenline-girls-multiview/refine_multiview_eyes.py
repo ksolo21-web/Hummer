@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Replace Character 3's oversized reconstructed sockets with subtle approved-style eyes.
+"""Replace Character 3's failed pale sockets with compact approved-style dark eyes.
 
-The generated head, hair, body, clothing and textures remain intact. Each failed pale
-socket is first covered by a face-coloured matte patch sampled from the reconstructed
-texture range. A small dark almond lid, restrained warm sclera, dark-brown iris and pupil
-are then layered just in front of the measured local socket surface. The result is meant
-to read like the approved turnaround, not like round doll eyes or floating decals.
+The reconstructed head, hair, body, clothing, gear and textures remain intact. Each pale
+circular socket is covered by a matte face-coloured patch sampled for the production
+lighting. A very small horizontal dark-brown almond eye, darker pupil and pin-size
+catchlight are then layered on the measured local socket surface. No visible sclera is
+authored because the approved turnaround reads as small dark eyes, not pale doll eyes.
 """
 
 from __future__ import annotations
@@ -173,14 +173,11 @@ def local_front_y(meshes, x: float, z: float, height: float):
 
 def author_eyes(character: str, frame, meshes):
     height = frame["height"]
-    # Linear-space colours estimated from the actual reconstructed face texture. The
-    # patch deliberately stays slightly darker than the surrounding highlight so it does
-    # not become another bright orange sticker under the review lights.
-    skin = material(f"{character}_SocketSkin", (0.043, 0.024, 0.015, 1.0), 0.78, 0.035)
-    lid = material(f"{character}_DarkLid", (0.0055, 0.0012, 0.0005, 1.0), 0.90, 0.015)
-    sclera = material(f"{character}_WarmSclera", (0.18, 0.135, 0.095, 1.0), 0.84, 0.025)
-    iris = material(f"{character}_DarkIris", (0.0080, 0.0018, 0.0006, 1.0), 0.91, 0.012)
-    pupil = material(f"{character}_Pupil", (0.00008, 0.00008, 0.00011, 1.0), 0.95, 0.008)
+    skin = material(f"{character}_SocketSkin", (0.040, 0.021, 0.013, 1.0), 0.82, 0.025)
+    eye = material(f"{character}_DarkAlmondEye", (0.0065, 0.00145, 0.00048, 1.0), 0.88, 0.018)
+    iris = material(f"{character}_WarmDarkIris", (0.015, 0.0040, 0.0011, 1.0), 0.84, 0.025)
+    pupil = material(f"{character}_Pupil", (0.00005, 0.00005, 0.00007, 1.0), 0.96, 0.006)
+    highlight = material(f"{character}_EyeCatchlight", (0.42, 0.37, 0.31, 1.0), 0.62, 0.08)
 
     authored = []
     placements = []
@@ -188,49 +185,51 @@ def author_eyes(character: str, frame, meshes):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
         z = frame["eyeZ"]
         surface, count = local_front_y(meshes, x, z, height)
-        patch_y = surface - height * 0.0018
-        lid_y = patch_y - height * 0.00040
-        sclera_y = lid_y - height * 0.00028
-        iris_y = sclera_y - height * 0.00024
-        pupil_y = iris_y - height * 0.00020
-        eye_z = z - height * 0.0008
+        patch_y = surface - height * 0.0019
+        eye_y = patch_y - height * 0.00042
+        iris_y = eye_y - height * 0.00022
+        pupil_y = iris_y - height * 0.00017
+        highlight_y = pupil_y - height * 0.00013
+        eye_z = z - height * 0.00115
+        highlight_x = x - side * height * 0.00055
+        highlight_z = eye_z + height * 0.00075
 
         authored.extend(
             [
                 shape(
                     f"{character}_SocketPatch_{side}",
                     (x, patch_y, z),
-                    oval_points(height * 0.0138, height * 0.0106, 128),
+                    oval_points(height * 0.0146, height * 0.0112, 128),
                     skin,
-                    "face-coloured socket patch",
+                    "face-coloured socket patch covering the failed pale ring",
                 ),
                 shape(
-                    f"{character}_EyeLid_{side}",
-                    (x, lid_y, eye_z),
-                    almond_points(height * 0.00745, height * 0.00285, 64),
-                    lid,
-                    "small dark almond lid",
-                ),
-                shape(
-                    f"{character}_Sclera_{side}",
-                    (x, sclera_y, eye_z),
-                    almond_points(height * 0.00615, height * 0.00195, 64),
-                    sclera,
-                    "restrained warm sclera",
+                    f"{character}_DarkEye_{side}",
+                    (x, eye_y, eye_z),
+                    almond_points(height * 0.00515, height * 0.00162, 64),
+                    eye,
+                    "compact dark horizontal almond eye with no visible sclera",
                 ),
                 shape(
                     f"{character}_Iris_{side}",
                     (x, iris_y, eye_z),
-                    oval_points(height * 0.00255, height * 0.00230, 112),
+                    oval_points(height * 0.00172, height * 0.00148, 112),
                     iris,
-                    "small dark-brown iris",
+                    "small warm dark-brown iris",
                 ),
                 shape(
                     f"{character}_Pupil_{side}",
                     (x, pupil_y, eye_z),
-                    oval_points(height * 0.00115, height * 0.00130, 104),
+                    oval_points(height * 0.00088, height * 0.00096, 104),
                     pupil,
                     "small black pupil",
+                ),
+                shape(
+                    f"{character}_Catchlight_{side}",
+                    (highlight_x, highlight_y, highlight_z),
+                    oval_points(height * 0.00030, height * 0.00034, 104),
+                    highlight,
+                    "pin-size low-contrast catchlight",
                 ),
             ]
         )
@@ -241,10 +240,10 @@ def author_eyes(character: str, frame, meshes):
                 "z": z,
                 "localFrontY": surface,
                 "patchY": patch_y,
-                "lidY": lid_y,
-                "scleraY": sclera_y,
+                "eyeY": eye_y,
                 "irisY": iris_y,
                 "pupilY": pupil_y,
+                "highlightY": highlight_y,
                 "localSampleCount": count,
             }
         )
@@ -276,12 +275,13 @@ def main() -> int:
     output = root / f"{args.character}_face_refined.glb"
     report_path = root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 10,
+        "schemaVersion": 11,
         "character": args.character,
         "source": args.input,
         "output": str(output),
         "success": False,
-        "method": "face-coloured socket patches plus small restrained almond eyes",
+        "method": "face-coloured socket masks plus compact dark almond eyes without visible sclera",
+        "visibleScleraAuthored": False,
         "approved": False,
         "humanVisualApprovalRequired": True,
     }
