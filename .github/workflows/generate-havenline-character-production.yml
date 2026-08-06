@@ -91,8 +91,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install 'gradio_client>=1.8,<2' pillow trimesh pygltflib numpy
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y blender
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y blender python3-numpy
           blender --version
+          PYTHONPATH=/usr/lib/python3/dist-packages blender --background --factory-startup \
+            --python-expr "import numpy; print('Blender NumPy:', numpy.__version__)"
       - name: Generate multi-view textured mesh
         id: generate
         continue-on-error: true
@@ -112,6 +114,8 @@ jobs:
         if: ${{ steps.generate.outcome == 'success' }}
         continue-on-error: true
         shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
         run: |
           set -euo pipefail
           root=.tooling/havenline-character-production
