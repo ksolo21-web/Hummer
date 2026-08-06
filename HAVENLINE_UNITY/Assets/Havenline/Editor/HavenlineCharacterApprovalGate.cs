@@ -191,6 +191,18 @@ namespace Havenline.Editor
             ICollection<string> failures)
         {
             var character = entry.character;
+            var expectedFbx = ProductionFbxPath(character);
+            var expectedReview = $"{EvidenceRoot}/unity-character-review-report.json";
+            var expectedMachineStatus = $"{EvidenceRoot}/{character}/machine-proof-status.json";
+            var expectedReference = $"{EvidenceRoot}/{character}/approved_reference_sheet.jpg";
+
+            // Paths are part of the contract even while approval is pending. This prevents
+            // a pending manifest from quietly redirecting the later human-review evidence.
+            RequireCanonicalPath(character, "production FBX", entry.productionFbxPath, expectedFbx, failures);
+            RequireCanonicalPath(character, "Unity review report", entry.unityReviewReportPath, expectedReview, failures);
+            RequireCanonicalPath(character, "machine proof status", entry.machineProofStatusPath, expectedMachineStatus, failures);
+            RequireCanonicalPath(character, "approved reference", entry.approvedReferencePath, expectedReference, failures);
+
             if (!entry.approved)
             {
                 failures.Add($"{character} is still pending human visual approval.");
@@ -209,16 +221,6 @@ namespace Havenline.Editor
             {
                 failures.Add($"{character} approvalUtc is missing or invalid.");
             }
-
-            var expectedFbx = ProductionFbxPath(character);
-            var expectedReview = $"{EvidenceRoot}/unity-character-review-report.json";
-            var expectedMachineStatus = $"{EvidenceRoot}/{character}/machine-proof-status.json";
-            var expectedReference = $"{EvidenceRoot}/{character}/approved_reference_sheet.jpg";
-
-            RequireCanonicalPath(character, "production FBX", entry.productionFbxPath, expectedFbx, failures);
-            RequireCanonicalPath(character, "Unity review report", entry.unityReviewReportPath, expectedReview, failures);
-            RequireCanonicalPath(character, "machine proof status", entry.machineProofStatusPath, expectedMachineStatus, failures);
-            RequireCanonicalPath(character, "approved reference", entry.approvedReferencePath, expectedReference, failures);
 
             var actualFbxHash = RequirePinnedFile(
                 character,
