@@ -71,11 +71,20 @@ jobs:
           require_file "$root/Assets/Havenline/Runtime/HavenlineGameplay.cs" "gameplay implementation"
           require_file "$root/Assets/Havenline/Runtime/HavenlinePresentation.cs" "presentation implementation"
           require_file "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "adaptive HUD implementation"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineCharacterRoster.cs" "four-character roster"
+          require_file "$root/Assets/Havenline/Runtime/HavenlinePlayerProfile.cs" "Google-bound player profile"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineCompanionAgent.cs" "companion runtime"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineOnboardingController.cs" "lead and crew onboarding controller"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineOnboardingView.cs" "onboarding UI flow"
+          require_file "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "Google sign-in contract"
           require_file "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap"
           require_file "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs" "shipping-scene authoring"
           require_file "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "Android build pipeline"
           require_file "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "clean-checkout CI preparation"
+          require_file "$root/Assets/Havenline/Editor/HavenlineCharacterProductionGate.cs" "production character release gate"
+          require_file "$root/Assets/Havenline/Editor/HavenlineGoogleSignInBuildGate.cs" "Google OAuth release gate"
           require_file "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "Unity reference tests"
+          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "lead and companion crew tests"
           require_file ".github/workflows/havenline-unity-android-build.yml" "premium Android workflow"
 
           require_pattern 'm_EditorVersion: 6000.3.18f1' "$root/ProjectSettings/ProjectVersion.txt" "Unity 6000.3.18f1"
@@ -92,6 +101,14 @@ jobs:
           require_pattern '[ExecuteAlways]' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "edit-time foldable HUD execution"
           require_pattern 'Canvas.preWillRenderCanvases' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "pre-render adaptive HUD layout"
           require_pattern 'FoldableAspectThreshold = 1.45f' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "foldable aspect threshold"
+
+          require_pattern 'GetCompanionsFor' "$root/Assets/Havenline/Runtime/HavenlineCharacterRoster.cs" "selected-lead companion roster"
+          require_pattern 'UnselectedLeadCompanion' "$root/Assets/Havenline/Runtime/HavenlinePlayerProfile.cs" "unselected lead becomes companion"
+          require_pattern 'SpawnSelectedCrew' "$root/Assets/Havenline/Runtime/HavenlineOnboardingController.cs" "selected lead plus companion crew spawning"
+          require_pattern 'Character3' "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "Character 3 crew contract"
+          require_pattern 'Character4' "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "Character 4 crew contract"
+          require_pattern 'verified Google subject id' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "durable verified Google identity"
+          require_pattern 'signing certificate SHA-256' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "Google signing certificate validation"
 
           require_pattern 'public static void BuildAndroidReviewCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "device-test Android build stage"
           require_pattern 'public static void BuildVerifiedReleaseCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "verified-release Android build stage"
@@ -143,6 +160,20 @@ jobs:
           }
           assert contract["player"]["spawn"] == [0.0, 0.08, 6.2]
           assert contract["player"]["carryCapacity"] == 6
+
+          character_system = contract["characterSystem"]
+          assert character_system["activeCrewSize"] == 4
+          assert character_system["startingPlayableLeads"] == ["Character1", "Character2"]
+          assert character_system["unselectedLeadRole"] == "core helper and story companion"
+          assert character_system["coreCompanions"] == ["Character3", "Character4"]
+          assert character_system["characters3And4LockedAtStart"] is False
+
+          identity = contract["identity"]
+          assert identity["provider"] == "Google Sign-In"
+          assert identity["durableAccountKey"] == "verified Google subject id"
+          assert identity["emailOnlyIdentityAllowed"] is False
+          assert identity["packageAndSigningCertificateMustMatchOAuth"] is True
+
           required = {
               "screen-relative movement",
               "automatic gathering",
@@ -156,12 +187,15 @@ jobs:
               "animated wolf pressure",
               "bounded world and fall recovery",
               "Galaxy Z Fold safe-area HUD",
+              "unselected lead companion support",
+              "Character3 helper activity",
+              "Character4 helper activity",
           }
-          assert required == set(contract["requiredLoop"])
+          assert required <= set(contract["requiredLoop"])
           assert manifest["dependencies"]["com.unity.cloud.gltfast"] == "6.19.0"
           assert manifest["dependencies"]["com.unity.inputsystem"] == "1.17.0"
           assert manifest["dependencies"]["com.unity.render-pipelines.universal"] == "17.3.0"
-          print("HAVENLINE connected Unity project contract passed.")
+          print("HAVENLINE connected Unity project and four-character crew contract passed.")
 
       - name: Inventory normal source files
         shell: bash
