@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Remove generated mesh debris without deleting legitimate character detail.
+"""Remove generated mesh debris and repair provably wrong reconstruction orientation.
 
 The hosted image-to-3D output can contain isolated single triangles, needle-like ribbons,
-or distant slivers. Those defects may pass polygon-count checks yet become large black
-spikes after skinning. This Blender-side sanitizer works on connected mesh islands,
-preserves materials/textures, and records every removal before the production rig step.
+or distant slivers. Some generators also emit a Z-up mesh inside a glTF container whose
+standard is Y-up. Blender then imports the character lying on its back, and a later rig can
+still pass polygon and animation checks while producing an unusable sideways body. This
+sanitizer fails closed, rotates only when one horizontal axis is unambiguously the body-height
+axis, preserves materials/textures, and records every repair before the production rig step.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 import sys
 import traceback
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 def args_after_separator() -> list[str]:
@@ -36,6 +39,86 @@ def parse_args():
 def clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
+
+
+def world_bounds(meshes):
+    points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
+    if not points:
+        raise RuntimeError("No mesh bounds were available")
+    minimum = Vector(
+        (
+            min(point.x for point in points),
+            min(point.y for point in points),
+            min(point.z for point in points),
+        )
+    )
+    maximum = Vector(
+        (
+            max(point.x for point in points),
+            max(point.y for point in points),
+            max(point.z for point in points),
+        )
+    )
+    return minimum, maximum
+
+
+def bounds_payload(meshes) -> dict:
+    minimum, maximum = world_bounds(meshes)
+    extent = maximum - minimum
+    return {
+        "minimum": [minimum.x, minimum.y, minimum.z],
+        "maximum": [maximum.x, maximum.y, maximum.z],
+        "extents": [extent.x, extent.y, extent.z],
+        "width": extent.x,
+        "depth": extent.y,
+        "height": extent.z,
+    }
+
+
+def orient_upright(meshes) -> dict:
+    """Make Blender Z the body-height axis only when the evidence is unambiguous.
+
+    TripoSR's raw GLB can arrive with its body-height on Blender Y because the mesh was
+    authored Z-up before being placed in a glTF Y-up container. A standing character should
+    have one dominant vertical span. We rotate when X or Y exceeds Blender Z by at least 35%;
+    otherwise we preserve the source orientation and let later proportion gates decide.
+    """
+
+    before = bounds_payload(meshes)
+    extents = before["extents"]
+    dominant_axis = max(range(3), key=lambda axis: extents[axis])
+    z_extent = max(extents[2], 1e-6)
+    rotation = Matrix.Identity(4)
+    repair = "none"
+
+    if dominant_axis == 1 and extents[1] >= z_extent * 1.35:
+        rotation = Matrix.Rotation(math.radians(90.0), 4, "X")
+        repair = "rotate_positive_90_x_y_to_z"
+    elif dominant_axis == 0 and extents[0] >= z_extent * 1.35:
+        rotation = Matrix.Rotation(math.radians(-90.0), 4, "Y")
+        repair = "rotate_negative_90_y_x_to_z"
+
+    if repair != "none":
+        for obj in meshes:
+            obj.matrix_world = rotation @ obj.matrix_world
+        bpy.context.view_layer.update()
+
+    after = bounds_payload(meshes)
+    horizontal_max = max(after["width"], after["depth"], 1e-6)
+    if after["height"] < horizontal_max * 1.05:
+        raise RuntimeError(
+            "Character orientation remains ambiguous or non-standing after safe axis repair: "
+            f"before={before['extents']}, after={after['extents']}"
+        )
+
+    return {
+        "schemaVersion": 1,
+        "repair": repair,
+        "dominantAxisBefore": ("X", "Y", "Z")[dominant_axis],
+        "before": before,
+        "after": after,
+        "standingAxisVerified": True,
+    }
 
 
 def component_vertices(mesh):
@@ -104,13 +187,9 @@ def should_remove(metrics, global_span: float) -> tuple[bool, str | None]:
     volume = metrics["boxVolume"]
     scale = max(global_span, 1e-6)
 
-    # Unambiguous reconstruction dust: lone triangles/quads cannot be intentional
-    # facial, clothing, hair, backpack, or equipment volumes.
     if vertices <= 4 and faces <= 2:
         return True, "isolated triangle or quad debris"
 
-    # Needle/ribbon debris: long relative to the character but nearly zero in two
-    # dimensions. This catches the detached black spikes seen on the generated leads.
     if (
         vertices <= 40
         and largest >= scale * 0.11
@@ -120,7 +199,6 @@ def should_remove(metrics, global_span: float) -> tuple[bool, str | None]:
     ):
         return True, "needle-like disconnected reconstruction island"
 
-    # Tiny floating fragments are not useful mobile detail and become visual specks.
     if vertices <= 10 and faces <= 8 and largest <= scale * 0.035:
         return True, "sub-pixel disconnected fragment"
 
@@ -187,23 +265,7 @@ def sanitize_object(obj, global_span: float):
 
 
 def scene_span(meshes) -> float:
-    points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
-    if not points:
-        return 0.0
-    minimum = Vector(
-        (
-            min(point.x for point in points),
-            min(point.y for point in points),
-            min(point.z for point in points),
-        )
-    )
-    maximum = Vector(
-        (
-            max(point.x for point in points),
-            max(point.y for point in points),
-            max(point.z for point in points),
-        )
-    )
+    minimum, maximum = world_bounds(meshes)
     size = maximum - minimum
     return max(size.x, size.y, size.z)
 
@@ -231,7 +293,7 @@ def main() -> int:
     report_path = output / "mesh-sanitization-report.json"
     cleaned_path = output / f"{args.character}_sanitized.glb"
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "character": args.character,
         "source": str(source),
         "success": False,
@@ -244,6 +306,7 @@ def main() -> int:
         meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
         if not meshes:
             raise RuntimeError("Raw character GLB imported without mesh objects")
+        orientation = orient_upright(meshes)
         span = scene_span(meshes)
         object_reports = [sanitize_object(obj, span) for obj in meshes]
         if not any(len(obj.data.vertices) for obj in meshes):
@@ -251,9 +314,11 @@ def main() -> int:
         export_cleaned(cleaned_path, meshes)
         report.update(
             success=True,
+            orientation=orientation,
             sceneSpan=span,
             cleanedAsset=str(cleaned_path),
             cleanedBytes=cleaned_path.stat().st_size,
+            cleanedBounds=bounds_payload(meshes),
             objects=object_reports,
             componentsRemoved=sum(item["componentsRemoved"] for item in object_reports),
             verticesRemoved=sum(item["verticesRemoved"] for item in object_reports),
