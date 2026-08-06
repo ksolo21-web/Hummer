@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: havenline-clean-unity-source-${{ github.sha }}
-  cancel-in-progress: false
+  group: havenline-clean-unity-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   reference-contract:
