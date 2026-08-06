@@ -74,7 +74,7 @@ def bounds_payload(meshes) -> dict:
 
 
 def orient_upright(meshes) -> dict:
-    """Make Blender Z the body-height axis only when the evidence is unambiguous."""
+    """Make Blender Z the body-height axis and align the generated front to -Y."""
 
     before = bounds_payload(meshes)
     extents = before["extents"]
@@ -83,11 +83,14 @@ def orient_upright(meshes) -> dict:
     rotation = Matrix.Identity(4)
     repair = "none"
 
-    # TripoSR's Y-to-Blender-Z conversion is -90 degrees around X. The opposite sign
-    # creates a vertically framed but upside-down character.
+    # TripoSR arrives with body height on Blender Y and its face toward +X after the pitch
+    # correction. Apply pitch first, then yaw, so every production character faces -Y—the
+    # front direction already used by the approved TRELLIS leads and the Unity review camera.
     if dominant_axis == 1 and extents[1] >= z_extent * 1.35:
-        rotation = Matrix.Rotation(math.radians(-90.0), 4, "X")
-        repair = "rotate_negative_90_x_y_to_z_upright"
+        pitch = Matrix.Rotation(math.radians(-90.0), 4, "X")
+        yaw = Matrix.Rotation(math.radians(-90.0), 4, "Z")
+        rotation = yaw @ pitch
+        repair = "rotate_negative_90_x_then_negative_90_z_triposr_upright_front"
     elif dominant_axis == 0 and extents[0] >= z_extent * 1.35:
         rotation = Matrix.Rotation(math.radians(90.0), 4, "Y")
         repair = "rotate_positive_90_y_x_to_z_upright"
@@ -106,13 +109,14 @@ def orient_upright(meshes) -> dict:
         )
 
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "repair": repair,
         "dominantAxisBefore": ("X", "Y", "Z")[dominant_axis],
         "before": before,
         "after": after,
         "standingAxisVerified": True,
-        "uprightDirectionRule": "TripoSR Y-to-Blender-Z uses negative 90 degrees around X",
+        "frontAxisVerified": repair == "none" or dominant_axis == 1,
+        "uprightDirectionRule": "TripoSR uses -90 degrees X for upright, then -90 degrees Z so the approved front faces -Y",
     }
 
 
@@ -311,7 +315,7 @@ def main() -> int:
     report_path = output / "mesh-sanitization-report.json"
     cleaned_path = output / f"{args.character}_sanitized.glb"
     report = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "character": args.character,
         "source": str(source),
         "success": False,
