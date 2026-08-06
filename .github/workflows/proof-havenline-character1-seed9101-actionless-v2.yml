@@ -30,8 +30,8 @@ concurrency:
 
 jobs:
   prove-seed9101-v2:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
     steps:
       - name: Clone Havenline branch directly
         shell: bash
@@ -59,7 +59,15 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip \
             --output "$RUNNER_TEMP/character1-seed9101.zip"
-          unzip -q "$RUNNER_TEMP/character1-seed9101.zip" -d source_package
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import zipfile
+
+          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'character1-seed9101.zip'
+          with zipfile.ZipFile(archive) as source:
+              source.extractall('source_package')
+          PY
           cp -a source_package/. character_output/Character1/
           test -s character_output/Character1/Character1_raw.glb
           test -s character_output/Character1/generation-report.json
@@ -69,19 +77,56 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install 'numpy<2' pillow trimesh pygltflib
-          sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            libegl1 libgl1-mesa-dri libglx-mesa0 unzip xz-utils
+          python3 -m ensurepip --upgrade || true
+          python3 -m pip install --user --upgrade pip setuptools wheel
+          python3 -m pip install --user 'numpy<2' pillow trimesh pygltflib
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          install_system_packages() {
+            if command -v sudo >/dev/null 2>&1; then
+              sudo DEBIAN_FRONTEND=noninteractive apt-get update
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                libegl1 libgl1-mesa-dri libglx-mesa0 xz-utils
+            elif [ "$(id -u)" = 0 ]; then
+              DEBIAN_FRONTEND=noninteractive apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                libegl1 libgl1-mesa-dri libglx-mesa0 xz-utils
+            else
+              echo 'Ubuntu slim runner cannot install Blender shared-library dependencies.' >&2
+              exit 1
+            fi
+          }
+          install_system_packages
+
           archive="$RUNNER_TEMP/blender-4.5.12-linux-x64.tar.xz"
           runtime="$RUNNER_TEMP/blender-4.5.12"
           curl --fail --location --retry 5 --retry-delay 5 \
             https://download.blender.org/release/Blender4.5/blender-4.5.12-linux-x64.tar.xz \
             --output "$archive"
           mkdir -p "$runtime"
-          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import tarfile
+
+          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'blender-4.5.12-linux-x64.tar.xz'
+          runtime = pathlib.Path(os.environ['RUNNER_TEMP']) / 'blender-4.5.12'
+          with tarfile.open(archive, mode='r:xz') as source:
+              members = source.getmembers()
+              prefix = members[0].name.split('/', 1)[0] + '/'
+              for member in members:
+                  if not member.name.startswith(prefix):
+                      continue
+                  member.name = member.name[len(prefix):]
+                  if member.name:
+                      source.extract(member, runtime, filter='data')
+          PY
           test -x "$runtime/blender"
+          ldd "$runtime/blender" | tee "$RUNNER_TEMP/blender-ldd.txt"
+          if grep -q 'not found' "$RUNNER_TEMP/blender-ldd.txt"; then
+            echo 'Portable Blender has unresolved shared-library dependencies.' >&2
+            exit 1
+          fi
           echo "$runtime" >> "$GITHUB_PATH"
           "$runtime/blender" --background --factory-startup \
             --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
@@ -91,7 +136,8 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          HAVENLINE_CYCLES_SAMPLES: '24'
+          HAVENLINE_CYCLES_SAMPLES: '8'
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           set -euo pipefail
           cd repo
@@ -108,7 +154,7 @@ jobs:
           out=character_output/Character1
           mkdir -p "$out"
           cp "$RUNNER_TEMP/havenline-source-commit.txt" "$out/havenline-source-commit.txt"
-          python - <<'PY'
+          python3 - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -121,6 +167,7 @@ jobs:
           )
           status = {
               'schemaVersion': 1,
+              'runner': 'ubuntu-slim',
               'workflowRunId': os.environ.get('GITHUB_RUN_ID'),
               'workflowRunAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
               'workflowSha': os.environ.get('GITHUB_SHA'),
@@ -137,7 +184,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: havenline-character1-seed9101-ubuntu24-${{ github.run_id }}-${{ github.run_attempt }}
+          name: havenline-character1-seed9101-slim-${{ github.run_id }}-${{ github.run_attempt }}
           path: repo/character_output/Character1/
           if-no-files-found: error
           retention-days: 30
@@ -183,7 +230,7 @@ jobs:
           git config user.name "HAVENLINE Proof Bot"
           git config user.email "havenline-proof@users.noreply.github.com"
           git add "$proof_root"
-          git commit -m "Publish Havenline Character 1 seed 9101 Ubuntu 24 proof and production assets"
+          git commit -m "Publish Havenline Character 1 seed 9101 slim proof and production assets"
           git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
 
       - name: Enforce Character 1 production gate
