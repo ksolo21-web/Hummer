@@ -25,7 +25,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: havenline-character1-seed9101-actionless-proof-v2
+  group: havenline-character1-seed9101-actionless-proof-v2-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -87,6 +87,8 @@ jobs:
             --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
 
       - name: Build rigged mobile character and exact proofs
+        id: build
+        continue-on-error: true
         shell: bash
         env:
           HAVENLINE_CYCLES_SAMPLES: '24'
@@ -95,7 +97,54 @@ jobs:
           cd repo
           bash .tooling/havenline-character-production/prove_character1_seed9101.sh
 
-      - name: Publish proof images, reports, and production assets
+      - name: Record workflow evidence status
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          mkdir -p "$out"
+          cp "$RUNNER_TEMP/havenline-source-commit.txt" "$out/havenline-source-commit.txt"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path('character_output/Character1')
+          evidence = sorted(
+              str(path.relative_to(root)).replace('\\', '/')
+              for path in root.rglob('*')
+              if path.is_file() and path.stat().st_size > 0
+          )
+          status = {
+              'schemaVersion': 1,
+              'workflowRunId': os.environ.get('GITHUB_RUN_ID'),
+              'workflowRunAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
+              'workflowSha': os.environ.get('GITHUB_SHA'),
+              'buildOutcome': os.environ.get('BUILD_OUTCOME'),
+              'evidenceFiles': evidence,
+          }
+          (root / 'workflow-evidence-status.json').write_text(
+              json.dumps(status, indent=2) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(status, indent=2))
+          PY
+
+      - name: Upload every generated proof and production file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: havenline-character1-seed9101-ubuntu24-${{ github.run_id }}-${{ github.run_attempt }}
+          path: repo/character_output/Character1/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Publish passing proof images, reports, and production assets
+        if: steps.build.outcome == 'success'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -106,7 +155,6 @@ jobs:
           out=character_output/Character1
           rm -rf "$proof_root"
           mkdir -p "$proof_root"
-          cp "$RUNNER_TEMP/havenline-source-commit.txt" "$proof_root/havenline-source-commit.txt"
           for file in \
             proof_front.png \
             proof_three-quarter.png \
@@ -123,6 +171,8 @@ jobs:
             proof-render-report.json \
             validation-report.json \
             actionless-seed9101-status.json \
+            workflow-evidence-status.json \
+            havenline-source-commit.txt \
             Character1_production.glb \
             Character1_production.fbx \
             Character1_LOD1.glb \
@@ -133,5 +183,17 @@ jobs:
           git config user.name "HAVENLINE Proof Bot"
           git config user.email "havenline-proof@users.noreply.github.com"
           git add "$proof_root"
-          git commit -m "Publish Havenline Character 1 seed 9101 Ubuntu 24 proofs and production assets"
+          git commit -m "Publish Havenline Character 1 seed 9101 Ubuntu 24 proof and production assets"
           git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
+
+      - name: Enforce Character 1 production gate
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$BUILD_OUTCOME" != "success" ]; then
+            echo "Character 1 production proof failed; preserved evidence is available in the workflow artifact." >&2
+            exit 1
+          fi
