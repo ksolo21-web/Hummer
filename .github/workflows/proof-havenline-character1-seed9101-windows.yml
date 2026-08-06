@@ -125,3 +125,5 @@ jobs:
           git add "$proof_root"
           git commit -m "Publish Havenline Character 1 seed 9101 Windows proofs"
           git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
+
+# Triggered after registering the Cycles add-on for display-independent proof rendering.
