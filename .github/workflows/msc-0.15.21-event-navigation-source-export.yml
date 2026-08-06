@@ -1,0 +1,121 @@
+name: My Study Companion 0.15.21 Event Navigation Source Export
+
+on:
+  push:
+    branches:
+      - agent/msc-0.15.15-ai-activity-rebuild
+    paths:
+      - .github/workflows/msc-0.15.21-event-navigation-source-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: msc-01521-event-navigation-source-export
+  cancel-in-progress: true
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out cumulative repair branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check out checksum-locked workbook payload
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-0140-overlay-payload
+          path: workbook-payload
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install deterministic reconstruction dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            Pillow==12.2.0 numpy==2.4.2 scipy==1.17.0 scikit-image==0.26.0
+
+      - name: Reconstruct accepted cumulative source through 0.15.14
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .msc-build/prepare-0.15.8-google-credential-compat.sh
+          bash .msc-build/prepare-0.15.8.2-persisted-age-migration.sh
+          bash .msc-build/reconstruct-current-source-0.14.1.sh
+          bash .msc-build/apply-0.15.1-workbook-flip-profile.sh
+          bash .msc-build/apply-0.15.2-daily-profile-ministry.sh
+          bash .msc-build/apply-0.15.3-professional-workbook-assets.sh
+          bash .msc-build/apply-0.15.4-web-household-parity.sh
+          bash .msc-build/apply-0.15.5-household-cancellation.sh
+          bash .msc-build/apply-0.15.6-household-invitation-root-fix.sh
+          bash .msc-build/apply-0.15.8-google-age-firestore-compat.sh
+          bash .msc-build/apply-0.15.9-adaptive-scroll.sh
+          bash .msc-build/apply-0.15.10-household-date-recovery.sh
+          bash .msc-build/apply-0.15.11-local-family-generator.sh
+          bash .msc-build/apply-0.15.13-family-schedule-regression-audit.sh
+          bash .msc-build/apply-0.15.12-family-vote-widgets.sh
+          bash .msc-build/apply-0.15.12-widget-compile-fix.sh
+          bash .msc-build/apply-0.15.14-vote-persistence-fix.sh
+
+      - name: Normalize accepted 0.15.14 identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path, code, name in (
+              (Path('MyStudyCompanion/app/build.gradle.kts'), '47', '0.15.14-private-alpha-vote-persistence'),
+              (Path('MyStudyCompanion/wear/build.gradle.kts'), '360164001', '0.15.14-wear-private-alpha-vote-persistence'),
+          ):
+              text = path.read_text(encoding='utf-8')
+              text, a = re.subn(r'versionCode\s*=\s*\d+', f'versionCode = {code}', text, count=1)
+              text, b = re.subn(r'versionName\s*=\s*"[^"]+"', f'versionName = "{name}"', text, count=1)
+              if a != 1 or b != 1:
+                  raise SystemExit(f'Could not normalize {path}')
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Apply every accepted patch through 0.15.20
+        shell: bash
+        run: |
+          set -euo pipefail
+          MSC_SMART_ONLINE_VALIDATED=false bash .msc-build/apply-0.15.18-premium-widgets.sh
+          bash .msc-build/apply-0.15.20-event-activity-crash-fix.sh
+
+      - name: Export the exact Events button and navigation source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT='event-navigation-source-0.15.20'
+          rm -rf "$OUT"
+          mkdir -p "$OUT/source"
+          grep -R -n -F 'Open interactive activity page' MyStudyCompanion/app/src/main/java \
+            | tee "$OUT/button-locations.txt"
+          test -s "$OUT/button-locations.txt"
+          while IFS=: read -r source_file _; do
+            cp --parents "$source_file" "$OUT/source"
+          done < "$OUT/button-locations.txt"
+          grep -R -n -E 'InteractiveWorkbook(Dialog|Editor)|onOpenPage|workbookPage|selectedWorkbook|showWorkbook' \
+            MyStudyCompanion/app/src/main/java \
+            > "$OUT/navigation-symbols.txt" || true
+          cp -R MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui "$OUT/source/ui-all"
+          cp -R MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion "$OUT/source/companion-all"
+          cp MyStudyCompanion/app/src/main/AndroidManifest.xml "$OUT/AndroidManifest.xml"
+          sha256sum "$OUT/button-locations.txt" "$OUT/navigation-symbols.txt" > "$OUT/SHA256SUMS.txt"
+
+      - name: Upload exact reconstructed navigation source
+        uses: actions/upload-artifact@v6
+        with:
+          name: msc-0.15.20-event-navigation-source
+          path: event-navigation-source-0.15.20
+          retention-days: 3
+          if-no-files-found: error
