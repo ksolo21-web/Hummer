@@ -10,6 +10,8 @@ namespace Havenline.Tests
     public sealed class HavenlineCharacterApprovalGateTests
     {
         private const string HexAlphabet = "0123456789abcdef";
+        private const string EvidenceRoot =
+            "Assets/Havenline/Art/Characters/Production/ApprovalEvidence";
 
         private static readonly string[] Characters =
         {
@@ -27,12 +29,7 @@ namespace Havenline.Tests
                 schemaVersion = 1,
                 reviewContractVersion = "1.0",
                 humanVisualApprovalRequired = true,
-                characters = Characters.Select(character =>
-                    new HavenlineCharacterApprovalGate.CharacterApproval
-                    {
-                        character = character,
-                        approved = false
-                    }).ToArray()
+                characters = Characters.Select(CreatePendingApproval).ToArray()
             };
 
             var failures = HavenlineCharacterApprovalGate.ValidateManifest(
@@ -47,6 +44,35 @@ namespace Havenline.Tests
                     failures,
                     Does.Contain($"{character} is still pending human visual approval."));
             }
+        }
+
+        [Test]
+        public void PendingManifestRejectsRedirectedEvidencePaths()
+        {
+            var approvals = Characters.Select(CreatePendingApproval).ToArray();
+            approvals[0].unityReviewReportPath =
+                "Assets/Havenline/Art/Characters/Production/Untrusted/review.json";
+            var manifest = new HavenlineCharacterApprovalGate.ApprovalManifest
+            {
+                schemaVersion = 1,
+                reviewContractVersion = "1.0",
+                humanVisualApprovalRequired = true,
+                characters = approvals
+            };
+
+            var failures = HavenlineCharacterApprovalGate.ValidateManifest(
+                JsonUtility.ToJson(manifest),
+                _ => false,
+                _ => string.Empty,
+                _ => string.Empty);
+
+            Assert.That(
+                failures,
+                Does.Contain(
+                    $"Character1 Unity review report path must be {EvidenceRoot}/unity-character-review-report.json."));
+            Assert.That(
+                failures,
+                Does.Contain("Character1 is still pending human visual approval."));
         }
 
         [Test]
@@ -105,11 +131,24 @@ namespace Havenline.Tests
                 Does.Contain("Character approval manifest attempted to bypass human visual review."));
         }
 
+        private static HavenlineCharacterApprovalGate.CharacterApproval CreatePendingApproval(
+            string character)
+        {
+            return new HavenlineCharacterApprovalGate.CharacterApproval
+            {
+                character = character,
+                productionFbxPath = HavenlineCharacterApprovalGate.ProductionFbxPath(character),
+                unityReviewReportPath = $"{EvidenceRoot}/unity-character-review-report.json",
+                machineProofStatusPath = $"{EvidenceRoot}/{character}/machine-proof-status.json",
+                approvedReferencePath = $"{EvidenceRoot}/{character}/approved_reference_sheet.jpg",
+                approved = false,
+                approvalNote = "Pending side-by-side Blender and Unity visual review."
+            };
+        }
+
         private static ApprovalFixture CreateApprovedFixture()
         {
-            const string evidenceRoot =
-                "Assets/Havenline/Art/Characters/Production/ApprovalEvidence";
-            var reviewPath = $"{evidenceRoot}/unity-character-review-report.json";
+            var reviewPath = $"{EvidenceRoot}/unity-character-review-report.json";
             var reviewHash = HexAt(10);
             var files = new HashSet<string>(StringComparer.Ordinal) { reviewPath };
             var hashes = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -124,8 +163,8 @@ namespace Havenline.Tests
             {
                 var character = Characters[index];
                 var fbxPath = HavenlineCharacterApprovalGate.ProductionFbxPath(character);
-                var machinePath = $"{evidenceRoot}/{character}/machine-proof-status.json";
-                var referencePath = $"{evidenceRoot}/{character}/approved_reference_sheet.jpg";
+                var machinePath = $"{EvidenceRoot}/{character}/machine-proof-status.json";
+                var referencePath = $"{EvidenceRoot}/{character}/approved_reference_sheet.jpg";
                 var fbxHash = HexAt(index + 1);
                 var machineHash = HexAt(index + 5);
                 var referenceHash = HexAt(index + 9);
