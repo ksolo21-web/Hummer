@@ -1,0 +1,88 @@
+name: HAVENLINE Support Characters SF3D RTX Runner
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/havenline-support-sf3d-rtx-runner.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-support-sf3d-rtx-runner
+  cancel-in-progress: true
+
+jobs:
+  generate-support-character:
+    name: ${{ matrix.character }} SF3D RTX production proof
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        character:
+          - Character3
+          - Character4
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      STABILITY_AI_LICENSE_ACCEPTED: ${{ vars.STABILITY_AI_LICENSE_ACCEPTED }}
+      STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED: ${{ vars.STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED }}
+      HF_HOME: ${{ runner.temp }}\havenline-huggingface
+      TORCH_EXTENSIONS_DIR: ${{ runner.temp }}\havenline-torch-extensions
+
+    steps:
+      - name: Check out current HAVENLINE production branch
+        uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+          fetch-depth: 1
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+          cache-dependency-path: .tooling/havenline-character-production/runtime-versions.json
+
+      - name: Materialize checksum-pinned approved references
+        shell: pwsh
+        run: python .tooling/havenline-character-reference-payload/materialize_references.py
+
+      - name: Run fail-closed RTX reconstruction and Blender proof pipeline
+        id: pipeline
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          & .tooling\havenline-character-production\run_sf3d_support_pipeline.ps1 `
+            -Character '${{ matrix.character }}'
+
+      - name: Upload complete support-character review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-${{ matrix.character }}-SF3D-RTX-review-${{ github.run_id }}
+          path: character_output/${{ matrix.character }}/**
+          if-no-files-found: warn
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce machine completion without visual approval
+        if: always()
+        shell: pwsh
+        run: |
+          $statusPath = 'character_output\${{ matrix.character }}\sf3d-pipeline-status.json'
+          if (-not (Test-Path $statusPath)) {
+            throw 'SF3D pipeline status is missing.'
+          }
+          $status = Get-Content $statusPath -Raw | ConvertFrom-Json
+          if ('${{ steps.pipeline.outcome }}' -ne 'success' -or -not $status.machinePassed) {
+            throw '${{ matrix.character }} failed the SF3D/Blender machine pipeline. Evidence was preserved.'
+          }
+          if ($status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
+            throw 'Machine generation attempted to bypass human visual approval.'
+          }
