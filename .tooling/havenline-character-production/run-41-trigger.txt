@@ -1,0 +1,4 @@
+HAVENLINE production rerun trigger
+reason=preserve UV-seam geometry, lower face placement, adaptive head sampling, stricter sanitizer debris removal
+requested_at=2026-08-06T12:49:00Z
+human_visual_approval_required=true
