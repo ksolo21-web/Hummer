@@ -8,6 +8,7 @@ on:
       - '.github/workflows/kreativ-live-backend-dry-run.yml'
       - 'firebase/**'
       - 'scripts/kreativ_firebase_repair.py'
+      - 'tools/kreativ-live-cloud-root-fix.sh'
 
 permissions:
   contents: read
@@ -30,13 +31,18 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Validate guarded merge utility
+      - name: Validate guarded repair utilities
         shell: bash
         run: |
           set -euo pipefail
           python -m py_compile scripts/kreativ_firebase_repair.py
+          bash -n tools/kreativ-live-cloud-root-fix.sh
+          test -x /bin/bash
+          grep -q -- '--apply' tools/kreativ-live-cloud-root-fix.sh
+          grep -q 'my-study-companion-abc01' tools/kreativ-live-cloud-root-fix.sh
+          grep -q 'kreativ_firebase_repair.py' tools/kreativ-live-cloud-root-fix.sh
 
-      - name: Authenticate through existing repository-restricted Workload Identity
+      - name: Authenticate through repository-restricted Workload Identity
         id: auth
         uses: google-github-actions/auth@v3
         with:
