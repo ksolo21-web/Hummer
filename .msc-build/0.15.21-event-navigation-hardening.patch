@@ -1,0 +1,173 @@
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/EventNotebooksSection.kt
+@@ -258,8 +258,9 @@
+                         state = state,
+                         repository = repository,
+                         onOpenInteractive = {
+-                            repository.setActiveWorkbook(interactiveBook?.id.orEmpty(), page.key)
+-                            interactivePageKey = page.key
++                            if (interactiveBook?.pages?.any { it.key == page.key } == true) {
++                                interactivePageKey = page.key
++                            }
+                         },
+                     )
+                 }
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/InteractiveWorkbookEditor.kt
+@@ -313,6 +313,15 @@
+     }
+ }
+ 
++private fun CompanionHubRepository.setActiveWorkbookSafely(bookId: String, pageKey: String) {
++    if (bookId.isBlank() || pageKey.isBlank()) return
++    try {
++        setActiveWorkbook(bookId, pageKey)
++    } catch (_: Exception) {
++        // Opening the workbook must remain usable even when local state persistence fails.
++    }
++}
++
+ @OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+ fun InteractiveWorkbookDialog(
+@@ -326,7 +335,11 @@
+     var pageIndex by rememberSaveable(book.id, initialPageKey) { mutableStateOf(startIndex) }
+     var showStoredWork by rememberSaveable(book.id) { mutableStateOf(false) }
+     val page = book.pages.getOrNull(pageIndex) ?: return
++    var expandedActivityId by rememberSaveable(book.id, page.key) { mutableStateOf<String?>(null) }
+     val progress = state.interactiveWorkbooks.pageProgress[page.key] ?: WorkbookPageProgress()
++    LaunchedEffect(book.id, page.key) {
++        repository.setActiveWorkbookSafely(book.id, page.key)
++    }
+     val context = LocalContext.current
+     var pendingCompletedExport by remember { mutableStateOf(false) }
+     val exportLauncher = rememberLauncherForActivityResult(
+@@ -371,14 +384,14 @@
+                                     enabled = pageIndex > 0,
+                                     onClick = {
+                                         pageIndex--
+-                                        repository.setActiveWorkbook(book.id, book.pages[pageIndex].key)
++                                        expandedActivityId = null
+                                     },
+                                 ) { Icon(Icons.Outlined.ArrowBack, "Previous page") }
+                                 IconButton(
+                                     enabled = pageIndex < book.pages.lastIndex,
+                                     onClick = {
+                                         pageIndex++
+-                                        repository.setActiveWorkbook(book.id, book.pages[pageIndex].key)
++                                        expandedActivityId = null
+                                     },
+                                 ) { Icon(Icons.Outlined.ArrowForward, "Next page") }
+                             }
+@@ -393,7 +406,7 @@
+                         modifier = Modifier.fillMaxSize().padding(padding),
+                         onOpenPage = { key ->
+                             pageIndex = book.pages.indexOfFirst { it.key == key }.coerceAtLeast(0)
+-                            repository.setActiveWorkbook(book.id, key)
++                            expandedActivityId = null
+                             showStoredWork = false
+                         },
+                         onResetPage = repository::resetWorkbookPage,
+@@ -411,7 +424,16 @@
+                     }
+                     page.activities.forEach { activity ->
+                         item(key = activity.id) {
+-                            WorkbookActivityCard(page, activity, progress, repository)
++                            WorkbookActivityCard(
++                                page = page,
++                                activity = activity,
++                                progress = progress,
++                                repository = repository,
++                                expanded = expandedActivityId == activity.id,
++                                onExpandedChange = { expanded ->
++                                    expandedActivityId = if (expanded) activity.id else null
++                                },
++                            )
+                         }
+                     }
+                     if (page.activities.none { it.kind == WorkbookActivityKind.DRAWING || it.kind == WorkbookActivityKind.COLOR_BY_NUMBER }) {
+@@ -591,33 +613,65 @@
+     activity: WorkbookActivityDefinition,
+     progress: WorkbookPageProgress,
+     repository: CompanionHubRepository,
++    expanded: Boolean,
++    onExpandedChange: (Boolean) -> Unit,
+ ) {
++    val loadsInteractiveWorkspace = when (activity.kind) {
++        WorkbookActivityKind.CROSSWORD,
++        WorkbookActivityKind.WORD_SEARCH,
++        WorkbookActivityKind.FIND_DIFFERENCES,
++        WorkbookActivityKind.MATCHING,
++        WorkbookActivityKind.COLOR_BY_NUMBER,
++        WorkbookActivityKind.DRAWING -> true
++        else -> false
++    }
+     Card(shape = RoundedCornerShape(24.dp)) {
+         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+             Text(activity.kind.label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+             Text(activity.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+             Text(activity.instructions, style = MaterialTheme.typography.bodyMedium)
+-            when (activity.kind) {
+-                WorkbookActivityKind.LISTEN_CHECKLIST -> activity.prompts.forEachIndexed { index, prompt ->
+-                    val id = "${activity.id}:check:$index"
+-                    Row(verticalAlignment = Alignment.Top) {
+-                        Checkbox(
+-                            checked = id in progress.checkedIds,
+-                            onCheckedChange = { repository.toggleWorkbookCheck(page.key, id) },
+-                        )
+-                        Text(prompt, Modifier.padding(top = 11.dp))
++            if (loadsInteractiveWorkspace && !expanded) {
++                Text(
++                    "This workspace loads only when you start it, keeping the workbook page stable on phones and tablets.",
++                    style = MaterialTheme.typography.bodySmall,
++                )
++                Button(
++                    onClick = { onExpandedChange(true) },
++                    modifier = Modifier.fillMaxWidth(),
++                ) {
++                    Text("Start activity")
++                }
++            } else {
++                when (activity.kind) {
++                    WorkbookActivityKind.LISTEN_CHECKLIST -> activity.prompts.forEachIndexed { index, prompt ->
++                        val id = "${activity.id}:check:$index"
++                        Row(verticalAlignment = Alignment.Top) {
++                            Checkbox(
++                                checked = id in progress.checkedIds,
++                                onCheckedChange = { repository.toggleWorkbookCheck(page.key, id) },
++                            )
++                            Text(prompt, Modifier.padding(top = 11.dp))
++                        }
++                    }
++                    WorkbookActivityKind.CROSSWORD -> CrosswordActivity(page.key, activity, progress, repository)
++                    WorkbookActivityKind.WORD_SEARCH -> WordSearchActivity(page.key, activity, progress, repository)
++                    WorkbookActivityKind.FIND_DIFFERENCES -> FindDifferencesActivity(page.key, activity, progress, repository)
++                    WorkbookActivityKind.MATCHING -> MatchingActivity(page.key, activity, progress, repository)
++                    WorkbookActivityKind.COLOR_BY_NUMBER -> ColorByNumberActivity(page.key, activity, progress, repository)
++                    WorkbookActivityKind.SCENARIO,
++                    WorkbookActivityKind.REFLECTION,
++                    WorkbookActivityKind.TIMELINE,
++                    WorkbookActivityKind.NOTES -> PromptTextActivity(page.key, activity, progress, repository)
++                    WorkbookActivityKind.DRAWING -> DrawingActivity(page.key, activity, progress, repository)
++                }
++                if (loadsInteractiveWorkspace) {
++                    OutlinedButton(
++                        onClick = { onExpandedChange(false) },
++                        modifier = Modifier.fillMaxWidth(),
++                    ) {
++                        Text("Close activity")
+                     }
+                 }
+-                WorkbookActivityKind.CROSSWORD -> CrosswordActivity(page.key, activity, progress, repository)
+-                WorkbookActivityKind.WORD_SEARCH -> WordSearchActivity(page.key, activity, progress, repository)
+-                WorkbookActivityKind.FIND_DIFFERENCES -> FindDifferencesActivity(page.key, activity, progress, repository)
+-                WorkbookActivityKind.MATCHING -> MatchingActivity(page.key, activity, progress, repository)
+-                WorkbookActivityKind.COLOR_BY_NUMBER -> ColorByNumberActivity(page.key, activity, progress, repository)
+-                WorkbookActivityKind.SCENARIO,
+-                WorkbookActivityKind.REFLECTION,
+-                WorkbookActivityKind.TIMELINE,
+-                WorkbookActivityKind.NOTES -> PromptTextActivity(page.key, activity, progress, repository)
+-                WorkbookActivityKind.DRAWING -> DrawingActivity(page.key, activity, progress, repository)
+             }
+         }
+     }
