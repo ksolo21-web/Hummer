@@ -11,14 +11,7 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 
 def patch_triposr_texture_baker(repo_root: pathlib.Path = pathlib.Path("triposr")) -> dict:
-    """Force TripoSR texture baking onto Mesa EGL instead of an X display.
-
-    GitHub's hosted runner has no interactive display. TripoSR's upstream texture baker
-    requests ModernGL's default standalone context, which resolves to X11 and fails with
-    ``XOpenDisplay: cannot open display`` even though neural inference and mesh extraction
-    already succeeded. The runner already installs Mesa EGL and llvmpipe, so patch only
-    the context creation call and preserve the upstream baking implementation.
-    """
+    """Force TripoSR texture baking onto Mesa EGL instead of an X display."""
 
     baker = repo_root / "tsr" / "bake_texture.py"
     if not baker.is_file():
@@ -49,7 +42,7 @@ def patch_triposr_texture_baker(repo_root: pathlib.Path = pathlib.Path("triposr"
         raise RuntimeError("TripoSR texture baker contains the Havenline marker but not its context call")
 
     final_payload = baker.read_bytes()
-    report = {
+    return {
         "schemaVersion": 1,
         "textureBaker": str(baker),
         "upstreamSha256": original_sha256,
@@ -59,7 +52,89 @@ def patch_triposr_texture_baker(repo_root: pathlib.Path = pathlib.Path("triposr"
         "softwareRenderer": "llvmpipe",
         "displayRequired": False,
     }
-    return report
+
+
+def patch_triposr_textured_glb_exporter(
+    repo_root: pathlib.Path = pathlib.Path("triposr"),
+) -> dict:
+    """Repair TripoSR's textured ``--model-save-format glb`` export path.
+
+    Upstream routes every baked-texture mesh through ``xatlas.export``. That function
+    writes OBJ text even when the destination is named ``mesh.glb``. The file therefore
+    has an invalid GLB header and every later Blender/Unity stage fails. Keep xatlas for
+    its UV export, then immediately repackage that OBJ data and the baked texture into a
+    real binary GLB using trimesh.
+    """
+
+    run_file = repo_root / "run.py"
+    if not run_file.is_file():
+        raise FileNotFoundError(f"TripoSR runner is missing: {run_file}")
+
+    original = run_file.read_text(encoding="utf-8")
+    original_sha256 = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    marker = "# HAVENLINE_TEXTURED_GLB_NORMALIZER_V1"
+    patched = False
+
+    if marker not in original:
+        import_anchor = "import xatlas\n"
+        if import_anchor not in original:
+            raise RuntimeError(f"Unexpected TripoSR imports in {run_file}")
+        original = original.replace(import_anchor, import_anchor + "import trimesh\n", 1)
+
+        export_anchor = '''        xatlas.export(out_mesh_path, meshes[0].vertices[bake_output["vmapping"]], bake_output["indices"], bake_output["uvs"], meshes[0].vertex_normals[bake_output["vmapping"]])
+        Image.fromarray((bake_output["colors"] * 255.0).astype(np.uint8)).transpose(Image.FLIP_TOP_BOTTOM).save(out_texture_path)
+'''
+        export_replacement = export_anchor + '''        if args.model_save_format == "glb":
+            # HAVENLINE_TEXTURED_GLB_NORMALIZER_V1
+            textured_scene = trimesh.load(
+                out_mesh_path,
+                file_type="obj",
+                force="scene",
+                process=False,
+            )
+            texture_image = Image.open(out_texture_path).convert("RGBA")
+            if not textured_scene.geometry:
+                raise RuntimeError("TripoSR produced no geometry before GLB normalization")
+            for geometry in textured_scene.geometry.values():
+                uv = getattr(geometry.visual, "uv", None)
+                if uv is None or len(uv) != len(geometry.vertices):
+                    raise RuntimeError(
+                        "TripoSR textured OBJ is missing one UV coordinate per vertex"
+                    )
+                geometry.visual = trimesh.visual.texture.TextureVisuals(
+                    uv=uv,
+                    image=texture_image.copy(),
+                )
+            glb_payload = textured_scene.export(file_type="glb")
+            if not isinstance(glb_payload, (bytes, bytearray)) or glb_payload[:4] != b"glTF":
+                raise RuntimeError("Normalized TripoSR output is not a binary GLB")
+            temporary_glb = out_mesh_path + ".normalized"
+            with open(temporary_glb, "wb") as output_handle:
+                output_handle.write(glb_payload)
+            os.replace(temporary_glb, out_mesh_path)
+'''
+        if export_anchor not in original:
+            raise RuntimeError(
+                "TripoSR baked-texture export changed upstream; refusing an unsafe patch"
+            )
+        original = original.replace(export_anchor, export_replacement, 1)
+        run_file.write_text(original, encoding="utf-8")
+        patched = True
+    elif "textured_scene = trimesh.load(" not in original:
+        raise RuntimeError("TripoSR runner contains the Havenline marker but not its GLB conversion")
+
+    final_payload = run_file.read_bytes()
+    return {
+        "schemaVersion": 1,
+        "runner": str(run_file),
+        "upstreamSha256": original_sha256,
+        "patchedSha256": hashlib.sha256(final_payload).hexdigest(),
+        "patchedDuringThisRun": patched,
+        "rootCause": "xatlas.export writes OBJ text regardless of a .glb destination suffix",
+        "normalizedContainer": "binary glTF 2.0 GLB",
+        "embeddedTexture": True,
+        "expectedMagic": "glTF",
+    }
 
 
 def main() -> int:
@@ -95,9 +170,10 @@ def main() -> int:
     canvas.paste(crop, ((896 - crop.width) // 2, (896 - crop.height) // 2))
     canvas.save(output, quality=96, subsampling=0, optimize=True)
 
-    patch_report = patch_triposr_texture_baker()
+    texture_patch_report = patch_triposr_texture_baker()
+    glb_patch_report = patch_triposr_textured_glb_exporter()
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "character": args.character,
         "source": str(source),
         "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
@@ -107,7 +183,8 @@ def main() -> int:
         "outputBytes": output.stat().st_size,
         "outputSha256": hashlib.sha256(output.read_bytes()).hexdigest(),
         "approvedTurnaroundView": "three-quarter-front",
-        "headlessTextureBakerPatch": patch_report,
+        "headlessTextureBakerPatch": texture_patch_report,
+        "texturedGlbExporterPatch": glb_patch_report,
     }
     output.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
