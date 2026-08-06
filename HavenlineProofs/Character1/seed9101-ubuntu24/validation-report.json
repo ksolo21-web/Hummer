@@ -1,0 +1,759 @@
+{
+  "schemaVersion": 4,
+  "character": "Character1",
+  "passed": true,
+  "metrics": {
+    "baseMesh": {
+      "bytes": 10058556,
+      "geometryCount": 1,
+      "vertices": 101848,
+      "faces": 34000,
+      "bounds": [
+        [
+          -0.46641480922698975,
+          -5.960464477539063e-08,
+          -0.27513498067855835
+        ],
+        [
+          0.46641483902931213,
+          1.7200000286102295,
+          0.27513498067855835
+        ]
+      ],
+      "axisExtents": [
+        0.9328296482563019,
+        1.7200000882148743,
+        0.5502699613571167
+      ],
+      "width": 0.9328296482563019,
+      "height": 1.7200000882148743,
+      "depth": 0.5502699613571167,
+      "heightAxis": "Y (glTF up axis)"
+    },
+    "baseGltf": {
+      "animations": [
+        "build",
+        "carry",
+        "deposit",
+        "gather",
+        "idle",
+        "run",
+        "walk",
+        "warm"
+      ],
+      "skins": 1,
+      "images": 1,
+      "textures": 1,
+      "materials": 1,
+      "nodes": 21
+    },
+    "lod1Mesh": {
+      "bytes": 7764628,
+      "geometryCount": 1,
+      "vertices": 63148,
+      "faces": 21080,
+      "bounds": [
+        [
+          -0.46641480922698975,
+          -5.960464477539063e-08,
+          -0.27513498067855835
+        ],
+        [
+          0.46641483902931213,
+          1.7200000286102295,
+          0.27513498067855835
+        ]
+      ],
+      "axisExtents": [
+        0.9328296482563019,
+        1.7200000882148743,
+        0.5502699613571167
+      ],
+      "width": 0.9328296482563019,
+      "height": 1.7200000882148743,
+      "depth": 0.5502699613571167,
+      "heightAxis": "Y (glTF up axis)"
+    },
+    "lod1Gltf": {
+      "animations": [
+        "build",
+        "carry",
+        "deposit",
+        "gather",
+        "idle",
+        "run",
+        "walk",
+        "warm"
+      ],
+      "skins": 1,
+      "images": 1,
+      "textures": 1,
+      "materials": 1,
+      "nodes": 21
+    },
+    "lod2Mesh": {
+      "bytes": 6224568,
+      "geometryCount": 1,
+      "vertices": 34630,
+      "faces": 11560,
+      "bounds": [
+        [
+          -0.46641480922698975,
+          -5.960464477539063e-08,
+          -0.27392762899398804
+        ],
+        [
+          0.4629842936992645,
+          1.7188987731933594,
+          0.27513498067855835
+        ]
+      ],
+      "axisExtents": [
+        0.9293991029262543,
+        1.7188988327980042,
+        0.5490626096725464
+      ],
+      "width": 0.9293991029262543,
+      "height": 1.7188988327980042,
+      "depth": 0.5490626096725464,
+      "heightAxis": "Y (glTF up axis)"
+    },
+    "lod2Gltf": {
+      "animations": [
+        "build",
+        "carry",
+        "deposit",
+        "gather",
+        "idle",
+        "run",
+        "walk",
+        "warm"
+      ],
+      "skins": 1,
+      "images": 1,
+      "textures": 1,
+      "materials": 1,
+      "nodes": 21
+    }
+  },
+  "sanitizationReport": {
+    "schemaVersion": 7,
+    "character": "Character1",
+    "source": "character_output/Character1/Character1_extreme_plane_clean.glb",
+    "success": true,
+    "orientation": {
+      "schemaVersion": 3,
+      "repair": "none",
+      "dominantAxisBefore": "Z",
+      "before": {
+        "minimum": [
+          -0.23995056748390198,
+          -0.10531622171401978,
+          -0.45145702362060547
+        ],
+        "maximum": [
+          0.23292838037014008,
+          0.17390622198581696,
+          0.4234902560710907
+        ],
+        "extents": [
+          0.47287893295288086,
+          0.27922242879867554,
+          0.8749473094940186
+        ],
+        "width": 0.47287893295288086,
+        "depth": 0.27922242879867554,
+        "height": 0.8749473094940186
+      },
+      "after": {
+        "minimum": [
+          -0.23995056748390198,
+          -0.10531622171401978,
+          -0.45145702362060547
+        ],
+        "maximum": [
+          0.23292838037014008,
+          0.17390622198581696,
+          0.4234902560710907
+        ],
+        "extents": [
+          0.47287893295288086,
+          0.27922242879867554,
+          0.8749473094940186
+        ],
+        "width": 0.47287893295288086,
+        "depth": 0.27922242879867554,
+        "height": 0.8749473094940186
+      },
+      "standingAxisVerified": true,
+      "frontAxisVerified": true,
+      "uprightDirectionRule": "TripoSR uses -90 degrees X for upright, then -90 degrees Z so the approved front faces -Y"
+    },
+    "sceneSpan": 0.8749473094940186,
+    "cleanedAsset": "character_output/Character1/Character1_sanitized.glb",
+    "cleanedBytes": 13058008,
+    "cleanedBounds": {
+      "minimum": [
+        -0.23995056748390198,
+        -0.10531622171401978,
+        -0.45145702362060547
+      ],
+      "maximum": [
+        0.23292838037014008,
+        0.17390622198581696,
+        0.4234902560710907
+      ],
+      "extents": [
+        0.47287893295288086,
+        0.27922242879867554,
+        0.8749473094940186
+      ],
+      "width": 0.47287893295288086,
+      "depth": 0.27922242879867554,
+      "height": 0.8749473094940186
+    },
+    "objects": [
+      {
+        "object": "geometry_0",
+        "topologyRepair": {
+          "verticesBefore": 244492,
+          "verticesAfter": 42644,
+          "verticesWelded": 201848,
+          "edgesBefore": 244535,
+          "edgesAfter": 124634,
+          "facesBefore": 81526,
+          "facesAfter": 81526,
+          "weldDistance": 8.749473094940187e-06,
+          "degenerateDistance": 8.749473094940185e-07,
+          "faceNormalsRecalculated": true
+        },
+        "componentsBefore": 11,
+        "componentsRemoved": 0,
+        "verticesRemoved": 0,
+        "removed": [],
+        "largestKeptComponents": [
+          {
+            "vertices": 37451,
+            "faces": 71731,
+            "minimum": [
+              -0.22142250835895538,
+              -0.10275470465421677,
+              -0.337771475315094
+            ],
+            "maximum": [
+              0.23292838037014008,
+              0.17390622198581696,
+              0.4234902560710907
+            ],
+            "extents": [
+              0.45435088872909546,
+              0.2766609191894531,
+              0.7612617015838623
+            ],
+            "smallestExtent": 0.2766609191894531,
+            "middleExtent": 0.45435088872909546,
+            "largestExtent": 0.7612617015838623,
+            "boxVolume": 0.09569145954836071,
+            "componentIndex": 0
+          },
+          {
+            "vertices": 1917,
+            "faces": 3744,
+            "minimum": [
+              -0.13540588319301605,
+              -0.10531622171401978,
+              -0.4502650499343872
+            ],
+            "maximum": [
+              -0.023385070264339447,
+              0.07920358330011368,
+              -0.3377492427825928
+            ],
+            "extents": [
+              0.1120208129286766,
+              0.18451979756355286,
+              0.11251580715179443
+            ],
+            "smallestExtent": 0.1120208129286766,
+            "middleExtent": 0.11251580715179443,
+            "largestExtent": 0.18451979756355286,
+            "boxVolume": 0.0023257082287467547,
+            "componentIndex": 2
+          },
+          {
+            "vertices": 1783,
+            "faces": 3476,
+            "minimum": [
+              0.06306527554988861,
+              -0.09909101575613022,
+              -0.45145702362060547
+            ],
+            "maximum": [
+              0.16839534044265747,
+              0.07487892359495163,
+              -0.33803075551986694
+            ],
+            "extents": [
+              0.10533006489276886,
+              0.17396993935108185,
+              0.11342626810073853
+            ],
+            "smallestExtent": 0.10533006489276886,
+            "middleExtent": 0.11342626810073853,
+            "largestExtent": 0.17396993935108185,
+            "boxVolume": 0.0020784529947796863,
+            "componentIndex": 1
+          },
+          {
+            "vertices": 349,
+            "faces": 586,
+            "minimum": [
+              -0.11983128637075424,
+              0.06006241962313652,
+              0.025436362251639366
+            ],
+            "maximum": [
+              -0.0940617024898529,
+              0.09612208604812622,
+              0.12839029729366302
+            ],
+            "extents": [
+              0.025769583880901337,
+              0.0360596664249897,
+              0.10295393317937851
+            ],
+            "smallestExtent": 0.025769583880901337,
+            "middleExtent": 0.0360596664249897,
+            "largestExtent": 0.10295393317937851,
+            "boxVolume": 9.566918040947151e-05,
+            "componentIndex": 4
+          },
+          {
+            "vertices": 344,
+            "faces": 612,
+            "minimum": [
+              -0.23995056748390198,
+              -0.0017143689328804612,
+              0.032235633581876755
+            ],
+            "maximum": [
+              -0.2018473893404007,
+              0.018028227612376213,
+              0.18194720149040222
+            ],
+            "extents": [
+              0.03810317814350128,
+              0.01974259689450264,
+              0.14971156418323517
+            ],
+            "smallestExtent": 0.01974259689450264,
+            "middleExtent": 0.03810317814350128,
+            "largestExtent": 0.14971156418323517,
+            "boxVolume": 0.00011262137548963765,
+            "componentIndex": 10
+          },
+          {
+            "vertices": 267,
+            "faces": 468,
+            "minimum": [
+              -0.09089846909046173,
+              -0.07347264885902405,
+              0.3011368215084076
+            ],
+            "maximum": [
+              -0.07623753696680069,
+              -0.01729772612452507,
+              0.41885218024253845
+            ],
+            "extents": [
+              0.014660932123661041,
+              0.05617492273449898,
+              0.11771535873413086
+            ],
+            "smallestExtent": 0.014660932123661041,
+            "middleExtent": 0.05617492273449898,
+            "largestExtent": 0.11771535873413086,
+            "boxVolume": 9.694763013020476e-05,
+            "componentIndex": 8
+          },
+          {
+            "vertices": 146,
+            "faces": 222,
+            "minimum": [
+              -0.02831393852829933,
+              0.11047694087028503,
+              0.28584998846054077
+            ],
+            "maximum": [
+              -0.01421227678656578,
+              0.15026186406612396,
+              0.3516722321510315
+            ],
+            "extents": [
+              0.014101661741733551,
+              0.03978492319583893,
+              0.06582224369049072
+            ],
+            "smallestExtent": 0.014101661741733551,
+            "middleExtent": 0.03978492319583893,
+            "largestExtent": 0.06582224369049072,
+            "boxVolume": 3.692848568600118e-05,
+            "componentIndex": 7
+          },
+          {
+            "vertices": 131,
+            "faces": 247,
+            "minimum": [
+              -0.16938890516757965,
+              0.10175992548465729,
+              0.05092141404747963
+            ],
+            "maximum": [
+              -0.15961280465126038,
+              0.11237801611423492,
+              0.12266058474779129
+            ],
+            "extents": [
+              0.009776100516319275,
+              0.010618090629577637,
+              0.07173916697502136
+            ],
+            "smallestExtent": 0.009776100516319275,
+            "middleExtent": 0.010618090629577637,
+            "largestExtent": 0.07173916697502136,
+            "boxVolume": 7.446778146141495e-06,
+            "componentIndex": 9
+          },
+          {
+            "vertices": 106,
+            "faces": 178,
+            "minimum": [
+              0.13814479112625122,
+              0.004909259267151356,
+              0.3363945186138153
+            ],
+            "maximum": [
+              0.15483635663986206,
+              0.008945883251726627,
+              0.4139079451560974
+            ],
+            "extents": [
+              0.01669156551361084,
+              0.004036623984575272,
+              0.0775134265422821
+            ],
+            "smallestExtent": 0.004036623984575272,
+            "middleExtent": 0.01669156551361084,
+            "largestExtent": 0.0775134265422821,
+            "boxVolume": 5.2226666089992464e-06,
+            "componentIndex": 5
+          },
+          {
+            "vertices": 82,
+            "faces": 160,
+            "minimum": [
+              0.14427486062049866,
+              0.09827292710542679,
+              0.2513035833835602
+            ],
+            "maximum": [
+              0.15059038996696472,
+              0.1063641756772995,
+              0.32007014751434326
+            ],
+            "extents": [
+              0.0063155293464660645,
+              0.008091248571872711,
+              0.06876656413078308
+            ],
+            "smallestExtent": 0.0063155293464660645,
+            "middleExtent": 0.008091248571872711,
+            "largestExtent": 0.06876656413078308,
+            "boxVolume": 3.5140070347684533e-06,
+            "componentIndex": 6
+          },
+          {
+            "vertices": 68,
+            "faces": 102,
+            "minimum": [
+              -0.016295047476887703,
+              -0.10352133214473724,
+              -0.02712148055434227
+            ],
+            "maximum": [
+              0.026532450690865517,
+              -0.09603185206651688,
+              0.017990225926041603
+            ],
+            "extents": [
+              0.04282749816775322,
+              0.007489480078220367,
+              0.04511170834302902
+            ],
+            "smallestExtent": 0.007489480078220367,
+            "middleExtent": 0.04282749816775322,
+            "largestExtent": 0.04511170834302902,
+            "boxVolume": 1.4469837331863754e-05,
+            "componentIndex": 3
+          }
+        ]
+      }
+    ],
+    "componentsRemoved": 0,
+    "verticesRemoved": 0,
+    "verticesWelded": 201848
+  },
+  "rigReport": {
+    "schemaVersion": 2,
+    "character": "Character1",
+    "success": true,
+    "input": "character_output/Character1/Character1_mobile_source.glb",
+    "outputs": [
+      {
+        "path": "character_output/Character1/Character1_production.glb",
+        "bytes": 10058556
+      },
+      {
+        "path": "character_output/Character1/Character1_production.fbx",
+        "bytes": 7405980
+      },
+      {
+        "path": "character_output/Character1/Character1_LOD1.glb",
+        "bytes": 7764628
+      },
+      {
+        "path": "character_output/Character1/Character1_LOD2.glb",
+        "bytes": 6224568
+      }
+    ],
+    "bounds": {
+      "minimum": [
+        -0.46641480922698975,
+        -0.27513498067855835,
+        -5.960464477539063e-08
+      ],
+      "maximum": [
+        0.46641483902931213,
+        0.27513498067855835,
+        1.7200000286102295
+      ],
+      "width": 0.9328296482563019,
+      "depth": 0.5502699613571167,
+      "height": 1.7200000882148743
+    },
+    "meshObjects": 1,
+    "weightedVertices": 101848,
+    "bones": [
+      "Hips",
+      "Spine",
+      "Chest",
+      "Neck",
+      "Head",
+      "LeftShoulder",
+      "LeftUpperArm",
+      "LeftLowerArm",
+      "LeftHand",
+      "RightShoulder",
+      "RightUpperArm",
+      "RightLowerArm",
+      "RightHand",
+      "LeftUpperLeg",
+      "LeftLowerLeg",
+      "LeftFoot",
+      "RightUpperLeg",
+      "RightLowerLeg",
+      "RightFoot"
+    ],
+    "animations": [
+      "idle",
+      "walk",
+      "run",
+      "gather",
+      "carry",
+      "deposit",
+      "warm",
+      "build"
+    ],
+    "approvedReferences": [],
+    "preRigCleanup": {
+      "schemaVersion": 3,
+      "sceneSpan": 0.8719189167022705,
+      "objects": [
+        {
+          "object": "geometry_0",
+          "vertices": 101848,
+          "polygons": 34000,
+          "componentsRemoved": 0,
+          "verticesRemoved": 0,
+          "reason": "topology already repaired by sanitize_character_mesh.py; UV seam duplicates preserved"
+        }
+      ],
+      "componentsRemoved": 0,
+      "verticesRemoved": 0,
+      "topologyOwner": "sanitize_character_mesh.py"
+    },
+    "faceRefinement": {
+      "schemaVersion": 3,
+      "applied": false,
+      "mode": "preserve recovered TRELLIS face without additive geometry",
+      "source": "approved character turnaround sheet and recovered TRELLIS reconstruction",
+      "preservedReconstructionFeatures": [
+        "glasses",
+        "eyes",
+        "eyelids",
+        "nose",
+        "mouth",
+        "facial hair",
+        "cheeks",
+        "skin texture",
+        "hair silhouette"
+      ],
+      "rejectedStrategies": [
+        "image-mapped portrait patch",
+        "oversized modeled eye and mouth replacement",
+        "duplicate floating glasses geometry"
+      ],
+      "reason": "Human proof review found that every additive face layer reduced fidelity. The recovered textured head is preserved as the best available approved-reference result.",
+      "surfaceType": "original skinned textured reconstruction; no billboard; no portrait patch; no duplicate face geometry"
+    }
+  },
+  "proofRenderReport": {
+    "schemaVersion": 5,
+    "character": "Character1",
+    "sourceAsset": "character_output/Character1/Character1_production.glb",
+    "success": true,
+    "importedMeshObjects": 2,
+    "skinnedCharacterMeshes": 1,
+    "ignoredHelperMeshes": [
+      {
+        "name": "Icosphere",
+        "vertices": 42,
+        "polygons": 80
+      }
+    ],
+    "armatures": 1,
+    "evaluatedVertices": 101848,
+    "unityFbx": {
+      "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/Character1_production.fbx",
+      "bytes": 7396508,
+      "sha256": "2e96991703acb2f65f29d6d47a7da0e61fb89c284b35777d625065c29c283fdb",
+      "source": "exact imported textured production GLB",
+      "embeddedTexturesRequested": true,
+      "neutralPoseExported": true
+    },
+    "cameraOrthoScale": 1.9006000757217407,
+    "expectedVerticalOccupancy": 0.9049773545637003,
+    "bounds": {
+      "minimum": [
+        -0.4664146602153778,
+        -0.27513498067855835,
+        -5.0190283928941426e-08
+      ],
+      "maximum": [
+        0.4664146602153778,
+        0.27513498067855835,
+        1.7200000286102295
+      ],
+      "size": [
+        0.9328293204307556,
+        0.5502699613571167,
+        1.7200000286102295
+      ]
+    },
+    "proofs": [
+      {
+        "label": "front",
+        "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_front.png",
+        "bytes": 1415126,
+        "sha256": "626507ffdd87662f714b2a03c6362c13b6d647b6464145abfe641cac76604382",
+        "cameraLocation": [
+          3.580867254022221e-16,
+          -5.8480000495910645,
+          0.8768799901008606
+        ],
+        "orthographicScale": 1.9006000757217407
+      },
+      {
+        "label": "three-quarter",
+        "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_three-quarter.png",
+        "bytes": 1396567,
+        "sha256": "88978c06308d59deb90b051c5940f03bf2665927b2260619bb4a3be8d4c6a5fb",
+        "cameraLocation": [
+          4.135160446166992,
+          -4.135160446166992,
+          0.8768799901008606
+        ],
+        "orthographicScale": 1.9006000757217407
+      },
+      {
+        "label": "side",
+        "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_side.png",
+        "bytes": 1285749,
+        "sha256": "511171d106396de44c93a6624e98f9c01a57053e16ef732eeb6c9df1e2a2a8ea",
+        "cameraLocation": [
+          5.8480000495910645,
+          0.0,
+          0.8768799901008606
+        ],
+        "orthographicScale": 1.9006000757217407
+      },
+      {
+        "label": "back",
+        "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_back.png",
+        "bytes": 1347253,
+        "sha256": "79361db266b586af6d3b6b6e93759f1c6709539a1b0212cd863ec0e173953ccc",
+        "cameraLocation": [
+          3.580867254022221e-16,
+          5.8480000495910645,
+          0.8768799901008606
+        ],
+        "orthographicScale": 1.9006000757217407
+      }
+    ],
+    "renderRuntime": {
+      "engine": "CYCLES",
+      "device": "CPU",
+      "samples": 24,
+      "blenderVersion": "4.5.12 LTS",
+      "displayIndependent": true,
+      "cyclesAddonEnabled": true
+    }
+  },
+  "proof": {
+    "front": {
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1415126,
+      "sha256": "626507ffdd87662f714b2a03c6362c13b6d647b6464145abfe641cac76604382",
+      "standardDeviation": 21.57574564875897,
+      "dynamicRange": 203.33333333333334
+    },
+    "three-quarter": {
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1396567,
+      "sha256": "88978c06308d59deb90b051c5940f03bf2665927b2260619bb4a3be8d4c6a5fb",
+      "standardDeviation": 21.54343701030768,
+      "dynamicRange": 207.33333333333334
+    },
+    "side": {
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1285749,
+      "sha256": "511171d106396de44c93a6624e98f9c01a57053e16ef732eeb6c9df1e2a2a8ea",
+      "standardDeviation": 18.277782256153348,
+      "dynamicRange": 221.66666666666666
+    },
+    "back": {
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1347253,
+      "sha256": "79361db266b586af6d3b6b6e93759f1c6709539a1b0212cd863ec0e173953ccc",
+      "standardDeviation": 18.573437593460486,
+      "dynamicRange": 200.66666666666666
+    }
+  },
+  "failures": [],
+  "humanVisualApprovalRequired": true,
+  "unityIntegrationApproved": false
+}

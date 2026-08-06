@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 2,
+  "character": "Character1",
+  "success": true,
+  "input": "character_output/Character1/Character1_mobile_source.glb",
+  "outputs": [
+    {
+      "path": "character_output/Character1/Character1_production.glb",
+      "bytes": 10058556
+    },
+    {
+      "path": "character_output/Character1/Character1_production.fbx",
+      "bytes": 7405980
+    },
+    {
+      "path": "character_output/Character1/Character1_LOD1.glb",
+      "bytes": 7764628
+    },
+    {
+      "path": "character_output/Character1/Character1_LOD2.glb",
+      "bytes": 6224568
+    }
+  ],
+  "bounds": {
+    "minimum": [
+      -0.46641480922698975,
+      -0.27513498067855835,
+      -5.960464477539063e-08
+    ],
+    "maximum": [
+      0.46641483902931213,
+      0.27513498067855835,
+      1.7200000286102295
+    ],
+    "width": 0.9328296482563019,
+    "depth": 0.5502699613571167,
+    "height": 1.7200000882148743
+  },
+  "meshObjects": 1,
+  "weightedVertices": 101848,
+  "bones": [
+    "Hips",
+    "Spine",
+    "Chest",
+    "Neck",
+    "Head",
+    "LeftShoulder",
+    "LeftUpperArm",
+    "LeftLowerArm",
+    "LeftHand",
+    "RightShoulder",
+    "RightUpperArm",
+    "RightLowerArm",
+    "RightHand",
+    "LeftUpperLeg",
+    "LeftLowerLeg",
+    "LeftFoot",
+    "RightUpperLeg",
+    "RightLowerLeg",
+    "RightFoot"
+  ],
+  "animations": [
+    "idle",
+    "walk",
+    "run",
+    "gather",
+    "carry",
+    "deposit",
+    "warm",
+    "build"
+  ],
+  "approvedReferences": [],
+  "preRigCleanup": {
+    "schemaVersion": 3,
+    "sceneSpan": 0.8719189167022705,
+    "objects": [
+      {
+        "object": "geometry_0",
+        "vertices": 101848,
+        "polygons": 34000,
+        "componentsRemoved": 0,
+        "verticesRemoved": 0,
+        "reason": "topology already repaired by sanitize_character_mesh.py; UV seam duplicates preserved"
+      }
+    ],
+    "componentsRemoved": 0,
+    "verticesRemoved": 0,
+    "topologyOwner": "sanitize_character_mesh.py"
+  },
+  "faceRefinement": {
+    "schemaVersion": 3,
+    "applied": false,
+    "mode": "preserve recovered TRELLIS face without additive geometry",
+    "source": "approved character turnaround sheet and recovered TRELLIS reconstruction",
+    "preservedReconstructionFeatures": [
+      "glasses",
+      "eyes",
+      "eyelids",
+      "nose",
+      "mouth",
+      "facial hair",
+      "cheeks",
+      "skin texture",
+      "hair silhouette"
+    ],
+    "rejectedStrategies": [
+      "image-mapped portrait patch",
+      "oversized modeled eye and mouth replacement",
+      "duplicate floating glasses geometry"
+    ],
+    "reason": "Human proof review found that every additive face layer reduced fidelity. The recovered textured head is preserved as the best available approved-reference result.",
+    "surfaceType": "original skinned textured reconstruction; no billboard; no portrait patch; no duplicate face geometry"
+  }
+}

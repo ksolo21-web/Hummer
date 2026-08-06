@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "expectedVersion": [
+    4,
+    5,
+    12
+  ],
+  "actualVersion": [
+    4,
+    5,
+    12
+  ],
+  "versionString": "4.5.12 LTS",
+  "releaseLine": "4.5 LTS",
+  "verified": true
+}

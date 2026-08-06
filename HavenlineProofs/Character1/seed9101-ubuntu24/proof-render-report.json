@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 5,
+  "character": "Character1",
+  "sourceAsset": "character_output/Character1/Character1_production.glb",
+  "success": true,
+  "importedMeshObjects": 2,
+  "skinnedCharacterMeshes": 1,
+  "ignoredHelperMeshes": [
+    {
+      "name": "Icosphere",
+      "vertices": 42,
+      "polygons": 80
+    }
+  ],
+  "armatures": 1,
+  "evaluatedVertices": 101848,
+  "unityFbx": {
+    "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/Character1_production.fbx",
+    "bytes": 7396508,
+    "sha256": "2e96991703acb2f65f29d6d47a7da0e61fb89c284b35777d625065c29c283fdb",
+    "source": "exact imported textured production GLB",
+    "embeddedTexturesRequested": true,
+    "neutralPoseExported": true
+  },
+  "cameraOrthoScale": 1.9006000757217407,
+  "expectedVerticalOccupancy": 0.9049773545637003,
+  "bounds": {
+    "minimum": [
+      -0.4664146602153778,
+      -0.27513498067855835,
+      -5.0190283928941426e-08
+    ],
+    "maximum": [
+      0.4664146602153778,
+      0.27513498067855835,
+      1.7200000286102295
+    ],
+    "size": [
+      0.9328293204307556,
+      0.5502699613571167,
+      1.7200000286102295
+    ]
+  },
+  "proofs": [
+    {
+      "label": "front",
+      "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_front.png",
+      "bytes": 1415126,
+      "sha256": "626507ffdd87662f714b2a03c6362c13b6d647b6464145abfe641cac76604382",
+      "cameraLocation": [
+        3.580867254022221e-16,
+        -5.8480000495910645,
+        0.8768799901008606
+      ],
+      "orthographicScale": 1.9006000757217407
+    },
+    {
+      "label": "three-quarter",
+      "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_three-quarter.png",
+      "bytes": 1396567,
+      "sha256": "88978c06308d59deb90b051c5940f03bf2665927b2260619bb4a3be8d4c6a5fb",
+      "cameraLocation": [
+        4.135160446166992,
+        -4.135160446166992,
+        0.8768799901008606
+      ],
+      "orthographicScale": 1.9006000757217407
+    },
+    {
+      "label": "side",
+      "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_side.png",
+      "bytes": 1285749,
+      "sha256": "511171d106396de44c93a6624e98f9c01a57053e16ef732eeb6c9df1e2a2a8ea",
+      "cameraLocation": [
+        5.8480000495910645,
+        0.0,
+        0.8768799901008606
+      ],
+      "orthographicScale": 1.9006000757217407
+    },
+    {
+      "label": "back",
+      "path": "/home/runner/work/Hummer/Hummer/repo/character_output/Character1/proof_back.png",
+      "bytes": 1347253,
+      "sha256": "79361db266b586af6d3b6b6e93759f1c6709539a1b0212cd863ec0e173953ccc",
+      "cameraLocation": [
+        3.580867254022221e-16,
+        5.8480000495910645,
+        0.8768799901008606
+      ],
+      "orthographicScale": 1.9006000757217407
+    }
+  ],
+  "renderRuntime": {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": 24,
+    "blenderVersion": "4.5.12 LTS",
+    "displayIndependent": true,
+    "cyclesAddonEnabled": true
+  }
+}

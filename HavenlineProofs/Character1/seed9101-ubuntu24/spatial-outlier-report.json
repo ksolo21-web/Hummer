@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 5,
+  "character": "Character1",
+  "source": "character_output/Character1/Character1_sanitized.glb",
+  "output": "character_output/Character1/Character1_spatial.glb",
+  "success": true,
+  "humanVisualApprovalRequired": true,
+  "sceneSpan": 0.8749473094940186,
+  "inputBounds": {
+    "minimum": [
+      -0.23995056748390198,
+      -0.10531622171401978,
+      -0.45145702362060547
+    ],
+    "maximum": [
+      0.23292838037014008,
+      0.17390622198581696,
+      0.4234902560710907
+    ]
+  },
+  "outputBounds": {
+    "minimum": [
+      -0.23995056748390198,
+      -0.10531622171401978,
+      -0.45145702362060547
+    ],
+    "maximum": [
+      0.23292838037014008,
+      0.17390622198581696,
+      0.4234902560710907
+    ]
+  },
+  "objects": [
+    {
+      "object": "geometry_0",
+      "verticesBefore": 243940,
+      "verticesAfter": 243940,
+      "verticesRemoved": 0,
+      "splitDetected": false,
+      "reason": "no unambiguous minority cluster separated by a large horizontal gap"
+    }
+  ],
+  "splitsDetected": 0,
+  "verticesRemoved": 0,
+  "outputBytes": 13058008
+}
