@@ -1,0 +1,19 @@
+name: Release Havenline Production Runner
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/release-havenline-production-runner.yml'
+
+concurrency:
+  group: havenline-production-characters-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  supersede-redundant-production-run:
+    if: ${{ false }}
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo 'Character 1 is being validated by the dedicated actionless v2 proof pipeline.'
