@@ -4,7 +4,8 @@
 Some neural GLB exports duplicate vertices per triangle, so ordinary connected-component
 analysis reports thousands of three-vertex components. This pass instead detects a large
 empty horizontal gap that isolates a minority vertex cluster from the character body,
-then deletes only that outlying cluster. It fails closed when no unambiguous gap exists.
+then deletes only that outlying cluster. Deletion is performed through Blender edit mode
+to preserve the surviving mesh's imported UVs, materials, and custom split normals.
 """
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ import pathlib
 import sys
 import traceback
 
-import bmesh
 import bpy
 from mathutils import Vector
 
@@ -100,42 +100,54 @@ def find_horizontal_outlier_split(obj, scene_span: float):
     return max(candidates, key=lambda item: (item["gap"], -item["outlierRatio"]))
 
 
+def delete_selected_vertices_preserving_attributes(obj, threshold: float, side: str) -> int:
+    bpy.ops.object.mode_set(mode="OBJECT") if bpy.context.object and bpy.context.object.mode != "OBJECT" else None
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+    selected = 0
+    for vertex in obj.data.vertices:
+        world_x = float((obj.matrix_world @ vertex.co).x)
+        remove = (side == "left" and world_x < threshold) or (side == "right" and world_x > threshold)
+        vertex.select = remove
+        if remove:
+            selected += 1
+    if selected == 0:
+        return 0
+
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_mode(type="VERT")
+    bpy.ops.mesh.delete(type="VERT")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obj.data.validate(verbose=False)
+    obj.data.update(calc_edges=False, calc_edges_loose=False)
+    return selected
+
+
 def clean_object(obj, scene_span: float):
     split = find_horizontal_outlier_split(obj, scene_span)
+    vertices_before = len(obj.data.vertices)
     if split is None:
         return {
             "object": obj.name,
-            "verticesBefore": len(obj.data.vertices),
+            "verticesBefore": vertices_before,
+            "verticesAfter": vertices_before,
             "verticesRemoved": 0,
             "splitDetected": False,
             "reason": "no unambiguous minority cluster separated by a large horizontal gap",
         }
 
-    threshold = float(split["threshold"])
-    side = split["side"]
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    bm.verts.ensure_lookup_table()
-    delete_verts = []
-    for vertex in bm.verts:
-        world_x = float((obj.matrix_world @ vertex.co).x)
-        if (side == "left" and world_x < threshold) or (side == "right" and world_x > threshold):
-            delete_verts.append(vertex)
-
-    vertices_before = len(obj.data.vertices)
-    if delete_verts:
-        bmesh.ops.delete(bm, geom=delete_verts, context="VERTS")
-        if bm.faces:
-            bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
-    bm.to_mesh(obj.data)
-    bm.free()
-    obj.data.validate(verbose=False)
-    obj.data.update()
-
-    removed = vertices_before - len(obj.data.vertices)
-    actual_ratio = removed / max(vertices_before, 1)
-    if removed <= 0:
+    removed = delete_selected_vertices_preserving_attributes(
+        obj,
+        float(split["threshold"]),
+        str(split["side"]),
+    )
+    actual_after = len(obj.data.vertices)
+    actual_removed = vertices_before - actual_after
+    if removed <= 0 or actual_removed <= 0:
         raise RuntimeError(f"A spatial split was detected for {obj.name}, but no vertices were removed")
+    actual_ratio = actual_removed / max(vertices_before, 1)
     if actual_ratio > 0.35:
         raise RuntimeError(
             f"Spatial cleanup attempted to remove too much geometry from {obj.name}: {actual_ratio:.3f}"
@@ -144,20 +156,25 @@ def clean_object(obj, scene_span: float):
     return {
         "object": obj.name,
         "verticesBefore": vertices_before,
-        "verticesAfter": len(obj.data.vertices),
-        "verticesRemoved": removed,
+        "verticesAfter": actual_after,
+        "verticesSelectedForRemoval": removed,
+        "verticesRemoved": actual_removed,
         "removedRatio": actual_ratio,
         "splitDetected": True,
         "split": split,
+        "attributePreservationMethod": "Blender edit-mode vertex deletion without normal recalculation",
         "reason": "minority vertex cluster isolated by a large empty horizontal gap",
     }
 
 
 def export_glb(path: pathlib.Path, meshes) -> None:
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in meshes:
+    surviving = [obj for obj in meshes if obj.type == "MESH" and len(obj.data.vertices) > 0]
+    if not surviving:
+        raise RuntimeError("Spatial cleanup removed every mesh")
+    for obj in surviving:
         obj.select_set(True)
-    bpy.context.view_layer.objects.active = meshes[0]
+    bpy.context.view_layer.objects.active = surviving[0]
     bpy.ops.export_scene.gltf(
         filepath=str(path),
         export_format="GLB",
@@ -175,7 +192,7 @@ def main() -> int:
     output_path = output_root / f"{args.character}_spatial.glb"
     report_path = output_root / "spatial-outlier-report.json"
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
@@ -190,7 +207,9 @@ def main() -> int:
         scene_span = max(extent.x, extent.y, extent.z, 1e-6)
         object_reports = [clean_object(obj, scene_span) for obj in meshes]
         export_glb(output_path, meshes)
-        after_minimum, after_maximum = world_bounds(meshes)
+        after_minimum, after_maximum = world_bounds(
+            [obj for obj in meshes if obj.type == "MESH" and len(obj.data.vertices) > 0]
+        )
         report.update({
             "success": True,
             "sceneSpan": scene_span,
