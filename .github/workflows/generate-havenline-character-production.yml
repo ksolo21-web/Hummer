@@ -39,6 +39,7 @@ jobs:
           required=(
             "$root/generate_character_mesh.py"
             "$root/rig_animate_character.py"
+            "$root/render_character_proofs.py"
             "$root/validate_character_asset.py"
             "$root/references/materialization-report.json"
             "$root/references/Character1.jpg"
@@ -84,7 +85,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install reconstruction, Blender and validation tools
+      - name: Restore generated raw character mesh
+        id: raw-mesh-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            character_output/${{ matrix.character }}/${{ matrix.character }}_raw.glb
+            character_output/${{ matrix.character }}/generation-report.json
+            character_output/${{ matrix.character }}/view_*.png
+            character_output/${{ matrix.character }}/processed_*.png
+            character_output/${{ matrix.character }}/trellis_*
+          key: havenline-trellis-${{ matrix.character }}-${{ matrix.seed }}-${{ hashFiles('.tooling/havenline-character-production/generate_character_mesh.py', '.tooling/havenline-character-reference-payload/**') }}
+      - name: Install reconstruction, Blender and headless graphics tools
         shell: bash
         run: |
           set -euo pipefail
@@ -95,14 +107,20 @@ jobs:
             blender \
             python3-numpy \
             libegl1 \
+            libegl-mesa0 \
+            libgl1 \
             libgl1-mesa-dri \
+            libglx-mesa0 \
             libglu1-mesa \
+            libopengl0 \
             mesa-utils \
             xvfb \
             xauth
           blender --version
-          PYTHONPATH=/usr/lib/python3/dist-packages blender --background --factory-startup \
-            --python-expr "import numpy; print('Blender NumPy:', numpy.__version__)"
+          xvfb-run -a -s '-screen 0 1280x1024x24' \
+            env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
+            blender --background --factory-startup \
+            --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('Blender NumPy:', numpy.__version__)"
       - name: Generate multi-view textured mesh
         id: generate
         continue-on-error: true
@@ -111,12 +129,18 @@ jobs:
           set -euo pipefail
           root=.tooling/havenline-character-production
           out="character_output/${{ matrix.character }}"
+          raw="$out/${{ matrix.character }}_raw.glb"
           mkdir -p "$out"
-          python "$root/generate_character_mesh.py" \
-            --character '${{ matrix.character }}' \
-            --sheet "$root/references/${{ matrix.character }}.jpg" \
-            --output "$out" \
-            --seed '${{ matrix.seed }}'
+          if [ -s "$raw" ]; then
+            echo "Reusing checksum-keyed raw mesh cache: $raw"
+          else
+            python "$root/generate_character_mesh.py" \
+              --character '${{ matrix.character }}' \
+              --sheet "$root/references/${{ matrix.character }}.jpg" \
+              --output "$out" \
+              --seed '${{ matrix.seed }}'
+          fi
+          test -s "$raw"
       - name: Optimize, humanoid-rig and animate
         id: rig
         if: ${{ steps.generate.outcome == 'success' }}
@@ -136,9 +160,28 @@ jobs:
             --character '${{ matrix.character }}' \
             --input "$out/${{ matrix.character }}_raw.glb" \
             --output "$out"
+      - name: Render distinct proofs from exported production asset
+        id: proof
+        if: ${{ steps.rig.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$root/render_character_proofs.py" -- \
+            --character '${{ matrix.character }}' \
+            --input "$out/${{ matrix.character }}_production.glb" \
+            --output "$out"
       - name: Validate mesh, rig, clips, LODs and proof
         id: validate
-        if: ${{ steps.rig.outcome == 'success' }}
+        if: ${{ steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         run: |
@@ -153,6 +196,7 @@ jobs:
           CHARACTER: ${{ matrix.character }}
           GENERATE_OUTCOME: ${{ steps.generate.outcome }}
           RIG_OUTCOME: ${{ steps.rig.outcome }}
+          PROOF_OUTCOME: ${{ steps.proof.outcome }}
           VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
         run: |
           import json, os, pathlib
@@ -161,10 +205,11 @@ jobs:
           report_path = root / 'validation-report.json'
           validation = json.loads(report_path.read_text()) if report_path.exists() else {}
           status = {
-              'schemaVersion': 1,
+              'schemaVersion': 2,
               'character': os.environ['CHARACTER'],
               'generateOutcome': os.environ.get('GENERATE_OUTCOME', 'skipped'),
               'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
+              'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
               'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
               'validation': validation,
               'passed': validation.get('passed') is True,
@@ -183,7 +228,7 @@ jobs:
           compression-level: 0
           retention-days: 30
       - name: Enforce complete character pipeline
-        if: ${{ always() && (steps.generate.outcome != 'success' || steps.rig.outcome != 'success' || steps.validate.outcome != 'success') }}
+        if: ${{ always() && (steps.generate.outcome != 'success' || steps.rig.outcome != 'success' || steps.proof.outcome != 'success' || steps.validate.outcome != 'success') }}
         run: exit 1
 
   package-review-set:
@@ -211,7 +256,7 @@ jobs:
                   files.append({'path': str(path.relative_to(root)), 'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
           passed = len(statuses) == 4 and all(item.get('passed') is True for item in statuses)
           manifest = {
-              'schemaVersion': 1,
+              'schemaVersion': 2,
               'sourceCommit': os.environ['SOURCE_COMMIT'],
               'matrixResult': os.environ['MATRIX_RESULT'],
               'passed': passed,
