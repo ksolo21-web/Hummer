@@ -67,6 +67,13 @@ namespace Havenline.Editor
                 ValidateDefinition(id, definition, failures);
             }
 
+            if (roster.TryGet(HavenlineCharacterId.Character1, out _) &&
+                roster.TryGet(HavenlineCharacterId.Character2, out _))
+            {
+                ValidateCrewComposition(roster, HavenlineCharacterId.Character1, failures);
+                ValidateCrewComposition(roster, HavenlineCharacterId.Character2, failures);
+            }
+
             return failures.Distinct(StringComparer.Ordinal).ToList();
         }
 
@@ -93,14 +100,21 @@ namespace Havenline.Editor
             if (definition.CharacterId != expectedId)
                 failures.Add($"Roster slot {expectedId} points to {definition.CharacterId}.");
 
-            var expectedStartingChoice =
+            var expectedStartingLead =
                 expectedId == HavenlineCharacterId.Character1 ||
                 expectedId == HavenlineCharacterId.Character2;
-            if (definition.IsStartingChoice != expectedStartingChoice)
+            if (definition.IsStartingLead != expectedStartingLead)
             {
                 failures.Add(
-                    $"{expectedId} starting-choice status is incorrect. " +
-                    "Only Character 1 and Character 2 may start unlocked.");
+                    $"{expectedId} lead status is incorrect. " +
+                    "Only Character 1 and Character 2 may be selected as the playable lead.");
+            }
+
+            if ((expectedId == HavenlineCharacterId.Character3 ||
+                 expectedId == HavenlineCharacterId.Character4) &&
+                !definition.IsCoreCompanion)
+            {
+                failures.Add($"{expectedId} must be configured as a core companion.");
             }
 
             if (definition.Portrait == null)
@@ -112,6 +126,15 @@ namespace Havenline.Editor
                 failures.Add($"{expectedId} has no production gameplay prefab.");
                 return;
             }
+
+            if (expectedStartingLead && prefab.GetComponent<HavenlinePlayerController>() == null)
+            {
+                failures.Add(
+                    $"{expectedId} is a selectable lead but its prefab has no HavenlinePlayerController.");
+            }
+
+            if (prefab.GetComponent<CharacterController>() == null)
+                failures.Add($"{expectedId} has no CharacterController for lead/companion locomotion.");
 
             var animators = prefab.GetComponentsInChildren<Animator>(true);
             if (animators.Length != 1)
@@ -181,6 +204,39 @@ namespace Havenline.Editor
                 .ToArray();
             if (suspiciousNames.Length > 0)
                 failures.Add($"{expectedId} still contains placeholder objects: {string.Join(", ", suspiciousNames)}.");
+        }
+
+        private static void ValidateCrewComposition(
+            HavenlineCharacterRoster roster,
+            HavenlineCharacterId selectedLead,
+            ICollection<string> failures)
+        {
+            try
+            {
+                var companions = roster.GetCompanionsFor(selectedLead);
+                var expectedOtherLead = selectedLead == HavenlineCharacterId.Character1
+                    ? HavenlineCharacterId.Character2
+                    : HavenlineCharacterId.Character1;
+                var expected = new HashSet<HavenlineCharacterId>
+                {
+                    expectedOtherLead,
+                    HavenlineCharacterId.Character3,
+                    HavenlineCharacterId.Character4
+                };
+                var actual = new HashSet<HavenlineCharacterId>(
+                    companions.Select(item => item.CharacterId));
+
+                if (companions.Count != 3 || !actual.SetEquals(expected))
+                {
+                    failures.Add(
+                        $"Selecting {selectedLead} must create companions " +
+                        $"{expectedOtherLead}, Character3 and Character4.");
+                }
+            }
+            catch (Exception exception)
+            {
+                failures.Add($"Crew composition for {selectedLead} failed: {exception.Message}");
+            }
         }
 
         private static string BuildMessage(IEnumerable<string> failures)
