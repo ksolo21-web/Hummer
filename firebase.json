@@ -1,4 +1,4 @@
 {
-  "firestore": { "rules": "firebase/firestore.rules" },
-  "storage": { "rules": "firebase/storage.rules" }
+  "firestore": { "rules": "firebase/generated/shared-firestore.rules" },
+  "storage": { "rules": "firebase/generated/shared-storage.rules" }
 }

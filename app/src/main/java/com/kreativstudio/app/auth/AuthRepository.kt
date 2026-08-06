@@ -2,6 +2,9 @@ package com.kreativstudio.app.auth
 
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
+import android.content.pm.Signature
+import android.os.Build
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -16,6 +19,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.kreativstudio.app.BuildConfig
 import com.kreativstudio.app.model.AppUser
+import java.security.MessageDigest
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +41,9 @@ class AuthRepository(
     suspend fun signInWithGoogle(activity: Activity): Result<AppUser> = runCatching {
         check(isGoogleConfigured) {
             "This KREATIV build is missing its registered Firebase/OAuth configuration."
+        }
+        check(hasRegisteredGoogleSigningCertificate()) {
+            "This APK is signed with the wrong Android certificate. Install KREATIV 0.1.10 signed with the original Firebase-registered private-alpha key."
         }
 
         val result = requestGoogleCredential(activity)
@@ -122,6 +130,44 @@ class AuthRepository(
             )
             .build(),
     )
+
+    private fun hasRegisteredGoogleSigningCertificate(): Boolean {
+        val expectedSha1 = BuildConfig.REGISTERED_SIGNER_SHA1.normalizedDigest()
+        val expectedSha256 = BuildConfig.REGISTERED_SIGNER_SHA256.normalizedDigest()
+        if (expectedSha1.isBlank() || expectedSha256.isBlank()) return false
+
+        return installedSignatures().any { signature ->
+            signature.digest("SHA-1") == expectedSha1 &&
+                signature.digest("SHA-256") == expectedSha256
+        }
+    }
+
+    private fun installedSignatures(): List<Signature> = runCatching {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.GET_SIGNING_CERTIFICATES,
+            )
+        }
+        val signingInfo = packageInfo.signingInfo ?: return@runCatching emptyList()
+        val current = signingInfo.apkContentsSigners?.toList().orEmpty()
+        val history = signingInfo.signingCertificateHistory?.toList().orEmpty()
+        (current + history).distinctBy(Signature::toCharsString)
+    }.getOrDefault(emptyList())
+
+    private fun Signature.digest(algorithm: String): String =
+        MessageDigest.getInstance(algorithm)
+            .digest(toByteArray())
+            .joinToString(separator = "") { byte -> "%02X".format(byte.toInt() and 0xFF) }
+
+    private fun String.normalizedDigest(): String =
+        replace(":", "").uppercase(Locale.US)
 
     fun useOliviaPreview(): AppUser = AppUser(
         uid = "local-olivia-preview",

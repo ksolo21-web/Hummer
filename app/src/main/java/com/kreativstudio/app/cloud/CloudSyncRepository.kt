@@ -46,11 +46,11 @@ class CloudSyncRepository(
             updatedAt = System.currentTimeMillis(),
         )
         val bytes = json.encodeToString(cloudCopy).encodeToByteArray()
-        val storagePath = "users/$userId/projects/${project.id}.kreativ.json"
+        val storagePath = "users/$userId/kreativStudio/projects/${project.id}.kreativ.json"
         storage.reference.child(storagePath).putBytes(bytes).await()
         FirebaseFirestore.getInstance()
             .collection("users").document(userId)
-            .collection("projects").document(project.id)
+            .collection(KREATIV_PROJECTS_COLLECTION).document(project.id)
             .set(
                 mapOf(
                     "title" to project.title,
@@ -60,7 +60,7 @@ class CloudSyncRepository(
                     "storagePath" to storagePath,
                     "lessonId" to project.lessonId,
                     "attachmentCount" to project.attachments.size,
-                    "schemaVersion" to 1,
+                    "schemaVersion" to 2,
                 )
             ).await()
         project.copy(syncState = SyncState.SYNCED, updatedAt = cloudCopy.updatedAt)
@@ -70,7 +70,7 @@ class CloudSyncRepository(
         val userId = requireUserId()
         val snapshot = FirebaseFirestore.getInstance()
             .collection("users").document(userId)
-            .collection("projects")
+            .collection(KREATIV_PROJECTS_COLLECTION)
             .get().await()
         val storage = FirebaseStorage.getInstance()
 
@@ -100,13 +100,13 @@ class CloudSyncRepository(
         val userId = requireUserId()
         FirebaseFirestore.getInstance()
             .collection("users").document(userId)
-            .collection("private").document("studioState")
+            .collection(KREATIV_PRIVATE_COLLECTION).document("studioState")
             .set(
                 mapOf(
                     "settingsJson" to json.encodeToString(settings),
                     "progressJson" to json.encodeToString(ListSerializer(LessonProgress.serializer()), progress),
                     "updatedAt" to System.currentTimeMillis(),
-                    "schemaVersion" to 1,
+                    "schemaVersion" to 2,
                 )
             ).await()
         Unit
@@ -116,13 +116,13 @@ class CloudSyncRepository(
         val userId = requireUserId()
         val reference = FirebaseFirestore.getInstance()
             .collection("users").document(userId)
-            .collection("private").document("studioState")
+            .collection(KREATIV_PRIVATE_COLLECTION).document("studioState")
 
         // Merge a harmless field so connection success proves Firestore write and read access.
         reference.set(
             mapOf(
                 "lastConnectionCheckAt" to System.currentTimeMillis(),
-                "schemaVersion" to 1,
+                "schemaVersion" to 2,
             ),
             SetOptions.merge(),
         ).await()
@@ -141,7 +141,7 @@ class CloudSyncRepository(
     }
 
     private suspend fun verifyStorageAccess(storage: FirebaseStorage, userId: String) {
-        val probe = storage.reference.child("users/$userId/private/kreativ-connectivity.probe")
+        val probe = storage.reference.child("users/$userId/kreativStudio/private/connectivity.probe")
         probe.putBytes("KREATIV_CLOUD_CHECK".encodeToByteArray()).await()
         try {
             probe.getMetadata().await()
@@ -166,7 +166,7 @@ class CloudSyncRepository(
             .replace(Regex("[^A-Za-z0-9._-]+"), "_")
             .take(120)
             .ifBlank { "attachment" }
-        val storagePath = "users/$userId/attachments/$projectId/${attachment.id}_$safeName"
+        val storagePath = "users/$userId/kreativStudio/attachments/$projectId/${attachment.id}_$safeName"
         return runCatching {
             context.contentResolver.openInputStream(localUri)?.use { input ->
                 storage.reference.child(storagePath).putStream(input).await()
@@ -250,6 +250,8 @@ class CloudSyncRepository(
 
     companion object {
         private const val MAX_PROJECT_BYTES = 100L * 1024L * 1024L
+        private const val KREATIV_PROJECTS_COLLECTION = "kreativProjects"
+        private const val KREATIV_PRIVATE_COLLECTION = "kreativPrivate"
     }
 }
 

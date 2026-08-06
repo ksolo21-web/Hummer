@@ -17,13 +17,19 @@ android {
         applicationId = "com.kreativstudio.app"
         minSdk = 28
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.1.8"
+        versionCode = 10
+        versionName = "0.1.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // Set these in ~/.gradle/gradle.properties, project gradle.properties, or CI secrets.
+        // Firebase's Android OAuth client is registered to the original private-alpha
+        // certificate. Keep these expected digests in source so a wrongly signed APK
+        // fails before Credential Manager can misreport the problem as cancellation.
+        buildConfigField("String", "REGISTERED_SIGNER_SHA1", "\"5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59\"")
+        buildConfigField("String", "REGISTERED_SIGNER_SHA256", "\"07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D\"")
+
+        // Set these in ~/.gradle/gradle.properties, project gradle.properties, or CI.
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${project.findProperty("KREATIV_GOOGLE_WEB_CLIENT_ID") ?: ""}\"")
         buildConfigField("String", "OLIVIA_FIREBASE_UID", "\"${project.findProperty("KREATIV_OLIVIA_FIREBASE_UID") ?: ""}\"")
         buildConfigField("String", "FIREBASE_API_KEY", "\"${project.findProperty("KREATIV_FIREBASE_API_KEY") ?: ""}\"")
