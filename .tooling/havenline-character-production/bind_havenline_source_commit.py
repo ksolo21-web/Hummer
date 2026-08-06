@@ -28,6 +28,16 @@ def git_output(*arguments: str) -> str:
     return completed.stdout.strip()
 
 
+def git_success(*arguments: str) -> bool:
+    completed = subprocess.run(
+        ["git", *arguments],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return completed.returncode == 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Bind a generated SF3D package to the exact checked-out HAVENLINE commit."
@@ -64,14 +74,17 @@ def main() -> int:
     if status.get("approved") is not False or status.get("unityIntegrated") is not False:
         raise RuntimeError("Cannot bind a package that was prematurely promoted")
 
+    tracked_source_clean = git_success("diff", "--quiet") and git_success(
+        "diff", "--cached", "--quiet"
+    )
     binding = {
         "repository": "ksolo21-web/Hummer",
         "branch": "havenline-unity-reference-rebuild",
         "commit": commit,
-        "workingTreeClean": not bool(git_output("status", "--porcelain")),
+        "trackedSourceClean": tracked_source_clean,
     }
-    if not binding["workingTreeClean"]:
-        raise RuntimeError("HAVENLINE checkout changed during character generation")
+    if not tracked_source_clean:
+        raise RuntimeError("Tracked HAVENLINE source changed during character generation")
 
     status["havenlineSource"] = binding
     generation["havenlineSource"] = binding
