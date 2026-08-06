@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Render four bright, tightly framed proofs from the final production GLB.
+"""Render four close, neutral review angles from the final exported production GLB.
 
-Only substantive textured character meshes participate in framing. Tiny helper or
-accidental geometry is hidden, and the camera is fitted to the actual renderable model.
+The proof camera is derived from evaluated skinned vertices—not stale object bounding
+boxes—so helper data, armature envelopes, or pre-deformation bounds cannot shrink the
+character in frame. Animation is muted and pose bones are reset before review.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ import sys
 import traceback
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 def args_after_separator() -> list[str]:
@@ -37,18 +38,34 @@ def clear_scene() -> None:
     bpy.ops.object.delete(use_global=False)
 
 
-def is_substantive_mesh(obj) -> bool:
-    if obj.type != "MESH" or obj.data is None:
-        return False
-    if len(obj.data.polygons) < 24:
-        return False
-    return any(slot.material is not None for slot in obj.material_slots)
+def reset_neutral_pose(armatures) -> None:
+    for armature in armatures:
+        if armature.animation_data:
+            armature.animation_data.action = None
+            for track in armature.animation_data.nla_tracks:
+                track.mute = True
+        for bone in armature.pose.bones:
+            bone.matrix_basis = Matrix.Identity(4)
+    bpy.context.scene.frame_set(1)
+    bpy.context.view_layer.update()
 
 
-def world_bounds(meshes):
-    points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
+def evaluated_world_bounds(meshes):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    points = []
+    evaluated_vertex_count = 0
+    for obj in meshes:
+        evaluated = obj.evaluated_get(depsgraph)
+        evaluated_mesh = evaluated.to_mesh()
+        try:
+            matrix = evaluated.matrix_world
+            for vertex in evaluated_mesh.vertices:
+                points.append(matrix @ vertex.co)
+            evaluated_vertex_count += len(evaluated_mesh.vertices)
+        finally:
+            evaluated.to_mesh_clear()
     if not points:
-        raise RuntimeError("Production GLB contains no measurable textured character bounds")
+        raise RuntimeError("Production GLB contains no evaluated renderable vertices")
     minimum = Vector(
         (
             min(point.x for point in points),
@@ -63,7 +80,7 @@ def world_bounds(meshes):
             max(point.z for point in points),
         )
     )
-    return minimum, maximum
+    return minimum, maximum, evaluated_vertex_count
 
 
 def point_at(obj, target: Vector) -> None:
@@ -83,13 +100,13 @@ def add_area_light(name: str, location, energy: float, size: float, target: Vect
 
 
 def add_floor(minimum: Vector, maximum: Vector):
-    width = max(maximum.x - minimum.x, maximum.y - minimum.y, 1.0) * 3.2
+    width = max(maximum.x - minimum.x, maximum.y - minimum.y, 1.0) * 3.0
     bpy.ops.mesh.primitive_plane_add(size=width, location=(0, 0, minimum.z - 0.012))
     floor = bpy.context.object
     floor.name = "ProofFloor"
     material = bpy.data.materials.new("ProofFloorMaterial")
-    material.diffuse_color = (0.105, 0.115, 0.135, 1.0)
-    material.roughness = 0.92
+    material.diffuse_color = (0.10, 0.11, 0.135, 1.0)
+    material.roughness = 0.94
     floor.data.materials.append(material)
     return floor
 
@@ -97,54 +114,69 @@ def add_floor(minimum: Vector, maximum: Vector):
 def configure_scene(center: Vector, size: Vector, minimum: Vector, maximum: Vector):
     scene = bpy.context.scene
     scene.frame_set(1)
-    scene.render.engine = (
-        "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"
-    )
+    engines = {
+        item.identifier
+        for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items
+    }
+    if "BLENDER_EEVEE_NEXT" in engines:
+        scene.render.engine = "BLENDER_EEVEE_NEXT"
+    elif "BLENDER_EEVEE" in engines:
+        scene.render.engine = "BLENDER_EEVEE"
+    else:
+        raise RuntimeError(f"No EEVEE render engine is available: {sorted(engines)}")
     scene.render.resolution_x = 1024
     scene.render.resolution_y = 1024
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
     try:
-        scene.view_settings.look = "Medium High Contrast"
+        scene.view_settings.look = "AgX - Medium High Contrast"
     except Exception:
-        pass
+        try:
+            scene.view_settings.look = "Medium High Contrast"
+        except Exception:
+            pass
+    scene.view_settings.exposure = 0.55
 
-    world = scene.world or bpy.data.worlds.new("World")
+    world = scene.world or bpy.data.worlds.new("HAVENLINE_ProofWorld")
     scene.world = world
-    world.color = (0.12, 0.13, 0.16)
+    world.use_nodes = True
+    background = world.node_tree.nodes.get("Background")
+    if background:
+        background.inputs["Color"].default_value = (0.045, 0.055, 0.078, 1.0)
+        background.inputs["Strength"].default_value = 0.42
 
     camera_data = bpy.data.cameras.new("ProductionProofCamera")
     camera = bpy.data.objects.new("ProductionProofCamera", camera_data)
     bpy.context.collection.objects.link(camera)
     camera_data.type = "ORTHO"
-    camera_data.ortho_scale = max(size.z * 1.12, size.x * 1.34, 1.86)
-    camera_data.lens = 55
+    camera_data.ortho_scale = max(size.z * 1.11, size.x * 1.22, size.y * 1.22, 1.82)
+    camera_data.lens = 58
     scene.camera = camera
 
-    radius = max(size.x, size.y, size.z, 1.0) * 3.0
-    target = Vector((center.x, center.y, center.z + size.z * 0.015))
+    radius = max(size.x, size.y, size.z, 1.0) * 3.35
+    target = Vector((center.x, center.y, center.z + size.z * 0.005))
     add_area_light(
         "ProductionKey",
-        (center.x - radius * 0.72, center.y - radius * 0.82, center.z + radius * 0.82),
-        1750,
-        4.6,
+        (center.x - radius * 0.70, center.y - radius * 0.82, center.z + radius * 0.78),
+        1550,
+        4.8,
         target,
-        (1.0, 0.88, 0.74),
+        (1.0, 0.88, 0.76),
     )
     add_area_light(
         "ProductionFill",
-        (center.x + radius * 0.78, center.y - radius * 0.28, center.z + radius * 0.38),
-        900,
+        (center.x + radius * 0.78, center.y - radius * 0.18, center.z + radius * 0.36),
+        820,
         4.0,
         target,
-        (0.62, 0.76, 1.0),
+        (0.68, 0.80, 1.0),
     )
     add_area_light(
         "ProductionRim",
-        (center.x, center.y + radius * 0.88, center.z + radius * 0.62),
-        1100,
-        3.5,
+        (center.x + radius * 0.12, center.y + radius * 0.78, center.z + radius * 0.58),
+        980,
+        3.4,
         target,
         (0.82, 0.90, 1.0),
     )
@@ -165,9 +197,10 @@ def render_angles(root: pathlib.Path, scene, camera, target: Vector, radius: flo
         camera.location = (
             target.x + math.cos(radians) * radius,
             target.y + math.sin(radians) * radius,
-            target.z + 0.02,
+            target.z + 0.01,
         )
         point_at(camera, target)
+        bpy.context.view_layer.update()
         destination = root / f"proof_{label}.png"
         scene.render.filepath = str(destination)
         bpy.ops.render.render(write_still=True)
@@ -194,7 +227,7 @@ def main() -> int:
     root.mkdir(parents=True, exist_ok=True)
     report_path = root / "proof-render-report.json"
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "character": args.character,
         "sourceAsset": args.input,
         "success": False,
@@ -202,31 +235,25 @@ def main() -> int:
     try:
         clear_scene()
         bpy.ops.import_scene.gltf(filepath=str(pathlib.Path(args.input)))
-        all_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
-        meshes = [obj for obj in all_meshes if is_substantive_mesh(obj)]
+        meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH" and not obj.hide_render]
+        armatures = [obj for obj in bpy.context.scene.objects if obj.type == "ARMATURE"]
         if not meshes:
-            raise RuntimeError("Exported production GLB contains no substantive textured mesh")
-        ignored = []
-        for obj in all_meshes:
-            if obj not in meshes:
-                obj.hide_render = True
-                ignored.append(
-                    {
-                        "name": obj.name,
-                        "vertices": len(obj.data.vertices),
-                        "polygons": len(obj.data.polygons),
-                    }
-                )
-        minimum, maximum = world_bounds(meshes)
+            raise RuntimeError("Exported production GLB contains no renderable mesh objects")
+        if not armatures:
+            raise RuntimeError("Exported production GLB contains no humanoid armature")
+        reset_neutral_pose(armatures)
+        minimum, maximum, evaluated_vertices = evaluated_world_bounds(meshes)
         center = (minimum + maximum) * 0.5
         size = maximum - minimum
         scene, camera, target, radius = configure_scene(center, size, minimum, maximum)
         proofs = render_angles(root, scene, camera, target, radius)
         report.update(
             success=True,
-            importedMeshObjects=len(all_meshes),
-            renderableMeshObjects=len(meshes),
-            ignoredHelperMeshes=ignored,
+            meshObjects=len(meshes),
+            armatures=len(armatures),
+            evaluatedVertices=evaluated_vertices,
+            cameraOrthoScale=camera.data.ortho_scale,
+            expectedVerticalOccupancy=min(1.0, size.z / camera.data.ortho_scale),
             bounds={
                 "minimum": list(minimum),
                 "maximum": list(maximum),
