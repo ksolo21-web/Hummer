@@ -15,6 +15,8 @@ import bmesh
 import bpy
 from mathutils import Vector
 
+import modeled_face_details
+
 
 REFINEMENT_SCHEMA_VERSION = 3
 
@@ -155,6 +157,13 @@ def reference_source(profile, root):
 
 
 def create_reference_face_surface(character, root, meshes, bounds):
+    if character in ("Character1", "Character2"):
+        return modeled_face_details.create_modeled_face_details(
+            character,
+            meshes,
+            bounds,
+        )
+
     profile = PROFILES.get(character)
     if profile is None:
         return {"applied": False, "reason": "missing face profile"}, None
