@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "blender": {
+    "version": "4.5.12",
+    "releaseLine": "4.5 LTS",
+    "linuxArchive": "https://download.blender.org/release/Blender4.5/blender-4.5.12-linux-x64.tar.xz",
+    "windowsArchive": "https://download.blender.org/release/Blender4.5/blender-4.5.12-windows-x64.zip",
+    "runtimeGate": "bpy.app.version[:3] == (4, 5, 12)",
+    "purpose": [
+      "mesh cleanup",
+      "mobile reduction",
+      "rigging and deterministic skinning",
+      "animation clip authoring",
+      "LOD generation",
+      "GLB and FBX export",
+      "proof rendering"
+    ]
+  },
+  "reconstruction": {
+    "Character1": {
+      "generator": "trellis-community/TRELLIS",
+      "mode": "clean-multi-image",
+      "seed": 9101,
+      "singleView": false,
+      "sourceArtifactId": 8972496079
+    },
+    "Character2": {
+      "generator": "trellis-community/TRELLIS",
+      "mode": "recovered multi-view artifact",
+      "singleView": false
+    },
+    "Character3": {
+      "generator": "VAST-AI-Research/TripoSR",
+      "mode": "local single-image CPU reconstruction",
+      "singleView": true
+    },
+    "Character4": {
+      "generator": "VAST-AI-Research/TripoSR",
+      "mode": "local single-image CPU reconstruction",
+      "singleView": true
+    }
+  },
+  "qualityBoundary": "Blender processes and exports the reconstruction; it does not recover anatomy or unseen geometry missing from the reconstruction model."
+}
