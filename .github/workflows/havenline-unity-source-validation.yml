@@ -16,8 +16,8 @@ permissions:
   checks: write
 
 concurrency:
-  group: havenline-unity-source-${{ github.sha }}
-  cancel-in-progress: false
+  group: havenline-unity-source-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unity-tests:
