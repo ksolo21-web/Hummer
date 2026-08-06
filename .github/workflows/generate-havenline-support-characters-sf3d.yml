@@ -96,3 +96,5 @@ jobs:
           if ($status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
             throw 'Machine generation attempted to bypass the human visual approval gate.'
           }
+
+# Registration revision 2: expose self-hosted RTX runner readiness through a workflow-file push.
