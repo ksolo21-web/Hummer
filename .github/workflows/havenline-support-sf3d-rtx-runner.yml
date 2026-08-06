@@ -2,6 +2,11 @@ name: HAVENLINE SF3D Recovery Characters RTX Runner
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/havenline-support-sf3d-rtx-runner.yml'
   workflow_run:
     workflows:
       - Proof HAVENLINE Character 1 Seed 9101 Slim
@@ -22,6 +27,9 @@ jobs:
     name: Validate guarded SF3D trigger
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       github.ref == 'refs/heads/main' &&
+       github.repository == 'ksolo21-web/Hummer') ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.id == 31123869890 &&
        github.event.workflow_run.conclusion == 'failure' &&
@@ -37,10 +45,17 @@ jobs:
           import os
 
           event_name = os.environ['GITHUB_EVENT_NAME']
+          event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
           if event_name == 'workflow_dispatch':
               print('Manual trusted dispatch accepted.')
+          elif event_name == 'push':
+              assert event['ref'] == 'refs/heads/main'
+              assert event['repository']['full_name'] == 'ksolo21-web/Hummer'
+              assert event['head_commit']['message'] == 'Trigger guarded HAVENLINE SF3D RTX recovery'
+              modified = set(event['head_commit'].get('modified', []))
+              assert '.github/workflows/havenline-support-sf3d-rtx-runner.yml' in modified
+              print('Exact guarded main-branch workflow push accepted.')
           else:
-              event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
               run = event['workflow_run']
               assert run['id'] == 31123869890
               assert run['name'] in {
@@ -86,6 +101,9 @@ jobs:
           if ($runtime.schemaVersion -ne 3) { throw 'Unexpected HAVENLINE character runtime schema.' }
           if ($runtime.reconstruction.Character1.generator -ne 'Stability-AI/stable-fast-3d') {
             throw 'Character 1 is not routed through the SF3D recovery contract.'
+          }
+          if ($runtime.reconstruction.Character2.artifactId -ne 8973791027) {
+            throw 'Character 2 is not locked to the accepted Unity-review artifact.'
           }
           Write-Host "Checked out HAVENLINE commit: $actual"
 
