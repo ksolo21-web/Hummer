@@ -9,6 +9,8 @@ namespace Havenline.Tests
 {
     public sealed class HavenlineCharacterApprovalGateTests
     {
+        private const string HexAlphabet = "0123456789abcdef";
+
         private static readonly string[] Characters =
         {
             "Character1",
@@ -67,7 +69,7 @@ namespace Havenline.Tests
             var fixture = CreateApprovedFixture();
             var character = "Character1";
             var path = HavenlineCharacterApprovalGate.ProductionFbxPath(character);
-            fixture.Hashes[path] = Hex('f');
+            fixture.Hashes[path] = HexAt(15);
 
             var failures = HavenlineCharacterApprovalGate.ValidateManifest(
                 fixture.ManifestJson,
@@ -107,7 +109,7 @@ namespace Havenline.Tests
             const string evidenceRoot =
                 "Assets/Havenline/Art/Characters/Production/ApprovalEvidence";
             var reviewPath = $"{evidenceRoot}/unity-character-review-report.json";
-            var reviewHash = Hex('a');
+            var reviewHash = HexAt(10);
             var files = new HashSet<string>(StringComparer.Ordinal) { reviewPath };
             var hashes = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -123,16 +125,16 @@ namespace Havenline.Tests
                 var fbxPath = HavenlineCharacterApprovalGate.ProductionFbxPath(character);
                 var machinePath = $"{evidenceRoot}/{character}/machine-proof-status.json";
                 var referencePath = $"{evidenceRoot}/{character}/approved_reference_sheet.jpg";
-                var fbxHash = Hex((char)('1' + index));
-                var machineHash = Hex((char)('5' + index));
-                var referenceHash = Hex((char)('9' + index));
-                var productionGlbHash = Hex((char)('b' + index));
+                var fbxHash = HexAt(index + 1);
+                var machineHash = HexAt(index + 5);
+                var referenceHash = HexAt(index + 9);
+                var productionGlbHash = HexAt(index + 13);
                 var renderHashes = new[]
                 {
-                    Hex((char)('1' + index)),
-                    Hex((char)('5' + index)),
-                    Hex((char)('9' + index)),
-                    Hex((char)('d' + index % 3))
+                    HexAt(index),
+                    HexAt(index + 4),
+                    HexAt(index + 8),
+                    HexAt(index + 12)
                 };
 
                 files.Add(fbxPath);
@@ -206,7 +208,8 @@ namespace Havenline.Tests
             };
         }
 
-        private static string Hex(char value) => new string(value, 64);
+        private static string HexAt(int index) =>
+            new string(HexAlphabet[index % HexAlphabet.Length], 64);
 
         private sealed class ApprovalFixture
         {
