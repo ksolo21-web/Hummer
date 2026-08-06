@@ -19,7 +19,9 @@ def inspect_glb(path: pathlib.Path) -> dict:
     if bounds:
         extents = [float(bounds[1][axis] - bounds[0][axis]) for axis in range(3)]
     # glTF is Y-up. Blender's Z-up production height is exported on the glTF Y axis.
+    width = extents[0] if len(extents) == 3 else 0.0
     height = extents[1] if len(extents) == 3 else 0.0
+    depth = extents[2] if len(extents) == 3 else 0.0
     return {
         "bytes": path.stat().st_size,
         "geometryCount": len(geometries),
@@ -27,7 +29,9 @@ def inspect_glb(path: pathlib.Path) -> dict:
         "faces": sum(len(item.faces) for item in geometries),
         "bounds": bounds,
         "axisExtents": extents,
+        "width": width,
         "height": height,
+        "depth": depth,
         "heightAxis": "Y (glTF up axis)",
     }
 
@@ -78,10 +82,28 @@ def main() -> int:
     fbx = root / f"{args.character}_production.fbx"
     rig_report_path = root / "rig-report.json"
     proof_report_path = root / "proof-render-report.json"
+    sanitization_report_path = root / "mesh-sanitization-report.json"
 
     for required in (base, lod1, lod2, fbx):
         if not required.is_file() or required.stat().st_size == 0:
             failures.append(f"Missing non-empty output: {required.name}")
+
+    sanitization_report = {}
+    if not sanitization_report_path.is_file():
+        failures.append("Missing mesh-sanitization-report.json")
+    else:
+        try:
+            sanitization_report = json.loads(sanitization_report_path.read_text(encoding="utf-8"))
+            if sanitization_report.get("success") is not True:
+                failures.append(
+                    "Mesh sanitization did not pass: " +
+                    str(sanitization_report.get("error", "unknown error"))
+                )
+            orientation = sanitization_report.get("orientation", {})
+            if orientation.get("standingAxisVerified") is not True:
+                failures.append("Mesh sanitizer did not verify a standing Z-up character before rigging")
+        except Exception as exception:
+            failures.append(f"Mesh sanitization report could not be read: {exception}")
 
     rig_report = {}
     if not rig_report_path.is_file():
@@ -143,11 +165,27 @@ def main() -> int:
         failures.append(f"Base character has only {vertices} vertices; approved-detail floor is 6000")
     if vertices > 120000:
         failures.append(f"Base character has {vertices} vertices; mobile ceiling is 120000")
+    width = float(base_mesh.get("width", 0.0))
     height = float(base_mesh.get("height", 0.0))
+    depth = float(base_mesh.get("depth", 0.0))
     if height and not 1.45 <= height <= 1.95:
         failures.append(
             f"Base character height is {height:.3f}m on the glTF Y-up axis; "
             "expected normalized mobile range is 1.45–1.95m"
+        )
+    if height and width > height * 0.90:
+        failures.append(
+            f"Base character width is {width:.3f}m versus {height:.3f}m height; "
+            "the asset is likely sideways, exploded, or incorrectly skinned"
+        )
+    if height and depth > height * 0.90:
+        failures.append(
+            f"Base character depth is {depth:.3f}m versus {height:.3f}m height; "
+            "the asset is likely sideways, exploded, or incorrectly skinned"
+        )
+    if height and max(width, depth) > 0 and height < max(width, depth) * 1.10:
+        failures.append(
+            f"Standing-axis dominance failed: width={width:.3f}m, height={height:.3f}m, depth={depth:.3f}m"
         )
     rig_height = float(rig_report.get("bounds", {}).get("height", 0.0))
     if height and rig_height and abs(height - rig_height) > 0.04:
@@ -200,10 +238,11 @@ def main() -> int:
         failures.append("Front, three-quarter, side and back proofs are not four distinct renders")
 
     report = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "character": args.character,
         "passed": not failures,
         "metrics": metrics,
+        "sanitizationReport": sanitization_report,
         "rigReport": rig_report,
         "proofRenderReport": proof_report,
         "proof": proof,
