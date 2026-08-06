@@ -1,0 +1,44 @@
+--- a/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt
++++ b/MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/WorkbookIllustrationCatalog.kt
+@@ -2,13 +2,14 @@
+ 
+ import android.content.Context
+ import kotlinx.serialization.Serializable
++import kotlinx.serialization.SerialName
+ import kotlinx.serialization.json.Json
+ 
+ @Serializable
+ data class WorkbookIllustrationPaletteEntry(
+     val number: Int,
+     val label: String,
+-    val rgb: String,
++    @SerialName("hex") val hex: String,
+ )
+@@ -64,15 +65,23 @@
+                 require(manifest.palette.map { it.number }.toSet().size == manifest.palette.size) {
+                     "Workbook palette numbers must be unique"
+                 }
+-                require(manifest.assets.all { asset -> asset.colorRegions.size in 8..24 }) {
+-                    "Curated workbook scenes must contain 8-24 meaningful regions"
++                require(manifest.palette.all { entry ->
++                    entry.hex.matches(Regex("^#[0-9A-Fa-f]{6}$"))
++                }) {
++                    "Workbook palette colors must use six-digit hexadecimal values"
++                }
++                require(manifest.assets.all { asset ->
++                    asset.colorRegionCount == asset.colorRegions.size &&
++                        asset.colorRegions.size in 8..128
++                }) {
++                    "Curated workbook scene region counts are inconsistent or outside the supported range"
+                 }
+                 require(manifest.assets.all { asset -> asset.colorRegions.all { it.pixelCount >= 900 } }) {
+                     "Curated workbook scenes contain regions too small for reliable touch interaction"
+                 }
+                 require(manifest.assets.all { asset ->
+                     asset.colorRegions.map { it.id }.toSet().size == asset.colorRegions.size &&
+-                        asset.colorRegions.all { it.number in asset.colorNumbersUsed }
++                        asset.colorRegions.all { it.number in asset.colorNumbersUsed } &&
++                        asset.colorNumbersUsed.all { it in manifest.palette.map { entry -> entry.number } }
+                 }) { "Curated workbook region metadata is inconsistent" }
+                 cached = manifest
+             }
