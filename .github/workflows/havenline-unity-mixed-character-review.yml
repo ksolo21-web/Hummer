@@ -1,0 +1,272 @@
+name: Render HAVENLINE Mixed-Source Unity Character Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      lead_run_id:
+        description: Successful production run containing Characters 1 and 2
+        required: false
+        type: string
+      girls_run_id:
+        description: Successful refined multi-view run containing Characters 3 and 4
+        required: false
+        type: string
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.tooling/havenline-unity-mixed-review-request.json'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-unity-mixed-character-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unity-character-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve exact mixed character sources
+        id: request
+        shell: python
+        env:
+          DISPATCH_LEAD_RUN_ID: ${{ inputs.lead_run_id }}
+          DISPATCH_GIRLS_RUN_ID: ${{ inputs.girls_run_id }}
+        run: |
+          import json, os, pathlib
+          request_path = pathlib.Path('.tooling/havenline-unity-mixed-review-request.json')
+          payload = json.loads(request_path.read_text()) if request_path.exists() else {}
+          lead = (os.environ.get('DISPATCH_LEAD_RUN_ID') or '').strip() or str(payload.get('leadProductionRunId', '')).strip()
+          girls = (os.environ.get('DISPATCH_GIRLS_RUN_ID') or '').strip() or str(payload.get('girlsRefinementRunId', '')).strip()
+          if not lead.isdigit() or not girls.isdigit():
+              raise SystemExit('Numeric leadProductionRunId and girlsRefinementRunId are required.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'lead_run_id={lead}\n')
+              output.write(f'girls_run_id={girls}\n')
+          print(json.dumps({'leadProductionRunId': lead, 'girlsRefinementRunId': girls}, indent=2))
+
+      - name: Download Character 1 production package
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character1-production-review
+          path: character_packages/Character1
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: ${{ steps.request.outputs.lead_run_id }}
+
+      - name: Download Character 2 production package
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character2-production-review
+          path: character_packages/Character2
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: ${{ steps.request.outputs.lead_run_id }}
+
+      - name: Download Character 3 refined multi-view package
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character3-refined-multiview-review
+          path: character_packages/Character3
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: ${{ steps.request.outputs.girls_run_id }}
+
+      - name: Download Character 4 refined multi-view package
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character4-refined-multiview-review
+          path: character_packages/Character4
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: ${{ steps.request.outputs.girls_run_id }}
+
+      - name: Verify and stage selected production FBX files
+        shell: bash
+        env:
+          LEAD_RUN_ID: ${{ steps.request.outputs.lead_run_id }}
+          GIRLS_RUN_ID: ${{ steps.request.outputs.girls_run_id }}
+        run: |
+          set -euo pipefail
+          production=HAVENLINE_UNITY/Assets/Havenline/Art/Characters/Production
+          evidence=HAVENLINE_UNITY/Assets/Havenline/Generated/CharacterReviewSource
+          mkdir -p "$production" "$evidence"
+
+          for character in Character1 Character2; do
+            package="character_packages/$character"
+            fbx="$(find "$package" -type f -name "${character}_production.fbx" -size +10000c -print -quit)"
+            validation="$(find "$package" -type f -name validation-report.json -print -quit)"
+            matrix="$(find "$package" -type f -name matrix-status.json -print -quit)"
+            test -n "$fbx" || { echo "Missing production FBX for $character" >&2; exit 1; }
+            test -n "$validation" || { echo "Missing validation report for $character" >&2; exit 1; }
+            test -n "$matrix" || { echo "Missing matrix status for $character" >&2; exit 1; }
+            python3 - "$validation" "$matrix" "$character" <<'PY'
+          import json, pathlib, sys
+          validation = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          status = json.loads(pathlib.Path(sys.argv[2]).read_text())
+          character = sys.argv[3]
+          if validation.get('passed') is not True:
+              raise SystemExit(f'{character} validation-report did not pass')
+          if status.get('machinePassed') is not True:
+              raise SystemExit(f'{character} matrix-status did not pass')
+          if status.get('approved') is True:
+              raise SystemExit(f'{character} was prematurely marked human-approved')
+          PY
+            destination="$production/$character"
+            mkdir -p "$destination"
+            cp "$fbx" "$destination/${character}_production.fbx"
+            cp "$validation" "$evidence/${character}-validation-report.json"
+            cp "$matrix" "$evidence/${character}-source-status.json"
+          done
+
+          for character in Character3 Character4; do
+            package="character_packages/$character"
+            fbx="$(find "$package" -type f -name "${character}_production.fbx" -size +10000c -print -quit)"
+            validation="$(find "$package" -type f -name validation-report.json -print -quit)"
+            refinement="$(find "$package" -type f -name refinement-status.json -print -quit)"
+            test -n "$fbx" || { echo "Missing refined production FBX for $character" >&2; exit 1; }
+            test -n "$validation" || { echo "Missing refined validation report for $character" >&2; exit 1; }
+            test -n "$refinement" || { echo "Missing refinement status for $character" >&2; exit 1; }
+            python3 - "$validation" "$refinement" "$character" <<'PY'
+          import json, pathlib, sys
+          validation = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          status = json.loads(pathlib.Path(sys.argv[2]).read_text())
+          character = sys.argv[3]
+          if validation.get('passed') is not True:
+              raise SystemExit(f'{character} validation-report did not pass')
+          if status.get('machineValidationPassed') is not True:
+              raise SystemExit(f'{character} refinement-status did not pass')
+          if status.get('approved') is True:
+              raise SystemExit(f'{character} was prematurely marked human-approved')
+          PY
+            destination="$production/$character"
+            mkdir -p "$destination"
+            cp "$fbx" "$destination/${character}_production.fbx"
+            cp "$validation" "$evidence/${character}-validation-report.json"
+            cp "$refinement" "$evidence/${character}-source-status.json"
+          done
+
+          cat > "$evidence/source-run.json" <<EOF
+          {
+            "schemaVersion": 2,
+            "leadProductionRunId": "$LEAD_RUN_ID",
+            "girlsRefinementRunId": "$GIRLS_RUN_ID",
+            "sourcePolicy": "Characters 1-2 recovered TRELLIS production; Characters 3-4 refined multi-view production",
+            "humanVisualApprovalRequired": true,
+            "approved": false
+          }
+          EOF
+          find "$production" -type f -maxdepth 3 -print
+
+      - name: Materialize checksum-pinned approved references
+        run: python3 .tooling/havenline-character-reference-payload/materialize_references.py
+
+      - name: Render actual characters inside the Unity game scene
+        uses: game-ci/unity-builder@v5
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: HAVENLINE_UNITY
+          unityVersion: 6000.3.18f1
+          targetPlatform: Android
+          buildMethod: Havenline.Editor.HavenlineCharacterUnityReview.CaptureFromCi
+          buildsPath: Builds
+          buildName: HAVENLINE-mixed-character-unity-review
+          allowDirtyBuild: true
+          customParameters: -characterProductionRunId ${{ steps.request.outputs.lead_run_id }}
+
+      - name: Build approved-reference versus Unity comparison sheets
+        shell: python
+        run: |
+          from __future__ import annotations
+          import hashlib, json, pathlib
+          from PIL import Image, ImageDraw, ImageOps
+
+          project = pathlib.Path('HAVENLINE_UNITY')
+          review = project / 'Builds' / 'CharacterUnityReview'
+          references = pathlib.Path('.tooling/havenline-character-production/references')
+          comparison = review / 'Comparisons'
+          comparison.mkdir(parents=True, exist_ok=True)
+
+          def fit(image, size, background=(238, 242, 247)):
+              contained = ImageOps.contain(image.convert('RGB'), size, Image.Resampling.LANCZOS)
+              canvas = Image.new('RGB', size, background)
+              canvas.paste(contained, ((size[0] - contained.width) // 2, (size[1] - contained.height) // 2))
+              return canvas
+
+          manifest = {
+              'schemaVersion': 2,
+              'leadProductionRunId': '${{ steps.request.outputs.lead_run_id }}',
+              'girlsRefinementRunId': '${{ steps.request.outputs.girls_run_id }}',
+              'humanVisualApprovalRequired': True,
+              'approved': False,
+              'characters': []
+          }
+          for index in range(1, 5):
+              character = f'Character{index}'
+              reference_path = references / f'{character}.jpg'
+              reference = Image.open(reference_path).convert('RGB')
+              unity_views = []
+              for view in ('front', 'three-quarter', 'side', 'back'):
+                  path = review / f'HAVENLINE-{character}-unity-{view}.png'
+                  if not path.is_file():
+                      raise SystemExit(f'Missing Unity render: {path}')
+                  unity_views.append(fit(Image.open(path), (640, 640)))
+
+              unity_grid = Image.new('RGB', (1280, 1280), (238, 242, 247))
+              unity_grid.paste(unity_views[0], (0, 0))
+              unity_grid.paste(unity_views[1], (640, 0))
+              unity_grid.paste(unity_views[2], (0, 640))
+              unity_grid.paste(unity_views[3], (640, 640))
+              reference_panel = fit(reference, (1280, 1280))
+              canvas = Image.new('RGB', (2560, 1400), (22, 28, 38))
+              canvas.paste(reference_panel, (0, 120))
+              canvas.paste(unity_grid, (1280, 120))
+              draw = ImageDraw.Draw(canvas)
+              draw.text((32, 34), f'{character} — APPROVED TURNAROUND', fill=(245, 247, 250))
+              draw.text((1312, 34), f'{character} — ACTUAL UNITY URP RENDER', fill=(245, 247, 250))
+              draw.text((32, 88), 'Left: checksum-pinned approved design reference', fill=(178, 190, 207))
+              draw.text((1312, 88), 'Right: front / three-quarter / side / back in the authored landscape game scene', fill=(178, 190, 207))
+              output = comparison / f'HAVENLINE-{character}-approved-vs-unity.png'
+              canvas.save(output, optimize=True)
+              manifest['characters'].append({
+                  'character': character,
+                  'referenceSha256': hashlib.sha256(reference_path.read_bytes()).hexdigest(),
+                  'comparisonFile': str(output.relative_to(review)),
+                  'comparisonSha256': hashlib.sha256(output.read_bytes()).hexdigest(),
+                  'humanVisualReviewStatus': 'pending'
+              })
+
+          (review / 'comparison-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+
+      - name: Verify Unity review evidence is complete
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=HAVENLINE_UNITY/Builds/CharacterUnityReview
+          test -s "$root/HAVENLINE-characters-in-game-with-ui.png"
+          test -s "$root/HAVENLINE-characters-in-game-clean.png"
+          test -s "$root/unity-character-review-report.json"
+          test -s "$root/comparison-manifest.json"
+          for character in Character1 Character2 Character3 Character4; do
+            for view in front three-quarter side back; do
+              test -s "$root/HAVENLINE-${character}-unity-${view}.png"
+            done
+            test -s "$root/Comparisons/HAVENLINE-${character}-approved-vs-unity.png"
+          done
+
+      - name: Upload actual mixed-source Unity character visual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-unity-mixed-character-visual-review
+          path: HAVENLINE_UNITY/Builds/CharacterUnityReview/**
+          compression-level: 0
+          retention-days: 30
