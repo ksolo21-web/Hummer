@@ -11,6 +11,7 @@ on:
       - '.tooling/havenline-character-production/run_sf3d_support_pipeline.ps1'
       - '.tooling/havenline-character-production/prepare_sf3d_character_input.py'
       - '.tooling/havenline-character-production/finalize_sf3d_generation.py'
+      - '.tooling/havenline-character-production/bind_havenline_source_commit.py'
       - '.tooling/havenline-character-production/runtime-versions.json'
       - '.tooling/havenline-character-production/character1-seed9101-visual-rejection.json'
       - '.tooling/havenline-character-production/character2-unity-review-candidate.json'
@@ -54,6 +55,7 @@ jobs:
           rejection = json.loads((root / 'character1-seed9101-visual-rejection.json').read_text())
           candidate = json.loads((root / 'character2-unity-review-candidate.json').read_text())
           pipeline = (root / 'run_sf3d_character_pipeline.ps1').read_text()
+          binder = (root / 'bind_havenline_source_commit.py').read_text()
           workflow = Path('.github/workflows/generate-havenline-support-characters-sf3d.yml').read_text()
 
           assert runtime['schemaVersion'] == 3
@@ -67,6 +69,7 @@ jobs:
           assert rejection['humanVisualReview']['status'] == 'rejected'
           assert rejection['acceptedForUnityReview'] is False
           assert candidate['artifact']['id'] == '8973791027'
+          assert candidate['acceptedForUnityReview'] is True
           assert candidate['approved'] is False
 
           for literal in (
@@ -74,9 +77,11 @@ jobs:
               "acceptedForUnityReview = $false",
               "humanVisualApprovalRequired = $true",
               "run_sf3d_character_pipeline.ps1",
+              "bind_havenline_source_commit.py",
+              "trackedSourceClean",
               "character1-seed9101-visual-rejection.json",
           ):
-              if literal not in pipeline + workflow:
+              if literal not in pipeline + binder + workflow:
                   raise SystemExit(f'Missing SF3D recovery literal: {literal}')
           forbidden_runner_context = '$' + '{{ runner.'
           if forbidden_runner_context in workflow:
@@ -132,6 +137,16 @@ jobs:
           & .tooling\havenline-character-production\run_sf3d_character_pipeline.ps1 `
             -Character '${{ matrix.character }}'
 
+      - name: Bind package to the exact checked-out HAVENLINE source commit
+        id: source-binding
+        if: steps.pipeline.outcome == 'success'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          python .tooling\havenline-character-production\bind_havenline_source_commit.py `
+            --character '${{ matrix.character }}' `
+            --directory 'character_output\${{ matrix.character }}'
+
       - name: Upload complete character review evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -142,7 +157,7 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-      - name: Enforce machine completion without granting visual approval
+      - name: Enforce machine completion and exact source binding without granting visual approval
         if: always()
         shell: pwsh
         run: |
@@ -154,8 +169,12 @@ jobs:
           if ('${{ steps.pipeline.outcome }}' -ne 'success' -or -not $status.machinePassed) {
             throw '${{ matrix.character }} failed the SF3D/Blender machine pipeline. Evidence was preserved.'
           }
+          if ('${{ steps.source-binding.outcome }}' -ne 'success') {
+            throw '${{ matrix.character }} was not bound to the exact checked-out HAVENLINE commit.'
+          }
+          if (-not $status.havenlineSource -or -not $status.havenlineSource.trackedSourceClean) {
+            throw '${{ matrix.character }} has no clean HAVENLINE source binding.'
+          }
           if ($status.acceptedForUnityReview -or $status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
             throw 'Machine generation attempted to bypass Blender or Unity human visual review.'
           }
-
-# Triggered after the default-branch workflow registry became valid.
