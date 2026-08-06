@@ -46,8 +46,6 @@ jobs:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       STABILITY_AI_LICENSE_ACCEPTED: ${{ vars.STABILITY_AI_LICENSE_ACCEPTED }}
       STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED: ${{ vars.STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED }}
-      HF_HOME: ${{ runner.temp }}\havenline-huggingface
-      TORCH_EXTENSIONS_DIR: ${{ runner.temp }}\havenline-torch-extensions
 
     steps:
       - name: Check out exact HAVENLINE branch commit
