@@ -60,10 +60,7 @@ jobs:
             https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip \
             --output "$RUNNER_TEMP/character1-seed9101.zip"
           python3 - <<'PY'
-          import os
-          import pathlib
-          import zipfile
-
+          import os, pathlib, zipfile
           archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'character1-seed9101.zip'
           with zipfile.ZipFile(archive) as source:
               source.extractall('source_package')
@@ -77,26 +74,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m ensurepip --upgrade || true
-          python3 -m pip install --user --upgrade pip setuptools wheel
-          python3 -m pip install --user 'numpy<2' pillow trimesh pygltflib
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-          install_system_packages() {
+          install_packages() {
+            local packages=(
+              libegl1 libgl1-mesa-dri libglx-mesa0
+              libxfixes3 libxi6 libxkbcommon0
+              xz-utils
+            )
             if command -v sudo >/dev/null 2>&1; then
               sudo DEBIAN_FRONTEND=noninteractive apt-get update
-              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                libegl1 libgl1-mesa-dri libglx-mesa0 xz-utils
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
             elif [ "$(id -u)" = 0 ]; then
               DEBIAN_FRONTEND=noninteractive apt-get update
-              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                libegl1 libgl1-mesa-dri libglx-mesa0 xz-utils
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
             else
               echo 'Ubuntu slim runner cannot install Blender shared-library dependencies.' >&2
               exit 1
             fi
           }
-          install_system_packages
+          install_packages
+
+          python3 -m pip install --user --upgrade pip setuptools wheel
+          python3 -m pip install --user 'numpy<2' pillow trimesh pygltflib
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
           archive="$RUNNER_TEMP/blender-4.5.12-linux-x64.tar.xz"
           runtime="$RUNNER_TEMP/blender-4.5.12"
@@ -104,23 +103,7 @@ jobs:
             https://download.blender.org/release/Blender4.5/blender-4.5.12-linux-x64.tar.xz \
             --output "$archive"
           mkdir -p "$runtime"
-          python3 - <<'PY'
-          import os
-          import pathlib
-          import tarfile
-
-          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'blender-4.5.12-linux-x64.tar.xz'
-          runtime = pathlib.Path(os.environ['RUNNER_TEMP']) / 'blender-4.5.12'
-          with tarfile.open(archive, mode='r:xz') as source:
-              members = source.getmembers()
-              prefix = members[0].name.split('/', 1)[0] + '/'
-              for member in members:
-                  if not member.name.startswith(prefix):
-                      continue
-                  member.name = member.name[len(prefix):]
-                  if member.name:
-                      source.extract(member, runtime, filter='data')
-          PY
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
           test -x "$runtime/blender"
           ldd "$runtime/blender" | tee "$RUNNER_TEMP/blender-ldd.txt"
           if grep -q 'not found' "$RUNNER_TEMP/blender-ldd.txt"; then
@@ -155,10 +138,8 @@ jobs:
           mkdir -p "$out"
           cp "$RUNNER_TEMP/havenline-source-commit.txt" "$out/havenline-source-commit.txt"
           python3 - <<'PY'
-          import json
-          import os
+          import json, os
           from pathlib import Path
-
           root = Path('character_output/Character1')
           evidence = sorted(
               str(path.relative_to(root)).replace('\\', '/')
@@ -202,6 +183,7 @@ jobs:
           out=character_output/Character1
           rm -rf "$proof_root"
           mkdir -p "$proof_root"
+          cp "$RUNNER_TEMP/havenline-source-commit.txt" "$proof_root/havenline-source-commit.txt"
           for file in \
             proof_front.png \
             proof_three-quarter.png \
@@ -219,7 +201,6 @@ jobs:
             validation-report.json \
             actionless-seed9101-status.json \
             workflow-evidence-status.json \
-            havenline-source-commit.txt \
             Character1_production.glb \
             Character1_production.fbx \
             Character1_LOD1.glb \
