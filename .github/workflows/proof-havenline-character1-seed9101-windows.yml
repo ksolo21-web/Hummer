@@ -53,23 +53,23 @@ jobs:
           if (-not (Test-Path character_output/Character1/generation-report.json)) { throw 'Missing generation-report.json' }
           if (-not (Test-Path character_output/Character1/approved_reference_sheet.jpg)) { throw 'Missing approved reference' }
 
-      - name: Install portable Blender 4.2 and validation runtime
+      - name: Install pinned Blender 4.5.12 LTS and validation runtime
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install 'numpy<2' pillow trimesh pygltflib
-          $archive = Join-Path $env:RUNNER_TEMP 'blender-4.2.3-windows-x64.zip'
+          $archive = Join-Path $env:RUNNER_TEMP 'blender-4.5.12-windows-x64.zip'
           $runtimeRoot = Join-Path $env:RUNNER_TEMP 'blender-runtime'
           curl.exe --fail --location --retry 5 --retry-delay 5 `
-            https://download.blender.org/release/Blender4.2/blender-4.2.3-windows-x64.zip `
+            https://download.blender.org/release/Blender4.5/blender-4.5.12-windows-x64.zip `
             --output $archive
           New-Item -ItemType Directory -Force $runtimeRoot | Out-Null
           Expand-Archive -LiteralPath $archive -DestinationPath $runtimeRoot -Force
           $blender = Get-ChildItem -Path $runtimeRoot -Filter blender.exe -Recurse | Select-Object -First 1
           if ($null -eq $blender) { throw 'Portable Blender executable was not found' }
           $blender.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          & $blender.FullName --background --factory-startup --python-expr "import bpy; print('Blender:', bpy.app.version_string)"
+          & $blender.FullName --background --factory-startup --python-expr "import bpy; assert bpy.app.version[:2] == (4, 5), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
 
       - name: Build rigged mobile character and exact proofs
         shell: bash
