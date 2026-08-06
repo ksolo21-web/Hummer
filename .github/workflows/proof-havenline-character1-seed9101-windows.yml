@@ -1,5 +1,6 @@
 name: Proof HAVENLINE Character 1 Seed 9101 Windows Fallback
 
+# Evidence delivery revision 2: upload complete binary proof and production package.
 on:
   workflow_dispatch:
   push:
