@@ -18,10 +18,16 @@ concurrency:
   group: kreativ-live-backend-repair
   cancel-in-progress: false
 
+env:
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+  FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MY_STUDY_COMPANION_ABC01 || secrets.FIREBASE_SERVICE_ACCOUNT || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON || secrets.GCP_SA_KEY || secrets.GCLOUD_SERVICE_KEY || secrets.GOOGLE_CREDENTIALS || secrets.SERVICE_ACCOUNT_JSON || secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
 jobs:
   dry-run:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: my-study-companion-private
     steps:
       - name: Check out repair source
         uses: actions/checkout@v7
@@ -42,19 +48,46 @@ jobs:
           grep -q 'my-study-companion-abc01' tools/kreativ-live-cloud-root-fix.sh
           grep -q 'kreativ_firebase_repair.py' tools/kreativ-live-cloud-root-fix.sh
 
-      - name: Authenticate through repository-restricted Workload Identity
-        id: auth
+      - name: Select available Google authentication source
+        id: auth_source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ]; then
+            echo "mode=service_account_json" >> "$GITHUB_OUTPUT"
+            echo "Using a configured service-account JSON secret."
+          elif [ -n "${GCP_WORKLOAD_IDENTITY_PROVIDER:-}" ] && [ -n "${GCP_DEPLOY_SERVICE_ACCOUNT:-}" ]; then
+            echo "mode=workload_identity" >> "$GITHUB_OUTPUT"
+            echo "Using repository-configured Workload Identity Federation."
+          else
+            echo "No usable Google Cloud deployment credential is configured." >&2
+            echo "Checked the project-specific and legacy service-account secret aliases, plus GCP_WORKLOAD_IDENTITY_PROVIDER and GCP_DEPLOY_SERVICE_ACCOUNT." >&2
+            exit 1
+          fi
+
+      - name: Authenticate with service-account JSON
+        id: auth_json
+        if: ${{ steps.auth_source.outputs.mode == 'service_account_json' }}
         uses: google-github-actions/auth@v3
         with:
           token_format: access_token
           access_token_scopes: https://www.googleapis.com/auth/cloud-platform
-          workload_identity_provider: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
-          service_account: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+          credentials_json: ${{ env.FIREBASE_SERVICE_ACCOUNT_JSON }}
+
+      - name: Authenticate through repository-configured Workload Identity
+        id: auth_wif
+        if: ${{ steps.auth_source.outputs.mode == 'workload_identity' }}
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOY_SERVICE_ACCOUNT }}
 
       - name: Read live shared rules and generate non-destructive merge
         shell: bash
         env:
-          FIREBASE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          FIREBASE_ACCESS_TOKEN: ${{ steps.auth_json.outputs.access_token || steps.auth_wif.outputs.access_token }}
         run: |
           set -euo pipefail
           test -n "$FIREBASE_ACCESS_TOKEN"
