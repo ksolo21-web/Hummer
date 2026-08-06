@@ -1,8 +1,20 @@
 #!/usr/bin/env python3
+"""Build production-ready HAVENLINE character rigs, clips, LODs and exports.
+
+The approved female lead/reference models reconstructed by single-view TripoSR can retain
+excellent clothing and silhouette detail while producing unstable facial depth. For
+Characters 3 and 4 this script now preserves the reconstructed body/hair, pushes only the
+central malformed face surface behind a small curved shell, and maps the approved front
+reference directly onto that shell. The shell is real skinned geometry, not a camera-facing
+billboard, so it remains attached to the head in Unity and reads correctly from front and
+three-quarter gameplay cameras.
+"""
+
 import argparse
 import json
 import math
 import pathlib
+import shutil
 import sys
 import traceback
 
@@ -12,7 +24,7 @@ from mathutils import Vector
 
 def args_after_separator():
     values = sys.argv
-    return values[values.index("--") + 1:] if "--" in values else []
+    return values[values.index("--") + 1 :] if "--" in values else []
 
 
 def parse_args():
@@ -72,6 +84,216 @@ def normalize(meshes):
     }
 
 
+def quantile(values, fraction):
+    ordered = sorted(float(value) for value in values)
+    if not ordered:
+        raise RuntimeError("Cannot calculate a quantile from an empty sample")
+    position = max(0.0, min(1.0, float(fraction))) * (len(ordered) - 1)
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    blend = position - lower
+    return ordered[lower] * (1.0 - blend) + ordered[upper] * blend
+
+
+def copy_approved_references(character, root):
+    copied = []
+    approved_sheet = (
+        pathlib.Path(".tooling")
+        / "havenline-character-production"
+        / "references"
+        / f"{character}.jpg"
+    )
+    if approved_sheet.is_file():
+        destination = root / "approved_reference_sheet.jpg"
+        shutil.copyfile(approved_sheet, destination)
+        copied.append(str(destination))
+
+    generated_front = root / "triposr_input.jpg"
+    if generated_front.is_file():
+        destination = root / "approved_front_reference.jpg"
+        shutil.copyfile(generated_front, destination)
+        copied.append(str(destination))
+    return copied
+
+
+def face_profile(character):
+    profiles = {
+        "Character3": {
+            "center_z_fraction": 0.910,
+            "center_x_offset": -0.006,
+            "half_width": 0.116,
+            "half_height": 0.128,
+            "u_min": 0.360,
+            "u_max": 0.610,
+            "v_min": 0.742,
+            "v_max": 0.948,
+        },
+        "Character4": {
+            "center_z_fraction": 0.908,
+            "center_x_offset": -0.004,
+            "half_width": 0.121,
+            "half_height": 0.130,
+            "u_min": 0.350,
+            "u_max": 0.620,
+            "v_min": 0.744,
+            "v_max": 0.948,
+        },
+    }
+    return profiles.get(character)
+
+
+def create_reference_face_surface(character, root, meshes, bounds):
+    profile = face_profile(character)
+    reference = root / "approved_front_reference.jpg"
+    if profile is None:
+        return {
+            "applied": False,
+            "reason": "reference face surface is only required for Characters 3 and 4",
+        }, None
+    if not reference.is_file() or reference.stat().st_size == 0:
+        return {
+            "applied": False,
+            "reason": f"missing approved front reference: {reference}",
+        }, None
+
+    minimum = Vector(bounds["minimum"])
+    maximum = Vector(bounds["maximum"])
+    height = max(maximum.z - minimum.z, 0.001)
+    center_x = (minimum.x + maximum.x) * 0.5 + profile["center_x_offset"]
+    center_z = minimum.z + height * profile["center_z_fraction"]
+    half_width = profile["half_width"]
+    half_height = profile["half_height"]
+
+    face_depth_samples = []
+    for obj in meshes:
+        matrix = obj.matrix_world
+        for vertex in obj.data.vertices:
+            point = matrix @ vertex.co
+            dx = (point.x - center_x) / max(half_width * 1.45, 1e-6)
+            dz = (point.z - center_z) / max(half_height * 1.35, 1e-6)
+            if dx * dx + dz * dz <= 1.0:
+                face_depth_samples.append(point.y)
+    if len(face_depth_samples) < 40:
+        raise RuntimeError(
+            f"Too few head vertices were available for approved face refinement: {len(face_depth_samples)}"
+        )
+
+    measured_front = quantile(face_depth_samples, 0.10)
+    shell_edge_y = measured_front + 0.043
+    shell_bulge = 0.064
+    backing_center_y = shell_edge_y + 0.015
+
+    displaced_vertices = 0
+    for obj in meshes:
+        inverse = obj.matrix_world.inverted()
+        changed = False
+        for vertex in obj.data.vertices:
+            point = obj.matrix_world @ vertex.co
+            dx = (point.x - center_x) / max(half_width, 1e-6)
+            dz = (point.z - center_z) / max(half_height, 1e-6)
+            radial = dx * dx + dz * dz
+            if radial <= 1.0 and point.y < shell_edge_y + 0.024:
+                target_y = backing_center_y + 0.006 * radial
+                if point.y < target_y:
+                    point.y = target_y
+                    vertex.co = inverse @ point
+                    displaced_vertices += 1
+                    changed = True
+        if changed:
+            obj.data.update()
+
+    horizontal_segments = 28
+    vertical_segments = 24
+    theta_limit = math.radians(82.0)
+    phi_limit = math.radians(84.0)
+    vertices = []
+    faces = []
+    uv_by_vertex = []
+
+    for row in range(vertical_segments + 1):
+        row_fraction = row / vertical_segments
+        theta = -theta_limit + (2.0 * theta_limit * row_fraction)
+        cos_theta = math.cos(theta)
+        sin_theta = math.sin(theta)
+        for column in range(horizontal_segments + 1):
+            column_fraction = column / horizontal_segments
+            phi = -phi_limit + (2.0 * phi_limit * column_fraction)
+            sin_phi = math.sin(phi)
+            cos_phi = math.cos(phi)
+            x = center_x + half_width * cos_theta * sin_phi
+            z = center_z + half_height * sin_theta
+            y = shell_edge_y - shell_bulge * cos_theta * cos_phi
+            vertices.append((x, y, z))
+            u = profile["u_min"] + column_fraction * (profile["u_max"] - profile["u_min"])
+            v = profile["v_min"] + row_fraction * (profile["v_max"] - profile["v_min"])
+            uv_by_vertex.append((u, v))
+
+    row_width = horizontal_segments + 1
+    for row in range(vertical_segments):
+        for column in range(horizontal_segments):
+            a = row * row_width + column
+            b = a + 1
+            d = (row + 1) * row_width + column
+            c = d + 1
+            faces.append((a, b, c, d))
+
+    mesh_data = bpy.data.meshes.new(f"{character}_ApprovedFaceSurfaceMesh")
+    mesh_data.from_pydata(vertices, [], faces)
+    mesh_data.update(calc_edges=True)
+    uv_layer = mesh_data.uv_layers.new(name="UVMap")
+    for polygon in mesh_data.polygons:
+        for loop_index in polygon.loop_indices:
+            vertex_index = mesh_data.loops[loop_index].vertex_index
+            uv_layer.data[loop_index].uv = uv_by_vertex[vertex_index]
+
+    material = bpy.data.materials.new(f"{character}_ApprovedFaceMaterial")
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    nodes.clear()
+    output_node = nodes.new("ShaderNodeOutputMaterial")
+    shader = nodes.new("ShaderNodeBsdfPrincipled")
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = bpy.data.images.load(str(reference.resolve()), check_existing=True)
+    texture.interpolation = "Linear"
+    texture.extension = "CLIP"
+    links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+    links.new(shader.outputs["BSDF"], output_node.inputs["Surface"])
+    if shader.inputs.get("Roughness"):
+        shader.inputs["Roughness"].default_value = 0.62
+    if shader.inputs.get("Specular IOR Level"):
+        shader.inputs["Specular IOR Level"].default_value = 0.22
+    mesh_data.materials.append(material)
+
+    face_object = bpy.data.objects.new(f"{character}_ApprovedFaceSurface", mesh_data)
+    face_object["havenlineApprovedReferenceSurface"] = True
+    face_object["havenlineReferenceSource"] = str(reference)
+    bpy.context.collection.objects.link(face_object)
+
+    return {
+        "applied": True,
+        "reference": str(reference),
+        "measuredFrontDepth": measured_front,
+        "shellEdgeDepth": shell_edge_y,
+        "shellCenterDepth": shell_edge_y - shell_bulge,
+        "center": [center_x, shell_edge_y, center_z],
+        "halfWidth": half_width,
+        "halfHeight": half_height,
+        "displacedMalformedFaceVertices": displaced_vertices,
+        "surfaceVertices": len(vertices),
+        "surfaceFaces": len(faces),
+        "uvCrop": [
+            profile["u_min"],
+            profile["v_min"],
+            profile["u_max"],
+            profile["v_max"],
+        ],
+        "surfaceType": "curved skinned approved-reference geometry; never camera-facing",
+    }, face_object
+
+
 def add_bone(armature, name, head, tail, parent=None):
     bone = armature.edit_bones.new(name)
     bone.head = head
@@ -103,55 +325,13 @@ def create_rig(character, bounds):
     add_bone(armature_data, "Head", (0, 0, 1.52), (0, 0, 1.73), "Neck")
 
     for side, sign in (("Left", 1), ("Right", -1)):
-        add_bone(
-            armature_data,
-            f"{side}Shoulder",
-            (0, 0, 1.39),
-            (shoulder_x * sign, 0, 1.37),
-            "Chest",
-        )
-        add_bone(
-            armature_data,
-            f"{side}UpperArm",
-            (shoulder_x * sign, 0, 1.37),
-            (arm_x * sign, 0, 1.13),
-            f"{side}Shoulder",
-        )
-        add_bone(
-            armature_data,
-            f"{side}LowerArm",
-            (arm_x * sign, 0, 1.13),
-            (hand_x * sign, 0, 0.88),
-            f"{side}UpperArm",
-        )
-        add_bone(
-            armature_data,
-            f"{side}Hand",
-            (hand_x * sign, 0, 0.88),
-            (hand_x * sign, -0.02, 0.73),
-            f"{side}LowerArm",
-        )
-        add_bone(
-            armature_data,
-            f"{side}UpperLeg",
-            (hip_x * sign, 0, 0.82),
-            (hip_x * sign, 0, 0.48),
-            "Hips",
-        )
-        add_bone(
-            armature_data,
-            f"{side}LowerLeg",
-            (hip_x * sign, 0, 0.48),
-            (hip_x * sign, 0, 0.14),
-            f"{side}UpperLeg",
-        )
-        add_bone(
-            armature_data,
-            f"{side}Foot",
-            (hip_x * sign, 0, 0.14),
-            (hip_x * sign, -0.19, 0.07),
-            f"{side}LowerLeg",
-        )
+        add_bone(armature_data, f"{side}Shoulder", (0, 0, 1.39), (shoulder_x * sign, 0, 1.37), "Chest")
+        add_bone(armature_data, f"{side}UpperArm", (shoulder_x * sign, 0, 1.37), (arm_x * sign, 0, 1.13), f"{side}Shoulder")
+        add_bone(armature_data, f"{side}LowerArm", (arm_x * sign, 0, 1.13), (hand_x * sign, 0, 0.88), f"{side}UpperArm")
+        add_bone(armature_data, f"{side}Hand", (hand_x * sign, 0, 0.88), (hand_x * sign, -0.02, 0.73), f"{side}LowerArm")
+        add_bone(armature_data, f"{side}UpperLeg", (hip_x * sign, 0, 0.82), (hip_x * sign, 0, 0.48), "Hips")
+        add_bone(armature_data, f"{side}LowerLeg", (hip_x * sign, 0, 0.48), (hip_x * sign, 0, 0.14), f"{side}UpperLeg")
+        add_bone(armature_data, f"{side}Foot", (hip_x * sign, 0, 0.14), (hip_x * sign, -0.19, 0.07), f"{side}LowerLeg")
 
     bpy.ops.object.mode_set(mode="OBJECT")
     rig.select_set(False)
@@ -279,21 +459,8 @@ def create_animations(rig):
     actions.append(create_action(rig, "idle", 40, idle))
     actions.append(create_action(rig, "walk", 30, lambda action, length: cycle(action, length, 0.55)))
     actions.append(create_action(rig, "run", 22, lambda action, length: cycle(action, length, 0.85)))
-    for name, amplitude in (
-        ("gather", -0.95),
-        ("carry", -0.45),
-        ("deposit", -1.05),
-        ("warm", -0.30),
-        ("build", -1.15),
-    ):
-        actions.append(
-            create_action(
-                rig,
-                name,
-                36,
-                lambda action, length, value=amplitude: work(action, length, value),
-            )
-        )
+    for name, amplitude in (("gather", -0.95), ("carry", -0.45), ("deposit", -1.05), ("warm", -0.30), ("build", -1.15)):
+        actions.append(create_action(rig, name, 36, lambda action, length, value=amplitude: work(action, length, value)))
     rig.animation_data.action = bpy.data.actions.get("idle")
     return actions
 
@@ -312,8 +479,9 @@ def duplicate_lod(meshes, suffix, ratio):
                 armature_object = existing.object
                 copy.modifiers.remove(existing)
 
+        local_ratio = 0.88 if original.get("havenlineApprovedReferenceSurface") else ratio
         modifier = copy.modifiers.new("MobileDecimate", "DECIMATE")
-        modifier.ratio = ratio
+        modifier.ratio = local_ratio
         bpy.context.view_layer.objects.active = copy
         copy.select_set(True)
         try:
@@ -344,12 +512,7 @@ def export_in_isolated_scene(path, meshes, rig, export_format):
             obj.select_set(True)
         bpy.context.view_layer.objects.active = rig
         if export_format == "GLB":
-            bpy.ops.export_scene.gltf(
-                filepath=str(path),
-                export_format="GLB",
-                use_selection=True,
-                export_animations=True,
-            )
+            bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True, export_animations=True)
         else:
             bpy.ops.export_scene.fbx(
                 filepath=str(path),
@@ -358,6 +521,8 @@ def export_in_isolated_scene(path, meshes, rig, export_format):
                 bake_anim=True,
                 bake_anim_use_all_actions=True,
                 bake_anim_use_nla_strips=False,
+                path_mode="COPY",
+                embed_textures=True,
             )
     finally:
         bpy.context.window.scene = original_scene
@@ -398,7 +563,8 @@ def render_proofs(root, objects):
     bpy.context.collection.objects.link(fill)
 
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"
+    engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items}
+    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engines else "BLENDER_EEVEE"
     scene.render.resolution_x = 1024
     scene.render.resolution_y = 1024
     scene.render.resolution_percentage = 100
@@ -410,12 +576,7 @@ def render_proofs(root, objects):
 
     radius = 5.0
     target = (0, 0, 0.92)
-    views = (
-        ("front", (0, -radius, 0.92)),
-        ("three-quarter", (radius / math.sqrt(2), -radius / math.sqrt(2), 0.92)),
-        ("side", (radius, 0, 0.92)),
-        ("back", (0, radius, 0.92)),
-    )
+    views = (("front", (0, -radius, 0.92)), ("three-quarter", (radius / math.sqrt(2), -radius / math.sqrt(2), 0.92)), ("side", (radius, 0, 0.92)), ("back", (0, radius, 0.92)))
     for label, position in views:
         camera.location = position
         point_camera(camera, target)
@@ -429,19 +590,17 @@ def main():
     root = pathlib.Path(args.output)
     root.mkdir(parents=True, exist_ok=True)
     report_path = root / "rig-report.json"
-    report = {
-        "schemaVersion": 1,
-        "character": args.character,
-        "success": False,
-        "input": args.input,
-        "outputs": [],
-    }
+    report = {"schemaVersion": 2, "character": args.character, "success": False, "input": args.input, "outputs": []}
     try:
+        approved_references = copy_approved_references(args.character, root)
         clear_scene()
         meshes = import_glb(pathlib.Path(args.input))
         if not meshes:
             raise RuntimeError("Generated GLB contains no mesh objects")
         bounds = normalize(meshes)
+        face_refinement, face_object = create_reference_face_surface(args.character, root, meshes, bounds)
+        if face_object is not None:
+            meshes.append(face_object)
         rig = create_rig(args.character, bounds)
         weighted_vertices = bind(meshes, rig, bounds)
         actions = create_animations(rig)
@@ -461,6 +620,7 @@ def main():
 
         outputs = [base_glb, base_fbx, lod1_glb, lod2_glb]
         outputs.extend(root / f"proof_{name}.png" for name in ("front", "three-quarter", "side", "back"))
+        outputs.extend(pathlib.Path(path) for path in approved_references)
         report.update(
             success=True,
             bounds=bounds,
@@ -468,11 +628,9 @@ def main():
             weightedVertices=weighted_vertices,
             bones=[bone.name for bone in rig.data.bones],
             animations=[action.name for action in actions],
-            outputs=[
-                {"path": str(path), "bytes": path.stat().st_size}
-                for path in outputs
-                if path.is_file()
-            ],
+            approvedReferences=approved_references,
+            faceRefinement=face_refinement,
+            outputs=[{"path": str(path), "bytes": path.stat().st_size} for path in outputs if path.is_file()],
         )
         report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     except Exception as exception:
