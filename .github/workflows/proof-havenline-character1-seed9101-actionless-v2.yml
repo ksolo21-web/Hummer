@@ -62,7 +62,7 @@ jobs:
           test -s character_output/Character1/generation-report.json
           test -s character_output/Character1/approved_reference_sheet.jpg
 
-      - name: Install Blender 4.2 and validation runtime
+      - name: Install pinned Blender 4.5.12 LTS and validation runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -70,17 +70,17 @@ jobs:
           python -m pip install 'numpy<2' pillow trimesh pygltflib
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             libegl1 libgl1-mesa-dri libglx-mesa0 unzip
-          archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
-          runtime="$RUNNER_TEMP/blender-4.2.3"
+          archive="$RUNNER_TEMP/blender-4.5.12-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.5.12"
           curl --fail --location --retry 5 --retry-delay 5 \
-            https://mirrors.dotsrc.org/blender/blender-release/Blender4.2/blender-4.2.3-linux-x64.tar.xz \
+            https://download.blender.org/release/Blender4.5/blender-4.5.12-linux-x64.tar.xz \
             --output "$archive"
           mkdir -p "$runtime"
           tar -xJf "$archive" --strip-components=1 -C "$runtime"
           test -x "$runtime/blender"
           echo "$runtime" >> "$GITHUB_PATH"
           "$runtime/blender" --background --factory-startup \
-            --python-expr "import bpy; print('Blender:', bpy.app.version_string)"
+            --python-expr "import bpy; assert bpy.app.version[:2] == (4, 5), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
 
       - name: Build rigged mobile character and exact proofs
         shell: bash
