@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "requestedUtc": "2026-08-06T02:10:00Z",
+  "sourceBranch": "havenline-unity-reference-rebuild",
+  "status": "production-generation-requested",
+  "characters": [
+    {
+      "id": "Character1",
+      "role": "selectable playable lead or companion when unselected",
+      "reference": "approved Character 1 turnaround"
+    },
+    {
+      "id": "Character2",
+      "role": "selectable playable lead or companion when unselected",
+      "reference": "approved Character 2 turnaround"
+    },
+    {
+      "id": "Character3",
+      "role": "core helper and story companion",
+      "reference": "approved Character 3 turnaround"
+    },
+    {
+      "id": "Character4",
+      "role": "core helper and story companion",
+      "reference": "approved Character 4 turnaround"
+    }
+  ],
+  "requiredOutputs": [
+    "textured mobile-optimized base mesh",
+    "humanoid armature",
+    "idle animation",
+    "walk animation",
+    "run animation",
+    "gather animation",
+    "carry animation",
+    "deposit animation",
+    "warm animation",
+    "build animation",
+    "LOD1 and LOD2",
+    "front, three-quarter, side and back rendered proof"
+  ],
+  "integrationPolicy": "Generate review artifacts first. Do not integrate into the Unity shipping scene until the rendered character proof is visually approved.",
+  "truthBoundary": "The approved sheets are official references only. No character is production-complete until a generated model passes mesh, texture, humanoid-rig, animation, mobile-budget and rendered-proof review gates."
+}
