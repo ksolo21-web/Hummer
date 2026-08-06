@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: havenline-production-characters-${{ github.ref }}
@@ -38,6 +39,7 @@ jobs:
           root=.tooling/havenline-character-production
           required=(
             "$root/generate_character_mesh.py"
+            "$root/generate_procedural_character.py"
             "$root/rig_animate_character.py"
             "$root/render_character_proofs.py"
             "$root/validate_character_asset.py"
@@ -85,7 +87,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Restore generated raw character mesh
+      - name: Restore generated raw character mesh cache
         id: raw-mesh-cache
         uses: actions/cache@v4
         with:
@@ -95,7 +97,37 @@ jobs:
             character_output/${{ matrix.character }}/view_*.png
             character_output/${{ matrix.character }}/processed_*.png
             character_output/${{ matrix.character }}/trellis_*
-          key: havenline-trellis-${{ matrix.character }}-${{ matrix.seed }}-${{ hashFiles('.tooling/havenline-character-production/generate_character_mesh.py', '.tooling/havenline-character-reference-payload/**') }}
+          key: havenline-raw-v2-${{ matrix.character }}-${{ matrix.seed }}-${{ hashFiles('.tooling/havenline-character-production/generate_character_mesh.py', '.tooling/havenline-character-production/generate_procedural_character.py', '.tooling/havenline-character-reference-payload/**') }}
+      - name: Download prior verified character review artifact
+        id: prior-review
+        if: ${{ steps.raw-mesh-cache.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-${{ matrix.character }}-production-review
+          path: prior_character_review
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: 31087895186
+      - name: Recover prior raw mesh without trusting prior validation
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="character_output/${{ matrix.character }}"
+          raw="$out/${{ matrix.character }}_raw.glb"
+          mkdir -p "$out"
+          if [ ! -s "$raw" ] && [ -d prior_character_review ]; then
+            candidate="$(find prior_character_review -type f -name '${{ matrix.character }}_raw.glb' -size +0c -print -quit || true)"
+            if [ -n "$candidate" ]; then
+              cp "$candidate" "$raw"
+              report="$(find prior_character_review -type f -name 'generation-report.json' -print -quit || true)"
+              if [ -n "$report" ]; then
+                cp "$report" "$out/generation-report.json"
+              fi
+              echo "Recovered raw mesh from prior run artifact: $candidate"
+            fi
+          fi
       - name: Install reconstruction, Blender and headless graphics tools
         shell: bash
         run: |
@@ -121,10 +153,15 @@ jobs:
             env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
             blender --background --factory-startup \
             --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('Blender NumPy:', numpy.__version__)"
-      - name: Generate multi-view textured mesh
+      - name: Generate or author textured character mesh
         id: generate
         continue-on-error: true
         shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
         run: |
           set -euo pipefail
           root=.tooling/havenline-character-production
@@ -132,13 +169,29 @@ jobs:
           raw="$out/${{ matrix.character }}_raw.glb"
           mkdir -p "$out"
           if [ -s "$raw" ]; then
-            echo "Reusing checksum-keyed raw mesh cache: $raw"
-          else
-            python "$root/generate_character_mesh.py" \
+            echo "Reusing recovered or checksum-keyed raw mesh: $raw"
+          elif [ -n "${HF_TOKEN:-}" ]; then
+            if ! python "$root/generate_character_mesh.py" \
               --character '${{ matrix.character }}' \
               --sheet "$root/references/${{ matrix.character }}.jpg" \
               --output "$out" \
-              --seed '${{ matrix.seed }}'
+              --seed '${{ matrix.seed }}'; then
+              echo "Authenticated hosted reconstruction failed; authoring deterministic fallback."
+              xvfb-run -a -s '-screen 0 1920x1080x24' \
+                blender --background --factory-startup \
+                --python "$root/generate_procedural_character.py" -- \
+                --character '${{ matrix.character }}' \
+                --output "$out" \
+                --reason 'Authenticated hosted reconstruction failed during this run'
+            fi
+          else
+            echo "No authenticated hosted reconstruction quota is available; authoring the character-specific fallback."
+            xvfb-run -a -s '-screen 0 1920x1080x24' \
+              blender --background --factory-startup \
+              --python "$root/generate_procedural_character.py" -- \
+              --character '${{ matrix.character }}' \
+              --output "$out" \
+              --reason 'No authenticated hosted reconstruction token was available'
           fi
           test -s "$raw"
       - name: Optimize, humanoid-rig and animate
