@@ -118,13 +118,7 @@ def orient_upright(meshes) -> dict:
 
 
 def weld_and_repair_topology(obj, global_span: float) -> dict:
-    """Weld exact reconstruction duplicates before connected-component analysis.
-
-    TripoSR/xatlas can duplicate every triangle vertex for UV/material boundaries. Without
-    a spatial weld, a long ribbon is seen as hundreds of harmless individual triangles and
-    survives the debris gate. UV data is stored per loop, so welding coincident geometry does
-    not erase the texture seams.
-    """
+    """Weld exact reconstruction duplicates before connected-component analysis."""
 
     mesh = obj.data
     before_vertices = len(mesh.vertices)
@@ -263,6 +257,18 @@ def should_remove(metrics, global_span: float) -> tuple[bool, str | None]:
     ):
         return True, "paper-thin disconnected reconstruction ribbon"
 
+    if (
+        vertices <= 1000
+        and largest >= scale * 0.25
+        and smallest <= scale * 0.025
+        and middle <= scale * 0.12
+        and volume <= scale**3 * 0.0012
+    ):
+        return True, "disconnected elongated strap-like reconstruction artifact"
+
+    if vertices <= 64 and faces <= 128 and largest <= scale * 0.06:
+        return True, "small disconnected reconstruction fragment"
+
     if vertices <= 10 and faces <= 8 and largest <= scale * 0.035:
         return True, "sub-pixel disconnected fragment"
 
@@ -361,7 +367,7 @@ def main() -> int:
     report_path = output / "mesh-sanitization-report.json"
     cleaned_path = output / f"{args.character}_sanitized.glb"
     report = {
-        "schemaVersion": 6,
+        "schemaVersion": 7,
         "character": args.character,
         "source": str(source),
         "success": False,
