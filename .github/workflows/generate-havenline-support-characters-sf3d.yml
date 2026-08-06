@@ -7,6 +7,7 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - '.github/workflows/generate-havenline-support-characters-sf3d.yml'
+      - '.tooling/havenline-character-production/run_sf3d_support_pipeline.ps1'
       - '.tooling/havenline-character-production/prepare_sf3d_character_input.py'
       - '.tooling/havenline-character-production/finalize_sf3d_generation.py'
       - '.tooling/havenline-character-production/runtime-versions.json'
@@ -39,88 +40,17 @@ jobs:
           - Character3
           - Character4
     env:
-      CHARACTER: ${{ matrix.character }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       STABILITY_AI_LICENSE_ACCEPTED: ${{ vars.STABILITY_AI_LICENSE_ACCEPTED }}
       STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED: ${{ vars.STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED }}
       HF_HOME: ${{ runner.temp }}\havenline-huggingface
       TORCH_EXTENSIONS_DIR: ${{ runner.temp }}\havenline-torch-extensions
-      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
-      HF_HUB_DISABLE_TELEMETRY: '1'
 
     steps:
       - name: Check out exact HAVENLINE branch commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Materialize checksum-pinned approved references
-        shell: pwsh
-        run: python .tooling/havenline-character-reference-payload/materialize_references.py
-
-      - name: Verify license, GPU, CUDA and Visual Studio build tools
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          function Test-True([string]$Value) {
-            return $Value -match '(?i)^(true|1|yes)$'
-          }
-          if (-not $env:HF_TOKEN) {
-            throw 'HF_TOKEN is required for the gated stabilityai/stable-fast-3d model.'
-          }
-          if (-not (Test-True $env:STABILITY_AI_LICENSE_ACCEPTED)) {
-            throw 'Set repository variable STABILITY_AI_LICENSE_ACCEPTED=true after accepting the Stability AI Community License.'
-          }
-          if (-not (Test-True $env:STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED)) {
-            throw 'Set STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED=true after completing the required commercial-use registration.'
-          }
-
-          $nvidia = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue
-          if (-not $nvidia) {
-            throw 'The self-hosted Windows runner does not expose nvidia-smi.exe.'
-          }
-          $gpuName = ((& nvidia-smi.exe --query-gpu=name --format=csv,noheader | Select-Object -First 1) -join '').Trim()
-          $vramText = ((& nvidia-smi.exe --query-gpu=memory.total --format=csv,noheader,nounits | Select-Object -First 1) -join '').Trim()
-          $vramMiB = [int]$vramText
-          if ($vramMiB -lt 6144) {
-            throw "Stable Fast 3D requires at least 6144 MiB VRAM; runner exposes $vramMiB MiB."
-          }
-          "GPU_NAME=$gpuName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "GPU_VRAM_MIB=$vramMiB" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-          if (-not $env:CUDA_PATH -or -not (Test-Path (Join-Path $env:CUDA_PATH 'bin\nvcc.exe'))) {
-            throw 'CUDA toolkit with nvcc is required on the self-hosted RTX runner.'
-          }
-          "CUDA_HOME=$env:CUDA_PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "$(Join-Path $env:CUDA_PATH 'bin')" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-          if (-not (Test-Path $vswhere)) {
-            throw 'Visual Studio 2022 Build Tools are required for SF3D native CUDA extensions.'
-          }
-          $installation = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
-          if (-not $installation) {
-            throw 'Visual Studio C++ build tools were not found.'
-          }
-          $vsDevCmd = Join-Path $installation 'Common7\Tools\VsDevCmd.bat'
-          $environment = cmd.exe /s /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 >nul && set"
-          foreach ($line in $environment) {
-            if ($line -match '^([^=]+)=(.*)$') {
-              "$($Matches[1])=$($Matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            }
-          }
-
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          versions = json.loads(Path('.tooling/havenline-character-production/runtime-versions.json').read_text())
-          sf3d = versions['stableFast3D']
-          assert sf3d['commit'] == 'ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2'
-          assert sf3d['textureResolution'] == 2048
-          assert sf3d['remeshOption'] == 'triangle'
-          assert sf3d['targetVertexCount'] == 42000
-          assert versions['reconstruction'][str(Path.cwd()) and __import__('os').environ['CHARACTER']]['generator'] == 'Stability-AI/stable-fast-3d'
-          PY
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -129,211 +59,19 @@ jobs:
           cache: pip
           cache-dependency-path: .tooling/havenline-character-production/runtime-versions.json
 
-      - name: Install pinned Stable Fast 3D CUDA environment
+      - name: Materialize checksum-pinned approved references
         shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          python -m venv .venv-sf3d
-          $python = (Resolve-Path '.venv-sf3d\Scripts\python.exe').Path
-          "SF3D_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          & $python -m pip install --upgrade pip 'setuptools==69.5.1' wheel
-          & $python -m pip install --index-url https://download.pytorch.org/whl/cu124 `
-            'torch==2.4.1' 'torchvision==0.19.1'
+        run: python .tooling/havenline-character-reference-payload/materialize_references.py
 
-          if (Test-Path stable-fast-3d) { Remove-Item stable-fast-3d -Recurse -Force }
-          git clone https://github.com/Stability-AI/stable-fast-3d.git stable-fast-3d
-          git -C stable-fast-3d checkout --detach ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2
-          $actual = (git -C stable-fast-3d rev-parse HEAD).Trim()
-          if ($actual -ne 'ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2') {
-            throw "Stable Fast 3D revision mismatch: $actual"
-          }
-          & $python -m pip install -r stable-fast-3d\requirements.txt
-          & $python -m pip install 'pygltflib==1.16.5' 'Pillow>=10.1,<12'
-          & $python -c "import torch; assert torch.cuda.is_available(); p=torch.cuda.get_device_properties(0); assert p.total_memory >= 6*1024**3; print(torch.__version__, torch.version.cuda, p.name, p.total_memory)"
-          & $python -c "from huggingface_hub import login; import os; login(token=os.environ['HF_TOKEN'], add_to_git_credential=False)"
-
-      - name: Prepare approved three-quarter reconstruction input
-        id: input
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = '.tooling\havenline-character-production'
-          $out = "character_output\$env:CHARACTER"
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-          & $env:SF3D_PYTHON "$root\prepare_sf3d_character_input.py" `
-            --character $env:CHARACTER `
-            --sheet "$root\references\$env:CHARACTER.jpg" `
-            --output "$out\sf3d_input.png"
-          Copy-Item "$root\references\$env:CHARACTER.jpg" "$out\approved_reference_sheet.jpg" -Force
-          if (-not (Test-Path "$out\sf3d_input.png")) { throw 'Prepared SF3D input is missing.' }
-
-      - name: Reconstruct textured support character on RTX GPU
-        id: reconstruct
+      - name: Run the fail-closed RTX reconstruction and Blender proof pipeline
+        id: pipeline
         continue-on-error: true
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          $repoRoot = $PWD.Path
-          $out = Join-Path $repoRoot "character_output\$env:CHARACTER"
-          $input = (Resolve-Path (Join-Path $out 'sf3d_input.png')).Path
-          $sf3dOut = Join-Path $repoRoot "sf3d_output\$env:CHARACTER"
-          New-Item -ItemType Directory -Force -Path $sf3dOut | Out-Null
+          & .tooling\havenline-character-production\run_sf3d_support_pipeline.ps1 `
+            -Character '${{ matrix.character }}'
 
-          Push-Location stable-fast-3d
-          try {
-            & $env:SF3D_PYTHON run.py $input `
-              --device cuda `
-              --texture-resolution 2048 `
-              --remesh_option triangle `
-              --target_vertex_count 42000 `
-              --foreground-ratio 0.88 `
-              --output-dir $sf3dOut
-            if ($LASTEXITCODE -ne 0) { throw "Stable Fast 3D exited with code $LASTEXITCODE" }
-          }
-          finally {
-            Pop-Location
-          }
-
-          & $env:SF3D_PYTHON .tooling\havenline-character-production\finalize_sf3d_generation.py `
-            --character $env:CHARACTER `
-            --sf3d-output $sf3dOut `
-            --prepared-input $input `
-            --destination $out `
-            --generator-commit ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2 `
-            --gpu-name $env:GPU_NAME `
-            --gpu-vram-mib $env:GPU_VRAM_MIB
-
-      - name: Install pinned portable Blender 4.5.12 LTS
-        id: blender
-        if: steps.reconstruct.outcome == 'success'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $archive = Join-Path $env:RUNNER_TEMP 'blender-4.5.12-windows-x64.zip'
-          $runtime = Join-Path $env:RUNNER_TEMP 'blender-4.5.12-windows-x64'
-          if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
-          Invoke-WebRequest `
-            -Uri 'https://download.blender.org/release/Blender4.5/blender-4.5.12-windows-x64.zip' `
-            -OutFile $archive
-          Expand-Archive -Path $archive -DestinationPath $runtime -Force
-          $blender = (Get-ChildItem $runtime -Filter blender.exe -Recurse | Select-Object -First 1).FullName
-          if (-not $blender) { throw 'Portable Blender executable was not found.' }
-          & $blender --background --factory-startup --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print(bpy.app.version_string)"
-          if ($LASTEXITCODE -ne 0) { throw 'Blender 4.5.12 version gate failed.' }
-          "BLENDER_EXE=$blender" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Sanitize disconnected reconstruction debris
-        id: sanitize
-        if: steps.reconstruct.outcome == 'success' && steps.blender.outcome == 'success'
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = '.tooling\havenline-character-production'
-          $out = "character_output\$env:CHARACTER"
-          & $env:BLENDER_EXE --background --factory-startup `
-            --python "$root\sanitize_character_mesh.py" -- `
-            --character $env:CHARACTER `
-            --input "$out\$env:CHARACTER`_raw.glb" `
-            --output $out
-          if ($LASTEXITCODE -ne 0) { throw 'Mesh sanitization failed.' }
-          if (-not (Test-Path "$out\$env:CHARACTER`_sanitized.glb")) { throw 'Sanitized GLB is missing.' }
-
-      - name: Rig, animate, export GLB and FBX, and build LODs
-        id: rig
-        if: steps.sanitize.outcome == 'success'
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = '.tooling\havenline-character-production'
-          $out = "character_output\$env:CHARACTER"
-          & $env:BLENDER_EXE --background --factory-startup `
-            --python "$root\rig_animate_character_export_only.py" -- `
-            --character $env:CHARACTER `
-            --input "$out\$env:CHARACTER`_sanitized.glb" `
-            --output $out
-          if ($LASTEXITCODE -ne 0) { throw 'Rig/export stage failed.' }
-          @(
-            "$out\$env:CHARACTER`_production.glb",
-            "$out\$env:CHARACTER`_production.fbx",
-            "$out\$env:CHARACTER`_LOD1.glb",
-            "$out\$env:CHARACTER`_LOD2.glb"
-          ) | ForEach-Object { if (-not (Test-Path $_)) { throw "Missing production output: $_" } }
-
-      - name: Render four exact production GLB proofs with Cycles CPU
-        id: proof
-        if: steps.rig.outcome == 'success'
-        continue-on-error: true
-        shell: pwsh
-        env:
-          HAVENLINE_CYCLES_SAMPLES: '16'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = '.tooling\havenline-character-production'
-          $out = "character_output\$env:CHARACTER"
-          & $env:BLENDER_EXE --background --factory-startup `
-            --python "$root\render_character_proofs_cpu.py" -- `
-            --character $env:CHARACTER `
-            --input "$out\$env:CHARACTER`_production.glb" `
-            --output $out
-          if ($LASTEXITCODE -ne 0) { throw 'Cycles CPU proof rendering failed.' }
-          @('front', 'three-quarter', 'side', 'back') | ForEach-Object {
-            $proof = "$out\proof_$_.png"
-            if (-not (Test-Path $proof)) { throw "Missing proof image: $proof" }
-          }
-
-      - name: Validate mobile mesh, rig, clips, LODs, materials and proofs
-        id: validate
-        if: steps.proof.outcome == 'success'
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          & $env:SF3D_PYTHON .tooling\havenline-character-production\validate_character_asset.py `
-            --character $env:CHARACTER `
-            --directory "character_output\$env:CHARACTER"
-          if ($LASTEXITCODE -ne 0) { throw 'Character validation failed.' }
-
-      - name: Write truthful machine status
-        if: always()
-        shell: pwsh
-        env:
-          RECONSTRUCT_OUTCOME: ${{ steps.reconstruct.outcome }}
-          SANITIZE_OUTCOME: ${{ steps.sanitize.outcome }}
-          RIG_OUTCOME: ${{ steps.rig.outcome }}
-          PROOF_OUTCOME: ${{ steps.proof.outcome }}
-          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
-        run: |
-          $out = "character_output\$env:CHARACTER"
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-          @'
-          import json, os
-          from pathlib import Path
-          root = Path('character_output') / os.environ['CHARACTER']
-          validation_path = root / 'validation-report.json'
-          validation = json.loads(validation_path.read_text()) if validation_path.exists() else {}
-          status = {
-              'schemaVersion': 1,
-              'character': os.environ['CHARACTER'],
-              'sourceMode': 'self-hosted-rtx-sf3d',
-              'generator': 'Stability-AI/stable-fast-3d',
-              'generatorCommit': 'ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2',
-              'reconstructOutcome': os.environ.get('RECONSTRUCT_OUTCOME', 'skipped'),
-              'sanitizeOutcome': os.environ.get('SANITIZE_OUTCOME', 'skipped'),
-              'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
-              'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
-              'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
-              'machinePassed': validation.get('passed') is True,
-              'approved': False,
-              'humanVisualReviewStatus': 'pending',
-              'humanVisualApprovalRequired': True,
-              'unityIntegrated': False,
-          }
-          (root / 'sf3d-pipeline-status.json').write_text(json.dumps(status, indent=2) + '\n')
-          print(json.dumps(status, indent=2))
-          '@ | & $env:SF3D_PYTHON -
-
-      - name: Upload complete Character 3 or 4 review package
+      - name: Upload complete support-character review evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -343,17 +81,18 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-      - name: Enforce complete machine pipeline without granting visual approval
+      - name: Enforce machine completion without granting visual approval
         if: always()
         shell: pwsh
         run: |
-          $out = "character_output\$env:CHARACTER"
-          $statusPath = Join-Path $out 'sf3d-pipeline-status.json'
-          if (-not (Test-Path $statusPath)) { throw 'SF3D pipeline status is missing.' }
-          $status = Get-Content $statusPath -Raw | ConvertFrom-Json
-          if (-not $status.machinePassed) {
-            throw "$env:CHARACTER failed the SF3D/Blender machine pipeline. Evidence was preserved for diagnosis."
+          $statusPath = 'character_output\${{ matrix.character }}\sf3d-pipeline-status.json'
+          if (-not (Test-Path $statusPath)) {
+            throw 'SF3D pipeline status is missing.'
           }
-          if ($status.approved -or $status.unityIntegrated) {
-            throw 'Machine generation attempted to bypass human visual approval.'
+          $status = Get-Content $statusPath -Raw | ConvertFrom-Json
+          if ('${{ steps.pipeline.outcome }}' -ne 'success' -or -not $status.machinePassed) {
+            throw '${{ matrix.character }} failed the SF3D/Blender machine pipeline. Evidence was preserved.'
+          }
+          if ($status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
+            throw 'Machine generation attempted to bypass the human visual approval gate.'
           }
