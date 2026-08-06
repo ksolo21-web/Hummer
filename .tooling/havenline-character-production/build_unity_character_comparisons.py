@@ -61,6 +61,8 @@ def main() -> int:
         raise RuntimeError("Unity review report was prematurely marked approved")
     if str(report.get("humanVisualReviewStatus", "")).lower() != "pending":
         raise RuntimeError("Unity review report must remain pending before manual inspection")
+    if source_set.get("humanVisualApprovalRequired") is not True:
+        raise RuntimeError("Source artifact set attempted to bypass human review")
     if source_set.get("approved") is not False or source_set.get("unityIntegrated") is not False:
         raise RuntimeError("Source artifact set was prematurely promoted")
 
@@ -82,7 +84,7 @@ def main() -> int:
     comparison_directory = review / "Comparisons"
     comparison_directory.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "sourceSetSha256": source_set.get("sourceSetSha256"),
         "unityReviewReportSha256": sha256(report_path),
         "humanVisualApprovalRequired": True,
@@ -94,12 +96,38 @@ def main() -> int:
     for character in CHARACTERS:
         source = source_characters[character]
         unity = report_characters[character]
+        if source.get("machinePassed") is not True:
+            raise RuntimeError(f"{character} source machine evidence is incomplete")
+        if source.get("acceptedForUnityReview") is not True:
+            raise RuntimeError(f"{character} source artifact was not accepted for Unity review")
+        if source.get("humanVisualApprovalRequired") is not True:
+            raise RuntimeError(f"{character} source artifact bypassed human visual approval")
+        if source.get("approved") is not False or source.get("unityIntegrated") is not False:
+            raise RuntimeError(f"{character} source artifact was prematurely promoted")
+
         if unity.get("machineEvidenceComplete") is not True:
             raise RuntimeError(f"{character} Unity machine evidence is incomplete")
         if unity.get("approved") is not False:
             raise RuntimeError(f"{character} Unity evidence was prematurely approved")
         if str(unity.get("humanVisualReviewStatus", "")).lower() != "pending":
             raise RuntimeError(f"{character} Unity evidence must remain pending")
+
+        expected_model_path = (
+            f"Assets/Havenline/Art/Characters/Production/"
+            f"{character}/{character}_production.fbx"
+        )
+        if source.get("productionFbxPath") != expected_model_path:
+            raise RuntimeError(f"{character} source FBX path is not canonical")
+        if unity.get("modelAssetPath") != expected_model_path:
+            raise RuntimeError(f"{character} Unity review imported a different FBX path")
+        source_fbx_hash = source.get("productionFbxSha256")
+        unity_fbx_hash = unity.get("modelAssetSha256")
+        if not isinstance(source_fbx_hash, str) or len(source_fbx_hash) != 64:
+            raise RuntimeError(f"{character} source FBX has no valid SHA-256")
+        if unity_fbx_hash != source_fbx_hash:
+            raise RuntimeError(
+                f"{character} Unity imported FBX hash does not match the staged source artifact"
+            )
 
         reference = evidence / character / "approved_reference_sheet.jpg"
         if not reference.is_file():
@@ -156,9 +184,12 @@ def main() -> int:
             {
                 "character": character,
                 "artifactId": source.get("artifactId"),
-                "productionFbxSha256": source.get("productionFbxSha256"),
+                "artifactDigest": source.get("artifactDigest"),
+                "artifactPolicy": source.get("artifactPolicy"),
+                "productionFbxPath": expected_model_path,
+                "productionFbxSha256": source_fbx_hash,
                 "approvedReferenceSha256": actual_reference_hash,
-                "unityModelAssetSha256": unity.get("modelAssetSha256"),
+                "unityModelAssetSha256": unity_fbx_hash,
                 "unityRenderFiles": unity_files,
                 "unityRenderSha256": unity_hashes,
                 "comparisonFile": str(output.relative_to(review).as_posix()),
