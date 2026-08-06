@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import pathlib
 
@@ -14,14 +15,20 @@ def inspect_glb(path: pathlib.Path) -> dict:
     scene = trimesh.load(path, force="scene")
     geometries = list(scene.geometry.values())
     bounds = scene.bounds.tolist() if scene.bounds is not None else None
-    height = float(bounds[1][2] - bounds[0][2]) if bounds else 0.0
+    extents = []
+    if bounds:
+        extents = [float(bounds[1][axis] - bounds[0][axis]) for axis in range(3)]
+    # glTF is Y-up. Blender's Z-up production height is exported on the glTF Y axis.
+    height = extents[1] if len(extents) == 3 else 0.0
     return {
         "bytes": path.stat().st_size,
         "geometryCount": len(geometries),
         "vertices": sum(len(item.vertices) for item in geometries),
         "faces": sum(len(item.faces) for item in geometries),
         "bounds": bounds,
+        "axisExtents": extents,
         "height": height,
+        "heightAxis": "Y (glTF up axis)",
     }
 
 
@@ -39,6 +46,7 @@ def inspect_gltf(path: pathlib.Path) -> dict:
 
 
 def inspect_proof(path: pathlib.Path) -> dict:
+    binary = path.read_bytes()
     with Image.open(path) as image:
         rgb = image.convert("RGB")
         resized = rgb.resize((128, 128))
@@ -49,7 +57,8 @@ def inspect_proof(path: pathlib.Path) -> dict:
         return {
             "width": image.width,
             "height": image.height,
-            "bytes": path.stat().st_size,
+            "bytes": len(binary),
+            "sha256": hashlib.sha256(binary).hexdigest(),
             "standardDeviation": standard_deviation,
             "dynamicRange": dynamic_range,
         }
@@ -68,9 +77,9 @@ def main() -> int:
     lod2 = root / f"{args.character}_LOD2.glb"
     fbx = root / f"{args.character}_production.fbx"
     rig_report_path = root / "rig-report.json"
+    proof_report_path = root / "proof-render-report.json"
 
-    required_outputs = (base, lod1, lod2, fbx)
-    for required in required_outputs:
+    for required in (base, lod1, lod2, fbx):
         if not required.is_file() or required.stat().st_size == 0:
             failures.append(f"Missing non-empty output: {required.name}")
 
@@ -92,6 +101,21 @@ def main() -> int:
                 )
         except Exception as exception:
             failures.append(f"Rig report could not be read: {exception}")
+
+    proof_report = {}
+    if not proof_report_path.is_file():
+        failures.append("Missing proof-render-report.json from exported production asset")
+    else:
+        try:
+            proof_report = json.loads(proof_report_path.read_text(encoding="utf-8"))
+            if proof_report.get("success") is not True:
+                failures.append(
+                    f"Production proof renderer did not pass: {proof_report.get('error', 'unknown error')}"
+                )
+            if pathlib.Path(str(proof_report.get("sourceAsset", ""))).name != base.name:
+                failures.append("Proof renderer did not use the final production GLB")
+        except Exception as exception:
+            failures.append(f"Proof render report could not be read: {exception}")
 
     metrics = {}
     if base.is_file() and base.stat().st_size:
@@ -121,7 +145,15 @@ def main() -> int:
         failures.append(f"Base character has {vertices} vertices; mobile ceiling is 120000")
     height = float(base_mesh.get("height", 0.0))
     if height and not 1.45 <= height <= 1.95:
-        failures.append(f"Base character height is {height:.3f}m; expected normalized mobile range is 1.45–1.95m")
+        failures.append(
+            f"Base character height is {height:.3f}m on the glTF Y-up axis; "
+            "expected normalized mobile range is 1.45–1.95m"
+        )
+    rig_height = float(rig_report.get("bounds", {}).get("height", 0.0))
+    if height and rig_height and abs(height - rig_height) > 0.04:
+        failures.append(
+            f"Exported GLB height {height:.3f}m does not match rigged Blender height {rig_height:.3f}m"
+        )
 
     base_gltf = metrics.get("baseGltf", {})
     if int(base_gltf.get("skins", 0)) < 1:
@@ -139,13 +171,9 @@ def main() -> int:
     lod1_vertices = int(metrics.get("lod1Mesh", {}).get("vertices", 0))
     lod2_vertices = int(metrics.get("lod2Mesh", {}).get("vertices", 0))
     if vertices and lod1_vertices >= vertices * 0.92:
-        failures.append(
-            f"LOD1 is not materially reduced: base={vertices}, lod1={lod1_vertices}"
-        )
+        failures.append(f"LOD1 is not materially reduced: base={vertices}, lod1={lod1_vertices}")
     if lod1_vertices and lod2_vertices >= lod1_vertices * 0.82:
-        failures.append(
-            f"LOD2 is not materially reduced: lod1={lod1_vertices}, lod2={lod2_vertices}"
-        )
+        failures.append(f"LOD2 is not materially reduced: lod1={lod1_vertices}, lod2={lod2_vertices}")
     if lod2_vertices and lod2_vertices < 500:
         failures.append(f"LOD2 is over-decimated at only {lod2_vertices} vertices")
     if fbx.is_file() and fbx.stat().st_size < 10000:
@@ -167,12 +195,17 @@ def main() -> int:
         except Exception as exception:
             failures.append(f"Rendered proof is unreadable: {path.name}: {exception}")
 
+    proof_hashes = [item.get("sha256") for item in proof.values() if item.get("sha256")]
+    if len(proof_hashes) == 4 and len(set(proof_hashes)) != 4:
+        failures.append("Front, three-quarter, side and back proofs are not four distinct renders")
+
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "character": args.character,
         "passed": not failures,
         "metrics": metrics,
         "rigReport": rig_report,
+        "proofRenderReport": proof_report,
         "proof": proof,
         "failures": failures,
         "humanVisualApprovalRequired": True,
