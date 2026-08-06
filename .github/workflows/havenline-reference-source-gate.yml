@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: havenline-clean-unity-source-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: havenline-clean-unity-source-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   reference-contract:
@@ -82,9 +82,12 @@ jobs:
           require_file "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "Android build pipeline"
           require_file "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "clean-checkout CI preparation"
           require_file "$root/Assets/Havenline/Editor/HavenlineCharacterProductionGate.cs" "production character release gate"
+          require_file "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "hash-pinned character approval gate"
+          require_file "$root/Assets/Havenline/Art/Characters/Production/HAVENLINE_CHARACTER_APPROVALS.json" "fail-closed character approval manifest"
           require_file "$root/Assets/Havenline/Editor/HavenlineGoogleSignInBuildGate.cs" "Google OAuth release gate"
           require_file "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "Unity reference tests"
           require_file "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "lead and companion crew tests"
+          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "character approval tamper tests"
           require_file ".github/workflows/havenline-unity-android-build.yml" "premium Android workflow"
 
           require_pattern 'm_EditorVersion: 6000.3.18f1' "$root/ProjectSettings/ProjectVersion.txt" "Unity 6000.3.18f1"
@@ -109,6 +112,12 @@ jobs:
           require_pattern 'Character4' "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "Character 4 crew contract"
           require_pattern 'verified Google subject id' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "durable verified Google identity"
           require_pattern 'signing certificate SHA-256' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "Google signing certificate validation"
+
+          require_pattern 'HavenlineCharacterApprovalGate.Validate()' "$root/Assets/Havenline/Editor/HavenlineCharacterProductionGate.cs" "production roster requires visual approval contract"
+          require_pattern 'production FBX SHA-256 does not match the approved evidence' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "exact FBX tamper rejection"
+          require_pattern 'Unity review FBX hash does not match the current production FBX' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "Unity review bound to exact FBX"
+          require_pattern 'ApprovalCannotDisableHumanVisualReview' "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "human review bypass test"
+          require_pattern 'ReplacingApprovedFbxFailsHashAndUnityReviewBinding' "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "approved FBX replacement test"
 
           require_pattern 'public static void BuildAndroidReviewCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "device-test Android build stage"
           require_pattern 'public static void BuildVerifiedReleaseCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "verified-release Android build stage"
@@ -137,7 +146,7 @@ jobs:
             exit 1
           fi
 
-      - name: Parse reference JSON and validate gameplay obligations
+      - name: Parse reference and approval JSON contracts
         shell: python
         run: |
           import json
@@ -146,6 +155,7 @@ jobs:
           root = Path("HAVENLINE_UNITY")
           contract = json.loads((root / "Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json").read_text())
           manifest = json.loads((root / "Packages/manifest.json").read_text())
+          approvals = json.loads((root / "Assets/Havenline/Art/Characters/Production/HAVENLINE_CHARACTER_APPROVALS.json").read_text())
 
           assert contract["product"] == "HAVENLINE"
           assert contract["unityEditor"] == "6000.3.18f1"
@@ -195,7 +205,25 @@ jobs:
           assert manifest["dependencies"]["com.unity.cloud.gltfast"] == "6.19.0"
           assert manifest["dependencies"]["com.unity.inputsystem"] == "1.17.0"
           assert manifest["dependencies"]["com.unity.render-pipelines.universal"] == "17.3.0"
-          print("HAVENLINE connected Unity project and four-character crew contract passed.")
+
+          assert approvals["schemaVersion"] == 1
+          assert approvals["reviewContractVersion"] == "1.0"
+          assert approvals["humanVisualApprovalRequired"] is True
+          entries = approvals["characters"]
+          assert [entry["character"] for entry in entries] == [
+              "Character1", "Character2", "Character3", "Character4"
+          ]
+          for entry in entries:
+              character = entry["character"]
+              expected = f"Assets/Havenline/Art/Characters/Production/{character}/{character}_production.fbx"
+              assert entry["productionFbxPath"] == expected
+              assert entry["approved"] is False
+              assert entry["productionFbxSha256"] == ""
+              assert entry["unityReviewReportSha256"] == ""
+              assert entry["machineProofStatusSha256"] == ""
+              assert entry["approvedReferenceSha256"] == ""
+
+          print("HAVENLINE connected Unity project, four-character crew, and fail-closed approval contract passed.")
 
       - name: Inventory normal source files
         shell: bash
