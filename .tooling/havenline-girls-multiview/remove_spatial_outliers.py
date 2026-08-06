@@ -100,21 +100,50 @@ def find_horizontal_outlier_split(obj, scene_span: float):
     return max(candidates, key=lambda item: (item["gap"], -item["outlierRatio"]))
 
 
-def delete_selected_vertices_preserving_attributes(obj, threshold: float, side: str) -> int:
-    bpy.ops.object.mode_set(mode="OBJECT") if bpy.context.object and bpy.context.object.mode != "OBJECT" else None
+def selected_vertex_indices(obj, threshold: float, side: str) -> list[int]:
+    selected = []
+    for vertex in obj.data.vertices:
+        world_x = float((obj.matrix_world @ vertex.co).x)
+        remove = (
+            (side == "left" and world_x < threshold)
+            or (side == "right" and world_x > threshold)
+        )
+        if remove:
+            selected.append(vertex.index)
+    return selected
+
+
+def delete_selected_vertices_preserving_attributes(
+    obj,
+    vertex_indices: list[int],
+) -> int:
+    if not vertex_indices:
+        return 0
+
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
 
-    selected = 0
+    # Blender can retain imported per-vertex selection flags. Enter edit mode once and
+    # explicitly clear them before applying the prevalidated object-mode index set.
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_mode(type="VERT")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.object.mode_set(mode="OBJECT")
+
     for vertex in obj.data.vertices:
-        world_x = float((obj.matrix_world @ vertex.co).x)
-        remove = (side == "left" and world_x < threshold) or (side == "right" and world_x > threshold)
-        vertex.select = remove
-        if remove:
-            selected += 1
-    if selected == 0:
-        return 0
+        vertex.select = False
+    for index in vertex_indices:
+        obj.data.vertices[index].select = True
+
+    selected_count = sum(1 for vertex in obj.data.vertices if vertex.select)
+    if selected_count != len(vertex_indices):
+        raise RuntimeError(
+            f"Blender selection synchronization failed for {obj.name}: "
+            f"expected {len(vertex_indices)}, selected {selected_count}"
+        )
 
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_mode(type="VERT")
@@ -122,7 +151,7 @@ def delete_selected_vertices_preserving_attributes(obj, threshold: float, side: 
     bpy.ops.object.mode_set(mode="OBJECT")
     obj.data.validate(verbose=False)
     obj.data.update(calc_edges=False, calc_edges_loose=False)
-    return selected
+    return selected_count
 
 
 def clean_object(obj, scene_span: float):
@@ -138,31 +167,64 @@ def clean_object(obj, scene_span: float):
             "reason": "no unambiguous minority cluster separated by a large horizontal gap",
         }
 
-    removed = delete_selected_vertices_preserving_attributes(
+    indices = selected_vertex_indices(
         obj,
         float(split["threshold"]),
         str(split["side"]),
     )
+    selected_ratio = len(indices) / max(vertices_before, 1)
+    expected_ratio = float(split["outlierRatio"])
+    ratio_error = abs(selected_ratio - expected_ratio)
+
+    # Fail closed before mutating the mesh. This prevents stale imported selection state
+    # or a coordinate-space mismatch from deleting the whole character.
+    if not indices:
+        raise RuntimeError(
+            f"A spatial split was detected for {obj.name}, but its selected outlier set is empty"
+        )
+    if selected_ratio > 0.35:
+        raise RuntimeError(
+            f"Spatial cleanup rejected an unsafe pre-delete selection for {obj.name}: "
+            f"{selected_ratio:.3f}"
+        )
+    if ratio_error > 0.015:
+        raise RuntimeError(
+            f"Spatial cleanup selection disagrees with the detected split for {obj.name}: "
+            f"selected={selected_ratio:.4f}, expected={expected_ratio:.4f}"
+        )
+
+    selected_count = delete_selected_vertices_preserving_attributes(obj, indices)
     actual_after = len(obj.data.vertices)
     actual_removed = vertices_before - actual_after
-    if removed <= 0 or actual_removed <= 0:
-        raise RuntimeError(f"A spatial split was detected for {obj.name}, but no vertices were removed")
     actual_ratio = actual_removed / max(vertices_before, 1)
+    if selected_count <= 0 or actual_removed <= 0:
+        raise RuntimeError(f"A spatial split was detected for {obj.name}, but no vertices were removed")
+    if actual_removed != selected_count:
+        raise RuntimeError(
+            f"Spatial cleanup deletion count mismatch for {obj.name}: "
+            f"selected={selected_count}, removed={actual_removed}"
+        )
     if actual_ratio > 0.35:
         raise RuntimeError(
-            f"Spatial cleanup attempted to remove too much geometry from {obj.name}: {actual_ratio:.3f}"
+            f"Spatial cleanup removed too much geometry from {obj.name}: {actual_ratio:.3f}"
         )
 
     return {
         "object": obj.name,
         "verticesBefore": vertices_before,
         "verticesAfter": actual_after,
-        "verticesSelectedForRemoval": removed,
+        "verticesSelectedForRemoval": selected_count,
         "verticesRemoved": actual_removed,
+        "selectedRatio": selected_ratio,
+        "expectedOutlierRatio": expected_ratio,
+        "selectionRatioError": ratio_error,
         "removedRatio": actual_ratio,
         "splitDetected": True,
         "split": split,
-        "attributePreservationMethod": "Blender edit-mode vertex deletion without normal recalculation",
+        "attributePreservationMethod": (
+            "prevalidated object-space index selection followed by Blender edit-mode "
+            "vertex deletion without normal recalculation"
+        ),
         "reason": "minority vertex cluster isolated by a large empty horizontal gap",
     }
 
@@ -192,7 +254,7 @@ def main() -> int:
     output_path = output_root / f"{args.character}_spatial.glb"
     report_path = output_root / "spatial-outlier-report.json"
     report = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
