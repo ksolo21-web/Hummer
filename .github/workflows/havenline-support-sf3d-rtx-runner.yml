@@ -2,8 +2,8 @@ name: HAVENLINE SF3D Recovery Characters RTX Runner
 
 on:
   workflow_dispatch:
-  issue_comment:
-    types: [created]
+  pull_request_target:
+    types: [edited]
 
 permissions:
   contents: read
@@ -17,9 +17,11 @@ jobs:
   generate-character:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request &&
-       contains(github.event.comment.body, '/run-havenline-sf3d-recovery'))
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.number == 19 &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'havenline-unity-reference-rebuild' &&
+       contains(github.event.pull_request.body, 'HAVENLINE_SF3D_RECOVERY_NONCE=20260806-C1-C3-C4-v1'))
     name: ${{ matrix.character }} SF3D RTX production proof
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 240
@@ -44,6 +46,14 @@ jobs:
         with:
           ref: havenline-unity-reference-rebuild
           fetch-depth: 1
+
+      - name: Verify same-repository guarded trigger and exact branch head
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if (-not $actual) { throw 'HAVENLINE checkout has no commit SHA.' }
+          Write-Host "Checked out HAVENLINE commit: $actual"
+          Write-Host "Trigger PR: ${{ github.event.pull_request.number }}"
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
