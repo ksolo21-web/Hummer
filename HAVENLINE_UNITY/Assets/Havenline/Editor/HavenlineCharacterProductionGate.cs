@@ -9,8 +9,9 @@ using UnityEngine;
 namespace Havenline.Editor
 {
     /// <summary>
-    /// Prevents a release-candidate APK from shipping with primitive or incomplete character
-    /// placeholders. Device-test builds may still run while production art is being authored.
+    /// Prevents a release-candidate APK from shipping with primitive, incomplete, or
+    /// visually unapproved character assets. Device-review workflows may import isolated
+    /// candidates, but production promotion requires checksum-pinned human approval.
     /// </summary>
     public static class HavenlineCharacterProductionGate
     {
@@ -58,6 +59,7 @@ namespace Havenline.Editor
             }
 
             failures.AddRange(roster.ValidateRoster());
+            failures.AddRange(HavenlineCharacterApprovalGate.Validate());
 
             foreach (var id in RequiredIds)
             {
