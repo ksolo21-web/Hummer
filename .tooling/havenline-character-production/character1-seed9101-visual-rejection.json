@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "character": "Character1",
+  "artifact": {
+    "id": "8974534288",
+    "name": "havenline-character1-seed9101-windows-31124270527-1",
+    "digest": "sha256:d40ac3c0edbc8c81acfbf2cddb815a15060180d36a1b1ff276fc5924d25ff252",
+    "workflowRunId": "31124270527",
+    "workflowJobId": "92691505298",
+    "workflowSha": "1ce320946cb04c9cfa7947a6283b59c81b7d8229"
+  },
+  "source": {
+    "generator": "trellis-community/TRELLIS",
+    "mode": "clean-multi-image",
+    "seed": 9101,
+    "blenderVersion": "4.5.12 LTS",
+    "proofEngine": "CYCLES",
+    "proofDevice": "CPU",
+    "proofSamples": 24
+  },
+  "hashes": {
+    "productionFbxSha256": "44550b285fff331d2b5f15b9b817792e3c8a0c1695696a92da5f07b7d4b774bc",
+    "productionGlbSha256": "fbf5655b585bf1a2c3726a6973062c6607821137a0d9d4633999e0fd6a1ea2ce",
+    "approvedReferenceSha256": "36dd42d6d8f80651140958396742d37d14ae2c2676e167fe162a8d96b51df77f",
+    "proofFrontSha256": "aa97ad30bf92423c27446190ac06d4d337b64a874da14463cb34a2a80dfa055a",
+    "proofThreeQuarterSha256": "77b892cc9f4fd2a780f6c4044130b3ad40a1418bbe3af2ce4281cabd773a9edd",
+    "proofSideSha256": "e0c051270ec6c77d8ebd7dc637752487a6a75469f8012f7cc2667fcc54fc7d95",
+    "proofBackSha256": "f730656ff20c06b1f94b8819d9fe6e3972f01471eed9f705d03a180d3abab8aa"
+  },
+  "machineReview": {
+    "workflowPassed": true,
+    "blenderVersionVerified": true,
+    "rigPassed": true,
+    "proofRenderPassed": true,
+    "validationPassed": true,
+    "machinePassed": true
+  },
+  "humanVisualReview": {
+    "status": "rejected",
+    "reviewedUtc": "2026-08-06T19:49:00Z",
+    "blockingFailures": [
+      "Large rectangular projected texture panel intersects the head and face in front, three-quarter, side and back views.",
+      "Floating and disconnected texture or geometry shards remain around the head, arms and backpack.",
+      "Severe black streaking and surface corruption cover the coat, face, gloves, legs and boots.",
+      "Side and rear silhouettes expose broken geometry and texture remnants that are not present in the approved turnaround.",
+      "The face, glasses and hair are not cleanly readable as the approved Character 1 design."
+    ],
+    "decision": "Do not import, review in Unity, approve, or ship this artifact. Reconstruct Character 1 through the clean RTX SF3D fallback and repeat Blender and Unity review."
+  },
+  "humanVisualApprovalRequired": true,
+  "humanVisualReviewStatus": "rejected",
+  "acceptedForUnityReview": false,
+  "approved": false,
+  "unityIntegrated": false
+}
