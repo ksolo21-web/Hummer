@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Add centered 3D irises and pupils to a multi-view reconstruction with blank eyes."""
+"""Add small centered 3D irises and pupils inside reconstructed eye sockets.
+
+The neural mesh already contains eyelids and sclera. This pass adds only the missing dark
+eye detail; it must not replace the eye socket with oversized spheres or create a floating
+face layer.
+"""
 
 from __future__ import annotations
 
@@ -26,12 +31,12 @@ def parse_args():
     return parser.parse_args(args_after_separator())
 
 
-def clear_scene():
+def clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
 
 
-def import_glb(path):
+def import_glb(path: pathlib.Path):
     bpy.ops.import_scene.gltf(filepath=str(path))
     meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
     if not meshes:
@@ -41,6 +46,8 @@ def import_glb(path):
 
 def world_bounds(meshes):
     points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
+    if not points:
+        raise RuntimeError("No world-space mesh bounds were available")
     minimum = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
     maximum = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
     return minimum, maximum
@@ -53,7 +60,7 @@ def world_vertices(meshes):
             yield matrix @ vertex.co
 
 
-def quantile(values, fraction):
+def quantile(values, fraction: float):
     ordered = sorted(values)
     if not ordered:
         raise RuntimeError("Cannot compute face surface from an empty point set")
@@ -74,14 +81,14 @@ def make_material(name, rgba, roughness):
     return material
 
 
-def apply_material(obj, material):
+def apply_material(obj, material) -> None:
     obj.data.materials.append(material)
     for polygon in obj.data.polygons:
         polygon.material_index = 0
         polygon.use_smooth = True
 
 
-def apply_scale(obj):
+def apply_scale(obj) -> None:
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
@@ -121,48 +128,50 @@ def estimate_eye_frame(meshes):
         "width": width,
         "centerX": center_x,
         "faceY": face_y,
-        "eyeZ": minimum.z + height * 0.872,
-        "eyeOffsetX": min(height * 0.036, width * 0.092),
+        "eyeZ": minimum.z + height * 0.864,
+        "eyeOffsetX": min(height * 0.0275, width * 0.070),
         "sampleCount": len(upper),
     }
 
 
 def add_eyes(character, frame):
     height = frame["height"]
-    iris = make_material(f"{character}_RefinedIris", (0.095, 0.030, 0.008, 1.0), 0.40)
-    pupil = make_material(f"{character}_RefinedPupil", (0.002, 0.002, 0.003, 1.0), 0.34)
+    iris = make_material(f"{character}_RefinedIris", (0.090, 0.027, 0.007, 1.0), 0.40)
+    pupil = make_material(f"{character}_RefinedPupil", (0.0015, 0.0015, 0.0020, 1.0), 0.34)
     highlight = make_material(f"{character}_RefinedEyeHighlight", (0.96, 0.95, 0.91, 1.0), 0.28)
     created = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
-        y = frame["faceY"] - height * 0.0048
+        y = frame["faceY"] - height * 0.0013
         z = frame["eyeZ"]
         created.append(ellipsoid(
             f"{character}_RefinedIris_{side}",
             (x, y, z),
-            (height * 0.0132, height * 0.0042, height * 0.0165),
+            (height * 0.0058, height * 0.0018, height * 0.0068),
             iris,
+            32,
+            22,
         ))
         created.append(ellipsoid(
             f"{character}_RefinedPupil_{side}",
-            (x, y - height * 0.0031, z),
-            (height * 0.0062, height * 0.0024, height * 0.0082),
+            (x, y - height * 0.0012, z),
+            (height * 0.0030, height * 0.0011, height * 0.0038),
             pupil,
-            28,
+            26,
             18,
         ))
         created.append(ellipsoid(
             f"{character}_RefinedHighlight_{side}",
-            (x - side * height * 0.0031, y - height * 0.0053, z + height * 0.0050),
-            (height * 0.0026, height * 0.0015, height * 0.0032),
+            (x - side * height * 0.0014, y - height * 0.0020, z + height * 0.0020),
+            (height * 0.00115, height * 0.00055, height * 0.00135),
             highlight,
-            20,
-            14,
+            18,
+            12,
         ))
     return created
 
 
-def export_glb(path, meshes):
+def export_glb(path: pathlib.Path, meshes) -> None:
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
         obj.select_set(True)
@@ -177,18 +186,19 @@ def export_glb(path, meshes):
         raise RuntimeError(f"No refined GLB was exported to {path}")
 
 
-def main():
+def main() -> int:
     args = parse_args()
     output_root = pathlib.Path(args.output)
     output_root.mkdir(parents=True, exist_ok=True)
     output_path = output_root / f"{args.character}_face_refined.glb"
     report_path = output_root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
         "success": False,
+        "method": "small iris, pupil and catchlight inserts inside existing reconstructed eye sockets",
         "humanVisualApprovalRequired": True,
     }
     try:
