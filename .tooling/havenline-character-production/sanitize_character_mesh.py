@@ -78,10 +78,11 @@ def bounds_payload(meshes) -> dict:
 def orient_upright(meshes) -> dict:
     """Make Blender Z the body-height axis only when the evidence is unambiguous.
 
-    TripoSR's raw GLB can arrive with its body-height on Blender Y because the mesh was
-    authored Z-up before being placed in a glTF Y-up container. A standing character should
-    have one dominant vertical span. We rotate when X or Y exceeds Blender Z by at least 35%;
-    otherwise we preserve the source orientation and let later proportion gates decide.
+    TripoSR's raw GLB arrives with body-height on Blender Y because the mesh is emitted
+    Z-up inside a glTF Y-up container. The correct conversion is negative 90 degrees around
+    Blender X: positive 90 degrees makes the silhouette vertical but leaves the person upside
+    down. We rotate only when X or Y exceeds Blender Z by at least 35%; otherwise we preserve
+    the source orientation and let later proportion gates decide.
     """
 
     before = bounds_payload(meshes)
@@ -92,11 +93,11 @@ def orient_upright(meshes) -> dict:
     repair = "none"
 
     if dominant_axis == 1 and extents[1] >= z_extent * 1.35:
-        rotation = Matrix.Rotation(math.radians(90.0), 4, "X")
-        repair = "rotate_positive_90_x_y_to_z"
+        rotation = Matrix.Rotation(math.radians(-90.0), 4, "X")
+        repair = "rotate_negative_90_x_y_to_z_upright"
     elif dominant_axis == 0 and extents[0] >= z_extent * 1.35:
-        rotation = Matrix.Rotation(math.radians(-90.0), 4, "Y")
-        repair = "rotate_negative_90_y_x_to_z"
+        rotation = Matrix.Rotation(math.radians(90.0), 4, "Y")
+        repair = "rotate_positive_90_y_x_to_z_upright"
 
     if repair != "none":
         for obj in meshes:
@@ -112,12 +113,13 @@ def orient_upright(meshes) -> dict:
         )
 
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "repair": repair,
         "dominantAxisBefore": ("X", "Y", "Z")[dominant_axis],
         "before": before,
         "after": after,
         "standingAxisVerified": True,
+        "uprightDirectionRule": "TripoSR Y-to-Blender-Z uses negative 90 degrees around X",
     }
 
 
@@ -293,7 +295,7 @@ def main() -> int:
     report_path = output / "mesh-sanitization-report.json"
     cleaned_path = output / f"{args.character}_sanitized.glb"
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "character": args.character,
         "source": str(source),
         "success": False,
