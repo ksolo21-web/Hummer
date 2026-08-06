@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import importlib.util
 import pathlib
+import tempfile
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parent
 MODULE_PATH = ROOT / "stage_unity_character_review_sources.py"
@@ -93,6 +95,67 @@ class CharacterArtifactPolicyTests(unittest.TestCase):
                 "64344f84154888f6bd03fde50789bde81ccb2e6599dfbd3bac5a380413950524",
                 "a3b492768c5d0bf9fb8cfc9cc294500590987f51e9b4c0668b8125537e7d72b8",
             )
+
+    def test_sf3d_artifact_cannot_enter_unity_without_blender_candidate_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            missing = pathlib.Path(directory) / "character3-unity-review-candidate.json"
+            with mock.patch.object(MODULE, "candidate_policy_path", return_value=missing):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "no checksum-pinned Blender human-review candidate policy",
+                ):
+                    MODULE.validate_artifact_policy(
+                        "Character3",
+                        {
+                            "id": 9999999998,
+                            "digest": "sha256:" + "d" * 64,
+                            "workflow_run": {
+                                "id": 9999999998,
+                                "head_sha": "e" * 40,
+                            },
+                        },
+                        "f" * 64,
+                        "1" * 64,
+                    )
+
+    def test_candidate_policy_cannot_claim_final_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            policy_path = pathlib.Path(directory) / "character3-unity-review-candidate.json"
+            policy_path.write_text(
+                """{
+                  "character": "Character3",
+                  "artifact": {
+                    "id": "9999999998",
+                    "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "workflowRunId": "9999999998",
+                    "sourceHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                  },
+                  "hashes": {
+                    "productionFbxSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                    "approvedReferenceSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+                  },
+                  "blenderVisualReview": {"status": "accepted-for-unity-review"},
+                  "humanVisualApprovalRequired": true,
+                  "approved": true,
+                  "unityIntegrated": false
+                }""",
+                encoding="utf-8",
+            )
+            with mock.patch.object(MODULE, "candidate_policy_path", return_value=policy_path):
+                with self.assertRaisesRegex(RuntimeError, "prematurely approved"):
+                    MODULE.validate_artifact_policy(
+                        "Character3",
+                        {
+                            "id": 9999999998,
+                            "digest": "sha256:" + "d" * 64,
+                            "workflow_run": {
+                                "id": 9999999998,
+                                "head_sha": "e" * 40,
+                            },
+                        },
+                        "f" * 64,
+                        "1" * 64,
+                    )
 
     def test_support_characters_require_exact_sf3d_revision(self) -> None:
         for character in ("Character3", "Character4"):
