@@ -78,7 +78,8 @@ jobs:
           ):
               if literal not in pipeline + workflow:
                   raise SystemExit(f'Missing SF3D recovery literal: {literal}')
-          if '${{ runner.' in workflow:
+          forbidden_runner_context = '$' + '{{ runner.'
+          if forbidden_runner_context in workflow:
               raise SystemExit('runner context cannot be used before runner assignment.')
           print('SF3D recovery contract passed before self-hosted runner assignment.')
 
