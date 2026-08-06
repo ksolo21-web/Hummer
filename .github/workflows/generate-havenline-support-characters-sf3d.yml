@@ -1,0 +1,21 @@
+name: HAVENLINE SF3D Recovery Registry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  registered-route:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Confirm the HAVENLINE SF3D execution route is registered
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'The executable SF3D recovery workflow is maintained on havenline-unity-reference-rebuild.'
+          echo 'Character 1, Character 3, and Character 4 require the guarded Windows RTX route.'
+          echo 'No character is approved or Unity-integrated by this registry job.'
