@@ -1,0 +1,4 @@
+HAVENLINE production rerun trigger
+reason=replace unacceptable portrait patches on Characters 1 and 2 with real modeled skinned face details
+requested_at=2026-08-06T13:04:30Z
+human_visual_approval_required=true
