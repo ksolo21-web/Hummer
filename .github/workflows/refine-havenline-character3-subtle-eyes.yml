@@ -37,7 +37,7 @@ jobs:
           repository: ksolo21-web/Hummer
           run-id: 31107341741
 
-      - name: Stage immutable Character 3 source and validation evidence
+      - name: Stage immutable Character 3 source
         shell: bash
         run: |
           set -euo pipefail
@@ -56,12 +56,14 @@ jobs:
           if [ -n "$sanitize" ]; then cp "$sanitize" "$out/mesh-sanitization-report.json"; fi
           if [ -n "$spatial" ]; then cp "$spatial" "$out/spatial-outlier-report.json"; fi
 
-      - name: Install pinned portable Blender and validators
+      - name: Install minimal EGL runtime, portable Blender, and validators
         shell: bash
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libegl1 libgl1-mesa-dri libglx-mesa0
           archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
           runtime="$RUNNER_TEMP/blender-4.2.3"
           curl --fail --location --retry 5 --retry-delay 5 \
@@ -75,8 +77,6 @@ jobs:
             --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
 
       - name: Replace failed sockets with subtle Character 3 eyes
-        id: face
-        continue-on-error: true
         shell: bash
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
@@ -94,13 +94,10 @@ jobs:
           import json, pathlib
           report = json.loads(pathlib.Path('character_output/Character3/multiview-eye-refinement-report.json').read_text())
           if report.get('success') is not True:
-              raise SystemExit('Character 3 subtle-eye refinement report did not pass')
+              raise SystemExit('Character 3 eye refinement did not pass')
           PY
 
-      - name: Rig subtle-eye Character 3 and rebuild LODs
-        id: rig
-        if: ${{ always() && steps.face.outcome == 'success' }}
-        continue-on-error: true
+      - name: Rig Character 3 with Blender 4.2 compatibility patch
         shell: bash
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
@@ -110,7 +107,6 @@ jobs:
           out=character_output/Character3
           rig_script="$RUNNER_TEMP/rig_animate_character_blender42.py"
           git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
-          test -s "$rig_script"
           python - "$rig_script" <<'PY'
           import pathlib, sys
           path = pathlib.Path(sys.argv[1])
@@ -118,7 +114,7 @@ jobs:
           old = 'scene.render.engine = "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"'
           new = 'engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items}\n    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engines else "BLENDER_EEVEE"'
           if old not in text:
-              raise SystemExit('Legacy rig EEVEE selection line was not found')
+              raise SystemExit('Legacy EEVEE selection line was not found')
           path.write_text(text.replace(old, new))
           PY
           blender --background --factory-startup \
@@ -134,10 +130,7 @@ jobs:
               raise SystemExit('Character 3 rig report did not pass')
           PY
 
-      - name: Render subtle-eye Character 3 proofs
-        id: proof
-        if: ${{ always() && steps.rig.outcome == 'success' }}
-        continue-on-error: true
+      - name: Render exact production proof angles
         shell: bash
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
@@ -150,22 +143,18 @@ jobs:
             --character Character3 \
             --input "$out/Character3_production.glb" \
             --output "$out"
-          test -s "$out/proof_front.png"
-          test -s "$out/proof_three-quarter.png"
-          test -s "$out/proof_side.png"
-          test -s "$out/proof_back.png"
+          for proof in front three-quarter side back; do test -s "$out/proof_${proof}.png"; done
           python - <<'PY'
           import json, pathlib
           report = json.loads(pathlib.Path('character_output/Character3/proof-render-report.json').read_text())
           if report.get('success') is not True:
-              raise SystemExit('Character 3 proof render report did not pass')
+              raise SystemExit('Character 3 proof report did not pass')
           PY
 
-      - name: Validate subtle-eye Character 3 package
-        id: validate
-        if: ${{ always() && steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
-        continue-on-error: true
+      - name: Validate Character 3 production package
+        shell: bash
         run: |
+          set -euo pipefail
           python .tooling/havenline-character-production/validate_character_asset.py \
             --character Character3 \
             --directory character_output/Character3
@@ -173,48 +162,45 @@ jobs:
           import json, pathlib
           report = json.loads(pathlib.Path('character_output/Character3/validation-report.json').read_text())
           if report.get('passed') is not True:
-              raise SystemExit('Character 3 validation report did not pass')
+              raise SystemExit('Character 3 validation did not pass')
           PY
 
       - name: Write truthful Character 3 status
         if: ${{ always() }}
         shell: python
-        env:
-          FACE_OUTCOME: ${{ steps.face.outcome }}
-          RIG_OUTCOME: ${{ steps.rig.outcome }}
-          PROOF_OUTCOME: ${{ steps.proof.outcome }}
-          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
         run: |
-          import json, os, pathlib
+          import json, pathlib
           root = pathlib.Path('character_output/Character3')
-          validation_path = root / 'validation-report.json'
-          validation = json.loads(validation_path.read_text()) if validation_path.exists() else {}
+          def load(name):
+              path = root / name
+              return json.loads(path.read_text()) if path.exists() else {}
+          eye = load('multiview-eye-refinement-report.json')
+          rig = load('rig-report.json')
+          proof = load('proof-render-report.json')
+          validation = load('validation-report.json')
           machine_passed = (
-              os.environ.get('FACE_OUTCOME') == 'success'
-              and os.environ.get('RIG_OUTCOME') == 'success'
-              and os.environ.get('PROOF_OUTCOME') == 'success'
-              and os.environ.get('VALIDATE_OUTCOME') == 'success'
+              eye.get('success') is True
+              and rig.get('success') is True
+              and proof.get('success') is True
               and validation.get('passed') is True
+              and all((root / f'proof_{name}.png').is_file() for name in ('front', 'three-quarter', 'side', 'back'))
           )
           status = {
-              'schemaVersion': 12,
+              'schemaVersion': 13,
               'character': 'Character3',
               'sourceRunId': '31107341741',
-              'sourceMode': 'portable-blender42-subtle-approved-eye-repair',
+              'sourceMode': 'portable-blender42-minimal-egl-subtle-eye-repair',
               'blenderRuntime': '4.2.3 portable',
-              'faceOutcome': os.environ.get('FACE_OUTCOME', 'skipped'),
-              'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
-              'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
-              'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
               'machinePassed': machine_passed,
               'approved': False,
               'unityIntegrated': False,
               'humanVisualApprovalRequired': True,
           }
+          root.mkdir(parents=True, exist_ok=True)
           (root / 'matrix-status.json').write_text(json.dumps(status, indent=2) + '\n')
           print(json.dumps(status, indent=2))
 
-      - name: Upload Character 3 subtle-eye visual package
+      - name: Upload Character 3 review package
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
@@ -223,20 +209,13 @@ jobs:
           compression-level: 0
           retention-days: 30
 
-      - name: Enforce Character 3 subtle-eye pipeline
+      - name: Enforce truthful completion
         if: ${{ always() }}
-        shell: bash
+        shell: python
         run: |
-          set -euo pipefail
-          test '${{ steps.face.outcome }}' = success
-          test '${{ steps.rig.outcome }}' = success
-          test '${{ steps.proof.outcome }}' = success
-          test '${{ steps.validate.outcome }}' = success
-          python - <<'PY'
           import json, pathlib
           status = json.loads(pathlib.Path('character_output/Character3/matrix-status.json').read_text())
           if status.get('machinePassed') is not True:
-              raise SystemExit('Character 3 subtle-eye machine pipeline did not pass')
+              raise SystemExit('Character 3 production pipeline is incomplete')
           if status.get('approved') is True:
               raise SystemExit('Character 3 was prematurely marked approved')
-          PY
