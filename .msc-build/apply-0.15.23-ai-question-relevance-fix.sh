@@ -9,10 +9,10 @@ TARGET='MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRe
 TEMP="$(mktemp)"
 trap 'rm -f "$TEMP"' EXIT
 
-echo '1a120400eda5d562b624341035cf96a9e21c851661c3416ff4d7318e4dc4f3d2  '"$PAYLOAD" | sha256sum -c -
+echo '86a4bd675411d5b5faa6a9a1a602997d0a6ec24acdaf35ddb24b7b194dd4ed50  '"$PAYLOAD" | sha256sum -c -
 echo '3eaed9fe50a73600ad39d7e35295cf748abe03dae2b239e459ffe86c354153bc  '"$TARGET" | sha256sum -c -
 base64 --decode "$PAYLOAD" | gzip -dc > "$TEMP"
-echo '321babbffc6b8ccfd4d48228cef0a0c6f1871f2b4826b9135c1ec294fd9833db  '"$TEMP" | sha256sum -c -
+echo '7e2b58219e9655dde30a0743e153782956fefc76a5294dfa34e7ef2834286b8c  '"$TEMP" | sha256sum -c -
 install -m 0644 "$TEMP" "$TARGET"
 
 python3 - <<'PY'
