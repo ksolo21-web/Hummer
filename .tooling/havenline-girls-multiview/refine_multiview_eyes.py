@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Remove Character 3's pale reconstructed eye surfaces and inset dark almond eyes.
 
-Flat skin-coloured patches remained visibly circular under production lighting. This pass
-therefore does not paint over the failed sockets. It measures each approved eye centre,
-deletes only the foremost vertices inside a small socket ellipse, preserves the deeper
-head/eyelid geometry, and places compact dark-brown almond eyes slightly inside the
-cleaned openings. No visible sclera or face patch is authored.
+Flat face patches remained visibly circular under production lighting. This pass measures
+each approved eye ellipse, deletes only the foremost local vertex percentile, preserves
+the deeper head and eyelid geometry, and places compact dark-brown almond eyes at the
+cleaned socket boundary. No visible sclera or face-coloured patch is authored.
 """
 
 from __future__ import annotations
@@ -19,6 +18,9 @@ import traceback
 
 import bpy
 from mathutils import Vector
+
+
+SOCKET_FRONT_PERCENTILE = 0.18
 
 
 def cli_args() -> list[str]:
@@ -159,32 +161,41 @@ def eye_frame(meshes):
     }
 
 
-def local_front_y(meshes, x: float, z: float, height: float):
-    samples = []
-    for point in world_vertices(meshes):
-        dx = (point.x - x) / max(height * 0.020, 1e-6)
-        dz = (point.z - z) / max(height * 0.021, 1e-6)
-        if dx * dx + dz * dz <= 1.0:
-            samples.append(point.y)
-    if len(samples) < 20:
-        raise RuntimeError(f"Not enough local socket samples at x={x:.6f}, z={z:.6f}")
-    return quantile(samples, 0.012), len(samples)
-
-
-def socket_indices(obj, eye_x: float, eye_z: float, front_y: float, height: float):
+def local_socket_selection(meshes, eye_x: float, eye_z: float, height: float):
     radius_x = height * 0.0128
     radius_z = height * 0.0098
-    maximum_y = front_y + height * 0.0038
-    minimum_y = front_y - height * 0.0045
-    matrix = obj.matrix_world
-    selected = []
-    for vertex in obj.data.vertices:
-        point = matrix @ vertex.co
-        dx = (point.x - eye_x) / max(radius_x, 1e-6)
-        dz = (point.z - eye_z) / max(radius_z, 1e-6)
-        if dx * dx + dz * dz <= 1.0 and minimum_y <= point.y <= maximum_y:
-            selected.append(vertex.index)
-    return selected
+    local = []
+    per_object = {}
+    for obj in meshes:
+        matrix = obj.matrix_world
+        for vertex in obj.data.vertices:
+            point = matrix @ vertex.co
+            dx = (point.x - eye_x) / max(radius_x, 1e-6)
+            dz = (point.z - eye_z) / max(radius_z, 1e-6)
+            if dx * dx + dz * dz <= 1.0:
+                local.append((obj, vertex.index, float(point.y)))
+    if len(local) < 40:
+        raise RuntimeError(
+            f"Not enough local socket vertices at x={eye_x:.6f}, z={eye_z:.6f}: {len(local)}"
+        )
+    threshold = quantile([item[2] for item in local], SOCKET_FRONT_PERCENTILE)
+    for obj, index, depth in local:
+        if depth <= threshold:
+            per_object.setdefault(obj, []).append(index)
+    selected = sum(len(indices) for indices in per_object.values())
+    if not 20 <= selected <= 5000:
+        raise RuntimeError(
+            f"Socket percentile selected an unsafe amount: {selected}/{len(local)} vertices"
+        )
+    return {
+        "localCount": len(local),
+        "minimumY": min(item[2] for item in local),
+        "maximumY": max(item[2] for item in local),
+        "thresholdY": threshold,
+        "percentile": SOCKET_FRONT_PERCENTILE,
+        "perObject": per_object,
+        "selectedCount": selected,
+    }
 
 
 def delete_indices(obj, indices):
@@ -219,53 +230,52 @@ def delete_indices(obj, indices):
 
 def remove_failed_socket_surfaces(meshes, frame):
     height = frame["height"]
-    reports = []
     total_before = sum(len(obj.data.vertices) for obj in meshes)
     total_removed = 0
-    placements = []
+    reports = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
         z = frame["eyeZ"]
-        front_y, sample_count = local_front_y(meshes, x, z, height)
-        removed_for_eye = 0
+        selection = local_socket_selection(meshes, x, z, height)
         object_reports = []
-        for obj in meshes:
+        removed_for_eye = 0
+        for obj, indices in selection["perObject"].items():
             before = len(obj.data.vertices)
-            indices = socket_indices(obj, x, z, front_y, height)
-            if indices and len(indices) / max(before, 1) > 0.08:
+            if len(indices) / max(before, 1) > 0.08:
                 raise RuntimeError(
-                    f"Unsafe socket selection for {obj.name}, side {side}: "
-                    f"{len(indices)}/{before}"
+                    f"Unsafe socket selection for {obj.name}, side {side}: {len(indices)}/{before}"
                 )
             removed = delete_indices(obj, indices)
             after = len(obj.data.vertices)
             if removed != before - after:
                 raise RuntimeError(
-                    f"Socket deletion count mismatch for {obj.name}: selected={removed}, "
-                    f"actual={before-after}"
-                )
-            if removed:
-                object_reports.append(
-                    {
-                        "object": obj.name,
-                        "verticesBefore": before,
-                        "verticesAfter": after,
-                        "verticesRemoved": removed,
-                    }
+                    f"Socket deletion mismatch for {obj.name}: selected={removed}, actual={before-after}"
                 )
             removed_for_eye += removed
-        if not 20 <= removed_for_eye <= 5000:
+            object_reports.append(
+                {
+                    "object": obj.name,
+                    "verticesBefore": before,
+                    "verticesAfter": after,
+                    "verticesRemoved": removed,
+                }
+            )
+        if removed_for_eye != selection["selectedCount"]:
             raise RuntimeError(
-                f"Socket cleanup selected an unsafe amount for side {side}: {removed_for_eye} vertices"
+                f"Socket deletion total mismatch for side {side}: "
+                f"selected={selection['selectedCount']}, removed={removed_for_eye}"
             )
         total_removed += removed_for_eye
-        placements.append(
+        reports.append(
             {
                 "side": side,
                 "x": x,
                 "z": z,
-                "frontY": front_y,
-                "localSampleCount": sample_count,
+                "localCount": selection["localCount"],
+                "minimumY": selection["minimumY"],
+                "maximumY": selection["maximumY"],
+                "thresholdY": selection["thresholdY"],
+                "percentile": selection["percentile"],
                 "verticesRemoved": removed_for_eye,
                 "objects": object_reports,
             }
@@ -279,23 +289,22 @@ def remove_failed_socket_surfaces(meshes, frame):
         raise RuntimeError(
             f"Socket cleanup removed too much of the character: {total_removed}/{total_before}"
         )
-    reports.extend(placements)
     return reports, total_before, total_after, total_removed
 
 
 def author_inset_eyes(character: str, frame, socket_reports):
     height = frame["height"]
     eye_material = material(
-        f"{character}_InsetDarkEye", (0.0040, 0.00075, 0.00022, 1.0), 0.88, 0.018
+        f"{character}_InsetDarkEye", (0.0030, 0.00055, 0.00016, 1.0), 0.90, 0.014
     )
     iris_material = material(
-        f"{character}_InsetIris", (0.016, 0.0043, 0.0011, 1.0), 0.82, 0.028
+        f"{character}_InsetIris", (0.014, 0.0037, 0.00095, 1.0), 0.84, 0.024
     )
     pupil_material = material(
-        f"{character}_InsetPupil", (0.00003, 0.00003, 0.00004, 1.0), 0.96, 0.004
+        f"{character}_InsetPupil", (0.00002, 0.00002, 0.00003, 1.0), 0.97, 0.003
     )
     highlight_material = material(
-        f"{character}_InsetCatchlight", (0.62, 0.53, 0.43, 1.0), 0.55, 0.10
+        f"{character}_InsetCatchlight", (0.58, 0.49, 0.40, 1.0), 0.58, 0.08
     )
     authored = []
     placements = []
@@ -303,43 +312,42 @@ def author_inset_eyes(character: str, frame, socket_reports):
         side = int(socket["side"])
         x = float(socket["x"])
         z = float(socket["z"]) - height * 0.0006
-        front_y = float(socket["frontY"])
-        # Positive Y is deeper inside the head because the approved front faces -Y.
-        eye_y = front_y + height * 0.00135
-        iris_y = eye_y - height * 0.00018
-        pupil_y = iris_y - height * 0.00014
-        highlight_y = pupil_y - height * 0.00010
+        threshold_y = float(socket["thresholdY"])
+        eye_y = threshold_y + height * 0.00020
+        iris_y = eye_y - height * 0.00016
+        pupil_y = iris_y - height * 0.00012
+        highlight_y = pupil_y - height * 0.00009
         authored.extend(
             [
                 shape(
                     f"{character}_InsetEye_{side}",
                     (x, eye_y, z),
-                    almond_points(height * 0.0086, height * 0.00335, 64),
+                    almond_points(height * 0.0082, height * 0.00315, 64),
                     eye_material,
                     "inset dark almond eye filling the cleaned socket",
                 ),
                 shape(
                     f"{character}_InsetIris_{side}",
                     (x, iris_y, z),
-                    oval_points(height * 0.00215, height * 0.00205, 112),
+                    oval_points(height * 0.00205, height * 0.00195, 112),
                     iris_material,
                     "small dark-brown iris",
                 ),
                 shape(
                     f"{character}_InsetPupil_{side}",
                     (x, pupil_y, z),
-                    oval_points(height * 0.00108, height * 0.00116, 104),
+                    oval_points(height * 0.00102, height * 0.00110, 104),
                     pupil_material,
                     "small black pupil",
                 ),
                 shape(
                     f"{character}_InsetCatchlight_{side}",
                     (
-                        x - side * height * 0.00065,
+                        x - side * height * 0.00062,
                         highlight_y,
-                        z + height * 0.00078,
+                        z + height * 0.00074,
                     ),
-                    oval_points(height * 0.00028, height * 0.00032, 104),
+                    oval_points(height * 0.00027, height * 0.00031, 104),
                     highlight_material,
                     "pin-size catchlight",
                 ),
@@ -384,12 +392,13 @@ def main() -> int:
     output = root / f"{args.character}_face_refined.glb"
     report_path = root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 12,
+        "schemaVersion": 13,
         "character": args.character,
         "source": args.input,
         "output": str(output),
         "success": False,
-        "method": "foremost pale socket vertex deletion plus inset dark almond eyes",
+        "method": "local foremost socket percentile deletion plus inset dark almond eyes",
+        "socketFrontPercentile": SOCKET_FRONT_PERCENTILE,
         "skinPatchAuthored": False,
         "visibleScleraAuthored": False,
         "approved": False,
