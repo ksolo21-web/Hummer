@@ -89,9 +89,10 @@ namespace Havenline.Tests
         public void ApprovalCannotDisableHumanVisualReview()
         {
             var fixture = CreateApprovedFixture();
-            fixture.ManifestJson = fixture.ManifestJson.Replace(
-                "\"humanVisualApprovalRequired\": true",
-                "\"humanVisualApprovalRequired\": false");
+            var manifest = JsonUtility.FromJson<HavenlineCharacterApprovalGate.ApprovalManifest>(
+                fixture.ManifestJson);
+            manifest.humanVisualApprovalRequired = false;
+            fixture.ManifestJson = JsonUtility.ToJson(manifest, true);
 
             var failures = HavenlineCharacterApprovalGate.ValidateManifest(
                 fixture.ManifestJson,
