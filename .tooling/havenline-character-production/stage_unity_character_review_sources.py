@@ -17,7 +17,10 @@ STATUS_CANDIDATES = (
 SF3D_COMMIT = "ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2"
 TOOL_ROOT = pathlib.Path(__file__).resolve().parent
 CHARACTER1_REJECTION = TOOL_ROOT / "character1-seed9101-visual-rejection.json"
-CHARACTER2_CANDIDATE = TOOL_ROOT / "character2-unity-review-candidate.json"
+
+
+def candidate_policy_path(character: str) -> pathlib.Path:
+    return TOOL_ROOT / f"{character.lower()}-unity-review-candidate.json"
 
 
 def sha256(path: pathlib.Path) -> str:
@@ -102,6 +105,65 @@ def require_equal(actual: Any, expected: Any, label: str) -> None:
         raise RuntimeError(f"{label} mismatch: expected {expected!r}, found {actual!r}")
 
 
+def validate_candidate_policy(
+    character: str,
+    artifact: dict[str, Any],
+    production_fbx_sha256: str,
+    approved_reference_sha256: str,
+) -> str:
+    policy_path = candidate_policy_path(character)
+    if not policy_path.is_file() or policy_path.stat().st_size == 0:
+        raise RuntimeError(
+            f"{character} has no checksum-pinned Blender human-review candidate policy at {policy_path}"
+        )
+
+    candidate = load_json(policy_path)
+    require_equal(candidate.get("character"), character, f"{character} candidate character")
+    if candidate.get("humanVisualApprovalRequired") is not True:
+        raise RuntimeError(f"{character} candidate bypassed human visual approval")
+    if candidate.get("approved") is not False:
+        raise RuntimeError(f"{character} candidate was prematurely approved")
+    if candidate.get("unityIntegrated") is not False:
+        raise RuntimeError(f"{character} candidate was prematurely marked Unity-integrated")
+
+    blender_review = candidate.get("blenderVisualReview") or {}
+    require_equal(
+        blender_review.get("status"),
+        "accepted-for-unity-review",
+        f"{character} Blender visual review status",
+    )
+
+    artifact_id = str(artifact.get("id", ""))
+    digest = str(artifact.get("digest", ""))
+    workflow_run = artifact.get("workflow_run") or {}
+    locked_artifact = candidate.get("artifact") or {}
+    locked_hashes = candidate.get("hashes") or {}
+
+    require_equal(artifact_id, str(locked_artifact.get("id", "")), f"{character} artifact ID")
+    require_equal(digest, str(locked_artifact.get("digest", "")), f"{character} artifact digest")
+    require_equal(
+        str(workflow_run.get("id", "")),
+        str(locked_artifact.get("workflowRunId", "")),
+        f"{character} workflow run ID",
+    )
+    require_equal(
+        str(workflow_run.get("head_sha", "")),
+        str(locked_artifact.get("sourceHeadSha", "")),
+        f"{character} source head SHA",
+    )
+    require_equal(
+        production_fbx_sha256,
+        str(locked_hashes.get("productionFbxSha256", "")),
+        f"{character} production FBX SHA-256",
+    )
+    require_equal(
+        approved_reference_sha256,
+        str(locked_hashes.get("approvedReferenceSha256", "")),
+        f"{character} approved reference SHA-256",
+    )
+    return f"exact {character} Blender-human-reviewed artifact pinned for Unity review"
+
+
 def validate_artifact_policy(
     character: str,
     artifact: dict[str, Any],
@@ -110,7 +172,6 @@ def validate_artifact_policy(
 ) -> str:
     artifact_id = str(artifact.get("id", ""))
     digest = str(artifact.get("digest", ""))
-    workflow_run = artifact.get("workflow_run") or {}
 
     if character == "Character1":
         rejection = load_json(CHARACTER1_REJECTION)
@@ -124,37 +185,13 @@ def validate_artifact_policy(
             raise RuntimeError(
                 "Character1 artifact is explicitly human-rejected and cannot enter Unity review"
             )
-        return "SF3D recovery required after TRELLIS seed 9101 visual rejection"
 
-    if character == "Character2":
-        candidate = load_json(CHARACTER2_CANDIDATE)
-        locked_artifact = candidate.get("artifact") or {}
-        locked_hashes = candidate.get("hashes") or {}
-        require_equal(artifact_id, str(locked_artifact.get("id")), "Character2 artifact ID")
-        require_equal(digest, str(locked_artifact.get("digest")), "Character2 artifact digest")
-        require_equal(
-            str(workflow_run.get("id", "")),
-            str(locked_artifact.get("workflowRunId", "")),
-            "Character2 workflow run ID",
-        )
-        require_equal(
-            str(workflow_run.get("head_sha", "")),
-            str(locked_artifact.get("sourceHeadSha", "")),
-            "Character2 source head SHA",
-        )
-        require_equal(
-            production_fbx_sha256,
-            str(locked_hashes.get("productionFbxSha256", "")),
-            "Character2 production FBX SHA-256",
-        )
-        require_equal(
-            approved_reference_sha256,
-            str(locked_hashes.get("approvedReferenceSha256", "")),
-            "Character2 approved reference SHA-256",
-        )
-        return "exact human-reviewed Blender candidate pinned for Unity review"
-
-    return "exact SF3D artifact pending Blender and Unity human review"
+    return validate_candidate_policy(
+        character,
+        artifact,
+        production_fbx_sha256,
+        approved_reference_sha256,
+    )
 
 
 def main() -> int:
@@ -166,9 +203,19 @@ def main() -> int:
     parser.add_argument("--unity-project", required=True)
     args = parser.parse_args()
 
-    for policy_file in (CHARACTER1_REJECTION, CHARACTER2_CANDIDATE):
-        if not policy_file.is_file() or policy_file.stat().st_size == 0:
-            raise FileNotFoundError(f"Required visual-review policy file is missing: {policy_file}")
+    required_policies = [CHARACTER1_REJECTION] + [
+        candidate_policy_path(character) for character in CHARACTERS
+    ]
+    missing_policies = [
+        str(policy_file)
+        for policy_file in required_policies
+        if not policy_file.is_file() or policy_file.stat().st_size == 0
+    ]
+    if missing_policies:
+        raise FileNotFoundError(
+            "Unity review cannot stage characters before all four Blender candidate policies exist: "
+            + ", ".join(missing_policies)
+        )
 
     packages_root = pathlib.Path(args.packages_root)
     metadata_path = pathlib.Path(args.artifact_metadata)
@@ -235,11 +282,13 @@ def main() -> int:
             "generationReport": character_evidence / "generation-report.json",
             "machineStatus": character_evidence / "machine-proof-status.json",
             "approvedReference": character_evidence / "approved_reference_sheet.jpg",
+            "candidatePolicy": character_evidence / "blender-unity-review-candidate.json",
         }
         shutil.copy2(validation_path, copied["validationReport"])
         shutil.copy2(generation_path, copied["generationReport"])
         shutil.copy2(status_path, copied["machineStatus"])
         shutil.copy2(reference_path, copied["approvedReference"])
+        shutil.copy2(candidate_policy_path(character), copied["candidatePolicy"])
 
         workflow_run = artifact.get("workflow_run") or {}
         entry = {
@@ -253,6 +302,8 @@ def main() -> int:
             "sourceGenerator": normalized_generator,
             "sourceMode": generation.get("sourceMode") or status.get("sourceMode"),
             "artifactPolicy": policy,
+            "candidatePolicyPath": str(candidate_policy_path(character).as_posix()),
+            "candidatePolicySha256": sha256(copied["candidatePolicy"]),
             "productionFbxPath": str(production_fbx.as_posix()),
             "productionFbxBytes": production_fbx.stat().st_size,
             "productionFbxSha256": sha256(production_fbx),
@@ -269,10 +320,13 @@ def main() -> int:
         source_entries.append(entry)
 
     source_set = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "characters": source_entries,
         "character1RejectedArtifactPolicy": str(CHARACTER1_REJECTION.as_posix()),
-        "character2PinnedCandidatePolicy": str(CHARACTER2_CANDIDATE.as_posix()),
+        "blenderCandidatePolicies": {
+            character: str(candidate_policy_path(character).as_posix())
+            for character in CHARACTERS
+        },
         "humanVisualApprovalRequired": True,
         "approved": False,
         "unityIntegrated": False,
