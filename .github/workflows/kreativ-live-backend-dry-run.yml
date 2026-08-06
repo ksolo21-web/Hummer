@@ -1,0 +1,94 @@
+name: KREATIV Live Backend Dry Run
+
+on:
+  push:
+    branches:
+      - agent/kreativ-live-backend-repair
+    paths:
+      - '.github/workflows/kreativ-live-backend-dry-run.yml'
+      - 'firebase/**'
+      - 'scripts/kreativ_firebase_repair.py'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: kreativ-live-backend-repair
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repair source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Validate guarded merge utility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/kreativ_firebase_repair.py
+
+      - name: Authenticate through existing repository-restricted Workload Identity
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          workload_identity_provider: projects/949620144971/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: msc-github-deploy@my-study-companion-abc01.iam.gserviceaccount.com
+
+      - name: Read live shared rules and generate non-destructive merge
+        shell: bash
+        env:
+          FIREBASE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_ACCESS_TOKEN"
+          mkdir -p dist firebase/generated
+          python scripts/kreativ_firebase_repair.py \
+            --project-id my-study-companion-abc01 \
+            --android-app-id 1:949620144971:android:63fec0446e8549d25946ce \
+            --package-name com.kreativstudio.app \
+            --storage-bucket my-study-companion-abc01.firebasestorage.app \
+            --sha1 5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59 \
+            --sha256 07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D \
+            --firestore-fragment firebase/firestore.rules \
+            --storage-fragment firebase/storage.rules \
+            --generated-firestore firebase/generated/shared-firestore.rules \
+            --generated-storage firebase/generated/shared-storage.rules \
+            --report dist/firebase-repair-report.json
+
+      - name: Prove My Study Companion rules were preserved in generated output
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s firebase/generated/shared-firestore.rules
+          test -s firebase/generated/shared-storage.rules
+          grep -q 'kreativProjects' firebase/generated/shared-firestore.rules
+          grep -q 'kreativPrivate' firebase/generated/shared-firestore.rules
+          grep -q 'kreativStudio' firebase/generated/shared-storage.rules
+          python - <<'PY'
+          from pathlib import Path
+          report = Path('dist/firebase-repair-report.json').read_text()
+          assert 'my-study-companion-abc01' in report
+          PY
+
+      - name: Upload dry-run evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: kreativ-live-backend-dry-run-evidence
+          path: |
+            dist/firebase-repair-report.json
+            firebase/generated/shared-firestore.rules
+            firebase/generated/shared-storage.rules
+          if-no-files-found: warn
+          retention-days: 14
