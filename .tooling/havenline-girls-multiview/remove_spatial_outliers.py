@@ -4,8 +4,8 @@
 Some neural GLB exports duplicate vertices per triangle, so ordinary connected-component
 analysis reports thousands of three-vertex components. This pass instead detects a large
 empty horizontal gap that isolates a minority vertex cluster from the character body,
-then deletes only that outlying cluster. Deletion is performed through Blender edit mode
-to preserve the surviving mesh's imported UVs, materials, and custom split normals.
+then deletes only that outlying cluster. Deletion is performed against Blender's live
+edit BMesh so the prevalidated vertex set—not stale selection state—is mutated.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import pathlib
 import sys
 import traceback
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -113,10 +114,7 @@ def selected_vertex_indices(obj, threshold: float, side: str) -> list[int]:
     return selected
 
 
-def delete_selected_vertices_preserving_attributes(
-    obj,
-    vertex_indices: list[int],
-) -> int:
+def delete_vertices_through_live_edit_bmesh(obj, vertex_indices: list[int]) -> int:
     if not vertex_indices:
         return 0
 
@@ -125,30 +123,29 @@ def delete_selected_vertices_preserving_attributes(
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
-
-    # Blender can retain imported per-vertex selection flags. Enter edit mode once and
-    # explicitly clear them before applying the prevalidated object-mode index set.
     bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_mode(type="VERT")
-    bpy.ops.mesh.select_all(action="DESELECT")
-    bpy.ops.object.mode_set(mode="OBJECT")
 
-    for vertex in obj.data.vertices:
-        vertex.select = False
-    for index in vertex_indices:
-        obj.data.vertices[index].select = True
-
-    selected_count = sum(1 for vertex in obj.data.vertices if vertex.select)
-    if selected_count != len(vertex_indices):
+    edit_mesh = bmesh.from_edit_mesh(obj.data)
+    edit_mesh.verts.ensure_lookup_table()
+    maximum_index = len(edit_mesh.verts) - 1
+    invalid = [index for index in vertex_indices if index < 0 or index > maximum_index]
+    if invalid:
+        bpy.ops.object.mode_set(mode="OBJECT")
         raise RuntimeError(
-            f"Blender selection synchronization failed for {obj.name}: "
-            f"expected {len(vertex_indices)}, selected {selected_count}"
+            f"Live edit BMesh index mismatch for {obj.name}: "
+            f"{len(invalid)} invalid indices, maximum={maximum_index}"
         )
 
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_mode(type="VERT")
-    bpy.ops.mesh.delete(type="VERT")
+    delete_verts = [edit_mesh.verts[index] for index in vertex_indices]
+    selected_count = len(delete_verts)
+    bmesh.ops.delete(edit_mesh, geom=delete_verts, context="VERTS")
+    bmesh.update_edit_mesh(obj.data, loop_triangles=True, destructive=True)
     bpy.ops.object.mode_set(mode="OBJECT")
+
+    # Neural meshes should remain smoothly shaded after topology cleanup. Explicitly
+    # restore smooth polygon flags rather than recalculating or flattening imported UVs.
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
     obj.data.validate(verbose=False)
     obj.data.update(calc_edges=False, calc_edges_loose=False)
     return selected_count
@@ -158,6 +155,8 @@ def clean_object(obj, scene_span: float):
     split = find_horizontal_outlier_split(obj, scene_span)
     vertices_before = len(obj.data.vertices)
     if split is None:
+        for polygon in obj.data.polygons:
+            polygon.use_smooth = True
         return {
             "object": obj.name,
             "verticesBefore": vertices_before,
@@ -176,8 +175,8 @@ def clean_object(obj, scene_span: float):
     expected_ratio = float(split["outlierRatio"])
     ratio_error = abs(selected_ratio - expected_ratio)
 
-    # Fail closed before mutating the mesh. This prevents stale imported selection state
-    # or a coordinate-space mismatch from deleting the whole character.
+    # Fail closed before mutating the mesh. This protects the character if coordinates,
+    # index ordering, or the detected split disagree.
     if not indices:
         raise RuntimeError(
             f"A spatial split was detected for {obj.name}, but its selected outlier set is empty"
@@ -193,7 +192,7 @@ def clean_object(obj, scene_span: float):
             f"selected={selected_ratio:.4f}, expected={expected_ratio:.4f}"
         )
 
-    selected_count = delete_selected_vertices_preserving_attributes(obj, indices)
+    selected_count = delete_vertices_through_live_edit_bmesh(obj, indices)
     actual_after = len(obj.data.vertices)
     actual_removed = vertices_before - actual_after
     actual_ratio = actual_removed / max(vertices_before, 1)
@@ -222,8 +221,8 @@ def clean_object(obj, scene_span: float):
         "splitDetected": True,
         "split": split,
         "attributePreservationMethod": (
-            "prevalidated object-space index selection followed by Blender edit-mode "
-            "vertex deletion without normal recalculation"
+            "prevalidated index set deleted through Blender live edit BMesh; "
+            "UVs retained and surviving polygons restored to smooth shading"
         ),
         "reason": "minority vertex cluster isolated by a large empty horizontal gap",
     }
@@ -254,7 +253,7 @@ def main() -> int:
     output_path = output_root / f"{args.character}_spatial.glb"
     report_path = output_root / "spatial-outlier-report.json"
     report = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
