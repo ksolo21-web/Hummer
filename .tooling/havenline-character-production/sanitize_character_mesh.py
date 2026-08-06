@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Remove generated mesh debris and repair provably wrong reconstruction orientation.
+"""Clean generated character meshes before deterministic rigging.
 
-The hosted image-to-3D output can contain isolated single triangles, needle-like ribbons,
-or distant slivers. Some generators also emit a Z-up mesh inside a glTF container whose
-standard is Y-up. Blender then imports the character lying on its back, and a later rig can
-still pass polygon and animation checks while producing an unusable sideways body. This
-sanitizer fails closed, rotates only when one horizontal axis is unambiguously the body-height
-axis, preserves materials/textures, and records every repair before the production rig step.
+The source generators may emit disconnected triangles, thin ribbons, long slivers, or a
+body whose height axis is not Blender Z. This pass preserves useful textured geometry,
+repairs only unambiguous axis mistakes, deletes reconstruction debris conservatively, and
+records every decision for later build gates.
 """
 
 from __future__ import annotations
@@ -76,14 +74,7 @@ def bounds_payload(meshes) -> dict:
 
 
 def orient_upright(meshes) -> dict:
-    """Make Blender Z the body-height axis only when the evidence is unambiguous.
-
-    TripoSR's raw GLB arrives with body-height on Blender Y because the mesh is emitted
-    Z-up inside a glTF Y-up container. The correct conversion is negative 90 degrees around
-    Blender X: positive 90 degrees makes the silhouette vertical but leaves the person upside
-    down. We rotate only when X or Y exceeds Blender Z by at least 35%; otherwise we preserve
-    the source orientation and let later proportion gates decide.
-    """
+    """Make Blender Z the body-height axis only when the evidence is unambiguous."""
 
     before = bounds_payload(meshes)
     extents = before["extents"]
@@ -92,6 +83,8 @@ def orient_upright(meshes) -> dict:
     rotation = Matrix.Identity(4)
     repair = "none"
 
+    # TripoSR's Y-to-Blender-Z conversion is -90 degrees around X. The opposite sign
+    # creates a vertically framed but upside-down character.
     if dominant_axis == 1 and extents[1] >= z_extent * 1.35:
         rotation = Matrix.Rotation(math.radians(-90.0), 4, "X")
         repair = "rotate_negative_90_x_y_to_z_upright"
@@ -201,6 +194,29 @@ def should_remove(metrics, global_span: float) -> tuple[bool, str | None]:
     ):
         return True, "needle-like disconnected reconstruction island"
 
+    # Dense line debris can have hundreds of triangles while still being effectively
+    # one-dimensional. Legitimate clothing, hair, straps and limbs remain thicker in at
+    # least two axes and therefore do not satisfy these strict ratios and thickness limits.
+    if (
+        vertices <= 1200
+        and largest >= scale * 0.20
+        and smallest <= scale * 0.006
+        and middle <= scale * 0.025
+        and largest >= max(middle, 1e-9) * 8.0
+        and volume <= scale**3 * 0.000045
+    ):
+        return True, "long densely-triangulated reconstruction sliver"
+
+    if (
+        vertices <= 1800
+        and largest >= scale * 0.30
+        and smallest <= scale * 0.0035
+        and middle <= scale * 0.060
+        and largest >= max(middle, 1e-9) * 5.0
+        and volume <= scale**3 * 0.000085
+    ):
+        return True, "paper-thin disconnected reconstruction ribbon"
+
     if vertices <= 10 and faces <= 8 and largest <= scale * 0.035:
         return True, "sub-pixel disconnected fragment"
 
@@ -295,7 +311,7 @@ def main() -> int:
     report_path = output / "mesh-sanitization-report.json"
     cleaned_path = output / f"{args.character}_sanitized.glb"
     report = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "character": args.character,
         "source": str(source),
         "success": False,
