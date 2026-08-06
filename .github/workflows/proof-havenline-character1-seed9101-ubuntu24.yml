@@ -19,7 +19,7 @@ concurrency:
 jobs:
   prove-seed9101-slim:
     runs-on: ubuntu-slim
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Clone current HAVENLINE production branch
         shell: bash
@@ -214,4 +214,4 @@ jobs:
             exit 1
           fi
 
-# Normal Git ref trigger after the X11 dependency repair.
+# Workflow-path trigger after X11 repair; timeout raised to retain artifact upload margin.
