@@ -1,0 +1,101 @@
+name: Patch HAVENLINE Rig Refinement
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/patch-havenline-rig-refinement.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-rig:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: havenline-unity-reference-rebuild
+      - name: Delegate cleanup and face fidelity to refinement module
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('.tooling/havenline-character-production/rig_animate_character.py')
+          source = path.read_text(encoding='utf-8')
+
+          import_anchor = 'import bpy\nfrom mathutils import Vector\n'
+          import_replacement = '''import bpy
+          from mathutils import Vector
+
+          SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+          if str(SCRIPT_DIR) not in sys.path:
+              sys.path.insert(0, str(SCRIPT_DIR))
+          import reference_face_refinement as reference_refinement
+          '''
+          import_replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in import_replacement.splitlines()) + '\n'
+          if 'import reference_face_refinement as reference_refinement' not in source:
+              if import_anchor not in source:
+                  raise SystemExit('Import anchor was not found')
+              source = source.replace(import_anchor, import_replacement, 1)
+
+          source = source.replace(
+              'approved_references = copy_approved_references(args.character, root)',
+              'approved_references = reference_refinement.copy_approved_references(args.character, root)',
+              1,
+          )
+
+          old_block = '''        bounds = normalize(meshes)
+          face_refinement, face_object = create_reference_face_surface(
+              args.character,
+              root,
+              meshes,
+              bounds,
+          )
+          '''
+          old_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in old_block.splitlines()) + '\n'
+          new_block = '''        pre_rig_cleanup = reference_refinement.cleanup_disconnected_components(
+              meshes,
+              world_bounds,
+          )
+          bounds = normalize(meshes)
+          face_refinement, face_object = reference_refinement.create_reference_face_surface(
+              args.character,
+              root,
+              meshes,
+              bounds,
+          )
+          '''
+          new_block = '\n'.join(line[10:] if line.startswith('          ') else line for line in new_block.splitlines()) + '\n'
+          if 'pre_rig_cleanup = reference_refinement.cleanup_disconnected_components' not in source:
+              if old_block not in source:
+                  raise SystemExit('Rig main block was not found')
+              source = source.replace(old_block, new_block, 1)
+
+          report_anchor = '''            approvedReferences=approved_references,
+              faceRefinement=face_refinement,
+          '''
+          report_anchor = '\n'.join(line[10:] if line.startswith('          ') else line for line in report_anchor.splitlines()) + '\n'
+          report_replacement = '''            approvedReferences=approved_references,
+              preRigCleanup=pre_rig_cleanup,
+              faceRefinement=face_refinement,
+          '''
+          report_replacement = '\n'.join(line[10:] if line.startswith('          ') else line for line in report_replacement.splitlines()) + '\n'
+          if 'preRigCleanup=pre_rig_cleanup' not in source:
+              if report_anchor not in source:
+                  raise SystemExit('Report anchor was not found')
+              source = source.replace(report_anchor, report_replacement, 1)
+
+          compile(source, str(path), 'exec')
+          path.write_text(source, encoding='utf-8')
+      - name: Commit patched rig builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .tooling/havenline-character-production/rig_animate_character.py
+          git diff --cached --check
+          git commit -m 'Use reference-faithful Havenline face refinement'
+          git push origin HEAD:havenline-unity-reference-rebuild
