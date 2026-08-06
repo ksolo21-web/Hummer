@@ -158,4 +158,4 @@ jobs:
             throw 'Machine generation attempted to bypass Blender or Unity human visual review.'
           }
 
-# Normal Git-data trigger for the canary-enabled SF3D recovery contract.
+# Triggered after the default-branch workflow registry became valid.
