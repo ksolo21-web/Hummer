@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows:
-      - Proof HAVENLINE Character 1 Seed 9101 Windows Fallback
+      - Proof HAVENLINE Character 1 Seed 9101 Slim
+      - Proof HAVENLINE Character 1 Seed 9101 Ubuntu 24
     types:
       - completed
 
@@ -22,9 +23,9 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.id == 31124270527 &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'havenline-unity-reference-rebuild' &&
+       github.event.workflow_run.id == 31123869890 &&
+       github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.head_branch == 'havenline-proof-runner-ubuntu24' &&
        github.event.workflow_run.repository.full_name == github.repository)
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -41,12 +42,15 @@ jobs:
           else:
               event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
               run = event['workflow_run']
-              assert run['id'] == 31124270527
-              assert run['name'] == 'Proof HAVENLINE Character 1 Seed 9101 Windows Fallback'
-              assert run['conclusion'] == 'success'
-              assert run['head_branch'] == 'havenline-unity-reference-rebuild'
+              assert run['id'] == 31123869890
+              assert run['name'] in {
+                  'Proof HAVENLINE Character 1 Seed 9101 Slim',
+                  'Proof HAVENLINE Character 1 Seed 9101 Ubuntu 24',
+              }
+              assert run['conclusion'] == 'failure'
+              assert run['head_branch'] == 'havenline-proof-runner-ubuntu24'
               assert run['repository']['full_name'] == 'ksolo21-web/Hummer'
-              print(f"Trusted workflow rerun attempt {run['run_attempt']} accepted as SF3D trigger.")
+              print(f"Trusted controlled-failure rerun attempt {run['run_attempt']} accepted as SF3D trigger.")
 
   generate-character:
     name: ${{ matrix.character }} SF3D RTX production proof
