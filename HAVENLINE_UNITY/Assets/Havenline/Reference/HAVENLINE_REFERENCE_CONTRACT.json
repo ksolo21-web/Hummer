@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1.0.0",
+  "contractVersion": "1.1.0",
   "product": "HAVENLINE",
   "engine": "Unity 6.3 LTS URP",
   "unityEditor": "6000.3.18f1",
@@ -7,6 +7,33 @@
     "name": "HAVENLINE-v0.3.0-reference-final-ARM64.apk",
     "sizeBytes": 107695534,
     "sha256": "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67"
+  },
+  "characterSystem": {
+    "activeCrewSize": 4,
+    "startingPlayableLeads": [
+      "Character1",
+      "Character2"
+    ],
+    "selectedLeadRole": "player-controlled playable lead",
+    "unselectedLeadRole": "core helper and story companion",
+    "coreCompanions": [
+      "Character3",
+      "Character4"
+    ],
+    "companionFormation": [
+      "unselected playable lead",
+      "Character3",
+      "Character4"
+    ],
+    "characters3And4LockedAtStart": false,
+    "selectionRule": "Only Character1 or Character2 is selected at onboarding; all four characters remain active in the game."
+  },
+  "identity": {
+    "provider": "Google Sign-In",
+    "durableAccountKey": "verified Google subject id",
+    "emailOnlyIdentityAllowed": false,
+    "packageAndSigningCertificateMustMatchOAuth": true,
+    "cloudProfileBoundToGoogleAccount": true
   },
   "camera": {
     "projection": "orthographic",
@@ -46,6 +73,9 @@
     "furnace upgrades",
     "expanding warmth zone",
     "survivor rescue",
+    "unselected lead companion support",
+    "Character3 helper activity",
+    "Character4 helper activity",
     "helper gathering and delivery",
     "barricade repair",
     "animated wolf pressure",
@@ -57,6 +87,9 @@
     "unityRenderedReferenceFrames": true,
     "installableArm64Apk": true,
     "automatedGameplayEvidence": true,
+    "productionCharacterPrefabsForAllFour": true,
+    "selectedLeadAndThreeCompanionsProvenInGameplay": true,
+    "verifiedGoogleOAuthPackageAndCertificate": true,
     "physicalGalaxyZFoldAcceptance": true
   }
 }
