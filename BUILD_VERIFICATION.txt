@@ -1,0 +1,37 @@
+KREATIV Studio v0.1 build verification
+=======================================
+
+Validated application and test head: 582638b2377f51d2483e098ed3ebee9d142cc911
+Workflow run: 30778160635
+Later commits only update this verification document; application source is unchanged.
+
+PASS: lintDebug
+PASS: testDebugUnitTest
+PASS: assembleDebug
+PASS: API 35 Mentor and New Canvas route smoke test
+PASS: Full-screen Studio back and controls assertions
+PASS: Android test diagnostics upload
+PASS: Debug APK artifact upload
+
+Full-screen Studio behavior
+---------------------------
+- The drawing canvas is mounted edge-to-edge as the Studio root surface.
+- Studio no longer reserves space for the global app navigation bar.
+- Toolbars are translucent overlays instead of layout rows that shrink the canvas.
+- The project opens in Fill mode by default, with a Fit toggle for whole-page viewing.
+- The artist can hide all Studio controls for a pure full-screen canvas.
+- The guarded canvas frame still catches device-specific render/touch failures.
+
+Verified APK
+------------
+File: KREATIV-Studio-v0.1-Fullscreen-verified.apk
+Size: 97,226,802 bytes
+SHA-256: 42189a285a24f5341ad1394538fbb856612d994dc913582a5589e436125cf414
+
+Authentication boundary
+-----------------------
+The workflow currently receives empty KREATIV Firebase/OAuth variables. The debug
+APK therefore keeps Google sign-in disabled. Google sign-in requires a registered
+com.kreativstudio.app Firebase Android client, matching SHA-1/SHA-256 signing
+fingerprints, the Google web client ID, and a build signed with that registered
+KREATIV certificate.
