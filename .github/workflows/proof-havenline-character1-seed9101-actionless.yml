@@ -1,0 +1,292 @@
+name: Proof HAVENLINE Character 1 Seed 9101 Actionless
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/proof-havenline-character1-seed9101-actionless.yml'
+      - '.tooling/havenline-character-production/remove_extreme_planar_faces.py'
+      - '.tooling/havenline-character-production/prepare_mobile_source_mesh.py'
+      - '.tooling/havenline-character-production/sanitize_character_mesh.py'
+      - '.tooling/havenline-girls-multiview/remove_spatial_outliers.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: havenline-character1-seed9101-actionless-proof
+  cancel-in-progress: true
+
+jobs:
+  prove-seed9101:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Clone branch without marketplace actions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch havenline-unity-reference-rebuild \
+            https://github.com/ksolo21-web/Hummer.git repo
+          cd repo
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/ksolo21-web/Hummer.git"
+
+      - name: Download immutable seed 9101 source through GitHub API
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          mkdir -p source_package character_output/Character1
+          curl --fail --location --retry 5 --retry-delay 5 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip \
+            --output "$RUNNER_TEMP/character1-seed9101.zip"
+          unzip -q "$RUNNER_TEMP/character1-seed9101.zip" -d source_package
+          cp -a source_package/. character_output/Character1/
+          test -s character_output/Character1/Character1_raw.glb
+          test -s character_output/Character1/generation-report.json
+          test -s character_output/Character1/approved_reference_sheet.jpg
+
+      - name: Install portable Blender and minimal graphics runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libegl1 libgl1-mesa-dri libglx-mesa0 unzip
+          archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.2.3"
+          curl --fail --location --retry 5 --retry-delay 5 \
+            https://mirrors.dotsrc.org/blender/blender-release/Blender4.2/blender-4.2.3-linux-x64.tar.xz \
+            --output "$archive"
+          mkdir -p "$runtime"
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          test -x "$runtime/blender"
+          echo "$runtime" >> "$GITHUB_PATH"
+          "$runtime/blender" --background --factory-startup \
+            --python-expr "import bpy; print('Blender:', bpy.app.version_string)"
+
+      - name: Remove the dominant touching floor layer
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/remove_extreme_planar_faces.py -- \
+            --character Character1 \
+            --input "$out/Character1_raw.glb" \
+            --output "$out"
+          test -s "$out/Character1_extreme_plane_clean.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/extreme-planar-face-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Seed 9101 floor removal failed')
+          candidate = report.get('selectedCandidate', {})
+          deletion = report.get('deletion', {})
+          if candidate.get('axis') != 'y':
+              raise SystemExit(f'Seed 9101 detector selected the wrong axis: {candidate.get("axis")}')
+          if min(candidate.get('coverage', {}).values(), default=0) < 0.95:
+              raise SystemExit('Seed 9101 floor candidate does not cover the scene footprint')
+          if deletion.get('facesRemoved', 0) < 3000:
+              raise SystemExit('Seed 9101 floor removal deleted too few faces')
+          PY
+
+      - name: Sanitize and verify standing orientation
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/sanitize_character_mesh.py -- \
+            --character Character1 \
+            --input "$out/Character1_extreme_plane_clean.glb" \
+            --output "$out"
+          test -s "$out/Character1_sanitized.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/mesh-sanitization-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Seed 9101 sanitizer failed')
+          if report.get('orientation', {}).get('standingAxisVerified') is not True:
+              raise SystemExit('Seed 9101 standing orientation was not verified')
+          PY
+
+      - name: Remove detached side debris
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-girls-multiview/remove_spatial_outliers.py -- \
+            --character Character1 \
+            --input "$out/Character1_sanitized.glb" \
+            --output "$out"
+          test -s "$out/Character1_spatial.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/spatial-outlier-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Seed 9101 spatial cleanup failed')
+          PY
+
+      - name: Reduce the source to a mobile-safe face budget
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/prepare_mobile_source_mesh.py -- \
+            --character Character1 \
+            --input "$out/Character1_spatial.glb" \
+            --output "$out"
+          test -s "$out/Character1_mobile_source.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/mobile-source-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Seed 9101 mobile reduction failed')
+          faces = report.get('reduction', {}).get('totalFacesAfter', 0)
+          if not 14000 <= faces <= 39000:
+              raise SystemExit(f'Seed 9101 mobile face count is unsafe: {faces}')
+          PY
+
+      - name: Rig with Blender 4.2 compatibility patch
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          rig_script="$RUNNER_TEMP/rig_animate_character_blender42.py"
+          git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
+          python - "$rig_script" <<'PY'
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text()
+          old = 'scene.render.engine = "BLENDER_EEVEE_NEXT" if hasattr(bpy.types, "BLENDER_EEVEE_NEXT") else "BLENDER_EEVEE"'
+          new = 'engines = {item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items}\n    scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engines else "BLENDER_EEVEE"'
+          if old not in text:
+              raise SystemExit('Legacy EEVEE selector was not found')
+          path.write_text(text.replace(old, new))
+          PY
+          blender --background --factory-startup \
+            --python "$rig_script" -- \
+            --character Character1 \
+            --input "$out/Character1_mobile_source.glb" \
+            --output "$out"
+          test -s "$out/Character1_production.glb"
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path('character_output/Character1/rig-report.json').read_text())
+          if report.get('success') is not True:
+              raise SystemExit('Seed 9101 rig report failed')
+          PY
+
+      - name: Render and validate exact production character
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          cd repo
+          out=character_output/Character1
+          blender --background --factory-startup \
+            --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
+            --character Character1 \
+            --input "$out/Character1_production.glb" \
+            --output "$out"
+          for proof in front three-quarter side back; do test -s "$out/proof_${proof}.png"; done
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character Character1 \
+            --directory "$out"
+          python - <<'PY'
+          import hashlib, json, pathlib
+          root = pathlib.Path('character_output/Character1')
+          proof = json.loads((root / 'proof-render-report.json').read_text())
+          validation = json.loads((root / 'validation-report.json').read_text())
+          plane = json.loads((root / 'extreme-planar-face-report.json').read_text())
+          mobile = json.loads((root / 'mobile-source-report.json').read_text())
+          if proof.get('success') is not True:
+              raise SystemExit('Seed 9101 proof report failed')
+          if validation.get('passed') is not True:
+              raise SystemExit('Seed 9101 validation failed: ' + '; '.join(validation.get('failures', [])))
+          production = root / 'Character1_production.glb'
+          status = {
+              'schemaVersion': 3,
+              'character': 'Character1',
+              'seed': 9101,
+              'sourceMode': 'actionless-dominant-floor-cleaned-mobile-production',
+              'floorFacesRemoved': plane.get('deletion', {}).get('facesRemoved'),
+              'mobileSourceFaces': mobile.get('reduction', {}).get('totalFacesAfter'),
+              'productionVertices': validation.get('metrics', {}).get('baseMesh', {}).get('vertices'),
+              'productionGlbSha256': hashlib.sha256(production.read_bytes()).hexdigest(),
+              'machinePassed': True,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'actionless-seed9101-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          PY
+
+      - name: Push proof images and reports to dedicated proof branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          proof_root=HavenlineProofs/Character1/seed9101
+          rm -rf "$proof_root"
+          mkdir -p "$proof_root"
+          out=character_output/Character1
+          cp "$out"/proof_front.png "$proof_root"/
+          cp "$out"/proof_three-quarter.png "$proof_root"/
+          cp "$out"/proof_side.png "$proof_root"/
+          cp "$out"/proof_back.png "$proof_root"/
+          cp "$out"/approved_reference_sheet.jpg "$proof_root"/
+          cp "$out"/generation-report.json "$proof_root"/
+          cp "$out"/extreme-planar-face-report.json "$proof_root"/
+          cp "$out"/mesh-sanitization-report.json "$proof_root"/
+          cp "$out"/spatial-outlier-report.json "$proof_root"/
+          cp "$out"/mobile-source-report.json "$proof_root"/
+          cp "$out"/rig-report.json "$proof_root"/
+          cp "$out"/proof-render-report.json "$proof_root"/
+          cp "$out"/validation-report.json "$proof_root"/
+          cp "$out"/actionless-seed9101-status.json "$proof_root"/
+          git config user.name "HAVENLINE Proof Bot"
+          git config user.email "havenline-proof@users.noreply.github.com"
+          git add "$proof_root"
+          git commit -m "Publish Havenline Character 1 seed 9101 proofs"
+          git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
