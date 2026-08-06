@@ -80,20 +80,23 @@ jobs:
               raise SystemExit('A Character 1 clean view contains a neighboring pose')
           PY
 
-      - name: Install Blender and mesh validators
+      - name: Install pinned portable Blender runtime
         id: blender
         if: ${{ always() && steps.generate.outcome == 'success' }}
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            blender python3-numpy libegl1 libgl1 libgl1-mesa-dri libglu1-mesa \
-            libglib2.0-0 mesa-utils xvfb xauth
-          xvfb-run -a -s '-screen 0 1280x1024x24' \
-            env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
-            blender --background --factory-startup \
+          archive="$RUNNER_TEMP/blender-4.2.3-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-4.2.3"
+          curl --fail --location --retry 5 --retry-delay 5 \
+            https://mirrors.dotsrc.org/blender/blender-release/Blender4.2/blender-4.2.3-linux-x64.tar.xz \
+            --output "$archive"
+          mkdir -p "$runtime"
+          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          test -x "$runtime/blender"
+          echo "$runtime" >> "$GITHUB_PATH"
+          "$runtime/blender" --background --factory-startup \
             --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
 
       - name: Sanitize clean Character 1 candidate
@@ -102,14 +105,12 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          PYTHONPATH: /usr/lib/python3/dist-packages
           LIBGL_ALWAYS_SOFTWARE: '1'
           MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
         run: |
           set -euo pipefail
           out="character_output/Character1/seed-${{ matrix.seed }}"
-          xvfb-run -a -s '-screen 0 1920x1080x24' \
-            blender --background --factory-startup \
+          blender --background --factory-startup \
             --python .tooling/havenline-character-production/sanitize_character_mesh.py -- \
             --character Character1 \
             --input "$out/Character1_raw.glb" \
@@ -122,14 +123,12 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          PYTHONPATH: /usr/lib/python3/dist-packages
           LIBGL_ALWAYS_SOFTWARE: '1'
           MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
         run: |
           set -euo pipefail
           out="character_output/Character1/seed-${{ matrix.seed }}"
-          xvfb-run -a -s '-screen 0 1920x1080x24' \
-            blender --background --factory-startup \
+          blender --background --factory-startup \
             --python .tooling/havenline-girls-multiview/remove_spatial_outliers.py -- \
             --character Character1 \
             --input "$out/Character1_sanitized.glb" \
@@ -142,7 +141,6 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          PYTHONPATH: /usr/lib/python3/dist-packages
           LIBGL_ALWAYS_SOFTWARE: '1'
           MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
         run: |
@@ -151,8 +149,7 @@ jobs:
           rig_script="$RUNNER_TEMP/rig_animate_character_clean.py"
           git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
           test -s "$rig_script"
-          xvfb-run -a -s '-screen 0 1920x1080x24' \
-            blender --background --factory-startup \
+          blender --background --factory-startup \
             --python "$rig_script" -- \
             --character Character1 \
             --input "$out/Character1_spatial.glb" \
@@ -164,14 +161,12 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          PYTHONPATH: /usr/lib/python3/dist-packages
           LIBGL_ALWAYS_SOFTWARE: '1'
           MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
         run: |
           set -euo pipefail
           out="character_output/Character1/seed-${{ matrix.seed }}"
-          xvfb-run -a -s '-screen 0 1920x1080x24' \
-            blender --background --factory-startup \
+          blender --background --factory-startup \
             --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
             --character Character1 \
             --input "$out/Character1_production.glb" \
@@ -229,10 +224,11 @@ jobs:
               and validation.get('passed') is True
           )
           status = {
-              'schemaVersion': 1,
+              'schemaVersion': 2,
               'character': 'Character1',
               'seed': int(os.environ['SEED']),
               'sourceMode': 'clean-non-overlapping-trellis-multiview',
+              'blenderRuntime': '4.2.3 portable',
               'meshSimplify': generation.get('meshSimplify'),
               'textureSize': generation.get('textureSize'),
               'generateOutcome': os.environ.get('GENERATE_OUTCOME', 'skipped'),
