@@ -16,6 +16,8 @@ import bpy
 from mathutils import Vector
 
 
+REFINEMENT_SCHEMA_VERSION = 2
+
 PROFILES = {
     "Character1": {
         "source": "sheet",
@@ -126,7 +128,13 @@ def connected_components(mesh):
 def cleanup_disconnected_components(meshes, world_bounds):
     minimum, maximum = world_bounds(meshes)
     span = max(maximum.x - minimum.x, maximum.y - minimum.y, maximum.z - minimum.z, 1e-6)
-    report = {"sceneSpan": span, "objects": [], "componentsRemoved": 0, "verticesRemoved": 0}
+    report = {
+        "schemaVersion": REFINEMENT_SCHEMA_VERSION,
+        "sceneSpan": span,
+        "objects": [],
+        "componentsRemoved": 0,
+        "verticesRemoved": 0,
+    }
     for obj in meshes:
         mesh = obj.data
         components = connected_components(mesh)
@@ -322,6 +330,7 @@ def create_reference_face_surface(character, root, meshes, bounds):
     bpy.context.collection.objects.link(face_object)
 
     return {
+        "schemaVersion": REFINEMENT_SCHEMA_VERSION,
         "applied": True,
         "reference": str(reference),
         "sourceKind": profile["source"],
