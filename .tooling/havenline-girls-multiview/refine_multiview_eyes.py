@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Add centered natural 3D irises and pupils inside reconstructed eye sockets.
+"""Add flat, natural irises and pupils inside reconstructed eye sockets.
 
-The neural mesh already contains eyelids and sclera. This pass adds dark brown irises that
-cover most of the overexposed reconstructed sclera, smaller pupils, and restrained
-catchlights. It must not replace the socket with oversized spheres or create a floating
-face layer. Placement is calibrated from the reviewed Character 3 proof render.
+The neural mesh already contains eyelids and sclera. Previous spherical inserts protruded
+from the face and created a googly-eyed result. This pass uses thin matte oval discs placed
+flush against the reconstructed socket, preserving the existing eye shape while adding the
+missing dark iris and pupil. Nothing behaves as a billboard or replaces the face.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 import sys
 import traceback
@@ -79,6 +80,8 @@ def make_material(name, rgba, roughness):
             principled.inputs["Base Color"].default_value = rgba
         if "Roughness" in principled.inputs:
             principled.inputs["Roughness"].default_value = roughness
+        if "Metallic" in principled.inputs:
+            principled.inputs["Metallic"].default_value = 0.0
     return material
 
 
@@ -86,23 +89,34 @@ def apply_material(obj, material) -> None:
     obj.data.materials.append(material)
     for polygon in obj.data.polygons:
         polygon.material_index = 0
-        polygon.use_smooth = True
+        polygon.use_smooth = False
 
 
-def apply_scale(obj) -> None:
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    obj.select_set(False)
-
-
-def ellipsoid(name, location, scale, material, segments=36, rings=24):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=location)
-    obj = bpy.context.object
-    obj.name = name
-    obj.scale = scale
-    apply_scale(obj)
+def oval_disc(name, location, radius_x, radius_z, material, segments=36):
+    center_x, center_y, center_z = location
+    vertices = [(center_x, center_y, center_z)]
+    for index in range(segments):
+        angle = math.tau * index / segments
+        vertices.append(
+            (
+                center_x + math.cos(angle) * radius_x,
+                center_y,
+                center_z + math.sin(angle) * radius_z,
+            )
+        )
+    faces = []
+    for index in range(segments):
+        current = 1 + index
+        following = 1 + ((index + 1) % segments)
+        faces.append((0, current, following))
+    mesh = bpy.data.meshes.new(name + "Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update(calc_edges=True)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
     apply_material(obj, material)
+    obj["havenlineModeledEyeDetail"] = True
+    obj["havenlineEyeSurfaceType"] = "flat flush oval disc"
     return obj
 
 
@@ -137,38 +151,34 @@ def estimate_eye_frame(meshes):
 
 def add_eyes(character, frame):
     height = frame["height"]
-    iris = make_material(f"{character}_RefinedIris", (0.050, 0.012, 0.004, 1.0), 0.46)
-    pupil = make_material(f"{character}_RefinedPupil", (0.0012, 0.0012, 0.0015, 1.0), 0.38)
-    highlight = make_material(f"{character}_RefinedEyeHighlight", (0.88, 0.86, 0.80, 1.0), 0.34)
+    iris = make_material(f"{character}_RefinedIris", (0.026, 0.008, 0.003, 1.0), 0.78)
+    pupil = make_material(f"{character}_RefinedPupil", (0.0010, 0.0010, 0.0012, 1.0), 0.82)
     created = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
-        y = frame["faceY"] - height * 0.0008
+        iris_y = frame["faceY"] - height * 0.0010
+        pupil_y = iris_y - height * 0.00025
         z = frame["eyeZ"]
-        created.append(ellipsoid(
-            f"{character}_RefinedIris_{side}",
-            (x, y, z),
-            (height * 0.0100, height * 0.0010, height * 0.0110),
-            iris,
-            36,
-            24,
-        ))
-        created.append(ellipsoid(
-            f"{character}_RefinedPupil_{side}",
-            (x, y - height * 0.00075, z),
-            (height * 0.0048, height * 0.00070, height * 0.0054),
-            pupil,
-            30,
-            20,
-        ))
-        created.append(ellipsoid(
-            f"{character}_RefinedHighlight_{side}",
-            (x - side * height * 0.0013, y - height * 0.00130, z + height * 0.0021),
-            (height * 0.00055, height * 0.00024, height * 0.00070),
-            highlight,
-            16,
-            10,
-        ))
+        created.append(
+            oval_disc(
+                f"{character}_RefinedIris_{side}",
+                (x, iris_y, z),
+                height * 0.0091,
+                height * 0.0104,
+                iris,
+                40,
+            )
+        )
+        created.append(
+            oval_disc(
+                f"{character}_RefinedPupil_{side}",
+                (x, pupil_y, z),
+                height * 0.0038,
+                height * 0.0045,
+                pupil,
+                32,
+            )
+        )
     return created
 
 
@@ -194,12 +204,12 @@ def main() -> int:
     output_path = output_root / f"{args.character}_face_refined.glb"
     report_path = output_root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
         "success": False,
-        "method": "larger dark-brown iris, centered pupil and restrained catchlight inserts calibrated into existing reconstructed sockets",
+        "method": "flat matte iris and pupil discs placed flush in existing reconstructed sockets",
         "humanVisualApprovalRequired": True,
     }
     try:
