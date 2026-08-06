@@ -14,7 +14,9 @@
 -    val rgb: String,
 +    @SerialName("hex") val hex: String,
  )
-@@ -64,15 +65,23 @@
+ 
+ @Serializable
+@@ -83,15 +84,24 @@
                  require(manifest.palette.map { it.number }.toSet().size == manifest.palette.size) {
                      "Workbook palette numbers must be unique"
                  }
