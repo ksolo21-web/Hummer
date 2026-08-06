@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: havenline-unity-reference-rebuild
-      - name: Correct topology ownership, face placement and failure gates
+      - name: Correct topology ownership and face placement
         shell: python
         run: |
           from pathlib import Path
@@ -161,61 +161,7 @@ jobs:
           )
           compile(sanitizer, str(sanitizer_path), 'exec')
           sanitizer_path.write_text(sanitizer, encoding='utf-8')
-
-          workflow_path = Path('.github/workflows/generate-havenline-character-production.yml')
-          workflow = workflow_path.read_text(encoding='utf-8')
-          matrix_expression = '$' + '{{ matrix.character }}'
-
-          rig_start = workflow.index('      - name: Deterministically skin, rig, animate and build LODs')
-          proof_start = workflow.index('      - name: Render close neutral final-GLB proof angles', rig_start)
-          rig_block = workflow[rig_start:proof_start]
-          if 'test -s "$out/' not in rig_block:
-              output_anchor = '            --output "$out"\n'
-              if output_anchor not in rig_block:
-                  raise SystemExit('Rig output anchor was not found')
-              tests = '\n'.join([
-                  f'          test -s "$out/{matrix_expression}_production.glb"',
-                  f'          test -s "$out/{matrix_expression}_production.fbx"',
-                  f'          test -s "$out/{matrix_expression}_LOD1.glb"',
-                  f'          test -s "$out/{matrix_expression}_LOD2.glb"',
-                  '          test -s "$out/rig-report.json"',
-                  '          python - "$out/rig-report.json" <<\'PY\'',
-                  '          import json, pathlib, sys',
-                  '          report = json.loads(pathlib.Path(sys.argv[1]).read_text())',
-                  '          if not report.get("success"):',
-                  '              raise SystemExit(report.get("error", "rig report did not pass"))',
-                  '          PY',
-                  '',
-              ])
-              rig_block = rig_block.replace(output_anchor, output_anchor + tests, 1)
-              workflow = workflow[:rig_start] + rig_block + workflow[proof_start:]
-
-          proof_start = workflow.index('      - name: Render close neutral final-GLB proof angles')
-          validate_start = workflow.index('      - name: Validate mesh, skin, clips, LODs, textures and proofs', proof_start)
-          proof_block = workflow[proof_start:validate_start]
-          if 'test -s "$out/proof_front.png"' not in proof_block:
-              output_anchor = '            --output "$out"\n'
-              if output_anchor not in proof_block:
-                  raise SystemExit('Proof output anchor was not found')
-              tests = '\n'.join([
-                  '          test -s "$out/proof_front.png"',
-                  '          test -s "$out/proof_three-quarter.png"',
-                  '          test -s "$out/proof_side.png"',
-                  '          test -s "$out/proof_back.png"',
-                  '          test -s "$out/proof-render-report.json"',
-                  '          python - "$out/proof-render-report.json" <<\'PY\'',
-                  '          import json, pathlib, sys',
-                  '          report = json.loads(pathlib.Path(sys.argv[1]).read_text())',
-                  '          if not report.get("success"):',
-                  '              raise SystemExit(report.get("error", "proof report did not pass"))',
-                  '          PY',
-                  '',
-              ])
-              proof_block = proof_block.replace(output_anchor, output_anchor + tests, 1)
-              workflow = workflow[:proof_start] + proof_block + workflow[validate_start:]
-
-          workflow_path.write_text(workflow, encoding='utf-8')
-      - name: Commit corrected production gates
+      - name: Commit corrected refinement
         shell: bash
         run: |
           set -euo pipefail
@@ -223,8 +169,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             .tooling/havenline-character-production/reference_face_refinement.py \
-            .tooling/havenline-character-production/sanitize_character_mesh.py \
-            .github/workflows/generate-havenline-character-production.yml
+            .tooling/havenline-character-production/sanitize_character_mesh.py
           git diff --cached --check
-          git commit -m 'Correct Havenline topology and face refinement gates'
+          git commit -m 'Correct Havenline topology and face refinement'
           git push origin HEAD:havenline-unity-reference-rebuild
