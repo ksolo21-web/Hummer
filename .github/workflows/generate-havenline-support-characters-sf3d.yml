@@ -97,3 +97,5 @@ jobs:
           if ($status.acceptedForUnityReview -or $status.approved -or $status.unityIntegrated -or -not $status.humanVisualApprovalRequired) {
             throw 'Machine generation attempted to bypass Blender or Unity human visual review.'
           }
+
+# Normal Git ref push after removing invalid job-level runner context.
