@@ -213,3 +213,5 @@ jobs:
             echo "Character 1 production proof failed; preserved evidence is available in the workflow artifact." >&2
             exit 1
           fi
+
+# Normal Git ref trigger after the X11 dependency repair.
