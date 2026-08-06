@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "blender": {
     "version": "4.5.12",
     "releaseLine": "4.5 LTS",
@@ -37,16 +37,33 @@
   },
   "reconstruction": {
     "Character1": {
-      "generator": "trellis-community/TRELLIS",
-      "mode": "clean-multi-image",
-      "seed": 9101,
-      "singleView": false,
-      "sourceArtifactId": 8972496079
+      "generator": "Stability-AI/stable-fast-3d",
+      "generatorCommit": "ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2",
+      "mode": "RTX GPU recovery from approved three-quarter turnaround view after TRELLIS seed 9101 human rejection",
+      "singleView": true,
+      "textureResolution": 2048,
+      "remeshOption": "triangle",
+      "targetVertexCount": 42000,
+      "rejectedPrimary": {
+        "generator": "trellis-community/TRELLIS",
+        "mode": "clean-multi-image",
+        "seed": 9101,
+        "sourceArtifactId": 8972496079,
+        "productionArtifactId": 8974534288,
+        "productionFbxSha256": "44550b285fff331d2b5f15b9b817792e3c8a0c1695696a92da5f07b7d4b774bc",
+        "humanVisualReviewStatus": "rejected",
+        "policyFile": ".tooling/havenline-character-production/character1-seed9101-visual-rejection.json"
+      }
     },
     "Character2": {
       "generator": "trellis-community/TRELLIS",
-      "mode": "recovered multi-view artifact",
-      "singleView": false
+      "mode": "recovered multi-view artifact accepted for Unity review",
+      "singleView": false,
+      "artifactId": 8973791027,
+      "artifactDigest": "sha256:051ce24ea949227f3bec154529421e35bf53a1e8e8607ec5fa705a345dc6eb5c",
+      "productionFbxSha256": "64344f84154888f6bd03fde50789bde81ccb2e6599dfbd3bac5a380413950524",
+      "humanVisualReviewStatus": "pending-unity-review",
+      "policyFile": ".tooling/havenline-character-production/character2-unity-review-candidate.json"
     },
     "Character3": {
       "generator": "Stability-AI/stable-fast-3d",
