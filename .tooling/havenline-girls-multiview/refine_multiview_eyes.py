@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Rebuild Character 3's eyes as small approved-style almond eyes.
+"""Reshape Character 3's failed round sockets into compact expedition-character eyes.
 
-The TRELLIS mesh contains oversized circular eye sockets. Adding irises alone left a
-large pale ring and an uncanny expression. This pass keeps the generated head, eyelids,
-hair, body, clothing and textures, but masks each failed socket with a small matte skin
-patch and authors a compact horizontal almond eye over it: warm sclera, dark-brown iris
-and black pupil. Every authored layer exceeds the production renderer's 100-vertex mesh
-threshold and is positioned from the measured local socket surface.
+The generated face, hair, body and clothing remain intact. Each oversized pale socket is
+covered by a dark matte eyelid-shaped mask, then rebuilt as a narrow warm almond eye with
+a large dark-brown iris and small black pupil. The layers are flat, non-billboard geometry,
+measured from each socket's local front surface and large enough to survive production
+capture, rigging and Unity FBX export.
 """
 
 from __future__ import annotations
@@ -22,9 +21,8 @@ import bpy
 from mathutils import Vector
 
 
-def args_after_separator() -> list[str]:
-    values = sys.argv
-    return values[values.index("--") + 1 :] if "--" in values else []
+def cli_args() -> list[str]:
+    return sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 
 
 def parse_args():
@@ -32,7 +30,7 @@ def parse_args():
     parser.add_argument("--character", required=True)
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
-    return parser.parse_args(args_after_separator())
+    return parser.parse_args(cli_args())
 
 
 def clear_scene() -> None:
@@ -64,7 +62,7 @@ def world_vertices(meshes):
             yield matrix @ vertex.co
 
 
-def quantile(values, fraction: float):
+def quantile(values, fraction: float) -> float:
     ordered = sorted(float(value) for value in values)
     if not ordered:
         raise RuntimeError("Cannot compute a quantile from an empty collection")
@@ -72,11 +70,11 @@ def quantile(values, fraction: float):
     return ordered[index]
 
 
-def make_material(name: str, rgba, roughness: float, specular: float = 0.10):
-    material = bpy.data.materials.new(name)
-    material.use_nodes = True
-    material.diffuse_color = rgba
-    principled = material.node_tree.nodes.get("Principled BSDF")
+def material(name: str, rgba, roughness: float, specular: float):
+    value = bpy.data.materials.new(name)
+    value.use_nodes = True
+    value.diffuse_color = rgba
+    principled = value.node_tree.nodes.get("Principled BSDF")
     if principled:
         if "Base Color" in principled.inputs:
             principled.inputs["Base Color"].default_value = rgba
@@ -88,184 +86,160 @@ def make_material(name: str, rgba, roughness: float, specular: float = 0.10):
             principled.inputs["Specular IOR Level"].default_value = specular
         elif "Specular" in principled.inputs:
             principled.inputs["Specular"].default_value = specular
-    return material
-
-
-def apply_material(obj, material) -> None:
-    obj.data.materials.append(material)
-    for polygon in obj.data.polygons:
-        polygon.material_index = 0
-        polygon.use_smooth = False
+    return value
 
 
 def oval_points(radius_x: float, radius_z: float, segments: int):
-    for index in range(segments):
-        angle = math.tau * index / segments
-        yield math.cos(angle) * radius_x, math.sin(angle) * radius_z
+    return [
+        (
+            math.cos(math.tau * index / segments) * radius_x,
+            math.sin(math.tau * index / segments) * radius_z,
+        )
+        for index in range(segments)
+    ]
 
 
 def almond_points(radius_x: float, radius_z: float, half_segments: int):
-    # Two sine arcs meet at pointed inner and outer corners, producing a horizontal eye.
+    points = []
     for index in range(half_segments + 1):
         u = index / half_segments
-        yield -radius_x + 2.0 * radius_x * u, radius_z * math.sin(math.pi * u)
+        points.append((-radius_x + 2.0 * radius_x * u, radius_z * math.sin(math.pi * u)))
     for index in range(1, half_segments):
         u = 1.0 - index / half_segments
-        yield -radius_x + 2.0 * radius_x * u, -radius_z * math.sin(math.pi * u)
+        points.append((-radius_x + 2.0 * radius_x * u, -radius_z * math.sin(math.pi * u)))
+    return points
 
 
-def flat_shape(
-    name: str,
-    location,
-    points,
-    material,
-    layer: str,
-):
-    center_x, center_y, center_z = location
-    perimeter = list(points)
+def shape(name: str, location, perimeter, assigned_material, layer: str):
     if len(perimeter) < 100:
         raise RuntimeError(f"{name} requires at least 100 perimeter vertices")
-    vertices = [(center_x, center_y, center_z)] + [
-        (center_x + x, center_y, center_z + z) for x, z in perimeter
+    x, y, z = location
+    vertices = [(x, y, z)] + [(x + px, y, z + pz) for px, pz in perimeter]
+    faces = [
+        (0, 1 + index, 1 + ((index + 1) % len(perimeter)))
+        for index in range(len(perimeter))
     ]
-    faces = []
-    for index in range(len(perimeter)):
-        current = 1 + index
-        following = 1 + ((index + 1) % len(perimeter))
-        # Front proof camera is on negative Y, so this winding faces -Y.
-        faces.append((0, current, following))
     mesh = bpy.data.meshes.new(name + "Mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update(calc_edges=True)
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
-    apply_material(obj, material)
+    obj.data.materials.append(assigned_material)
+    for polygon in obj.data.polygons:
+        polygon.material_index = 0
+        polygon.use_smooth = False
     obj["havenlineModeledEyeDetail"] = True
     obj["havenlineEyeLayer"] = layer
     obj["havenlineProductionCaptureEligible"] = len(mesh.vertices) >= 101
     return obj
 
 
-def estimate_eye_frame(meshes):
+def eye_frame(meshes):
     minimum, maximum = world_bounds(meshes)
     extent = maximum - minimum
     height = max(extent.z, 1e-6)
     width = max(extent.x, 1e-6)
-    bounds_center_x = (minimum.x + maximum.x) * 0.5
-    upper = [
+    center_x = (minimum.x + maximum.x) * 0.5
+    samples = [
         point
         for point in world_vertices(meshes)
         if minimum.z + height * 0.77 <= point.z <= minimum.z + height * 0.94
-        and abs(point.x - bounds_center_x) <= width * 0.19
+        and abs(point.x - center_x) <= width * 0.19
     ]
-    if len(upper) < 40:
-        raise RuntimeError(f"Not enough facial samples to place eyes safely: {len(upper)}")
+    if len(samples) < 40:
+        raise RuntimeError(f"Not enough facial samples: {len(samples)}")
     return {
         "minimum": minimum,
         "maximum": maximum,
         "height": height,
-        "width": width,
-        "centerX": bounds_center_x + height * 0.0080,
-        "eyeZ": minimum.z + height * 0.854,
+        "centerX": center_x + height * 0.0080,
+        "eyeZ": minimum.z + height * 0.853,
         "eyeOffsetX": min(height * 0.0305, width * 0.077),
-        "sampleCount": len(upper),
+        "sampleCount": len(samples),
     }
 
 
-def local_eye_surface(meshes, eye_x: float, eye_z: float, height: float):
-    radius_x = height * 0.020
-    radius_z = height * 0.022
+def local_front_y(meshes, x: float, z: float, height: float):
     samples = []
     for point in world_vertices(meshes):
-        dx = (point.x - eye_x) / max(radius_x, 1e-6)
-        dz = (point.z - eye_z) / max(radius_z, 1e-6)
+        dx = (point.x - x) / max(height * 0.020, 1e-6)
+        dz = (point.z - z) / max(height * 0.021, 1e-6)
         if dx * dx + dz * dz <= 1.0:
             samples.append(point.y)
     if len(samples) < 20:
-        raise RuntimeError(
-            f"Not enough local socket samples at x={eye_x:.6f}, z={eye_z:.6f}: {len(samples)}"
-        )
-    # Negative Y faces the front camera. Use the local foremost percentile.
+        raise RuntimeError(f"Not enough local socket samples at x={x:.6f}, z={z:.6f}")
     return quantile(samples, 0.012), len(samples)
 
 
-def add_eyes(character: str, frame, meshes):
+def author_eyes(character: str, frame, meshes):
     height = frame["height"]
-    # Approximate local face color in linear space, sampled from the reviewed proof.
-    skin = make_material(f"{character}_EyeSocketSkin", (0.19, 0.052, 0.011, 1.0), 0.72, 0.08)
-    sclera = make_material(f"{character}_WarmSclera", (0.48, 0.39, 0.29, 1.0), 0.70, 0.09)
-    iris = make_material(f"{character}_DarkBrownIris", (0.012, 0.0025, 0.0008, 1.0), 0.82, 0.04)
-    pupil = make_material(f"{character}_Pupil", (0.00015, 0.00015, 0.0002, 1.0), 0.90, 0.02)
+    # Dark mask reads as the character's lashes/eyelids and avoids the orange pasted-on
+    # skin patches produced by the prior material approximation.
+    socket = material(f"{character}_DarkSocket", (0.014, 0.0028, 0.0008, 1.0), 0.86, 0.025)
+    sclera = material(f"{character}_WarmSclera", (0.13, 0.085, 0.050, 1.0), 0.82, 0.035)
+    iris = material(f"{character}_DarkIris", (0.0060, 0.0013, 0.00045, 1.0), 0.90, 0.015)
+    pupil = material(f"{character}_Pupil", (0.00010, 0.00010, 0.00013, 1.0), 0.94, 0.010)
 
-    created = []
+    authored = []
     placements = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
-        z = frame["eyeZ"] - height * 0.0010
-        surface_y, local_samples = local_eye_surface(meshes, x, z, height)
+        z = frame["eyeZ"]
+        surface, count = local_front_y(meshes, x, z, height)
+        mask_y = surface - height * 0.0020
+        sclera_y = mask_y - height * 0.00042
+        iris_y = sclera_y - height * 0.00032
+        pupil_y = iris_y - height * 0.00027
 
-        # Layer toward the front camera (negative Y): mask, sclera, iris, pupil.
-        mask_y = surface_y - height * 0.0020
-        sclera_y = mask_y - height * 0.00045
-        iris_y = sclera_y - height * 0.00035
-        pupil_y = iris_y - height * 0.00030
-
-        created.append(
-            flat_shape(
-                f"{character}_SocketMask_{side}",
-                (x, mask_y, z),
-                oval_points(height * 0.0157, height * 0.0142, 128),
-                skin,
-                "skin socket mask",
-            )
-        )
-        created.append(
-            flat_shape(
-                f"{character}_Sclera_{side}",
-                (x, sclera_y, z - height * 0.0003),
-                almond_points(height * 0.0112, height * 0.0048, 64),
-                sclera,
-                "horizontal almond sclera",
-            )
-        )
-        created.append(
-            flat_shape(
-                f"{character}_Iris_{side}",
-                (x, iris_y, z - height * 0.0003),
-                oval_points(height * 0.0044, height * 0.0045, 112),
-                iris,
-                "dark brown iris",
-            )
-        )
-        created.append(
-            flat_shape(
-                f"{character}_Pupil_{side}",
-                (x, pupil_y, z - height * 0.0003),
-                oval_points(height * 0.0021, height * 0.0024, 104),
-                pupil,
-                "black pupil",
-            )
+        authored.extend(
+            [
+                shape(
+                    f"{character}_SocketMask_{side}",
+                    (x, mask_y, z),
+                    oval_points(height * 0.0143, height * 0.0118, 128),
+                    socket,
+                    "dark eyelid socket mask",
+                ),
+                shape(
+                    f"{character}_Sclera_{side}",
+                    (x, sclera_y, z - height * 0.0006),
+                    almond_points(height * 0.0088, height * 0.00335, 64),
+                    sclera,
+                    "narrow warm almond sclera",
+                ),
+                shape(
+                    f"{character}_Iris_{side}",
+                    (x, iris_y, z - height * 0.0006),
+                    oval_points(height * 0.00355, height * 0.00320, 112),
+                    iris,
+                    "large dark-brown iris",
+                ),
+                shape(
+                    f"{character}_Pupil_{side}",
+                    (x, pupil_y, z - height * 0.0006),
+                    oval_points(height * 0.00175, height * 0.00190, 104),
+                    pupil,
+                    "small black pupil",
+                ),
+            ]
         )
         placements.append(
             {
                 "side": side,
                 "x": x,
                 "z": z,
-                "localFrontY": surface_y,
+                "localFrontY": surface,
                 "maskY": mask_y,
                 "scleraY": sclera_y,
                 "irisY": iris_y,
                 "pupilY": pupil_y,
-                "localSampleCount": local_samples,
+                "localSampleCount": count,
             }
         )
 
-    for obj in created:
-        if len(obj.data.vertices) < 101:
-            raise RuntimeError(
-                f"Production renderer would hide {obj.name}: only {len(obj.data.vertices)} vertices"
-            )
-    return created, placements
+    if any(len(obj.data.vertices) < 101 for obj in authored):
+        raise RuntimeError("An authored eye layer would be hidden by production capture")
+    return authored, placements
 
 
 def export_glb(path: pathlib.Path, meshes) -> None:
@@ -285,27 +259,27 @@ def export_glb(path: pathlib.Path, meshes) -> None:
 
 def main() -> int:
     args = parse_args()
-    output_root = pathlib.Path(args.output)
-    output_root.mkdir(parents=True, exist_ok=True)
-    output_path = output_root / f"{args.character}_face_refined.glb"
-    report_path = output_root / "multiview-eye-refinement-report.json"
+    root = pathlib.Path(args.output)
+    root.mkdir(parents=True, exist_ok=True)
+    output = root / f"{args.character}_face_refined.glb"
+    report_path = root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 8,
+        "schemaVersion": 9,
         "character": args.character,
         "source": args.input,
-        "output": str(output_path),
+        "output": str(output),
         "success": False,
-        "method": "skin socket masks plus compact horizontal almond sclera, dark iris and pupil layers",
+        "method": "dark eyelid masks plus narrow warm almond eyes with large dark irises",
         "approved": False,
         "humanVisualApprovalRequired": True,
     }
     try:
         clear_scene()
         meshes = import_glb(pathlib.Path(args.input))
-        frame = estimate_eye_frame(meshes)
-        created, placements = add_eyes(args.character, frame, meshes)
+        frame = eye_frame(meshes)
+        authored, placements = author_eyes(args.character, frame, meshes)
         all_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
-        export_glb(output_path, all_meshes)
+        export_glb(output, all_meshes)
         report.update(
             success=True,
             eyeFrame={
@@ -315,12 +289,9 @@ def main() -> int:
                 "sampleCount": frame["sampleCount"],
             },
             eyePlacements=placements,
-            modeledObjectsCreated=len(created),
-            modeledEyeVertexCounts={obj.name: len(obj.data.vertices) for obj in created},
-            allModeledEyesProductionCaptureEligible=all(
-                len(obj.data.vertices) >= 101 for obj in created
-            ),
-            outputBytes=output_path.stat().st_size,
+            modeledObjectsCreated=len(authored),
+            modeledEyeVertexCounts={obj.name: len(obj.data.vertices) for obj in authored},
+            outputBytes=output.stat().st_size,
         )
     except Exception as exc:
         report.update(error=repr(exc), traceback=traceback.format_exc())
