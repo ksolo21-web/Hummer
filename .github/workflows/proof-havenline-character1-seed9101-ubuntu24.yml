@@ -1,4 +1,4 @@
-name: Proof HAVENLINE Character 1 Seed 9101 Ubuntu 24
+name: Proof HAVENLINE Character 1 Seed 9101 Slim
 
 on:
   workflow_dispatch:
@@ -13,13 +13,13 @@ permissions:
   actions: read
 
 concurrency:
-  group: havenline-character1-seed9101-ubuntu24-isolated
+  group: havenline-character1-seed9101-slim-isolated
   cancel-in-progress: false
 
 jobs:
-  prove-seed9101-ubuntu24:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
+  prove-seed9101-slim:
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
     steps:
       - name: Clone current HAVENLINE production branch
         shell: bash
@@ -47,7 +47,12 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip \
             --output "$RUNNER_TEMP/character1-seed9101.zip"
-          unzip -q "$RUNNER_TEMP/character1-seed9101.zip" -d source_package
+          python3 - <<'PY'
+          import pathlib, zipfile
+          archive = pathlib.Path(__import__('os').environ['RUNNER_TEMP']) / 'character1-seed9101.zip'
+          with zipfile.ZipFile(archive) as source:
+              source.extractall('source_package')
+          PY
           cp -a source_package/. character_output/Character1/
           test -s character_output/Character1/Character1_raw.glb
           test -s character_output/Character1/generation-report.json
@@ -57,19 +62,45 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install 'numpy<2' pillow trimesh pygltflib
-          sudo DEBIAN_FRONTEND=noninteractive apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            libegl1 libgl1-mesa-dri libglx-mesa0 unzip xz-utils
+          python3 -m ensurepip --upgrade || true
+          python3 -m pip install --user --upgrade pip setuptools wheel
+          python3 -m pip install --user 'numpy<2' pillow trimesh pygltflib
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          if command -v sudo >/dev/null 2>&1; then
+            sudo DEBIAN_FRONTEND=noninteractive apt-get update
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              libegl1 libgl1-mesa-dri libglx-mesa0 xz-utils
+          elif [ "$(id -u)" = 0 ]; then
+            DEBIAN_FRONTEND=noninteractive apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              libegl1 libgl1-mesa-dri libglx-mesa0 xz-utils
+          fi
           archive="$RUNNER_TEMP/blender-4.5.12-linux-x64.tar.xz"
           runtime="$RUNNER_TEMP/blender-4.5.12"
           curl --fail --location --retry 5 --retry-delay 5 \
             https://download.blender.org/release/Blender4.5/blender-4.5.12-linux-x64.tar.xz \
             --output "$archive"
           mkdir -p "$runtime"
-          tar -xJf "$archive" --strip-components=1 -C "$runtime"
+          python3 - <<'PY'
+          import os, pathlib, tarfile
+          archive = pathlib.Path(os.environ['RUNNER_TEMP']) / 'blender-4.5.12-linux-x64.tar.xz'
+          runtime = pathlib.Path(os.environ['RUNNER_TEMP']) / 'blender-4.5.12'
+          with tarfile.open(archive, mode='r:xz') as source:
+              members = source.getmembers()
+              prefix = members[0].name.split('/', 1)[0] + '/'
+              for member in members:
+                  if not member.name.startswith(prefix):
+                      continue
+                  member.name = member.name[len(prefix):]
+                  if member.name:
+                      source.extract(member, runtime, filter='data')
+          PY
           test -x "$runtime/blender"
+          ldd "$runtime/blender" | tee "$RUNNER_TEMP/blender-ldd.txt"
+          if grep -q 'not found' "$RUNNER_TEMP/blender-ldd.txt"; then
+            echo 'Portable Blender has unresolved shared-library dependencies' >&2
+            exit 1
+          fi
           echo "$runtime" >> "$GITHUB_PATH"
           "$runtime/blender" --background --factory-startup \
             --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
@@ -77,7 +108,8 @@ jobs:
       - name: Build rigged mobile character and exact production proofs
         shell: bash
         env:
-          HAVENLINE_CYCLES_SAMPLES: '24'
+          HAVENLINE_CYCLES_SAMPLES: '8'
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           set -euo pipefail
           cd repo
@@ -90,7 +122,7 @@ jobs:
         run: |
           set -euo pipefail
           cd repo
-          proof_root=HavenlineProofs/Character1/seed9101-ubuntu24
+          proof_root=HavenlineProofs/Character1/seed9101-slim
           out=character_output/Character1
           rm -rf "$proof_root"
           mkdir -p "$proof_root"
@@ -121,7 +153,5 @@ jobs:
           git config user.name "HAVENLINE Proof Bot"
           git config user.email "havenline-proof@users.noreply.github.com"
           git add "$proof_root"
-          git commit -m "Publish Havenline Character 1 seed 9101 Ubuntu 24 production proof"
-          git push origin HEAD:refs/heads/havenline-proof-c1-seed9101-ubuntu24 --force
-
-# Second push intentionally triggers this already-registered isolated workflow.
+          git commit -m "Publish Havenline Character 1 seed 9101 slim production proof"
+          git push origin HEAD:refs/heads/havenline-proof-c1-seed9101-slim --force
