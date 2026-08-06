@@ -123,6 +123,7 @@ class CharacterArtifactPolicyTests(unittest.TestCase):
             policy_path = pathlib.Path(directory) / "character3-unity-review-candidate.json"
             policy_path.write_text(
                 """{
+                  "schemaVersion": 2,
                   "character": "Character3",
                   "artifact": {
                     "id": "9999999998",
@@ -134,8 +135,16 @@ class CharacterArtifactPolicyTests(unittest.TestCase):
                     "productionFbxSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
                     "approvedReferenceSha256": "1111111111111111111111111111111111111111111111111111111111111111"
                   },
-                  "blenderVisualReview": {"status": "accepted-for-unity-review"},
+                  "blenderVisualReview": {
+                    "status": "accepted-for-unity-review",
+                    "reviewedBy": "Test reviewer",
+                    "reviewedUtc": "2026-08-06T20:00:00Z",
+                    "reviewNote": "All four rendered views were inspected before this fixture attempted final approval.",
+                    "confirmation": "I-REVIEWED-FOUR-VIEWS"
+                  },
                   "humanVisualApprovalRequired": true,
+                  "humanVisualReviewStatus": "pending-unity-review",
+                  "acceptedForUnityReview": true,
                   "approved": true,
                   "unityIntegrated": false
                 }""",
@@ -143,6 +152,46 @@ class CharacterArtifactPolicyTests(unittest.TestCase):
             )
             with mock.patch.object(MODULE, "candidate_policy_path", return_value=policy_path):
                 with self.assertRaisesRegex(RuntimeError, "prematurely approved"):
+                    MODULE.validate_artifact_policy(
+                        "Character3",
+                        {
+                            "id": 9999999998,
+                            "digest": "sha256:" + "d" * 64,
+                            "workflow_run": {
+                                "id": 9999999998,
+                                "head_sha": "e" * 40,
+                            },
+                        },
+                        "f" * 64,
+                        "1" * 64,
+                    )
+
+    def test_candidate_must_explicitly_accept_unity_review(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            policy_path = pathlib.Path(directory) / "character3-unity-review-candidate.json"
+            policy_path.write_text(
+                """{
+                  "schemaVersion": 2,
+                  "character": "Character3",
+                  "artifact": {},
+                  "hashes": {},
+                  "blenderVisualReview": {
+                    "status": "accepted-for-unity-review",
+                    "reviewedBy": "Test reviewer",
+                    "reviewedUtc": "2026-08-06T20:00:00Z",
+                    "reviewNote": "All four rendered views were inspected but the acceptance flag was omitted.",
+                    "confirmation": "I-REVIEWED-FOUR-VIEWS"
+                  },
+                  "humanVisualApprovalRequired": true,
+                  "humanVisualReviewStatus": "pending-unity-review",
+                  "acceptedForUnityReview": false,
+                  "approved": false,
+                  "unityIntegrated": false
+                }""",
+                encoding="utf-8",
+            )
+            with mock.patch.object(MODULE, "candidate_policy_path", return_value=policy_path):
+                with self.assertRaisesRegex(RuntimeError, "not explicitly accepted"):
                     MODULE.validate_artifact_policy(
                         "Character3",
                         {
