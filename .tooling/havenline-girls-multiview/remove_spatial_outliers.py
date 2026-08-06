@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Remove large disconnected reconstruction islands outside the character envelope."""
+"""Remove spatially detached reconstruction islands from triangle-soup meshes.
+
+Some neural GLB exports duplicate vertices per triangle, so ordinary connected-component
+analysis reports thousands of three-vertex components. This pass instead detects a large
+empty horizontal gap that isolates a minority vertex cluster from the character body,
+then deletes only that outlying cluster. It fails closed when no unambiguous gap exists.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
 import pathlib
 import sys
 import traceback
@@ -28,12 +33,12 @@ def parse_args():
     return parser.parse_args(args_after_separator())
 
 
-def clear_scene():
+def clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
 
 
-def import_glb(path):
+def import_glb(path: pathlib.Path):
     bpy.ops.import_scene.gltf(filepath=str(path))
     meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
     if not meshes:
@@ -50,136 +55,105 @@ def world_bounds(meshes):
     return minimum, maximum
 
 
-def components(mesh):
-    adjacency = [[] for _ in mesh.vertices]
-    for edge in mesh.edges:
-        a, b = edge.vertices
-        adjacency[a].append(b)
-        adjacency[b].append(a)
-    visited = set()
-    result = []
-    for start in range(len(mesh.vertices)):
-        if start in visited:
-            continue
-        stack = [start]
-        visited.add(start)
-        group = []
-        while stack:
-            current = stack.pop()
-            group.append(current)
-            for neighbor in adjacency[current]:
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    stack.append(neighbor)
-        result.append(group)
-    return result
-
-
-def component_metrics(obj, indices):
-    points = [obj.matrix_world @ obj.data.vertices[index].co for index in indices]
-    minimum = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
-    maximum = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
-    extent = maximum - minimum
-    return {
-        "vertices": len(indices),
-        "minimum": minimum,
-        "maximum": maximum,
-        "extents": extent,
-        "largestExtent": max(extent.x, extent.y, extent.z),
-        "center": (minimum + maximum) * 0.5,
-    }
-
-
-def axis_gap(a_min, a_max, b_min, b_max):
-    if a_max < b_min:
-        return b_min - a_max
-    if b_max < a_min:
-        return a_min - b_max
-    return 0.0
-
-
-def should_remove(metric, main, span):
-    gap_x = axis_gap(metric["minimum"].x, metric["maximum"].x, main["minimum"].x, main["maximum"].x)
-    gap_y = axis_gap(metric["minimum"].y, metric["maximum"].y, main["minimum"].y, main["maximum"].y)
-    gap_z = axis_gap(metric["minimum"].z, metric["maximum"].z, main["minimum"].z, main["maximum"].z)
-    horizontal_gap = math.hypot(gap_x, gap_y)
-    total_gap = math.sqrt(gap_x * gap_x + gap_y * gap_y + gap_z * gap_z)
-    vertex_ratio = metric["vertices"] / max(main["vertices"], 1)
-
-    detached_large_island = (
-        horizontal_gap > span * 0.025
-        and vertex_ratio < 0.48
-        and metric["largestExtent"] > span * 0.10
+def find_horizontal_outlier_split(obj, scene_span: float):
+    samples = sorted(
+        (float((obj.matrix_world @ vertex.co).x), vertex.index)
+        for vertex in obj.data.vertices
     )
-    detached_small_island = total_gap > span * 0.055 and vertex_ratio < 0.18
-    return detached_large_island or detached_small_island, {
-        "gapX": gap_x,
-        "gapY": gap_y,
-        "gapZ": gap_z,
-        "horizontalGap": horizontal_gap,
-        "totalGap": total_gap,
-        "vertexRatioToMain": vertex_ratio,
-    }
+    count = len(samples)
+    if count < 100:
+        return None
 
-
-def clean_object(obj, span):
-    mesh = obj.data
-    groups = components(mesh)
-    metrics = [component_metrics(obj, group) for group in groups]
-    if not metrics:
-        return {"object": obj.name, "componentsBefore": 0, "componentsRemoved": 0, "verticesRemoved": 0}
-    main_index = max(range(len(metrics)), key=lambda index: metrics[index]["vertices"])
-    main = metrics[main_index]
-    remove_indices = set()
-    removed = []
-    kept = []
-    for index, (group, metric) in enumerate(zip(groups, metrics)):
-        payload = {
-            "componentIndex": index,
-            "vertices": metric["vertices"],
-            "minimum": list(metric["minimum"]),
-            "maximum": list(metric["maximum"]),
-            "extents": list(metric["extents"]),
-            "largestExtent": metric["largestExtent"],
-            "isMain": index == main_index,
-        }
-        if index == main_index:
-            kept.append(payload)
+    candidates = []
+    minimum_gap = scene_span * 0.020
+    for index in range(count - 1):
+        left_x = samples[index][0]
+        right_x = samples[index + 1][0]
+        gap = right_x - left_x
+        if gap < minimum_gap:
             continue
-        remove, gaps = should_remove(metric, main, span)
-        payload.update(gaps)
-        if remove:
-            payload["reason"] = "spatially detached reconstruction island outside main character envelope"
-            removed.append(payload)
-            remove_indices.update(group)
-        else:
-            kept.append(payload)
+        left_ratio = (index + 1) / count
+        right_ratio = 1.0 - left_ratio
+        if 0.03 <= left_ratio <= 0.30:
+            candidates.append({
+                "side": "left",
+                "gap": gap,
+                "threshold": (left_x + right_x) * 0.5,
+                "outlierRatio": left_ratio,
+                "bodyRatio": right_ratio,
+                "leftEdge": left_x,
+                "rightEdge": right_x,
+            })
+        if 0.03 <= right_ratio <= 0.30:
+            candidates.append({
+                "side": "right",
+                "gap": gap,
+                "threshold": (left_x + right_x) * 0.5,
+                "outlierRatio": right_ratio,
+                "bodyRatio": left_ratio,
+                "leftEdge": left_x,
+                "rightEdge": right_x,
+            })
 
-    if remove_indices:
-        bm = bmesh.new()
-        bm.from_mesh(mesh)
-        bm.verts.ensure_lookup_table()
-        delete_verts = [bm.verts[index] for index in sorted(remove_indices)]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: (item["gap"], -item["outlierRatio"]))
+
+
+def clean_object(obj, scene_span: float):
+    split = find_horizontal_outlier_split(obj, scene_span)
+    if split is None:
+        return {
+            "object": obj.name,
+            "verticesBefore": len(obj.data.vertices),
+            "verticesRemoved": 0,
+            "splitDetected": False,
+            "reason": "no unambiguous minority cluster separated by a large horizontal gap",
+        }
+
+    threshold = float(split["threshold"])
+    side = split["side"]
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.verts.ensure_lookup_table()
+    delete_verts = []
+    for vertex in bm.verts:
+        world_x = float((obj.matrix_world @ vertex.co).x)
+        if (side == "left" and world_x < threshold) or (side == "right" and world_x > threshold):
+            delete_verts.append(vertex)
+
+    vertices_before = len(obj.data.vertices)
+    if delete_verts:
         bmesh.ops.delete(bm, geom=delete_verts, context="VERTS")
         if bm.faces:
             bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
-        bm.to_mesh(mesh)
-        bm.free()
-        mesh.validate(verbose=False)
-        mesh.update()
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.validate(verbose=False)
+    obj.data.update()
+
+    removed = vertices_before - len(obj.data.vertices)
+    actual_ratio = removed / max(vertices_before, 1)
+    if removed <= 0:
+        raise RuntimeError(f"A spatial split was detected for {obj.name}, but no vertices were removed")
+    if actual_ratio > 0.35:
+        raise RuntimeError(
+            f"Spatial cleanup attempted to remove too much geometry from {obj.name}: {actual_ratio:.3f}"
+        )
 
     return {
         "object": obj.name,
-        "componentsBefore": len(groups),
-        "mainComponentIndex": main_index,
-        "componentsRemoved": len(removed),
-        "verticesRemoved": len(remove_indices),
-        "removed": removed,
-        "kept": kept,
+        "verticesBefore": vertices_before,
+        "verticesAfter": len(obj.data.vertices),
+        "verticesRemoved": removed,
+        "removedRatio": actual_ratio,
+        "splitDetected": True,
+        "split": split,
+        "reason": "minority vertex cluster isolated by a large empty horizontal gap",
     }
 
 
-def export_glb(path, meshes):
+def export_glb(path: pathlib.Path, meshes) -> None:
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
         obj.select_set(True)
@@ -194,14 +168,14 @@ def export_glb(path, meshes):
         raise RuntimeError(f"No cleaned GLB was exported to {path}")
 
 
-def main():
+def main() -> int:
     args = parse_args()
     output_root = pathlib.Path(args.output)
     output_root.mkdir(parents=True, exist_ok=True)
     output_path = output_root / f"{args.character}_spatial.glb"
     report_path = output_root / "spatial-outlier-report.json"
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
@@ -213,17 +187,17 @@ def main():
         meshes = import_glb(pathlib.Path(args.input))
         minimum, maximum = world_bounds(meshes)
         extent = maximum - minimum
-        span = max(extent.x, extent.y, extent.z, 1e-6)
-        object_reports = [clean_object(obj, span) for obj in meshes]
+        scene_span = max(extent.x, extent.y, extent.z, 1e-6)
+        object_reports = [clean_object(obj, scene_span) for obj in meshes]
         export_glb(output_path, meshes)
         after_minimum, after_maximum = world_bounds(meshes)
         report.update({
             "success": True,
-            "sceneSpan": span,
+            "sceneSpan": scene_span,
             "inputBounds": {"minimum": list(minimum), "maximum": list(maximum)},
             "outputBounds": {"minimum": list(after_minimum), "maximum": list(after_maximum)},
             "objects": object_reports,
-            "componentsRemoved": sum(item["componentsRemoved"] for item in object_reports),
+            "splitsDetected": sum(1 for item in object_reports if item["splitDetected"]),
             "verticesRemoved": sum(item["verticesRemoved"] for item in object_reports),
             "outputBytes": output_path.stat().st_size,
         })
