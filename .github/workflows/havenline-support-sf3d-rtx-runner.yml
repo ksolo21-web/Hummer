@@ -2,8 +2,6 @@ name: HAVENLINE SF3D Recovery Characters RTX Runner
 
 on:
   workflow_dispatch:
-  pull_request_target:
-    types: [edited]
 
 permissions:
   contents: read
@@ -15,13 +13,6 @@ concurrency:
 
 jobs:
   generate-character:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request_target' &&
-       github.event.pull_request.number == 19 &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
-       github.event.pull_request.head.ref == 'havenline-unity-reference-rebuild' &&
-       contains(github.event.pull_request.body, 'HAVENLINE_SF3D_RECOVERY_NONCE=20260806-C1-C3-C4-v1'))
     name: ${{ matrix.character }} SF3D RTX production proof
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 240
@@ -37,8 +28,6 @@ jobs:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       STABILITY_AI_LICENSE_ACCEPTED: ${{ vars.STABILITY_AI_LICENSE_ACCEPTED }}
       STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED: ${{ vars.STABILITY_AI_COMMERCIAL_REGISTRATION_CONFIRMED }}
-      HF_HOME: ${{ runner.temp }}\havenline-huggingface
-      TORCH_EXTENSIONS_DIR: ${{ runner.temp }}\havenline-torch-extensions
 
     steps:
       - name: Check out current HAVENLINE production branch
@@ -47,13 +36,12 @@ jobs:
           ref: havenline-unity-reference-rebuild
           fetch-depth: 1
 
-      - name: Verify same-repository guarded trigger and exact branch head
+      - name: Verify exact branch checkout
         shell: pwsh
         run: |
           $actual = (git rev-parse HEAD).Trim()
           if (-not $actual) { throw 'HAVENLINE checkout has no commit SHA.' }
           Write-Host "Checked out HAVENLINE commit: $actual"
-          Write-Host "Trigger PR: ${{ github.event.pull_request.number }}"
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
