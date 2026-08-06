@@ -1,0 +1,327 @@
+name: Generate HAVENLINE Girls Multi-View Characters
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/generate-havenline-girls-multiview.yml'
+      - '.tooling/havenline-character-production/generate_character_mesh.py'
+      - '.tooling/havenline-character-production/sanitize_character_mesh.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+      - '.tooling/havenline-character-reference-payload/**'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-girls-multiview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Materialize checksum-pinned approved references
+        run: python3 .tooling/havenline-character-reference-payload/materialize_references.py
+      - name: Verify multi-view production inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          for path in \
+            "$root/generate_character_mesh.py" \
+            "$root/sanitize_character_mesh.py" \
+            "$root/render_character_proofs_v4.py" \
+            "$root/validate_character_asset.py" \
+            "$root/references/Character3.jpg" \
+            "$root/references/Character4.jpg"; do
+            test -s "$path" || { echo "Missing production input: $path" >&2; exit 1; }
+          done
+          git cat-file -e f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py
+
+  generate-girl:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - character: Character3
+            seed: 5303
+          - character: Character4
+            seed: 5304
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Materialize checksum-pinned approved references
+        run: python3 .tooling/havenline-character-reference-payload/materialize_references.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore exact multi-view reconstruction cache
+        id: raw-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            character_output/${{ matrix.character }}/${{ matrix.character }}_raw.glb
+            character_output/${{ matrix.character }}/generation-report.json
+            character_output/${{ matrix.character }}/${{ matrix.character }}_turnaround.jpg
+            character_output/${{ matrix.character }}/view_*.png
+            character_output/${{ matrix.character }}/processed_*.png
+            character_output/${{ matrix.character }}/trellis_*
+          key: havenline-trellis-multiview-v2-${{ matrix.character }}-${{ hashFiles('.tooling/havenline-character-production/generate_character_mesh.py', '.tooling/havenline-character-reference-payload/**') }}
+
+      - name: Install TRELLIS client, Blender and validators
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'gradio_client>=1.8,<2' 'numpy<2' pillow trimesh pygltflib
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            blender python3-numpy libegl1 libegl-mesa0 libgl1 libgl1-mesa-dri \
+            libglx-mesa0 libglu1-mesa libopengl0 libglib2.0-0 mesa-utils xvfb xauth
+          xvfb-run -a -s '-screen 0 1280x1024x24' \
+            env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
+            blender --background --factory-startup \
+            --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
+
+      - name: Generate multi-view mesh — primary seed
+        id: trellis_primary
+        if: ${{ steps.raw-cache.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          rm -rf "$out"
+          mkdir -p "$out"
+          python "$root/generate_character_mesh.py" \
+            --character '${{ matrix.character }}' \
+            --sheet "$root/references/${{ matrix.character }}.jpg" \
+            --output "$out" \
+            --seed '${{ matrix.seed }}'
+
+      - name: Generate multi-view mesh — alternate seed
+        id: trellis_secondary
+        if: ${{ always() && steps.raw-cache.outputs.cache-hit != 'true' && steps.trellis_primary.outcome != 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          rm -rf "$out"
+          mkdir -p "$out"
+          python "$root/generate_character_mesh.py" \
+            --character '${{ matrix.character }}' \
+            --sheet "$root/references/${{ matrix.character }}.jpg" \
+            --output "$out" \
+            --seed '$(( ${{ matrix.seed }} + 1000 ))'
+
+      - name: Generate multi-view mesh — recovery seed
+        id: trellis_tertiary
+        if: ${{ always() && steps.raw-cache.outputs.cache-hit != 'true' && steps.trellis_primary.outcome != 'success' && steps.trellis_secondary.outcome != 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          rm -rf "$out"
+          mkdir -p "$out"
+          python "$root/generate_character_mesh.py" \
+            --character '${{ matrix.character }}' \
+            --sheet "$root/references/${{ matrix.character }}.jpg" \
+            --output "$out" \
+            --seed '$(( ${{ matrix.seed }} + 2000 ))'
+
+      - name: Verify real TRELLIS GLB exists
+        id: generate
+        if: ${{ always() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="character_output/${{ matrix.character }}/${{ matrix.character }}_raw.glb"
+          report="character_output/${{ matrix.character }}/generation-report.json"
+          test -s "$raw"
+          test -s "$report"
+          python - "$raw" "$report" <<'PY'
+          import json, pathlib, sys
+          raw = pathlib.Path(sys.argv[1])
+          report = json.loads(pathlib.Path(sys.argv[2]).read_text())
+          if raw.read_bytes()[:4] != b'glTF':
+              raise SystemExit('Generated file is not a binary GLB')
+          if report.get('success') is not True:
+              raise SystemExit('TRELLIS generation report did not pass')
+          if report.get('mode') != 'multi-image':
+              raise SystemExit('Generation was not multi-image reconstruction')
+          print(json.dumps({'rawBytes': raw.stat().st_size, 'generator': report.get('generator'), 'mode': report.get('mode')}, indent=2))
+          PY
+
+      - name: Remove disconnected reconstruction debris
+        id: sanitize
+        if: ${{ always() && steps.generate.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$root/sanitize_character_mesh.py" -- \
+            --character '${{ matrix.character }}' \
+            --input "$out/${{ matrix.character }}_raw.glb" \
+            --output "$out"
+          test -s "$out/${{ matrix.character }}_sanitized.glb"
+
+      - name: Restore clean pre-face-shell rigging stage
+        id: rig
+        if: ${{ always() && steps.sanitize.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          rig_script="$RUNNER_TEMP/rig_animate_character_multiview.py"
+          git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
+          test -s "$rig_script"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$rig_script" -- \
+            --character '${{ matrix.character }}' \
+            --input "$out/${{ matrix.character }}_sanitized.glb" \
+            --output "$out"
+
+      - name: Render close neutral production proof angles
+        id: proof
+        if: ${{ always() && steps.rig.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          root=.tooling/havenline-character-production
+          out="character_output/${{ matrix.character }}"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$root/render_character_proofs_v4.py" -- \
+            --character '${{ matrix.character }}' \
+            --input "$out/${{ matrix.character }}_production.glb" \
+            --output "$out"
+
+      - name: Validate mesh, rig, clips, LODs, textures and proofs
+        id: validate
+        if: ${{ always() && steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character '${{ matrix.character }}' \
+            --directory "character_output/${{ matrix.character }}"
+
+      - name: Preserve approved turnaround with review package
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          out="character_output/${{ matrix.character }}"
+          mkdir -p "$out"
+          cp .tooling/havenline-character-production/references/${{ matrix.character }}.jpg "$out/approved_reference_sheet.jpg"
+
+      - name: Write truthful multi-view status
+        if: ${{ always() }}
+        shell: python
+        env:
+          CHARACTER: ${{ matrix.character }}
+          GENERATE_OUTCOME: ${{ steps.generate.outcome }}
+          SANITIZE_OUTCOME: ${{ steps.sanitize.outcome }}
+          RIG_OUTCOME: ${{ steps.rig.outcome }}
+          PROOF_OUTCOME: ${{ steps.proof.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          import json, os, pathlib
+          root = pathlib.Path('character_output') / os.environ['CHARACTER']
+          root.mkdir(parents=True, exist_ok=True)
+          validation_path = root / 'validation-report.json'
+          validation = json.loads(validation_path.read_text()) if validation_path.exists() else {}
+          machine_passed = (
+              os.environ.get('GENERATE_OUTCOME') == 'success'
+              and os.environ.get('SANITIZE_OUTCOME') == 'success'
+              and os.environ.get('RIG_OUTCOME') == 'success'
+              and os.environ.get('PROOF_OUTCOME') == 'success'
+              and os.environ.get('VALIDATE_OUTCOME') == 'success'
+              and validation.get('passed') is True
+          )
+          status = {
+              'schemaVersion': 1,
+              'character': os.environ['CHARACTER'],
+              'sourceMode': 'trellis-multiview',
+              'generateOutcome': os.environ.get('GENERATE_OUTCOME', 'skipped'),
+              'sanitizeOutcome': os.environ.get('SANITIZE_OUTCOME', 'skipped'),
+              'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
+              'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
+              'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
+              'machinePassed': machine_passed,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'matrix-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          print(json.dumps(status, indent=2))
+
+      - name: Upload multi-view character review package
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-${{ matrix.character }}-multiview-production-review
+          path: character_output/${{ matrix.character }}/**
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce complete multi-view machine pipeline
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test '${{ steps.generate.outcome }}' = success
+          test '${{ steps.sanitize.outcome }}' = success
+          test '${{ steps.rig.outcome }}' = success
+          test '${{ steps.proof.outcome }}' = success
+          test '${{ steps.validate.outcome }}' = success
+          python - <<'PY'
+          import json, pathlib
+          path = pathlib.Path('character_output/${{ matrix.character }}/matrix-status.json')
+          status = json.loads(path.read_text())
+          if status.get('machinePassed') is not True:
+              raise SystemExit('Multi-view machine pipeline did not pass')
+          if status.get('approved') is True:
+              raise SystemExit('Character was prematurely marked human-approved')
+          PY
