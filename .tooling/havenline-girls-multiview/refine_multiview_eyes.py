@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Add flat, natural irises and pupils inside reconstructed eye sockets.
+"""Rebuild Character 3's eyes as small approved-style almond eyes.
 
-The neural mesh already contains eyelids and sclera. Previous spherical inserts protruded
-from the face and created a googly-eyed result. This pass uses thin matte oval discs placed
-just in front of each reconstructed socket's measured local surface, preserving the eye
-shape while adding the missing dark iris and pupil. Each disc exceeds the production
-renderer mesh threshold. Nothing behaves as a billboard or replaces the face.
+The TRELLIS mesh contains oversized circular eye sockets. Adding irises alone left a
+large pale ring and an uncanny expression. This pass keeps the generated head, eyelids,
+hair, body, clothing and textures, but masks each failed socket with a small matte skin
+patch and authors a compact horizontal almond eye over it: warm sclera, dark-brown iris
+and black pupil. Every authored layer exceeds the production renderer's 100-vertex mesh
+threshold and is positioned from the measured local socket surface.
 """
 
 from __future__ import annotations
@@ -66,12 +67,12 @@ def world_vertices(meshes):
 def quantile(values, fraction: float):
     ordered = sorted(float(value) for value in values)
     if not ordered:
-        raise RuntimeError("Cannot compute face surface from an empty point set")
+        raise RuntimeError("Cannot compute a quantile from an empty collection")
     index = max(0, min(len(ordered) - 1, int(round((len(ordered) - 1) * fraction))))
     return ordered[index]
 
 
-def make_material(name, rgba, roughness):
+def make_material(name: str, rgba, roughness: float, specular: float = 0.10):
     material = bpy.data.materials.new(name)
     material.use_nodes = True
     material.diffuse_color = rgba
@@ -83,6 +84,10 @@ def make_material(name, rgba, roughness):
             principled.inputs["Roughness"].default_value = roughness
         if "Metallic" in principled.inputs:
             principled.inputs["Metallic"].default_value = 0.0
+        if "Specular IOR Level" in principled.inputs:
+            principled.inputs["Specular IOR Level"].default_value = specular
+        elif "Specular" in principled.inputs:
+            principled.inputs["Specular"].default_value = specular
     return material
 
 
@@ -93,25 +98,41 @@ def apply_material(obj, material) -> None:
         polygon.use_smooth = False
 
 
-def oval_disc(name, location, radius_x, radius_z, material, segments):
-    if segments < 100:
-        raise RuntimeError(f"{name} must contain at least 101 vertices for production capture")
-    center_x, center_y, center_z = location
-    vertices = [(center_x, center_y, center_z)]
+def oval_points(radius_x: float, radius_z: float, segments: int):
     for index in range(segments):
         angle = math.tau * index / segments
-        vertices.append(
-            (
-                center_x + math.cos(angle) * radius_x,
-                center_y,
-                center_z + math.sin(angle) * radius_z,
-            )
-        )
+        yield math.cos(angle) * radius_x, math.sin(angle) * radius_z
+
+
+def almond_points(radius_x: float, radius_z: float, half_segments: int):
+    # Two sine arcs meet at pointed inner and outer corners, producing a horizontal eye.
+    for index in range(half_segments + 1):
+        u = index / half_segments
+        yield -radius_x + 2.0 * radius_x * u, radius_z * math.sin(math.pi * u)
+    for index in range(1, half_segments):
+        u = 1.0 - index / half_segments
+        yield -radius_x + 2.0 * radius_x * u, -radius_z * math.sin(math.pi * u)
+
+
+def flat_shape(
+    name: str,
+    location,
+    points,
+    material,
+    layer: str,
+):
+    center_x, center_y, center_z = location
+    perimeter = list(points)
+    if len(perimeter) < 100:
+        raise RuntimeError(f"{name} requires at least 100 perimeter vertices")
+    vertices = [(center_x, center_y, center_z)] + [
+        (center_x + x, center_y, center_z + z) for x, z in perimeter
+    ]
     faces = []
-    for index in range(segments):
+    for index in range(len(perimeter)):
         current = 1 + index
-        following = 1 + ((index + 1) % segments)
-        # Front proof camera is on negative Y, so this winding produces a -Y normal.
+        following = 1 + ((index + 1) % len(perimeter))
+        # Front proof camera is on negative Y, so this winding faces -Y.
         faces.append((0, current, following))
     mesh = bpy.data.meshes.new(name + "Mesh")
     mesh.from_pydata(vertices, [], faces)
@@ -120,7 +141,7 @@ def oval_disc(name, location, radius_x, radius_z, material, segments):
     bpy.context.collection.objects.link(obj)
     apply_material(obj, material)
     obj["havenlineModeledEyeDetail"] = True
-    obj["havenlineEyeSurfaceType"] = "flat local-surface oval disc"
+    obj["havenlineEyeLayer"] = layer
     obj["havenlineProductionCaptureEligible"] = len(mesh.vertices) >= 101
     return obj
 
@@ -134,8 +155,7 @@ def estimate_eye_frame(meshes):
     upper = [
         point
         for point in world_vertices(meshes)
-        if point.z >= minimum.z + height * 0.77
-        and point.z <= minimum.z + height * 0.94
+        if minimum.z + height * 0.77 <= point.z <= minimum.z + height * 0.94
         and abs(point.x - bounds_center_x) <= width * 0.19
     ]
     if len(upper) < 40:
@@ -146,16 +166,15 @@ def estimate_eye_frame(meshes):
         "height": height,
         "width": width,
         "centerX": bounds_center_x + height * 0.0080,
-        "coarseFaceY": quantile([point.y for point in upper], 0.075),
         "eyeZ": minimum.z + height * 0.854,
         "eyeOffsetX": min(height * 0.0305, width * 0.077),
         "sampleCount": len(upper),
     }
 
 
-def local_eye_surface(meshes, eye_x, eye_z, height):
-    radius_x = height * 0.0180
-    radius_z = height * 0.0200
+def local_eye_surface(meshes, eye_x: float, eye_z: float, height: float):
+    radius_x = height * 0.020
+    radius_z = height * 0.022
     samples = []
     for point in world_vertices(meshes):
         dx = (point.x - eye_x) / max(radius_x, 1e-6)
@@ -166,41 +185,65 @@ def local_eye_surface(meshes, eye_x, eye_z, height):
         raise RuntimeError(
             f"Not enough local socket samples at x={eye_x:.6f}, z={eye_z:.6f}: {len(samples)}"
         )
-    # Negative Y faces the proof camera. Use the local front percentile rather than a
-    # broad face percentile that can leave the discs hidden behind the sclera.
-    return quantile(samples, 0.015), len(samples)
+    # Negative Y faces the front camera. Use the local foremost percentile.
+    return quantile(samples, 0.012), len(samples)
 
 
-def add_eyes(character, frame, meshes):
+def add_eyes(character: str, frame, meshes):
     height = frame["height"]
-    iris = make_material(f"{character}_RefinedIris", (0.021, 0.006, 0.002, 1.0), 0.80)
-    pupil = make_material(f"{character}_RefinedPupil", (0.0007, 0.0007, 0.0009, 1.0), 0.84)
+    # Approximate local face color in linear space, sampled from the reviewed proof.
+    skin = make_material(f"{character}_EyeSocketSkin", (0.19, 0.052, 0.011, 1.0), 0.72, 0.08)
+    sclera = make_material(f"{character}_WarmSclera", (0.48, 0.39, 0.29, 1.0), 0.70, 0.09)
+    iris = make_material(f"{character}_DarkBrownIris", (0.012, 0.0025, 0.0008, 1.0), 0.82, 0.04)
+    pupil = make_material(f"{character}_Pupil", (0.00015, 0.00015, 0.0002, 1.0), 0.90, 0.02)
+
     created = []
     placements = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
-        z = frame["eyeZ"]
-        local_front_y, local_samples = local_eye_surface(meshes, x, z, height)
-        iris_y = local_front_y - height * 0.0024
+        z = frame["eyeZ"] - height * 0.0010
+        surface_y, local_samples = local_eye_surface(meshes, x, z, height)
+
+        # Layer toward the front camera (negative Y): mask, sclera, iris, pupil.
+        mask_y = surface_y - height * 0.0020
+        sclera_y = mask_y - height * 0.00045
+        iris_y = sclera_y - height * 0.00035
         pupil_y = iris_y - height * 0.00030
+
         created.append(
-            oval_disc(
-                f"{character}_RefinedIris_{side}",
-                (x, iris_y, z),
-                height * 0.0102,
-                height * 0.0113,
-                iris,
-                128,
+            flat_shape(
+                f"{character}_SocketMask_{side}",
+                (x, mask_y, z),
+                oval_points(height * 0.0157, height * 0.0142, 128),
+                skin,
+                "skin socket mask",
             )
         )
         created.append(
-            oval_disc(
-                f"{character}_RefinedPupil_{side}",
-                (x, pupil_y, z),
-                height * 0.0041,
-                height * 0.0048,
+            flat_shape(
+                f"{character}_Sclera_{side}",
+                (x, sclera_y, z - height * 0.0003),
+                almond_points(height * 0.0112, height * 0.0048, 64),
+                sclera,
+                "horizontal almond sclera",
+            )
+        )
+        created.append(
+            flat_shape(
+                f"{character}_Iris_{side}",
+                (x, iris_y, z - height * 0.0003),
+                oval_points(height * 0.0044, height * 0.0045, 112),
+                iris,
+                "dark brown iris",
+            )
+        )
+        created.append(
+            flat_shape(
+                f"{character}_Pupil_{side}",
+                (x, pupil_y, z - height * 0.0003),
+                oval_points(height * 0.0021, height * 0.0024, 104),
                 pupil,
-                112,
+                "black pupil",
             )
         )
         placements.append(
@@ -208,12 +251,15 @@ def add_eyes(character, frame, meshes):
                 "side": side,
                 "x": x,
                 "z": z,
-                "localFrontY": local_front_y,
+                "localFrontY": surface_y,
+                "maskY": mask_y,
+                "scleraY": sclera_y,
                 "irisY": iris_y,
                 "pupilY": pupil_y,
                 "localSampleCount": local_samples,
             }
         )
+
     for obj in created:
         if len(obj.data.vertices) < 101:
             raise RuntimeError(
@@ -244,12 +290,13 @@ def main() -> int:
     output_path = output_root / f"{args.character}_face_refined.glb"
     report_path = output_root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 7,
+        "schemaVersion": 8,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
         "success": False,
-        "method": "flat matte iris and pupil discs positioned from each socket's measured local front surface",
+        "method": "skin socket masks plus compact horizontal almond sclera, dark iris and pupil layers",
+        "approved": False,
         "humanVisualApprovalRequired": True,
     }
     try:
@@ -259,23 +306,22 @@ def main() -> int:
         created, placements = add_eyes(args.character, frame, meshes)
         all_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
         export_glb(output_path, all_meshes)
-        report.update({
-            "success": True,
-            "eyeFrame": {
+        report.update(
+            success=True,
+            eyeFrame={
                 "centerX": frame["centerX"],
-                "coarseFaceY": frame["coarseFaceY"],
                 "eyeZ": frame["eyeZ"],
                 "eyeOffsetX": frame["eyeOffsetX"],
                 "sampleCount": frame["sampleCount"],
             },
-            "eyePlacements": placements,
-            "modeledObjectsCreated": len(created),
-            "modeledEyeVertexCounts": {obj.name: len(obj.data.vertices) for obj in created},
-            "allModeledEyesProductionCaptureEligible": all(
+            eyePlacements=placements,
+            modeledObjectsCreated=len(created),
+            modeledEyeVertexCounts={obj.name: len(obj.data.vertices) for obj in created},
+            allModeledEyesProductionCaptureEligible=all(
                 len(obj.data.vertices) >= 101 for obj in created
             ),
-            "outputBytes": output_path.stat().st_size,
-        })
+            outputBytes=output_path.stat().st_size,
+        )
     except Exception as exc:
         report.update(error=repr(exc), traceback=traceback.format_exc())
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
