@@ -7,6 +7,7 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - '.tooling/havenline-character-production/**'
+      - '.tooling/havenline-character-reference-payload/**'
       - '.tooling/havenline-character-production-request.json'
       - '.github/workflows/generate-havenline-character-production.yml'
 
@@ -24,6 +25,11 @@ jobs:
       ready: ${{ steps.check.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
+      - name: Materialize checksum-pinned approved references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .tooling/havenline-character-reference-payload/materialize_references.py
       - id: check
         name: Verify approved references and production scripts
         shell: bash
@@ -34,6 +40,7 @@ jobs:
             "$root/generate_character_mesh.py"
             "$root/rig_animate_character.py"
             "$root/validate_character_asset.py"
+            "$root/references/materialization-report.json"
             "$root/references/Character1.jpg"
             "$root/references/Character2.jpg"
             "$root/references/Character3.jpg"
@@ -69,6 +76,11 @@ jobs:
             seed: 4104
     steps:
       - uses: actions/checkout@v4
+      - name: Materialize checksum-pinned approved references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .tooling/havenline-character-reference-payload/materialize_references.py
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
