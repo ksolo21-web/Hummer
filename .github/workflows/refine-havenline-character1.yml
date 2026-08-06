@@ -1,0 +1,223 @@
+name: Refine HAVENLINE Character 1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/refine-havenline-character1.yml'
+      - '.tooling/havenline-character-production/sanitize_character_mesh.py'
+      - '.tooling/havenline-character-production/render_character_proofs_v4.py'
+      - '.tooling/havenline-character-production/validate_character_asset.py'
+      - '.tooling/havenline-girls-multiview/remove_spatial_outliers.py'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: havenline-character1-refinement-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refine-character1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download proven Character 1 multi-view reconstruction
+        uses: actions/download-artifact@v4
+        with:
+          name: HAVENLINE-Character1-production-review
+          path: source_package
+          github-token: ${{ github.token }}
+          repository: ksolo21-web/Hummer
+          run-id: 31087895186
+
+      - name: Stage immutable Character 1 raw source and approved reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          mkdir -p "$out"
+          raw="$(find source_package -type f -name Character1_raw.glb -size +10000c -print -quit)"
+          test -n "$raw"
+          cp "$raw" "$out/Character1_raw.glb"
+          python3 .tooling/havenline-character-reference-payload/materialize_references.py
+          cp .tooling/havenline-character-production/references/Character1.jpg "$out/approved_reference_sheet.jpg"
+
+      - name: Install Blender and validators
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            blender python3-numpy libegl1 libegl-mesa0 libgl1 libgl1-mesa-dri \
+            libglx-mesa0 libglu1-mesa libopengl0 libglib2.0-0 mesa-utils xvfb xauth
+          xvfb-run -a -s '-screen 0 1280x1024x24' \
+            env PYTHONPATH=/usr/lib/python3/dist-packages LIBGL_ALWAYS_SOFTWARE=1 \
+            blender --background --factory-startup \
+            --python-expr "import bpy, numpy; print('Blender:', bpy.app.version_string); print('NumPy:', numpy.__version__)"
+
+      - name: Sanitize Character 1 reconstruction
+        id: sanitize
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python .tooling/havenline-character-production/sanitize_character_mesh.py -- \
+            --character Character1 \
+            --input "$out/Character1_raw.glb" \
+            --output "$out"
+          test -s "$out/Character1_sanitized.glb"
+
+      - name: Remove any remaining spatially detached islands
+        id: spatial
+        if: ${{ always() && steps.sanitize.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python .tooling/havenline-girls-multiview/remove_spatial_outliers.py -- \
+            --character Character1 \
+            --input "$out/Character1_sanitized.glb" \
+            --output "$out"
+          test -s "$out/Character1_spatial.glb"
+
+      - name: Rig, animate and build Character 1 LODs
+        id: rig
+        if: ${{ always() && steps.spatial.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          rig_script="$RUNNER_TEMP/rig_animate_character_clean.py"
+          git show f3bc866367611b7ee94e00629c002b65fcb87fb7:.tooling/havenline-character-production/rig_animate_character.py > "$rig_script"
+          test -s "$rig_script"
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python "$rig_script" -- \
+            --character Character1 \
+            --input "$out/Character1_spatial.glb" \
+            --output "$out"
+
+      - name: Render neutral Character 1 proofs
+        id: proof
+        if: ${{ always() && steps.rig.outcome == 'success' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
+        run: |
+          set -euo pipefail
+          out=character_output/Character1
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
+            --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
+            --character Character1 \
+            --input "$out/Character1_production.glb" \
+            --output "$out"
+
+      - name: Validate Character 1 production package
+        id: validate
+        if: ${{ always() && steps.rig.outcome == 'success' && steps.proof.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          python .tooling/havenline-character-production/validate_character_asset.py \
+            --character Character1 \
+            --directory character_output/Character1
+
+      - name: Write truthful Character 1 status
+        if: ${{ always() }}
+        shell: python
+        env:
+          SANITIZE_OUTCOME: ${{ steps.sanitize.outcome }}
+          SPATIAL_OUTCOME: ${{ steps.spatial.outcome }}
+          RIG_OUTCOME: ${{ steps.rig.outcome }}
+          PROOF_OUTCOME: ${{ steps.proof.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          import json, os, pathlib
+          root = pathlib.Path('character_output/Character1')
+          validation_path = root / 'validation-report.json'
+          validation = json.loads(validation_path.read_text()) if validation_path.exists() else {}
+          machine_passed = (
+              os.environ.get('SANITIZE_OUTCOME') == 'success'
+              and os.environ.get('SPATIAL_OUTCOME') == 'success'
+              and os.environ.get('RIG_OUTCOME') == 'success'
+              and os.environ.get('PROOF_OUTCOME') == 'success'
+              and os.environ.get('VALIDATE_OUTCOME') == 'success'
+              and validation.get('passed') is True
+          )
+          status = {
+              'schemaVersion': 1,
+              'character': 'Character1',
+              'sourceRunId': '31087895186',
+              'sourceMode': 'trellis-multi-image',
+              'sanitizeOutcome': os.environ.get('SANITIZE_OUTCOME', 'skipped'),
+              'spatialCleanupOutcome': os.environ.get('SPATIAL_OUTCOME', 'skipped'),
+              'rigOutcome': os.environ.get('RIG_OUTCOME', 'skipped'),
+              'proofOutcome': os.environ.get('PROOF_OUTCOME', 'skipped'),
+              'validateOutcome': os.environ.get('VALIDATE_OUTCOME', 'skipped'),
+              'machinePassed': machine_passed,
+              'approved': False,
+              'unityIntegrated': False,
+              'humanVisualApprovalRequired': True,
+          }
+          (root / 'matrix-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          print(json.dumps(status, indent=2))
+
+      - name: Upload Character 1 final visual package
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: HAVENLINE-Character1-final-visual-review
+          path: character_output/Character1/**
+          compression-level: 0
+          retention-days: 30
+
+      - name: Enforce complete Character 1 pipeline
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test '${{ steps.sanitize.outcome }}' = success
+          test '${{ steps.spatial.outcome }}' = success
+          test '${{ steps.rig.outcome }}' = success
+          test '${{ steps.proof.outcome }}' = success
+          test '${{ steps.validate.outcome }}' = success
+          python - <<'PY'
+          import json, pathlib
+          status = json.loads(pathlib.Path('character_output/Character1/matrix-status.json').read_text())
+          if status.get('machinePassed') is not True:
+              raise SystemExit('Character 1 machine pipeline did not pass')
+          if status.get('approved') is True:
+              raise SystemExit('Character 1 was prematurely marked approved')
+          PY
