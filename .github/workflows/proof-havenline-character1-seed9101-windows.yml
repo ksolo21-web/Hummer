@@ -1,0 +1,114 @@
+name: Proof HAVENLINE Character 1 Seed 9101 Windows Fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+    paths:
+      - '.github/workflows/proof-havenline-character1-seed9101-windows.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: havenline-character1-seed9101-windows-proof
+  cancel-in-progress: true
+
+jobs:
+  prove-seed9101-windows:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Clone Havenline branch directly
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch havenline-unity-reference-rebuild \
+            https://github.com/ksolo21-web/Hummer.git repo
+          cd repo
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/ksolo21-web/Hummer.git"
+
+      - name: Download immutable Character 1 seed 9101
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Location repo
+          New-Item -ItemType Directory -Force source_package, character_output/Character1 | Out-Null
+          $archive = Join-Path $env:RUNNER_TEMP 'character1-seed9101.zip'
+          curl.exe --fail --location --retry 5 --retry-delay 5 `
+            -H "Authorization: Bearer $env:GH_TOKEN" `
+            -H "Accept: application/vnd.github+json" `
+            https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8972496079/zip `
+            --output $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath source_package -Force
+          Copy-Item source_package/* character_output/Character1 -Recurse -Force
+          if (-not (Test-Path character_output/Character1/Character1_raw.glb)) { throw 'Missing Character1_raw.glb' }
+          if (-not (Test-Path character_output/Character1/generation-report.json)) { throw 'Missing generation-report.json' }
+          if (-not (Test-Path character_output/Character1/approved_reference_sheet.jpg)) { throw 'Missing approved reference' }
+
+      - name: Install portable Blender 4.2 and validation runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install 'numpy<2' pillow trimesh pygltflib
+          $archive = Join-Path $env:RUNNER_TEMP 'blender-4.2.3-windows-x64.zip'
+          $runtimeRoot = Join-Path $env:RUNNER_TEMP 'blender-runtime'
+          curl.exe --fail --location --retry 5 --retry-delay 5 `
+            https://download.blender.org/release/Blender4.2/blender-4.2.3-windows-x64.zip `
+            --output $archive
+          New-Item -ItemType Directory -Force $runtimeRoot | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath $runtimeRoot -Force
+          $blender = Get-ChildItem -Path $runtimeRoot -Filter blender.exe -Recurse | Select-Object -First 1
+          if ($null -eq $blender) { throw 'Portable Blender executable was not found' }
+          $blender.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & $blender.FullName --background --factory-startup --python-expr "import bpy; print('Blender:', bpy.app.version_string)"
+
+      - name: Build rigged mobile character and exact proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repo
+          bash .tooling/havenline-character-production/prove_character1_seed9101.sh
+
+      - name: Publish proof images and machine reports
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd repo
+          proof_root=HavenlineProofs/Character1/seed9101
+          out=character_output/Character1
+          rm -rf "$proof_root"
+          mkdir -p "$proof_root"
+          for file in \
+            proof_front.png \
+            proof_three-quarter.png \
+            proof_side.png \
+            proof_back.png \
+            approved_reference_sheet.jpg \
+            generation-report.json \
+            extreme-planar-face-report.json \
+            mesh-sanitization-report.json \
+            spatial-outlier-report.json \
+            mobile-source-report.json \
+            rig-report.json \
+            proof-render-report.json \
+            validation-report.json \
+            actionless-seed9101-status.json; do
+            test -s "$out/$file"
+            cp "$out/$file" "$proof_root/$file"
+          done
+          git config user.name "HAVENLINE Proof Bot"
+          git config user.email "havenline-proof@users.noreply.github.com"
+          git add "$proof_root"
+          git commit -m "Publish Havenline Character 1 seed 9101 Windows proofs"
+          git push origin HEAD:refs/heads/havenline-proof-c1-seed9101 --force
