@@ -11,6 +11,9 @@ on:
     workflows:
       - Proof HAVENLINE Character 1 Seed 9101 Slim
       - Proof HAVENLINE Character 1 Seed 9101 Ubuntu 24
+      - Generate HAVENLINE SF3D Recovery Characters on RTX
+      - HAVENLINE SF3D Recovery Registry
+      - .github/workflows/generate-havenline-support-characters-sf3d.yml
     types:
       - completed
 
@@ -31,10 +34,12 @@ jobs:
        github.ref == 'refs/heads/main' &&
        github.repository == 'ksolo21-web/Hummer') ||
       (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.id == 31123869890 &&
        github.event.workflow_run.conclusion == 'failure' &&
-       github.event.workflow_run.head_branch == 'havenline-proof-runner-ubuntu24' &&
-       github.event.workflow_run.repository.full_name == github.repository)
+       github.event.workflow_run.repository.full_name == github.repository &&
+       ((github.event.workflow_run.id == 31123869890 &&
+         github.event.workflow_run.head_branch == 'havenline-proof-runner-ubuntu24') ||
+        (github.event.workflow_run.id == 31127252805 &&
+         github.event.workflow_run.head_branch == 'havenline-unity-reference-rebuild')))
     runs-on: ubuntu-slim
     timeout-minutes: 5
     steps:
@@ -57,15 +62,29 @@ jobs:
               print('Exact guarded main-branch workflow push accepted.')
           else:
               run = event['workflow_run']
-              assert run['id'] == 31123869890
-              assert run['name'] in {
-                  'Proof HAVENLINE Character 1 Seed 9101 Slim',
-                  'Proof HAVENLINE Character 1 Seed 9101 Ubuntu 24',
-              }
-              assert run['conclusion'] == 'failure'
-              assert run['head_branch'] == 'havenline-proof-runner-ubuntu24'
               assert run['repository']['full_name'] == 'ksolo21-web/Hummer'
-              print(f"Trusted controlled-failure rerun attempt {run['run_attempt']} accepted as SF3D trigger.")
+              assert run['conclusion'] == 'failure'
+              allowed = {
+                  31123869890: {
+                      'branches': {'havenline-proof-runner-ubuntu24'},
+                      'names': {
+                          'Proof HAVENLINE Character 1 Seed 9101 Slim',
+                          'Proof HAVENLINE Character 1 Seed 9101 Ubuntu 24',
+                      },
+                  },
+                  31127252805: {
+                      'branches': {'havenline-unity-reference-rebuild'},
+                      'names': {
+                          'Generate HAVENLINE SF3D Recovery Characters on RTX',
+                          'HAVENLINE SF3D Recovery Registry',
+                          '.github/workflows/generate-havenline-support-characters-sf3d.yml',
+                      },
+                  },
+              }
+              rule = allowed[run['id']]
+              assert run['head_branch'] in rule['branches']
+              assert run['name'] in rule['names']
+              print(f"Trusted runner-free workflow rerun {run['id']} attempt {run['run_attempt']} accepted as SF3D trigger.")
 
   generate-character:
     name: ${{ matrix.character }} SF3D RTX production proof
