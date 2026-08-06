@@ -9,6 +9,7 @@ Cycles CPU render before any proof frame is produced.
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import sys
@@ -20,6 +21,13 @@ if str(SCRIPT_DIR) not in sys.path:
 import render_character_proofs_v4 as implementation
 
 _original_configure_scene = implementation.configure_scene
+_render_runtime = {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "samples": None,
+    "blenderVersion": implementation.bpy.app.version_string,
+    "displayIndependent": True,
+}
 
 
 def configure_cpu_scene(center, size, minimum):
@@ -35,6 +43,7 @@ def configure_cpu_scene(center, size, minimum):
     scene.cycles.samples = max(8, int(os.environ.get("HAVENLINE_CYCLES_SAMPLES", "24")))
     scene.cycles.use_denoising = True
     scene.render.use_file_extension = True
+    _render_runtime["samples"] = scene.cycles.samples
     print(
         "HAVENLINE proof renderer: Cycles CPU, "
         f"{scene.cycles.samples} samples, Blender {implementation.bpy.app.version_string}"
@@ -42,7 +51,19 @@ def configure_cpu_scene(center, size, minimum):
     return scene, camera, target, radius
 
 
+def write_runtime_to_report(output_directory: str) -> None:
+    report_path = pathlib.Path(output_directory) / "proof-render-report.json"
+    if not report_path.is_file():
+        return
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["renderRuntime"] = dict(_render_runtime)
+    report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+
 implementation.configure_scene = configure_cpu_scene
 
 if __name__ == "__main__":
-    raise SystemExit(implementation.main())
+    parsed = implementation.parse_args()
+    exit_code = implementation.main()
+    write_runtime_to_report(parsed.output)
+    raise SystemExit(exit_code)
