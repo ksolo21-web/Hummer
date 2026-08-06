@@ -4,7 +4,8 @@
 The neural mesh already contains eyelids and sclera. Previous spherical inserts protruded
 from the face and created a googly-eyed result. This pass uses thin matte oval discs placed
 flush against the reconstructed socket, preserving the existing eye shape while adding the
-missing dark iris and pupil. Nothing behaves as a billboard or replaces the face.
+missing dark iris and pupil. Each disc intentionally exceeds the production renderer's
+minimum skinned-mesh vertex count so it cannot be mistaken for helper geometry and hidden.
 """
 
 from __future__ import annotations
@@ -92,7 +93,9 @@ def apply_material(obj, material) -> None:
         polygon.use_smooth = False
 
 
-def oval_disc(name, location, radius_x, radius_z, material, segments=36):
+def oval_disc(name, location, radius_x, radius_z, material, segments):
+    if segments < 100:
+        raise RuntimeError(f"{name} must contain at least 101 vertices for production capture")
     center_x, center_y, center_z = location
     vertices = [(center_x, center_y, center_z)]
     for index in range(segments):
@@ -108,6 +111,7 @@ def oval_disc(name, location, radius_x, radius_z, material, segments=36):
     for index in range(segments):
         current = 1 + index
         following = 1 + ((index + 1) % segments)
+        # Front proof camera is on negative Y, so this winding produces a -Y normal.
         faces.append((0, current, following))
     mesh = bpy.data.meshes.new(name + "Mesh")
     mesh.from_pydata(vertices, [], faces)
@@ -117,6 +121,7 @@ def oval_disc(name, location, radius_x, radius_z, material, segments=36):
     apply_material(obj, material)
     obj["havenlineModeledEyeDetail"] = True
     obj["havenlineEyeSurfaceType"] = "flat flush oval disc"
+    obj["havenlineProductionCaptureEligible"] = len(mesh.vertices) >= 101
     return obj
 
 
@@ -166,7 +171,7 @@ def add_eyes(character, frame):
                 height * 0.0091,
                 height * 0.0104,
                 iris,
-                40,
+                128,
             )
         )
         created.append(
@@ -176,9 +181,14 @@ def add_eyes(character, frame):
                 height * 0.0038,
                 height * 0.0045,
                 pupil,
-                32,
+                112,
             )
         )
+    for obj in created:
+        if len(obj.data.vertices) < 101:
+            raise RuntimeError(
+                f"Production renderer would hide {obj.name}: only {len(obj.data.vertices)} vertices"
+            )
     return created
 
 
@@ -204,12 +214,12 @@ def main() -> int:
     output_path = output_root / f"{args.character}_face_refined.glb"
     report_path = output_root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
         "success": False,
-        "method": "flat matte iris and pupil discs placed flush in existing reconstructed sockets",
+        "method": "flat matte iris and pupil discs placed flush in existing reconstructed sockets and sized above the production capture mesh threshold",
         "humanVisualApprovalRequired": True,
     }
     try:
@@ -229,6 +239,10 @@ def main() -> int:
                 "sampleCount": frame["sampleCount"],
             },
             "modeledObjectsCreated": len(created),
+            "modeledEyeVertexCounts": {obj.name: len(obj.data.vertices) for obj in created},
+            "allModeledEyesProductionCaptureEligible": all(
+                len(obj.data.vertices) >= 101 for obj in created
+            ),
             "outputBytes": output_path.stat().st_size,
         })
     except Exception as exc:
