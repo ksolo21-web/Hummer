@@ -13,7 +13,6 @@ concurrency:
 
 jobs:
   supersede-redundant-production-run:
-    if: ${{ false }}
     runs-on: ubuntu-22.04
     steps:
       - run: echo 'Character 1 is being validated by the dedicated actionless v2 proof pipeline.'
