@@ -270,7 +270,10 @@ def render_angles(root: pathlib.Path, scene, camera, target: Vector, radius: flo
 
 def main() -> int:
     args = parse_args()
-    root = pathlib.Path(args.output)
+    # Blender treats a relative render filepath as drive-rooted on Windows. Resolve the
+    # output directory once so FBX, reports, and every proof are written to the workflow
+    # workspace on all operating systems.
+    root = pathlib.Path(args.output).resolve()
     root.mkdir(parents=True, exist_ok=True)
     report_path = root / "proof-render-report.json"
     report = {
