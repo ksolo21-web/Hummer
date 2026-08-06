@@ -11,6 +11,7 @@ test -s "$out/approved_reference_sheet.jpg"
 
 export LIBGL_ALWAYS_SOFTWARE=1
 export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+export HAVENLINE_CYCLES_SAMPLES="${HAVENLINE_CYCLES_SAMPLES:-24}"
 
 # Fail closed if a runner resolves a different Blender binary than the production pin.
 blender --background --factory-startup --python-expr "import bpy, json, pathlib; expected=(4, 5, 12); actual=tuple(bpy.app.version[:3]); assert actual == expected, f'Expected Blender {expected}, got {actual}: {bpy.app.version_string}'; report={'schemaVersion': 1, 'expectedVersion': list(expected), 'actualVersion': list(actual), 'versionString': bpy.app.version_string, 'releaseLine': '4.5 LTS', 'verified': True}; pathlib.Path(r'$out/blender-runtime-report.json').write_text(json.dumps(report, indent=2) + '\\n', encoding='utf-8'); print(json.dumps(report, indent=2))"
@@ -44,9 +45,9 @@ blender --background --factory-startup \
   --output "$out"
 test -s "$out/${character}_mobile_source.glb"
 
-# Run the maintained repo-local rig so its adjacent refinement module remains importable.
+# Export the rig and LODs without invoking the legacy EEVEE proof path.
 blender --background --factory-startup \
-  --python .tooling/havenline-character-production/rig_animate_character.py -- \
+  --python .tooling/havenline-character-production/rig_animate_character_export_only.py -- \
   --character "$character" \
   --input "$out/${character}_mobile_source.glb" \
   --output "$out"
@@ -55,8 +56,9 @@ test -s "$out/${character}_production.fbx"
 test -s "$out/${character}_LOD1.glb"
 test -s "$out/${character}_LOD2.glb"
 
+# Render the exact exported GLB with display-independent Cycles CPU.
 blender --background --factory-startup \
-  --python .tooling/havenline-character-production/render_character_proofs_v4.py -- \
+  --python .tooling/havenline-character-production/render_character_proofs_cpu.py -- \
   --character "$character" \
   --input "$out/${character}_production.glb" \
   --output "$out"
@@ -92,6 +94,7 @@ checks = {
     'mobile reduction': mobile.get('success') is True,
     'rig': rig.get('success') is True,
     'proof render': proof.get('success') is True,
+    'CPU proof renderer': proof.get('renderRuntime', {}).get('engine') == 'CYCLES' and proof.get('renderRuntime', {}).get('device') == 'CPU',
     'asset validation': validation.get('passed') is True,
 }
 failed = [name for name, passed in checks.items() if not passed]
@@ -107,13 +110,14 @@ if plane.get('deletion', {}).get('facesRemoved', 0) < 3000:
 
 production = root / 'Character1_production.glb'
 status = {
-    'schemaVersion': 5,
+    'schemaVersion': 6,
     'character': 'Character1',
     'seed': 9101,
     'sourceMode': 'actionless-v2-dominant-floor-cleaned-mobile-production',
     'sourceGenerator': 'trellis-community/TRELLIS',
     'sourceReconstructionMode': 'clean-multi-image',
     'blenderRuntime': runtime,
+    'proofRenderRuntime': proof.get('renderRuntime'),
     'floorFacesRemoved': plane.get('deletion', {}).get('facesRemoved'),
     'mobileSourceFaces': faces,
     'productionVertices': validation.get('metrics', {}).get('baseMesh', {}).get('vertices'),
