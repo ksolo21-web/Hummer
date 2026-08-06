@@ -123,3 +123,5 @@ jobs:
           git add "$proof_root"
           git commit -m "Publish Havenline Character 1 seed 9101 Ubuntu 24 production proof"
           git push origin HEAD:refs/heads/havenline-proof-c1-seed9101-ubuntu24 --force
+
+# Second push intentionally triggers this already-registered isolated workflow.
