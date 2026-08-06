@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "character": "Character2",
   "artifact": {
     "id": "8973791027",
@@ -10,8 +10,7 @@
     "sourceHeadSha": "2773d269b52212b1de67908663787b2cedc432db"
   },
   "source": {
-    "generator": "Recovered TRELLIS multi-view reconstruction",
-    "priorGenerator": "trellis-community/TRELLIS",
+    "generator": "trellis-community/TRELLIS",
     "sourceMode": "recovered-trellis",
     "sourceRunId": "31087895186",
     "seed": 4102
@@ -30,11 +29,15 @@
     "rigPassed": true,
     "proofRenderPassed": true,
     "validationPassed": true,
-    "machinePassed": true
+    "machinePassed": true,
+    "proofViewsDistinct": true
   },
   "blenderVisualReview": {
     "status": "accepted-for-unity-review",
+    "reviewedBy": "GPT-5.6 Thinking four-view visual inspection",
     "reviewedUtc": "2026-08-06T19:45:00Z",
+    "reviewNote": "Front, three-quarter, side and back renders are coherent and free of floor debris, broken limbs, collapsed geometry or identity drift. Outfit, fur trim, boots, backpack and bedroll remain readable. Eyewear and facial fidelity remain concerns that require Unity URP and in-game-scale review.",
+    "confirmation": "I-REVIEWED-FOUR-VIEWS",
     "strengths": [
       "Four-view geometry is coherent with no identity drift.",
       "Approved blue and orange outfit, fur trim, boots, backpack and bedroll remain readable.",
@@ -49,6 +52,7 @@
   },
   "humanVisualApprovalRequired": true,
   "humanVisualReviewStatus": "pending-unity-review",
+  "acceptedForUnityReview": true,
   "approved": false,
   "unityIntegrated": false
 }
