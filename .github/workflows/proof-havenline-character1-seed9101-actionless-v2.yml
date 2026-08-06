@@ -80,7 +80,7 @@ jobs:
           test -x "$runtime/blender"
           echo "$runtime" >> "$GITHUB_PATH"
           "$runtime/blender" --background --factory-startup \
-            --python-expr "import bpy; assert bpy.app.version[:2] == (4, 5), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
+            --python-expr "import bpy; assert bpy.app.version[:3] == (4, 5, 12), bpy.app.version_string; print('Pinned Blender LTS:', bpy.app.version_string)"
 
       - name: Build rigged mobile character and exact proofs
         shell: bash
@@ -107,6 +107,7 @@ jobs:
             proof_back.png \
             approved_reference_sheet.jpg \
             generation-report.json \
+            blender-runtime-report.json \
             extreme-planar-face-report.json \
             mesh-sanitization-report.json \
             spatial-outlier-report.json \
