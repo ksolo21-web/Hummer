@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Add small centered 3D irises and pupils inside reconstructed eye sockets.
+"""Add centered natural 3D irises and pupils inside reconstructed eye sockets.
 
-The neural mesh already contains eyelids and sclera. This pass adds only the missing dark
-eye detail; it must not replace the eye socket with oversized spheres or create a floating
+The neural mesh already contains eyelids and sclera. This pass adds dark brown irises that
+cover most of the overexposed reconstructed sclera, smaller pupils, and restrained
+catchlights. It must not replace the socket with oversized spheres or create a floating
 face layer. Placement is calibrated from the reviewed Character 3 proof render.
 """
 
@@ -136,9 +137,9 @@ def estimate_eye_frame(meshes):
 
 def add_eyes(character, frame):
     height = frame["height"]
-    iris = make_material(f"{character}_RefinedIris", (0.090, 0.027, 0.007, 1.0), 0.40)
-    pupil = make_material(f"{character}_RefinedPupil", (0.0015, 0.0015, 0.0020, 1.0), 0.34)
-    highlight = make_material(f"{character}_RefinedEyeHighlight", (0.96, 0.95, 0.91, 1.0), 0.28)
+    iris = make_material(f"{character}_RefinedIris", (0.050, 0.012, 0.004, 1.0), 0.46)
+    pupil = make_material(f"{character}_RefinedPupil", (0.0012, 0.0012, 0.0015, 1.0), 0.38)
+    highlight = make_material(f"{character}_RefinedEyeHighlight", (0.88, 0.86, 0.80, 1.0), 0.34)
     created = []
     for side in (-1, 1):
         x = frame["centerX"] + side * frame["eyeOffsetX"]
@@ -147,26 +148,26 @@ def add_eyes(character, frame):
         created.append(ellipsoid(
             f"{character}_RefinedIris_{side}",
             (x, y, z),
-            (height * 0.0058, height * 0.0009, height * 0.0068),
+            (height * 0.0100, height * 0.0010, height * 0.0110),
             iris,
-            32,
-            22,
+            36,
+            24,
         ))
         created.append(ellipsoid(
             f"{character}_RefinedPupil_{side}",
-            (x, y - height * 0.0007, z),
-            (height * 0.0030, height * 0.00065, height * 0.0038),
+            (x, y - height * 0.00075, z),
+            (height * 0.0048, height * 0.00070, height * 0.0054),
             pupil,
-            26,
-            18,
+            30,
+            20,
         ))
         created.append(ellipsoid(
             f"{character}_RefinedHighlight_{side}",
-            (x - side * height * 0.0014, y - height * 0.00125, z + height * 0.0020),
-            (height * 0.00105, height * 0.00035, height * 0.00125),
+            (x - side * height * 0.0013, y - height * 0.00130, z + height * 0.0021),
+            (height * 0.00055, height * 0.00024, height * 0.00070),
             highlight,
-            18,
-            12,
+            16,
+            10,
         ))
     return created
 
@@ -193,12 +194,12 @@ def main() -> int:
     output_path = output_root / f"{args.character}_face_refined.glb"
     report_path = output_root / "multiview-eye-refinement-report.json"
     report = {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "character": args.character,
         "source": args.input,
         "output": str(output_path),
         "success": False,
-        "method": "small flattened iris, pupil and catchlight inserts calibrated into existing reconstructed eye sockets",
+        "method": "larger dark-brown iris, centered pupil and restrained catchlight inserts calibrated into existing reconstructed sockets",
         "humanVisualApprovalRequired": True,
     }
     try:
