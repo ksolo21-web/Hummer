@@ -91,7 +91,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install 'gradio_client>=1.8,<2' pillow trimesh pygltflib numpy
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y blender python3-numpy
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            blender \
+            python3-numpy \
+            libegl1 \
+            libgl1-mesa-dri \
+            libglu1-mesa \
+            mesa-utils \
+            xvfb \
+            xauth
           blender --version
           PYTHONPATH=/usr/lib/python3/dist-packages blender --background --factory-startup \
             --python-expr "import numpy; print('Blender NumPy:', numpy.__version__)"
@@ -116,11 +124,14 @@ jobs:
         shell: bash
         env:
           PYTHONPATH: /usr/lib/python3/dist-packages
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: llvmpipe
         run: |
           set -euo pipefail
           root=.tooling/havenline-character-production
           out="character_output/${{ matrix.character }}"
-          blender --background --factory-startup \
+          xvfb-run -a -s '-screen 0 1920x1080x24' \
+            blender --background --factory-startup \
             --python "$root/rig_animate_character.py" -- \
             --character '${{ matrix.character }}' \
             --input "$out/${{ matrix.character }}_raw.glb" \
