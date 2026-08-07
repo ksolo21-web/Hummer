@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "candidateVersion": "V6",
+  "status": "staging_machine_valid_not_human_approved",
+  "productionPromotionAllowed": false,
+  "humanVisualApprovalRequired": true,
+  "repositoryProductionContract": "Assets/Havenline/Art/Characters/Production/CharacterN/CharacterN_production.fbx",
+  "characters": [
+    {
+      "character": "Character1",
+      "stagingFile": "Havenline_Character_1_Rigged_Refined_V6.glb",
+      "sha256": "a14352ab6fb483609c91712dceab6a3be8ae35ae6c3733e431df49de3f9c55db",
+      "bytes": 9149476,
+      "joints": 52,
+      "approved": false
+    },
+    {
+      "character": "Character2",
+      "stagingFile": "Havenline_Character_2_Rigged_Refined_V6.glb",
+      "sha256": "6252680d0fd990f8d6819b6255e1d9b13c7ff77c34eacb84551efcad6d1dc839",
+      "bytes": 9799036,
+      "joints": 52,
+      "approved": false
+    },
+    {
+      "character": "Character3",
+      "stagingFile": "Havenline_Character_3_Rigged_Refined_V6.glb",
+      "sha256": "5cc53aceae41447454cccb592f1afdd5bd29bed322e6609ca0931714107466af",
+      "bytes": 10933584,
+      "joints": 52,
+      "approved": false
+    },
+    {
+      "character": "Character4",
+      "stagingFile": "Havenline_Character_4_Rigged_Refined_V6.glb",
+      "sha256": "bea67fe847c2c1f05bd0a0822cbca4b16b95f6e844a1d9aba66f56b2dc374a6e",
+      "bytes": 10884332,
+      "joints": 52,
+      "approved": false
+    }
+  ],
+  "rejectedExperiments": [
+    "closed torus curl overlays",
+    "open C-shaped procedural curl overlays"
+  ],
+  "nextGate": [
+    "production conversion/import",
+    "Unity URP 4-view captures",
+    "pose/clipping review",
+    "gameplay-scale review",
+    "human side-by-side approval"
+  ]
+}
