@@ -114,7 +114,7 @@ jobs:
           require_pattern 'signing certificate SHA-256' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "Google signing certificate validation"
 
           require_pattern 'HavenlineCharacterApprovalGate.Validate()' "$root/Assets/Havenline/Editor/HavenlineCharacterProductionGate.cs" "production roster requires visual approval contract"
-          require_pattern 'production FBX SHA-256 does not match the approved evidence' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "exact FBX tamper rejection"
+          require_pattern 'SHA-256 does not match the approved evidence.' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "pinned evidence hash mismatch rejection"
           require_pattern 'Unity review FBX hash does not match the current production FBX' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "Unity review bound to exact FBX"
           require_pattern 'ApprovalCannotDisableHumanVisualReview' "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "human review bypass test"
           require_pattern 'ReplacingApprovedFbxFailsHashAndUnityReviewBinding' "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "approved FBX replacement test"
