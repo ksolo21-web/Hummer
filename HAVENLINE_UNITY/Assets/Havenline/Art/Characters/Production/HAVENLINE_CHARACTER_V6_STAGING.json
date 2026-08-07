@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "candidateVersion": "V6",
-  "status": "staging_machine_valid_not_human_approved",
+  "status": "rejected_superseded_by_v7_pose_qc",
   "productionPromotionAllowed": false,
   "humanVisualApprovalRequired": true,
   "repositoryProductionContract": "Assets/Havenline/Art/Characters/Production/CharacterN/CharacterN_production.fbx",
@@ -28,7 +28,8 @@
       "sha256": "5cc53aceae41447454cccb592f1afdd5bd29bed322e6609ca0931714107466af",
       "bytes": 10933584,
       "joints": 52,
-      "approved": false
+      "approved": false,
+      "rejectionReason": "Manual torso-only garment skinning passed structural GLB validation but increased shirt/vest/open-coat surface drift under torso bend, shoulder raise, head turn and combined synthetic 52-bone poses. Replaced by V7 nearest-base-surface skin-weight projection."
     },
     {
       "character": "Character4",
@@ -41,13 +42,12 @@
   ],
   "rejectedExperiments": [
     "closed torus curl overlays",
-    "open C-shaped procedural curl overlays"
+    "open C-shaped procedural curl overlays",
+    "Character 3 manual torso-only garment skinning"
   ],
+  "supersededBy": "V7",
   "nextGate": [
-    "production conversion/import",
-    "Unity URP 4-view captures",
-    "pose/clipping review",
-    "gameplay-scale review",
-    "human side-by-side approval"
+    "do not promote V6",
+    "use V7 pose-validated staging candidate"
   ]
 }
