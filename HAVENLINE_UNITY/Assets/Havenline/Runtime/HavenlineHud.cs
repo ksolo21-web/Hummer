@@ -196,21 +196,27 @@ namespace Havenline
 
             if (foldableTopLayout)
             {
-                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(500f, 100f));
-                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(300f, 100f));
-                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -132f), new Vector2(620f, 84f));
+                // Keep the resource/status cards compact even on the Fold. The resource text
+                // may wrap to two lines, but the card must not grow back into the oversized
+                // dashboard treatment rejected by the reference-grade presentation gate.
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(430f, 92f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(255f, 92f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -124f), new Vector2(540f, 80f));
                 ConfigureTopText(resourceText, 20, HorizontalWrapMode.Wrap);
                 ConfigureTopText(objectiveText, 21, HorizontalWrapMode.Wrap);
                 ConfigureTopText(transientStatusText, 20, HorizontalWrapMode.Wrap);
             }
             else
             {
-                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(500f, 92f));
-                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(580f, 88f));
-                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(300f, 92f));
-                ConfigureTopText(resourceText, 24, HorizontalWrapMode.Overflow);
-                ConfigureTopText(objectiveText, 24, HorizontalWrapMode.Overflow);
-                ConfigureTopText(transientStatusText, 24, HorizontalWrapMode.Overflow);
+                // Match the authored reference-grade HUD dimensions. ExecuteAlways used to
+                // overwrite these with 500x92 cards after the final visual pass, which made
+                // the generated shipping scene fail its own compact-HUD contract.
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(26f, -24f), new Vector2(430f, 72f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(500f, 68f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-26f, -24f), new Vector2(255f, 72f));
+                ConfigureTopText(resourceText, 22, HorizontalWrapMode.Overflow);
+                ConfigureTopText(objectiveText, 22, HorizontalWrapMode.Overflow);
+                ConfigureTopText(transientStatusText, 20, HorizontalWrapMode.Overflow);
             }
         }
 
