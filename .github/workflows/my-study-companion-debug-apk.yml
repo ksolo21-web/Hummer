@@ -1,0 +1,14 @@
+name: Legacy My Study Companion Independent Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  superseded:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Legacy lane disabled
+        run: echo "This duplicate lane is intentionally disabled. Use my-study-companion-apk-build-v2.yml for the current signed phone build."

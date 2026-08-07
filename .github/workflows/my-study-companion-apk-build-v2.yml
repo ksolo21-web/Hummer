@@ -1,0 +1,215 @@
+name: My Study Companion 0.11.0 Phone APK Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-phone-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out isolated build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Verify Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT"
+          if [[ ! -f "$SDK_ROOT/platforms/android-36/android.jar" || ! -d "$SDK_ROOT/build-tools/36.0.0" ]]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+            test -x "$SDKMANAGER"
+            yes | "$SDKMANAGER" --licenses >/dev/null || true
+            "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+          fi
+
+      - name: Reconstruct exact unified 0.10.0 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/source.part*.b64 | base64 --decode > base.tar.xz
+          echo "f2c0bfb74455046a28d7aa54a4e27df021955ea703ae93a639bbe3bcb67ed2c4  base.tar.xz" | sha256sum -c -
+          tar -xJf base.tar.xz
+          cat .msc-build/scene-0.9.3.part*.b64 | base64 --decode > scene.tar.xz
+          echo "48b6aa28b630bdbf0ade5fcfadd77af7b4a259807df0b73c4318f17fede4eec4  scene.tar.xz" | sha256sum -c -
+          tar -xJf scene.tar.xz
+          cat .msc-build/semantic-0.9.4.part*.b64 | base64 --decode > semantic.tar.xz
+          echo "f693bcb607ad00a30c4338e8819250ed5f1d44f372e40093682a13c4beed6277  semantic.tar.xz" | sha256sum -c -
+          tar -xJf semantic.tar.xz
+          cat .msc-build/watchtower-0.9.5.part*.b64 | base64 --decode > watchtower.tar.xz
+          echo "a742f0c76ba81b87fff0fe97e93e3c03e3968f2dc6ef6ef5ed24dd039bcf5d6e  watchtower.tar.xz" | sha256sum -c -
+          tar -xJf watchtower.tar.xz
+          cat .msc-build/verified-preparation-0.9.6.part*.b64 | base64 --decode > preparation.tar.xz
+          echo "f320e0d36adcd21b2c8c1b1583620a37c38d3415f981cc34b35c77eafcd27278  preparation.tar.xz" | sha256sum -c -
+          tar -xJf preparation.tar.xz
+          cat .msc-build/ai-0.10.0.part*.b64 | base64 --decode > ai.tar.xz
+          echo "7e7dde1ad7e8a26fdc797b7df154a416ebdc12c588915e79f00d497a45b70461  ai.tar.xz" | sha256sum -c -
+          tar -xJf ai.tar.xz
+          base64 --decode .msc-build/ai-0.10.0-fix1.b64 > ai-fix1.tar.xz
+          echo "817fa3144c355b2691c6af8d4b17e70de14ddb2010ec1990399416e02beeba2d  ai-fix1.tar.xz" | sha256sum -c -
+          tar -xJf ai-fix1.tar.xz
+          grep -q 'versionName = "0.10.0-private-alpha-local-ai"' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'response.candidates.first().text' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/GeminiNanoStudyProvider.kt
+
+      - name: Apply verified 0.10.1 runtime repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .msc-build/patch_source.py
+          python3 MyStudyCompanion/tools/validate_source.py
+          base64 --decode .msc-build/patch-0.10.1.py.gz.b64 | gzip -dc > /tmp/patch-0.10.1.py
+          python3 -m py_compile /tmp/patch-0.10.1.py
+          python3 /tmp/patch-0.10.1.py
+          grep -q 'versionName = "0.10.1-private-alpha-ai-refresh"' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionCode = 21' MyStudyCompanion/app/build.gradle.kts
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ai/runtime/LocalModelManager.kt')
+          text = path.read_text(encoding='utf-8')
+          assert text.index('private val preferences') < text.index('private val mutableState')
+          print('Verified local-model startup initialization order.')
+          PY
+
+      - name: Apply checksum-locked 0.11.0 major feature overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/companion-0.11.0.part*.b64 | base64 --decode > /tmp/companion-0.11.0-overlay.tar.xz
+          echo "c9704c0eef9c0086e1b0d53fe87911fbdf313888afd83783cc77b682e8859a76  /tmp/companion-0.11.0-overlay.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/companion-0.11.0-overlay.tar.xz -C MyStudyCompanion
+          python3 .msc-build/patch-0.11.0-gradle.py
+          grep -q 'JvmTarget.JVM_17' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionName = "0.11.0-private-alpha-family-youth"' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'versionCode = 22' MyStudyCompanion/app/build.gradle.kts
+          grep -q 'Bible stories and themes' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/CompanionModels.kt
+          grep -q 'Caleb and Sophia' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/YouthStudyPlanner.kt
+          grep -q 'Young People Ask' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/companion/YouthStudyPlanner.kt
+          grep -q 'Research Guide' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          grep -q 'Ideas and family votes' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          grep -q 'Generate a ministry outline' MyStudyCompanion/app/src/main/java/com/mystudycompanion/app/ui/CompanionHubScreen.kt
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('MyStudyCompanion/app/src/main/java/com/mystudycompanion/app')
+          required = [
+              source / 'companion/CompanionHubRepository.kt',
+              source / 'companion/BibleJourneyCatalog.kt',
+              source / 'companion/JwLibraryLinkResolver.kt',
+              source / 'ui/CompanionHubScreen.kt',
+          ]
+          for path in required:
+              assert path.is_file() and path.stat().st_size > 500, path
+          local_model = (source / 'ai/runtime/LocalModelManager.kt').read_text(encoding='utf-8')
+          assert local_model.index('private val preferences') < local_model.index('private val mutableState')
+          print('Verified 0.11.0 feature files and preserved startup repair.')
+          PY
+
+      - name: Install optional Google/Firebase project configuration
+        shell: bash
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.MSC_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${GOOGLE_SERVICES_JSON_B64:-}" ]]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > MyStudyCompanion/app/google-services.json
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('MyStudyCompanion/app/google-services.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data.get('project_info', {}).get('project_id')
+          print('Validated optional Firebase project configuration.')
+          PY
+          else
+            echo 'Google/Firebase project configuration is not present; account UI will remain honestly disabled.'
+          fi
+
+      - name: Install protected private-test signing key
+        shell: bash
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.MSC_SIGNING_KEYSTORE_B64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.MSC_SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.MSC_SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.MSC_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${SIGNING_KEYSTORE_B64:-}"
+          test -n "${SIGNING_STORE_PASSWORD:-}"
+          test -n "${SIGNING_KEY_ALIAS:-}"
+          test -n "${SIGNING_KEY_PASSWORD:-}"
+          mkdir -p "$RUNNER_TEMP/msc-signing"
+          printf '%s' "$SIGNING_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/msc-signing/private-test-signing.jks"
+          chmod 600 "$RUNNER_TEMP/msc-signing/private-test-signing.jks"
+          {
+            echo "MSC_RELEASE_STORE_FILE=$RUNNER_TEMP/msc-signing/private-test-signing.jks"
+            echo "MSC_RELEASE_STORE_PASSWORD=$SIGNING_STORE_PASSWORD"
+            echo "MSC_RELEASE_KEY_ALIAS=$SIGNING_KEY_ALIAS"
+            echo "MSC_RELEASE_KEY_PASSWORD=$SIGNING_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Test and build signed 0.11.0 phone APK
+        working-directory: MyStudyCompanion
+        shell: bash
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.MSC_GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          EXTRA_ARGS=("-PMSC_LOCAL_OWNER_MODE=true")
+          if [[ -n "${GOOGLE_WEB_CLIENT_ID:-}" ]]; then
+            EXTRA_ARGS+=("-PMSC_GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID}")
+          fi
+          gradle --no-daemon --stacktrace "${EXTRA_ARGS[@]}" \
+            :app:testDebugUnitTest :app:assemblePrivateAlpha
+
+      - name: Collect and verify phone APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          mkdir -p dist
+          PHONE_APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
+          test -f "$PHONE_APK"
+          cp "$PHONE_APK" dist/MyStudyCompanion-phone-unified-0.11.0.apk
+          unzip -tq dist/MyStudyCompanion-phone-unified-0.11.0.apk
+          "$AAPT" dump badging dist/MyStudyCompanion-phone-unified-0.11.0.apk | tee dist/PHONE-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='22'" dist/PHONE-IDENTITY.txt
+          grep -q "versionName='0.11.0-private-alpha-family-youth'" dist/PHONE-IDENTITY.txt
+          "$APKSIGNER" verify --verbose --print-certs dist/MyStudyCompanion-phone-unified-0.11.0.apk | tee dist/PHONE-SIGNING.txt
+          grep -qi '280f9c9ad4beba33721abd09a5b804607aae7c9d07918d67446af7ad556dec44' dist/PHONE-SIGNING.txt
+          (cd dist && sha256sum MyStudyCompanion-phone-unified-0.11.0.apk > SHA256SUMS.txt)
+          {
+            echo 'My Study Companion 0.11.0 verification'
+            echo
+            cat dist/PHONE-IDENTITY.txt
+            echo
+            cat dist/PHONE-SIGNING.txt
+            echo
+            cat dist/SHA256SUMS.txt
+          } > dist/VERIFICATION-REPORT.txt
+          cat dist/SHA256SUMS.txt
+
+      - name: Upload verified 0.11.0 phone APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: MyStudyCompanion-phone-0.11.0-family-youth-bible-ministry
+          if-no-files-found: error
+          retention-days: 7
+          path: dist/

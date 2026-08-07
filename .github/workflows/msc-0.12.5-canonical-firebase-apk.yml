@@ -1,0 +1,164 @@
+name: My Study Companion 0.12.5 Canonical Firebase APK
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.5-canonical-firebase-apk.yml'
+      - '.msc-build/firebase-google-services-0.12.4.json.b64'
+      - '.msc-build/firebase-family-0.12.3.part*.b64'
+      - '.msc-build/firebase-family-0.12.4.part*.b64'
+      - '.msc-build/firebase-integrity-0.12.5.part*.b64'
+      - '.msc-build/reconstruct-build-0125.sh'
+      - '.msc-build/reconstruct-build-0125-ci.sh'
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0125-canonical-firebase-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-phone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    steps:
+      - name: Check out isolated app build branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct verified Firebase integrity source
+        shell: bash
+        run: bash .msc-build/reconstruct-build-0125-ci.sh
+
+      - name: Install and validate Firebase Android configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .msc-build/firebase-google-services-0.12.4.json.b64 \
+            > MyStudyCompanion/app/google-services.json
+          echo '5b2f85f67e6cb33e1fbe0a58b704a5c971bf2faf6f1b6e09730e904d02b91b5e  MyStudyCompanion/app/google-services.json' \
+            | sha256sum -c -
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('MyStudyCompanion/app/google-services.json').read_text(encoding='utf-8'))
+          assert data['project_info']['project_id'] == 'my-study-companion-abc01'
+          clients = {
+              item['client_info']['android_client_info']['package_name']: item
+              for item in data['client']
+          }
+          canonical = clients['com.mystudycompanion.app']
+          android_oauth = [x for x in canonical['oauth_client'] if x['client_type'] == 1]
+          web_oauth = [x for x in canonical['oauth_client'] if x['client_type'] == 3]
+          assert android_oauth[0]['android_info']['certificate_hash'] == '1997d421d177215a44f9651ce53dbaec152fbc49'
+          assert len(web_oauth) == 1
+          Path('/tmp/google-web-client-id.txt').write_text(web_oauth[0]['client_id'], encoding='utf-8')
+          print('Validated canonical Firebase package and OAuth certificate binding.')
+          PY
+          printf 'MSC_GOOGLE_WEB_CLIENT_ID=%s\n' "$(cat /tmp/google-web-client-id.txt)" >> "$GITHUB_ENV"
+
+      - name: Create disposable CI signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/msc-temporary-signing"
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/msc-temporary-signing/temporary.jks" \
+            -storepass temporary-build-only \
+            -alias temporary-build-only \
+            -keypass temporary-build-only \
+            -dname 'CN=Temporary CI Build,O=My Study Companion,C=US' \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 30
+          {
+            echo "MSC_RELEASE_STORE_FILE=$RUNNER_TEMP/msc-temporary-signing/temporary.jks"
+            echo 'MSC_RELEASE_STORE_PASSWORD=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_ALIAS=temporary-build-only'
+            echo 'MSC_RELEASE_KEY_PASSWORD=temporary-build-only'
+          } >> "$GITHUB_ENV"
+
+      - name: Build canonical Firebase-enabled private-alpha APK
+        working-directory: MyStudyCompanion
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace \
+            -PMSC_GOOGLE_WEB_CLIENT_ID="$MSC_GOOGLE_WEB_CLIENT_ID" \
+            :app:assemblePrivateAlpha
+
+      - name: Verify canonical identity and Firebase resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          APKSIGNER="$SDK_ROOT/build-tools/36.0.0/apksigner"
+          mkdir -p dist/apksigner/lib
+          APK="$(find MyStudyCompanion/app/build/outputs/apk/privateAlpha -name '*.apk' -type f | head -n 1)"
+          test -f "$APK"
+          cp "$APK" dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk
+          unzip -tq dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk
+          "$AAPT" dump badging dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            | tee dist/CANONICAL-IDENTITY.txt
+          grep -q "package: name='com.mystudycompanion.app' versionCode='29'" dist/CANONICAL-IDENTITY.txt
+          grep -q "versionName='0.12.5-private-alpha-firebase-integrity'" dist/CANONICAL-IDENTITY.txt
+          ! grep -q "package: name='com.mystudycompanion.app.debug'" dist/CANONICAL-IDENTITY.txt
+          "$AAPT" dump resources dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            > dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'google_app_id' dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'default_web_client_id' dist/FIREBASE-RESOURCE-AUDIT.txt
+          grep -q 'project_id' dist/FIREBASE-RESOURCE-AUDIT.txt
+          "$APKSIGNER" verify --verbose --print-certs \
+            dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            > dist/TEMPORARY-SIGNATURE.txt
+          cp "$APKSIGNER" dist/apksigner/apksigner
+          cp "$SDK_ROOT/build-tools/36.0.0/lib/apksigner.jar" dist/apksigner/lib/apksigner.jar
+          cp "$SDK_ROOT/build-tools/36.0.0/zipalign" dist/apksigner/zipalign
+          cp MyStudyCompanion/firestore.rules dist/firestore.rules
+          cp .msc-build/firebase-rules-tests/rules.test.cjs dist/firestore-rules-tests.cjs
+          sha256sum \
+            dist/MyStudyCompanion-phone-0.12.5-canonical-temporary-signed.apk \
+            dist/firestore.rules \
+            dist/firestore-rules-tests.cjs \
+            > dist/SHA256SUMS-TEMPORARY.txt
+          cat > dist/LOCAL-SIGNING-REQUIRED.txt <<'TXT'
+          This APK has the correct canonical package, version, Firebase resources, release build type,
+          and the 0.12.5 Firestore integrity controls. Its CI signature is intentionally disposable.
+          It must be re-signed locally with the preserved My Study Companion private-test key and
+          verified against certificate SHA-256
+          13a3bb08a32ab57c36ea6f885a74b5bd40d70501f93ca9002df7b6cdd0491b2c.
+          TXT
+
+      - name: Upload canonical APK for secure local signing
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.5-canonical-firebase-apk-for-local-signing
+          path: dist/
+          retention-days: 3
+          if-no-files-found: error
