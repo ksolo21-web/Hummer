@@ -118,8 +118,12 @@ namespace Havenline.Tests
 
             foreach (var hiddenName in new[] { "IceShelf", "SnowIsland", "WarmthBoundary" })
             {
-                var rejectedVisual = objects.Single(item => item.name == hiddenName);
-                Assert.That(rejectedVisual.GetComponentsInChildren<Renderer>(true).All(renderer => !renderer.enabled),
+                var rejectedVisuals = objects.Where(item => item.name == hiddenName).ToArray();
+                Assert.That(rejectedVisuals, Is.Not.Empty,
+                    $"Rejected circular-arena visual is missing from the authored lifecycle check: {hiddenName}");
+                Assert.That(rejectedVisuals
+                        .SelectMany(item => item.GetComponentsInChildren<Renderer>(true))
+                        .All(renderer => !renderer.enabled),
                     Is.True, $"Rejected circular-arena visual is still rendered: {hiddenName}");
             }
 
