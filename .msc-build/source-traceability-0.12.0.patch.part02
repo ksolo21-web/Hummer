@@ -1,0 +1,106 @@
+@@ -20,10 +27,15 @@ class GuidedOfflineStudyProvider : StudyAiProvider {
+         }
+         return buildString {
+             append("Here are the strongest verified points available in the source library:\n\n")
+-            excerpts.forEachIndexed { index, excerpt ->
+-                append(index + 1).append(". ").append(excerpt.take(420).trim()).append('\n')
++            excerpts.forEachIndexed { index, (sourceNumber, excerpt) ->
++                append(index + 1)
++                    .append(". ")
++                    .append(excerpt.take(420).trim())
++                    .append(" [[source:")
++                    .append(sourceNumber)
++                    .append("]]\n")
+             }
+-            append("\nThis is a verified-source extraction, not a generated doctrinal explanation. Open the official citations to review the full context.")
++            append("\nThis is a verified-source extraction, not a generated doctrinal explanation. Open the attached official citations to review the full context.")
+         }
+     }
+ }
+diff --git a/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt b/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
+index a7db0d7..69918bb 100644
+--- a/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
++++ b/app/src/main/java/com/mystudycompanion/app/ui/AiStudyScreen.kt
+@@ -1,8 +1,6 @@
+ package com.mystudycompanion.app.ui
+ 
+ import android.content.Context
+-import android.content.Intent
+-import android.net.Uri
+ import androidx.activity.compose.rememberLauncherForActivityResult
+ import androidx.activity.result.contract.ActivityResultContracts
+ import androidx.compose.foundation.clickable
+@@ -29,7 +27,7 @@ import androidx.compose.material.icons.outlined.CloudDone
+ import androidx.compose.material.icons.outlined.CloudOff
+ import androidx.compose.material.icons.outlined.DeleteOutline
+ import androidx.compose.material.icons.outlined.Download
+-import androidx.compose.material.icons.outlined.Language
++import androidx.compose.material.icons.outlined.MenuBook
+ import androidx.compose.material.icons.outlined.Refresh
+ import androidx.compose.material.icons.outlined.Send
+ import androidx.compose.material.icons.outlined.Storage
+@@ -61,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
+ import com.mystudycompanion.app.ai.AiStudyRepository
+ import com.mystudycompanion.app.ai.runtime.AiRuntimeState
+ import com.mystudycompanion.app.ai.runtime.ProviderAvailability
++import com.mystudycompanion.app.companion.JwLibraryLinkResolver
+ import com.mystudycompanion.app.data.AiMessageRole
+ import com.mystudycompanion.app.data.AiStudyMessage
+ import com.mystudycompanion.app.ui.adaptive.AdaptiveLayoutSpec
+@@ -392,12 +391,33 @@ private fun MessageCard(message: AiStudyMessage) {
+                     Text("Official sources", fontWeight = FontWeight.SemiBold)
+                     message.citations.forEach { citation ->
+                         Row(
+-                            modifier = Modifier.fillMaxWidth().clickable { openUrl(context, citation.url) }.padding(vertical = 5.dp),
++                            modifier = Modifier
++                                .fillMaxWidth()
++                                .clickable {
++                                    JwLibraryLinkResolver.openOfficial(
++                                        context = context,
++                                        url = citation.url,
++                                        preferLibrary = true,
++                                        label = citation.title,
++                                    )
++                                }
++                                .padding(vertical = 5.dp),
+                             verticalAlignment = Alignment.CenterVertically,
+                         ) {
+-                            Icon(Icons.Outlined.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
++                            Icon(
++                                Icons.Outlined.MenuBook,
++                                contentDescription = "Open ${citation.title} in JW Library",
++                                tint = MaterialTheme.colorScheme.primary,
++                            )
+                             Spacer(Modifier.width(10.dp))
+-                            Text(citation.title, Modifier.weight(1f), color = MaterialTheme.colorScheme.primary)
++                            Column(Modifier.weight(1f)) {
++                                Text(citation.title, color = MaterialTheme.colorScheme.primary)
++                                Text(
++                                    "Open in JW Library",
++                                    style = MaterialTheme.typography.labelSmall,
++                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
++                                )
++                            }
+                         }
+                     }
+                 }
+@@ -413,7 +433,7 @@ private fun SourceBoundaryCard(modifier: Modifier = Modifier) {
+             Text("Source protection", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+             Text("Spiritual research is restricted to JW.org, Watchtower Online Library, and the New World Translation—Study Edition.")
+             Text(
+-                "The model cannot create citations. The app attaches links only from its verified local source database.",
++                "The model cannot create links. The app attaches only the verified sources the answer actually used, and routes each citation through JW Library instead of silently opening a browser.",
+                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+             )
+         }
+@@ -424,6 +444,3 @@ private fun formatSyncTime(epochMillis: Long): String = DateTimeFormatter.ofPatt
+     .withZone(ZoneId.systemDefault())
+     .format(Instant.ofEpochMilli(epochMillis))
+ 
+-private fun openUrl(context: Context, url: String) {
+-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+-}
+diff --git a/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidatorTest.kt b/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidatorTest.kt
+index 57bf86f..41d6bdf 100644
+--- a/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidatorTest.kt
++++ b/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidatorTest.kt
