@@ -1,0 +1,84 @@
+name: My Study Companion 0.12.4 Firebase Family Hardened
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.4-firebase-family-hardened.yml'
+      - '.msc-build/firebase-family-0.12.4.part*.b64'
+      - '.msc-build/reconstruct-build-0124.sh'
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0124-firebase-family-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compile-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out isolated app branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Reconstruct, test and compile hardened Firebase family build
+        shell: bash
+        run: bash .msc-build/reconstruct-build-0124.sh
+
+      - name: Verify hardened source boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/MyStudyCompanion-phone-0.12.4-debug.apk
+          test -s dist/firestore.rules
+          test -s dist/FamilyWorshipOrganizerRepository.kt
+          grep -q 'versionCode=.28' dist/PHONE-IDENTITY.txt
+          grep -q '0.12.4-private-alpha-firebase-family-hardened-debug' dist/PHONE-IDENTITY.txt
+          grep -q 'match /ideas/{ideaId}' dist/firestore.rules
+          grep -q 'match /ideaVotes/{voteId}' dist/firestore.rules
+          ! grep -q 'transaction.get(householdRef)' dist/FamilyWorshipOrganizerRepository.kt
+          grep -q 'PENDING: Firestore emulator rule tests' dist/FIREBASE-FAMILY-STATUS.txt
+
+      - name: Export auditable reconstructed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude='**/build' --exclude='.gradle' \
+            -czf dist/MyStudyCompanion-0.12.4-auditable-source.tgz MyStudyCompanion
+          sha256sum dist/MyStudyCompanion-0.12.4-auditable-source.tgz \
+            > dist/SOURCE-SHA256.txt
+
+      - name: Upload hardened compile evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.4-firebase-family-hardened-evidence
+          path: dist/
+          retention-days: 5
+          if-no-files-found: warn

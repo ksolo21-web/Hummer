@@ -1,0 +1,96 @@
+name: My Study Companion 0.12.5 Final Firestore Integrity Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/msc-0.12.4-firestore-rules-tests.yml'
+      - '.msc-build/firebase-integrity-0.12.5.part*.b64'
+      - '.msc-build/firebase-rules-tests/**'
+  workflow_dispatch:
+
+concurrency:
+  group: msc-0125-final-firestore-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out frozen final verification branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/msc-0.12.5-final-verification
+
+      - name: Set up Java 21 for Firestore emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Reconstruct checksum-locked integrity rules and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .msc-build/firebase-integrity-0.12.5.part*.b64 | base64 --decode \
+            > /tmp/firebase-integrity-0.12.5-overlay.tar.xz
+          echo '8915fcd1e78a698c8528d4ccf0c06cace33251ee35e85b4a523a9c0af60db37f  /tmp/firebase-integrity-0.12.5-overlay.tar.xz' \
+            | sha256sum -c -
+          tar -xJf /tmp/firebase-integrity-0.12.5-overlay.tar.xz -C .
+          echo '0f834b748e561bf9a563a0714e90ccbb684e3dfbb0b0c47868e0cc24bbd12675  .msc-build/firestore-0.12.5.rules' \
+            | sha256sum -c -
+          echo 'b587ba8c2fe3fa0c93fa3e7d7935c1b65e78b83c6cae76bbf12fc564ad6df4e7  .msc-build/firebase-rules-tests/rules.test.cjs' \
+            | sha256sum -c -
+          cp .msc-build/firestore-0.12.5.rules \
+            .msc-build/firebase-rules-tests/firestore.rules
+          test "$(grep -c '^  test(' .msc-build/firebase-rules-tests/rules.test.cjs)" -eq 20
+          node --check .msc-build/firebase-rules-tests/rules.test.cjs
+
+      - name: Install Firebase rules test dependencies
+        working-directory: .msc-build/firebase-rules-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f package.json ]]; then
+            npm init -y >/dev/null
+          fi
+          npm install --no-audit --no-fund \
+            firebase@latest \
+            @firebase/rules-unit-testing@latest \
+            firebase-tools@latest
+
+      - name: Run Firestore emulator authorization, integrity, and abuse tests
+        working-directory: .msc-build/firebase-rules-tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npx firebase emulators:exec \
+            --only firestore \
+            --project demo-my-study-companion \
+            'node rules.test.cjs' \
+            | tee FIRESTORE-RULES-TEST-RESULTS.txt
+          grep -q 'PASS: 20 Firestore authorization, integrity, and abuse tests completed.' \
+            FIRESTORE-RULES-TEST-RESULTS.txt
+
+      - name: Upload Firestore rules evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.12.5-final-firestore-integrity-evidence
+          path: |
+            .msc-build/firebase-rules-tests/FIRESTORE-RULES-TEST-RESULTS.txt
+            .msc-build/firebase-rules-tests/firestore.rules
+            .msc-build/firebase-rules-tests/rules.test.cjs
+            .msc-build/firebase-rules-tests/package.json
+            .msc-build/firebase-rules-tests/package-lock.json
+          retention-days: 5
+          if-no-files-found: warn

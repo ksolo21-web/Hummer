@@ -1,0 +1,60 @@
+name: My Study Companion 0.11.1 Wear Installed Retry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  installed-wear-retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out Wear verification script
+        uses: actions/checkout@v6
+        with:
+          ref: agent/my-study-companion-apk-build
+
+      - name: Download proven 0.11.1 debug APK bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/ksolo21-web/Hummer/actions/artifacts/8768596137/zip' \
+            -o debug-bundle.zip
+          mkdir -p dist
+          unzip -q debug-bundle.zip -d dist
+          test -f dist/MyStudyCompanion-wear-0.11.1-debug.apk
+          echo '14ced70cbecf9e7a62b2c752deef94e838f4b13e60ad490edf33f1296fd2a97d  dist/MyStudyCompanion-wear-0.11.1-debug.apk' \
+            | sha256sum -c -
+
+      - name: Install and launch Wear APK in stable Wear OS emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: android-wear
+          arch: x86_64
+          cores: 4
+          ram-size: 3072M
+          heap-size: 512M
+          disk-size: 4096M
+          emulator-boot-timeout: 900
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          script: bash .msc-build/installed-wear-0111.sh
+
+      - name: Upload installed Wear evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msc-0.11.1-installed-wear-retry-evidence
+          path: wear-installed-evidence/
+          retention-days: 3
+          if-no-files-found: warn

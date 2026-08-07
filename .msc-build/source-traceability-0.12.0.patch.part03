@@ -1,0 +1,133 @@
+@@ -14,18 +14,63 @@ class AiGroundingValidatorTest {
+     )
+ 
+     @Test
+-    fun acceptsAnswerWithoutGeneratedLinks() {
+-        val answer = "The verified excerpt emphasizes showing personal interest. A practical application is to listen before responding."
+-        assertEquals(answer, AiGroundingValidator.validate(answer, listOf(source)))
++    fun acceptsAnswerAndReturnsOnlyTheUsedSource() {
++        val result = AiGroundingValidator.validateAndResolve(
++            "The verified excerpt emphasizes showing personal interest. [[source:1]] A practical application is to listen before responding.",
++            listOf(source),
++        )
++        assertEquals(
++            "The verified excerpt emphasizes showing personal interest. A practical application is to listen before responding.",
++            result.body,
++        )
++        assertEquals(listOf(0), result.usedPassageIndexes)
++    }
++
++    @Test
++    fun duplicateMarkersProduceOneCitationIndex() {
++        val result = AiGroundingValidator.validateAndResolve(
++            "The first point is supported here. [[source:1]] The second point uses the same excerpt. [[source:1]]",
++            listOf(source),
++        )
++        assertEquals(listOf(0), result.usedPassageIndexes)
+     }
+ 
+     @Test
+     fun rejectsModelCreatedUrl() {
+         assertThrows(IllegalArgumentException::class.java) {
+-            AiGroundingValidator.validate(
+-                "Read more at https://jw.org/en/library for the complete explanation.",
++            AiGroundingValidator.validateAndResolve(
++                "Read more at https://jw.org/en/library for the complete explanation. [[source:1]]",
++                listOf(source),
++            )
++        }
++    }
++
++    @Test
++    fun rejectsUncitedSubstantiveAnswer() {
++        assertThrows(IllegalArgumentException::class.java) {
++            AiGroundingValidator.validateAndResolve(
++                "The verified excerpt emphasizes showing personal interest and careful listening.",
+                 listOf(source),
+             )
+         }
+     }
++
++    @Test
++    fun rejectsSourceOutsideVerifiedSet() {
++        assertThrows(IllegalArgumentException::class.java) {
++            AiGroundingValidator.validateAndResolve(
++                "The answer is based on a source that was not supplied. [[source:2]]",
++                listOf(source),
++            )
++        }
++    }
++
++    @Test
++    fun insufficientAnswerDoesNotAttachCitation() {
++        val result = AiGroundingValidator.validateAndResolve(
++            "I do not have enough verified material stored to answer this safely.",
++            listOf(source),
++        )
++        assertEquals(emptyList<Int>(), result.usedPassageIndexes)
++    }
+ }
+diff --git a/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilderTest.kt b/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilderTest.kt
+index 02bcfb0..41a2f47 100644
+--- a/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilderTest.kt
++++ b/app/src/test/java/com/mystudycompanion/app/ai/knowledge/AiPromptBuilderTest.kt
+@@ -6,7 +6,7 @@ import org.junit.Test
+ 
+ class AiPromptBuilderTest {
+     @Test
+-    fun enforcesVerifiedSourceBoundary() {
++    fun enforcesVerifiedSourceBoundaryAndUsageMarkers() {
+         val prompt = AiPromptBuilder.build(
+             "What is the lesson?",
+             listOf(
+@@ -20,7 +20,9 @@ class AiPromptBuilderTest {
+             ),
+         )
+         assertTrue(prompt.contains("Answer only from the verified source excerpts"))
+-        assertTrue(prompt.contains("<source"))
++        assertTrue(prompt.contains("[[source:1]]"))
++        assertTrue(prompt.contains("Never cite an unused excerpt"))
++        assertTrue(prompt.contains("<source id=\"1\""))
+         assertFalse(prompt.contains("https://www.jw.org"))
+     }
+ }
+diff --git a/app/src/test/java/com/mystudycompanion/app/ai/runtime/GuidedOfflineStudyProviderTest.kt b/app/src/test/java/com/mystudycompanion/app/ai/runtime/GuidedOfflineStudyProviderTest.kt
+new file mode 100644
+index 0000000..e5a202b
+--- /dev/null
++++ b/app/src/test/java/com/mystudycompanion/app/ai/runtime/GuidedOfflineStudyProviderTest.kt
+@@ -0,0 +1,19 @@
++package com.mystudycompanion.app.ai.runtime
++
++import kotlinx.coroutines.runBlocking
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class GuidedOfflineStudyProviderTest {
++    @Test
++    fun identifiesEveryExcerptItActuallyUses() = runBlocking {
++        val answer = GuidedOfflineStudyProvider().generate(
++            """
++            <source id="1" title="First" heading="One">First verified excerpt.</source>
++            <source id="2" title="Second" heading="Two">Second verified excerpt.</source>
++            """.trimIndent(),
++        )
++        assertTrue(answer.contains("[[source:1]]"))
++        assertTrue(answer.contains("[[source:2]]"))
++    }
++}
+diff --git a/wear/build.gradle.kts b/wear/build.gradle.kts
+index f50d286..a09a4c6 100644
+--- a/wear/build.gradle.kts
++++ b/wear/build.gradle.kts
+@@ -35,8 +35,8 @@ android {
+         applicationId = "com.mystudycompanion.app"
+         minSdk = 30
+         targetSdk = 36
+-        versionCode = 360110101
+-        versionName = "0.11.1-wear-private-alpha-verified-connectivity"
++        versionCode = 360120001
++        versionName = "0.12.0-wear-private-alpha-source-traceability"
+         vectorDrawables.useSupportLibrary = true
+     }
+ 

@@ -1,0 +1,14 @@
+name: Classify My Study Companion Build (Paused)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paused:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Build classification is paused; no release or repository writes will run."

@@ -1,0 +1,118 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 6e21b55..5d87a87 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,14 @@
+ # Changelog
+ 
++## 0.12.0-source-traceability-private
++
++- Added machine-readable source-use markers to the on-device AI prompt contract.
++- The app now attaches only the verified JW.org or Watchtower Online Library sources the answer actually used instead of every retrieved page.
++- Invalid, uncited, out-of-range, or model-created source output fails closed and falls back to deterministic verified-source guidance.
++- AI citation cards now route through the exact JW Library resolver; the app no longer launches citation URLs directly in a browser.
++- Added unit coverage for used-source selection, duplicate markers, missing markers, invalid source IDs, safe insufficient-source responses, and guided-source fallback markers.
++- Bumped the paired phone and Wear OS private-alpha builds to 0.12.0.
++
+ ## 0.9.6-verified-preparation-private
+ 
+ - Removed the manual plus/minus preparation counter and made progress a read-only total derived from completed task records.
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 49cb79c..59a1eea 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -45,8 +45,8 @@ android {
+         applicationId = "com.mystudycompanion.app"
+         minSdk = 26
+         targetSdk = 36
+-        versionCode = 23
+-        versionName = "0.11.1-private-alpha-verified-connectivity"
++        versionCode = 24
++        versionName = "0.12.0-private-alpha-source-traceability"
+ 
+         val backendBaseUrl = providers.gradleProperty("MSC_BACKEND_BASE_URL").orElse("").get()
+         val googleWebClientId = providers.gradleProperty("MSC_GOOGLE_WEB_CLIENT_ID").orElse("").get()
+diff --git a/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt b/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
+index 07354e2..4618df3 100644
+--- a/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
++++ b/app/src/main/java/com/mystudycompanion/app/ai/AiStudyRepository.kt
+@@ -190,21 +190,33 @@ class AiStudyRepository(
+                 append(". Family Worship topic: ").append(family.title).append(' ').append(family.theme)
+             }
+             val passages = knowledgeRepository.retrieve(expandedQuestion, preferredUrls, limit = 6)
+-            val answer: String
+-            val citations = passages.map { it.citation() }
+-                .distinctBy { it.url }
+-                .take(5)
+-            if (passages.isEmpty()) {
+-                answer = if (networkStatusMonitor.isOnline()) {
++            val (answer, citations) = if (passages.isEmpty()) {
++                val safeMessage = if (networkStatusMonitor.isOnline()) {
+                     "I could not find enough verified JW.org or Watchtower Online Library material in the current source library to answer that safely. Refresh official sources or open the specific official material first."
+                 } else {
+                     "I do not have enough verified material stored offline to answer that safely. Reconnect and refresh official sources."
+                 }
++                safeMessage to emptyList()
+             } else {
+                 val prompt = AiPromptBuilder.build(cleanQuestion, passages)
+-                val (generated, provider) = providerRouter.generate(prompt)
+-                answer = AiGroundingValidator.validate(generated, passages) +
+-                    "\n\n— Answered with ${provider.label}; official citations are attached by the app."
++                val initial = providerRouter.generate(prompt)
++                val validatedInitial = runCatching {
++                    AiGroundingValidator.validateAndResolve(initial.first, passages)
++                }
++                val (grounded, provider) = if (validatedInitial.isSuccess) {
++                    validatedInitial.getOrThrow() to initial.second
++                } else {
++                    val guided = providerRouter.generateGuided(prompt)
++                    AiGroundingValidator.validateAndResolve(guided.first, passages) to guided.second
++                }
++                val usedCitations = grounded.usedPassageIndexes
++                    .map(passages::get)
++                    .map { it.citation() }
++                    .distinctBy { it.url }
++                    .take(5)
++                val safeAnswer = grounded.body +
++                    "\n\n— Answered with ${provider.label}; only the verified sources actually used are attached."
++                safeAnswer to usedCitations
+             }
+             dao.upsertAiMessage(
+                 AiStudyMessage(
+diff --git a/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt b/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt
+index ad36de2..c5c5966 100644
+--- a/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt
++++ b/app/src/main/java/com/mystudycompanion/app/ai/knowledge/AiGroundingValidator.kt
+@@ -2,18 +2,64 @@ package com.mystudycompanion.app.ai.knowledge
+ 
+ import com.mystudycompanion.app.data.SpiritualSourcePolicy
+ 
++data class GroundedAiAnswer(
++    val body: String,
++    val usedPassageIndexes: List<Int>,
++)
++
+ object AiGroundingValidator {
+-    fun validate(answer: String, passages: List<RetrievedOfficialPassage>): String {
++    private val sourceMarker = Regex(
++        pattern = """\[\[\s*source\s*:\s*(\d{1,2})\s*]]""",
++        option = RegexOption.IGNORE_CASE,
++    )
++
++    fun validate(answer: String, passages: List<RetrievedOfficialPassage>): String =
++        validateAndResolve(answer, passages).body
++
++    fun validateAndResolve(
++        answer: String,
++        passages: List<RetrievedOfficialPassage>,
++    ): GroundedAiAnswer {
+         val clean = answer.trim()
+         require(clean.length >= 20) { "The local AI returned an incomplete answer." }
+         require(clean.length <= 8_000) { "The local AI answer exceeded the safe response limit." }
+         val urls = SpiritualSourcePolicy.urlsIn(clean)
+-        require(urls.isEmpty()) { "The local AI attempted to create a source link. Citations must come from the verified database." }
++        require(urls.isEmpty()) {
++            "The local AI attempted to create a source link. Citations must come from the verified database."
++        }
++
++        val markerNumbers = sourceMarker.findAll(clean)
