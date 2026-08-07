@@ -14,6 +14,7 @@ namespace Havenline.Editor
         private const int CellHeight = 52;
         private const int GlyphWidth = 34;
         private const int GlyphHeight = 42;
+        private const string RuntimeFontName = "HAVENLINE_UI_Rounded_Geometric";
         private const string AtlasPath =
             "Assets/Havenline/Art/Production/UI/HAVENLINE_UI_FontAtlas.png";
         private const string MaterialPath =
@@ -109,7 +110,7 @@ namespace Havenline.Editor
 
             var font = new Font
             {
-                name = "HAVENLINE_UI_Rounded_Geometric",
+                name = RuntimeFontName,
                 material = material,
                 characterInfo = characters.ToArray()
             };
@@ -118,6 +119,17 @@ namespace Havenline.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.ImportAsset(fontPath,
                 ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+
+            // Native .fontsettings import can restore the main-object name from the asset
+            // basename. Reassert the runtime typography identity after import so every Text
+            // component sees the same rounded-geometric font contract without changing the
+            // asset path or breaking serialized references.
+            var importedFont = AssetDatabase.LoadAssetAtPath<Font>(fontPath);
+            if (importedFont == null)
+                throw new InvalidOperationException("HAVENLINE static font failed to re-load after import.");
+            importedFont.name = RuntimeFontName;
+            EditorUtility.SetDirty(importedFont);
+            AssetDatabase.SaveAssets();
         }
 
         private static string[] PatternFor(char character)
