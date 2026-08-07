@@ -165,7 +165,10 @@ namespace Havenline.Tests
                 Assert.That(deviation, Is.GreaterThan(0.13d), label + " remains visually flat");
 
                 AssertHudRegion(texture, label, 0f, 0.76f, 0.30f, 1f, false);
-                AssertHudRegion(texture, label, 0f, 0f, 0.27f, 0.34f, true);
+                // Sample the actual adaptive joystick footprint rather than a broad lower-left
+                // world region. The same strict blue-interface ratio then works on both wide
+                // phone and Fold aspect ratios without mistaking pale snow for missing UI.
+                AssertHudRegion(texture, label, 0.04f, 0.08f, 0.18f, 0.24f, true);
             }
             finally
             {
