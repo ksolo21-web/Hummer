@@ -196,15 +196,14 @@ namespace Havenline
 
             if (foldableTopLayout)
             {
-                // Keep the resource/status cards compact even on the Fold. The resource text
-                // may wrap to two lines, but the card must not grow back into the oversized
-                // dashboard treatment rejected by the reference-grade presentation gate.
-                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(430f, 92f));
-                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(255f, 92f));
-                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -124f), new Vector2(540f, 80f));
-                ConfigureTopText(resourceText, 20, HorizontalWrapMode.Wrap);
-                ConfigureTopText(objectiveText, 21, HorizontalWrapMode.Wrap);
-                ConfigureTopText(transientStatusText, 20, HorizontalWrapMode.Wrap);
+                // Fold mode still uses the same compact 72 px card height. Resource text
+                // wraps to two smaller lines instead of expanding back into a dashboard.
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(430f, 72f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(255f, 72f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(540f, 72f));
+                ConfigureTopText(resourceText, 18, HorizontalWrapMode.Wrap);
+                ConfigureTopText(objectiveText, 19, HorizontalWrapMode.Wrap);
+                ConfigureTopText(transientStatusText, 18, HorizontalWrapMode.Wrap);
             }
             else
             {
