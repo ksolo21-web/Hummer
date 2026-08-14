@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1.2.0",
+  "contractVersion": "1.3.0",
   "product": "HAVENLINE",
   "engine": "Unity 6.3 LTS URP",
   "unityEditor": "6000.3.18f1",
@@ -11,8 +11,10 @@
   "authority": {
     "runtimeSource": "Assets/Havenline/Runtime/HavenlineReference.cs",
     "runtimeTests": "Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs",
+    "shippingAuthoring": "Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs",
+    "onboardingSource": "Assets/Havenline/Runtime/HavenlineOnboardingController.cs",
     "gameplayLock": "REFERENCE_GAMEPLAY_LOCK.md",
-    "rule": "The original reference-package measurements remain preserved under referenceBaseline. The top-level camera/player/world fields are the current approved HAVENLINE runtime lock and must match HavenlineReference.cs plus its contract tests."
+    "rule": "The original reference-package measurements remain preserved under referenceBaseline. Top-level runtime values mirror the current approved Unity implementation; browser QA tools consume an exact mirror and must fail validation on drift."
   },
   "referenceBaseline": {
     "camera": {
@@ -34,20 +36,15 @@
   },
   "characterSystem": {
     "activeCrewSize": 4,
-    "startingPlayableLeads": [
-      "Character1",
-      "Character2"
-    ],
+    "startingPlayableLeads": ["Character1", "Character2"],
     "selectedLeadRole": "player-controlled playable lead",
     "unselectedLeadRole": "core helper and story companion",
-    "coreCompanions": [
-      "Character3",
-      "Character4"
-    ],
-    "companionFormation": [
-      "unselected playable lead",
-      "Character3",
-      "Character4"
+    "coreCompanions": ["Character3", "Character4"],
+    "companionFormation": ["unselected playable lead", "Character3", "Character4"],
+    "companionFormationOffsets": [
+      [-1.35, 0.0, -1.7],
+      [1.35, 0.0, -1.7],
+      [0.0, 0.0, -2.8]
     ],
     "characters3And4LockedAtStart": false,
     "selectionRule": "Only Character1 or Character2 is selected at onboarding; all four characters remain active in the game."
@@ -94,6 +91,8 @@
     "northBarricade": [0.0, 0.0, -10.7],
     "southBarricade": [0.0, 0.0, 11.7],
     "forestGate": [0.0, 0.0, -14.8],
+    "metalNode": [-9.4, 0.0, -8.8],
+    "fuelNode": [9.5, 0.0, -8.6],
     "woodNodes": [
       [-5.9, 0.0, 6.0],
       [-8.2, 0.0, 2.6],
@@ -110,9 +109,16 @@
     ]
   },
   "openingLoopTuning": {
-    "resourceSecondsPerUnit": 0.62,
+    "gatherSecondsPerUnit": {
+      "wood": 0.58,
+      "stone": 0.70,
+      "metal": 0.70,
+      "fuel": 0.70
+    },
     "woodUnitsPerNode": 18,
     "stoneUnitsPerNode": 14,
+    "metalUnitsPerNode": 10,
+    "fuelUnitsPerNode": 10,
     "furnaceMaxDurability": 260.0,
     "furnaceRepairPerWood": 42.0,
     "furnaceDepositSecondsPerUnit": 0.16,
@@ -123,6 +129,12 @@
     "warmthRadiusLevel1": 4.5,
     "warmthRadiusPerAdditionalLevel": 3.5,
     "survivorRescueSeconds": 2.2,
+    "northBarricadeBuild": { "wood": 8, "stone": 3 },
+    "southBarricadeBuild": { "wood": 8, "stone": 3 },
+    "firstWaveDelaySeconds": 48.0,
+    "minimumWaveDelaySeconds": 24.0,
+    "waveDelayReductionPerCompletedWave": 3.0,
+    "firstWaveEnemyCount": 3,
     "automaticActionRescanSeconds": 0.075,
     "automaticActionTargetHysteresis": 0.32,
     "automaticActionMovementCancelThreshold": 0.12,
@@ -138,13 +150,14 @@
     "automatic gathering",
     "visible carrying",
     "automatic furnace deposit",
-    "furnace upgrades",
+    "furnace upgrades from wood and stone",
     "expanding warmth zone",
-    "survivor rescue",
+    "survivor rescue after furnace level 2",
+    "north barricade construction before first wolf wave",
     "unselected lead companion support",
     "Character3 helper activity",
     "Character4 helper activity",
-    "helper gathering and delivery",
+    "rescued helper gathering and delivery",
     "barricade repair",
     "animated wolf pressure",
     "bounded world and fall recovery",
