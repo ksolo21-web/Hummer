@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Havenline.Editor
 {
@@ -77,7 +78,13 @@ namespace Havenline.Editor
             SetPose(objects, "FrozenSurvivor", new Vector3(5.10f, 0f, -1.72f), -16f);
 
             RebuildMicroDetail(scene);
+
+            // RebuildMicroDetail destroys the previous R30 root during recursive scene saves.
+            // Refresh before any later traversal so destroyed Unity sentinels can never leak into
+            // the foreground composition pass.
+            objects = AllObjects(scene);
             OpenForeground(objects);
+            HardenTopHud(objects);
         }
 
         private static void RecomposePremiumShelter(
@@ -87,8 +94,8 @@ namespace Havenline.Editor
             Vector3 position,
             float yaw)
         {
-            var premium = objects.FirstOrDefault(item => item.name == premiumName);
-            var legacy = objects.FirstOrDefault(item => item.name == legacyName);
+            var premium = objects.FirstOrDefault(item => item != null && item.name == premiumName);
+            var legacy = objects.FirstOrDefault(item => item != null && item.name == legacyName);
 
             // Keep the exact legacy name because the scene gate explicitly verifies that the
             // superseded imported tent exists only as an inactive shell. Proof clones are
@@ -107,7 +114,7 @@ namespace Havenline.Editor
 
         private static void RebuildMicroDetail(Scene scene)
         {
-            var existing = AllObjects(scene).FirstOrDefault(item => item.name == RootName);
+            var existing = AllObjects(scene).FirstOrDefault(item => item != null && item.name == RootName);
             if (existing != null)
                 UnityEngine.Object.DestroyImmediate(existing);
 
@@ -191,6 +198,8 @@ namespace Havenline.Editor
         {
             foreach (var item in objects)
             {
+                if (item == null)
+                    continue;
                 if (!item.name.StartsWith("QualitySceneryPine_", StringComparison.Ordinal) &&
                     !item.name.StartsWith("HorizonPine_", StringComparison.Ordinal))
                     continue;
@@ -201,6 +210,26 @@ namespace Havenline.Editor
                 position.z -= 1.6f;
                 item.transform.position = position;
                 item.transform.localScale *= 0.92f;
+            }
+        }
+
+        private static void HardenTopHud(IEnumerable<GameObject> objects)
+        {
+            var topPanels = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "ResourcesPanel", "ObjectivePanel", "FurnacePanel"
+            };
+            foreach (var item in objects)
+            {
+                if (item == null || !topPanels.Contains(item.name))
+                    continue;
+                var image = item.GetComponent<Image>();
+                if (image == null)
+                    continue;
+                var color = image.color;
+                color.a = 1f;
+                image.color = color;
+                EditorUtility.SetDirty(image);
             }
         }
 
@@ -236,7 +265,7 @@ namespace Havenline.Editor
             Vector3 position,
             float yaw)
         {
-            var item = objects.FirstOrDefault(candidate => candidate.name == name);
+            var item = objects.FirstOrDefault(candidate => candidate != null && candidate.name == name);
             if (item != null)
                 item.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
         }
