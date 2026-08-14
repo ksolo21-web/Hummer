@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Havenline
@@ -17,27 +15,39 @@ namespace Havenline
         [SerializeField] private Animator animator;
         private AutomaticActionKind currentAction;
         private bool impactQueued;
+        private float motionSpeed;
+        private int carryAmount;
 
         public AutomaticActionKind CurrentAction => currentAction;
+        public float MotionSpeed => motionSpeed;
+        public int CarryAmount => carryAmount;
+        public Animator Animator => animator;
 
         private void Awake()
         {
             if (animator == null)
                 animator = GetComponentInChildren<Animator>(true);
+            EnsureHumanoidMotionPolish();
         }
 
-        public void Configure(Animator productionAnimator) => animator = productionAnimator;
+        public void Configure(Animator productionAnimator)
+        {
+            animator = productionAnimator;
+            EnsureHumanoidMotionPolish();
+        }
 
         public void SetMotion(float normalizedSpeed)
         {
+            motionSpeed = Mathf.Clamp01(normalizedSpeed);
             if (animator != null)
-                animator.SetFloat(SpeedHash, Mathf.Clamp01(normalizedSpeed), 0.08f, Time.deltaTime);
+                animator.SetFloat(SpeedHash, motionSpeed, 0.08f, Time.deltaTime);
         }
 
         public void SetCarryAmount(int amount)
         {
+            carryAmount = Mathf.Max(0, amount);
             if (animator != null)
-                animator.SetInteger(CarryHash, Mathf.Max(0, amount));
+                animator.SetInteger(CarryHash, carryAmount);
         }
 
         public void BeginAction(AutomaticActionKind action)
@@ -100,6 +110,17 @@ namespace Havenline
             HavenlineFeedbackBus.PublishDeath(transform.position);
             if (animator != null)
                 animator.SetTrigger(DeadHash);
+        }
+
+        private void EnsureHumanoidMotionPolish()
+        {
+            if (animator == null)
+                return;
+
+            var polish = animator.GetComponent<HavenlineHumanoidMotionPolish>();
+            if (polish == null)
+                polish = animator.gameObject.AddComponent<HavenlineHumanoidMotionPolish>();
+            polish.Configure(animator, this);
         }
     }
 }
