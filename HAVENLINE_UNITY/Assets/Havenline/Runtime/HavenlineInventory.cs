@@ -6,6 +6,8 @@ namespace Havenline
 {
     public sealed class HavenlineInventory : MonoBehaviour
     {
+        // Zero means uncapped. This matches the example-game carrying behavior and keeps any
+        // future optional challenge-mode capacity separate from the default HAVENLINE loop.
         [SerializeField] private int capacity = Reference.CarryCapacity;
         [SerializeField] private Transform visibleCarryRoot;
         [SerializeField] private HavenlineCarryVisual carryVisual;
@@ -13,8 +15,9 @@ namespace Havenline
         private readonly Dictionary<ResourceKind, int> amounts = new();
 
         public int Capacity => capacity;
+        public bool HasCarryLimit => capacity > 0;
         public int Total => this[ResourceKind.Wood] + this[ResourceKind.Stone] + this[ResourceKind.Metal] + this[ResourceKind.Fuel];
-        public bool IsFull => Total >= capacity;
+        public bool IsFull => HasCarryLimit && Total >= capacity;
         public int this[ResourceKind kind] => amounts.TryGetValue(kind, out var value) ? value : 0;
         public event Action Changed;
 
@@ -30,13 +33,19 @@ namespace Havenline
         {
             visibleCarryRoot = carryRoot;
             carryVisual = visual;
-            capacity = Mathf.Max(1, carryCapacity);
+            capacity = carryCapacity <= 0 ? 0 : carryCapacity;
             RefreshVisual();
         }
 
         public int Add(ResourceKind kind, int amount)
         {
-            var accepted = Mathf.Min(Mathf.Max(0, amount), capacity - Total);
+            var requested = Mathf.Max(0, amount);
+            if (requested <= 0)
+                return 0;
+
+            var accepted = HasCarryLimit
+                ? Mathf.Min(requested, Mathf.Max(0, capacity - Total))
+                : requested;
             if (accepted <= 0)
                 return 0;
 
@@ -89,12 +98,15 @@ namespace Havenline
             amounts[ResourceKind.Metal] = Mathf.Max(0, snapshot.metal);
             amounts[ResourceKind.Fuel] = Mathf.Max(0, snapshot.fuel);
 
-            while (Total > capacity)
+            if (HasCarryLimit)
             {
-                if (amounts[ResourceKind.Fuel] > 0) amounts[ResourceKind.Fuel]--;
-                else if (amounts[ResourceKind.Metal] > 0) amounts[ResourceKind.Metal]--;
-                else if (amounts[ResourceKind.Stone] > 0) amounts[ResourceKind.Stone]--;
-                else if (amounts[ResourceKind.Wood] > 0) amounts[ResourceKind.Wood]--;
+                while (Total > capacity)
+                {
+                    if (amounts[ResourceKind.Fuel] > 0) amounts[ResourceKind.Fuel]--;
+                    else if (amounts[ResourceKind.Metal] > 0) amounts[ResourceKind.Metal]--;
+                    else if (amounts[ResourceKind.Stone] > 0) amounts[ResourceKind.Stone]--;
+                    else if (amounts[ResourceKind.Wood] > 0) amounts[ResourceKind.Wood]--;
+                }
             }
 
             NotifyChanged();
