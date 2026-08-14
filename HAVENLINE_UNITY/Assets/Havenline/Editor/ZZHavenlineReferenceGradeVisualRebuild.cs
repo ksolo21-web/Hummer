@@ -68,6 +68,12 @@ namespace Havenline.Editor
             if (existing != null)
                 UnityEngine.Object.DestroyImmediate(existing);
 
+            // Never continue through a scene snapshot containing the root we just destroyed.
+            // Recursive scene saves from the example-game quality pass re-enter this authoring
+            // path, and Unity's destroyed-object sentinels will throw as soon as name/components
+            // are touched. Refreshing here keeps the pass idempotent instead of hiding the error.
+            objects = AllObjects(scene);
+
             var root = new GameObject(RootName);
             SceneManager.MoveGameObjectToScene(root, scene);
             var worldRoot = scene.GetRootGameObjects()
@@ -152,6 +158,8 @@ namespace Havenline.Editor
         {
             foreach (var item in objects)
             {
+                if (item == null)
+                    continue;
                 var hide = item.name is "IceShelf" or "SnowIsland" or "WarmthBoundary" or
                            "MainPackedSnowPath" or "LeftShelterSnowPath" or "RightShelterSnowPath" ||
                            item.name.StartsWith("HeatedSnow_", StringComparison.Ordinal) ||
@@ -165,7 +173,7 @@ namespace Havenline.Editor
                     graphic.enabled = false;
             }
 
-            var thaw = objects.FirstOrDefault(item => item.name == "FurnaceWarmSnow");
+            var thaw = objects.FirstOrDefault(item => item != null && item.name == "FurnaceWarmSnow");
             if (thaw != null)
             {
                 thaw.transform.localPosition = new Vector3(0f, 0.075f, 0.22f);
@@ -175,8 +183,6 @@ namespace Havenline.Editor
 
         private static void BuildOpenWorldDressing(Transform parent)
         {
-            // Broken, overlapping packed-snow paths pull the player naturally through the camp
-            // without reading as a blue circular arena decal.
             var pathPatches = new[]
             {
                 (new Vector3(0f,0.092f,4.55f), new Vector3(1.25f,1f,2.65f), 2f),
@@ -195,7 +201,6 @@ namespace Havenline.Editor
                     patch.Item1, patch.Item2, Quaternion.Euler(0f, patch.Item3, 0f));
             }
 
-            // A layered tree-and-cliff horizon replaces the exposed round island edge.
             var pines = new[]
             {
                 (new Vector3(-11.8f,0f,-8.6f), 6.2f, 18f),
@@ -259,8 +264,8 @@ namespace Havenline.Editor
 
         private static void UpgradeShelters(Transform parent, IReadOnlyCollection<GameObject> objects)
         {
-            var left = objects.FirstOrDefault(item => item.name == "LeftPremiumShelter");
-            var right = objects.FirstOrDefault(item => item.name == "RightPremiumShelter");
+            var left = objects.FirstOrDefault(item => item != null && item.name == "LeftPremiumShelter");
+            var right = objects.FirstOrDefault(item => item != null && item.name == "RightPremiumShelter");
             if (left != null)
             {
                 left.transform.position = new Vector3(-5.75f, 0f, -1.40f);
@@ -313,7 +318,7 @@ namespace Havenline.Editor
             var heights = new[] { 3.05f, 3.65f, 4.25f, 4.90f };
             for (var level = 1; level <= 4; level++)
             {
-                var stage = objects.SingleOrDefault(item => item.name == $"FurnaceLevel{level}");
+                var stage = objects.SingleOrDefault(item => item != null && item.name == $"FurnaceLevel{level}");
                 if (stage == null)
                     continue;
 
@@ -386,17 +391,18 @@ namespace Havenline.Editor
 
         private static void TuneActors(IEnumerable<GameObject> objects)
         {
-            var player = objects.FirstOrDefault(item => item.name == "PlayerVisual");
+            var player = objects.FirstOrDefault(item => item != null && item.name == "PlayerVisual");
             if (player != null)
                 player.transform.localScale *= 1.12f;
-            var survivor = objects.FirstOrDefault(item => item.name == "SurvivorVisual");
+            var survivor = objects.FirstOrDefault(item => item != null && item.name == "SurvivorVisual");
             if (survivor != null)
                 survivor.transform.localScale *= 1.08f;
         }
 
         private static void TuneLighting(Transform parent, IEnumerable<GameObject> objects)
         {
-            var key = objects.SelectMany(item => item.GetComponents<Light>())
+            var liveObjects = objects.Where(item => item != null).ToArray();
+            var key = liveObjects.SelectMany(item => item.GetComponents<Light>())
                 .FirstOrDefault(light => light.type == LightType.Directional);
             if (key != null)
             {
@@ -409,7 +415,7 @@ namespace Havenline.Editor
                 key.shadowNormalBias = 0.30f;
             }
 
-            var furnace = objects.FirstOrDefault(item => item.name == "FurnaceLight")?.GetComponent<Light>();
+            var furnace = liveObjects.FirstOrDefault(item => item.name == "FurnaceLight")?.GetComponent<Light>();
             if (furnace != null)
             {
                 furnace.intensity = 3.25f;
@@ -427,7 +433,7 @@ namespace Havenline.Editor
 
         private static void RestyleHud(IEnumerable<GameObject> objects)
         {
-            var objectArray = objects as GameObject[] ?? objects.ToArray();
+            var objectArray = objects.Where(item => item != null).ToArray();
             ConfigurePanel(objectArray, "ResourcesPanel", new Vector2(0f, 1f),
                 new Vector2(26f, -24f), new Vector2(430f, 72f));
             ConfigurePanel(objectArray, "ObjectivePanel", new Vector2(0.5f, 1f),
@@ -491,7 +497,8 @@ namespace Havenline.Editor
                 return;
             image.sprite = HavenlineStudioUiAssets.Resolve(name);
             image.type = Image.Type.Sliced;
-            image.color = new Color(0.025f, 0.085f, 0.135f, 0.86f);
+            var alpha = name is "ResourcesPanel" or "ObjectivePanel" or "FurnacePanel" ? 1f : 0.86f;
+            image.color = new Color(0.025f, 0.085f, 0.135f, alpha);
             SetRect(image.rectTransform, anchor, position, size);
         }
 
@@ -632,7 +639,8 @@ namespace Havenline.Editor
 
         private static void ConfigureRenderers(IEnumerable<GameObject> objects)
         {
-            foreach (var renderer in objects.SelectMany(item => item.GetComponents<Renderer>()).Distinct())
+            foreach (var renderer in objects.Where(item => item != null)
+                         .SelectMany(item => item.GetComponents<Renderer>()).Distinct())
             {
                 var flame = renderer.GetComponentInParent<HavenlineFlamePulse>() != null;
                 renderer.shadowCastingMode = flame ? ShadowCastingMode.Off : ShadowCastingMode.On;
@@ -646,7 +654,7 @@ namespace Havenline.Editor
 
         private static void SetPose(IEnumerable<GameObject> objects, string name, Vector3 position, float yaw)
         {
-            var item = objects.FirstOrDefault(candidate => candidate.name == name);
+            var item = objects.FirstOrDefault(candidate => candidate != null && candidate.name == name);
             if (item == null)
                 return;
             item.transform.position = position;
