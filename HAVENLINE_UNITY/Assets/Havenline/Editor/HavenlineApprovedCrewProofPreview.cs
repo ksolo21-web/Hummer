@@ -12,11 +12,11 @@ namespace Havenline.Editor
     /// <summary>
     /// Editor-only render-proof overlay. The shipping scene cannot know the saved C1/C2 lead
     /// while it is being rendered in CI, so proof deterministically uses Character 1 as the
-    /// visible lead and shows Character 2, Character 3 and Character 4 in the locked companion
-    /// formation. All four visuals come directly from the exact human-approved production FBXs.
+    /// visible lead and shows Character 2, Character 3 and Character 4 in companion formation.
     ///
-    /// The overlay is never serialized and is tagged EditorOnly. Runtime Android still spawns
-    /// the selected C1/C2 lead from the approved roster and the other three as companions.
+    /// Verified release proof requires human-approved production FBXs. Device-test proof may
+    /// use the separately checksum-pinned review stage. The overlay is never serialized and is
+    /// tagged EditorOnly; runtime Android spawns the selected lead from the generated roster.
     /// </summary>
     [InitializeOnLoad]
     internal static class HavenlineApprovedCrewProofPreview
@@ -46,7 +46,7 @@ namespace Havenline.Editor
             try
             {
                 RemoveTransientPreview(scene);
-                if (HavenlineCharacterApprovalGate.Validate().Count == 0)
+                if (InspectPrerequisites().Count == 0)
                     BuildTransientPreview(scene);
             }
             finally
@@ -55,30 +55,33 @@ namespace Havenline.Editor
             }
         }
 
-        [MenuItem("HAVENLINE Premium/Characters/Inspect Approved Crew Proof Preview")]
+        [MenuItem("HAVENLINE Premium/Characters/Inspect Core Crew Proof Preview")]
         private static void InspectFromMenu()
         {
             var failures = InspectPrerequisites();
             if (failures.Count > 0)
                 throw new InvalidOperationException(
-                    "HAVENLINE approved crew proof preview is blocked:\n - " +
+                    "HAVENLINE core crew proof preview is blocked:\n - " +
                     string.Join("\n - ", failures));
 
             var scene = EditorSceneManager.OpenScene(Reference.ScenePath, OpenSceneMode.Single);
             BuildTransientPreview(scene);
             SceneView.RepaintAll();
-            Debug.Log("HAVENLINE editor-only approved C1-C4 proof preview is active. It will not be serialized or included in Android builds.");
+            Debug.Log("HAVENLINE editor-only C1-C4 proof preview is active. It will not be serialized or included in Android builds.");
         }
 
         internal static IReadOnlyList<string> InspectPrerequisites()
         {
             var failures = new List<string>();
-            failures.AddRange(HavenlineCharacterApprovalGate.Validate());
+            if (HavenlineBuildStageContext.IsDeviceTest)
+                failures.AddRange(HavenlineDeviceTestCharacterGate.Validate());
+            else
+                failures.AddRange(HavenlineCharacterApprovalGate.Validate());
 
             foreach (var plan in HavenlineProductionCharacterAssetBuilder.Plans)
             {
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(plan.ModelPath) == null)
-                    failures.Add($"Approved proof model is missing or not imported for {plan.Id}: {plan.ModelPath}");
+                    failures.Add($"Proof model is missing or not imported for {plan.Id}: {plan.ModelPath}");
             }
 
             return failures.Distinct(StringComparer.Ordinal).ToArray();
@@ -97,7 +100,7 @@ namespace Havenline.Editor
             var failures = InspectPrerequisites();
             if (failures.Count > 0)
                 throw new InvalidOperationException(
-                    "Cannot build HAVENLINE approved crew proof preview:\n - " +
+                    "Cannot build HAVENLINE core crew proof preview:\n - " +
                     string.Join("\n - ", failures));
 
             var previewRoot = new GameObject(RootName)
@@ -135,12 +138,14 @@ namespace Havenline.Editor
                         previewRoot.transform);
                 }
 
-                ClonePremiumShelterForProof(
+                // r30 promotes the premium shelters directly to the canonical proof names. Older
+                // scene states may still retain Left/RightPremiumShelter, so clone only then.
+                EnsureShelterProofIdentity(
                     scene,
                     LeftPremiumShelterName,
                     LeftShelterProofName,
                     previewRoot.transform);
-                ClonePremiumShelterForProof(
+                EnsureShelterProofIdentity(
                     scene,
                     RightPremiumShelterName,
                     RightShelterProofName,
@@ -162,14 +167,13 @@ namespace Havenline.Editor
             Quaternion rotation,
             Transform parent)
         {
-            var plan = HavenlineProductionCharacterAssetBuilder.Plans
-                .Single(item => item.Id == characterId);
+            var plan = HavenlineProductionCharacterAssetBuilder.Plans.Single(item => item.Id == characterId);
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(plan.ModelPath)
                 ?? throw new FileNotFoundException(
-                    $"Approved {characterId} FBX is missing from the proof path.", plan.ModelPath);
+                    $"{characterId} FBX is missing from the proof path.", plan.ModelPath);
 
             var instance = PrefabUtility.InstantiatePrefab(asset) as GameObject
-                ?? throw new InvalidOperationException($"Could not instantiate approved {characterId} proof model.");
+                ?? throw new InvalidOperationException($"Could not instantiate {characterId} proof model.");
             instance.name = proofName;
             instance.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
             instance.transform.SetParent(parent, true);
@@ -180,16 +184,24 @@ namespace Havenline.Editor
                 component.enabled = false;
         }
 
-        private static void ClonePremiumShelterForProof(
+        private static void EnsureShelterProofIdentity(
             Scene scene,
             string productionName,
             string proofName,
             Transform parent)
         {
-            var source = AllObjects(scene).FirstOrDefault(item => item.name == productionName);
+            var all = AllObjects(scene);
+            var canonical = all.FirstOrDefault(item =>
+                item.name == proofName &&
+                !item.name.StartsWith("Legacy", StringComparison.Ordinal) &&
+                item.GetComponentsInChildren<Renderer>(true).Any(renderer => renderer.enabled));
+            if (canonical != null)
+                return;
+
+            var source = all.FirstOrDefault(item => item.name == productionName);
             if (source == null)
                 throw new InvalidOperationException(
-                    $"Premium shelter '{productionName}' is missing; proof cannot fall back to the disabled legacy tent.");
+                    $"Premium shelter '{productionName}'/'{proofName}' is missing; proof cannot fall back to the retired tent.");
 
             var clone = UnityEngine.Object.Instantiate(source);
             clone.name = proofName;
@@ -203,9 +215,6 @@ namespace Havenline.Editor
 
         private static void HideLegacyProofPlayer(Scene scene, GameObject previewRoot)
         {
-            // The old functional shell remains available for pre-build interaction tests, but it
-            // must not appear underneath the approved C1 proof lead. Do not rename or destroy it;
-            // this is a transient render-only change on the opened scene instance.
             var legacy = AllObjects(scene)
                 .FirstOrDefault(item =>
                     item != previewRoot &&
