@@ -13,12 +13,11 @@ namespace Havenline.Editor
     /// <summary>
     /// Final r30 composition pass.
     ///
-    /// The r29 proof exposed two concrete presentation defects: the proof contract still
-    /// measured the retired StartingTent/RescueShelter shells instead of the premium shelter
-    /// replacements, and the inhabited camp read too narrow/sparse at shipping aspect ratios.
-    /// This pass does not relax any proof threshold. It promotes the real premium shelters to
-    /// the canonical scene identities and adds authored production-prop micro detail so the
-    /// close camera gains detail rather than merely magnifying the same low-frequency shapes.
+    /// The r29 proof exposed two concrete presentation defects: the legacy tent identities were
+    /// still being measured instead of the premium shelters, and the inhabited camp read too
+    /// narrow/sparse at shipping aspect ratios. This pass keeps shipping shelter names intact,
+    /// retires the imported tent shells, and adds authored production-prop micro detail. The
+    /// editor-only crew proof overlay supplies transient StartingTent/RescueShelter aliases.
     /// </summary>
     [InitializeOnLoad]
     internal static class ZZZHavenlineR30PremiumComposition
@@ -33,8 +32,6 @@ namespace Havenline.Editor
 
         static ZZZHavenlineR30PremiumComposition()
         {
-            // The reference-grade rebuild owns the large visual reconstruction. Subscribe only
-            // after it so this pass can make the final canonical composition adjustments.
             RuntimeHelpers.RunClassConstructor(typeof(ZZHavenlineReferenceGradeVisualRebuild).TypeHandle);
             EditorSceneManager.sceneSaving -= OnSceneSaving;
             EditorSceneManager.sceneSaving += OnSceneSaving;
@@ -62,18 +59,16 @@ namespace Havenline.Editor
                 return;
 
             var objects = AllObjects(scene);
-            PromotePremiumShelter(
+            RecomposePremiumShelter(
                 objects,
                 "LeftPremiumShelter",
                 "StartingTent",
-                "LegacyStartingTent_Retired",
                 new Vector3(-5.95f, 0f, -0.55f),
                 20f);
-            PromotePremiumShelter(
+            RecomposePremiumShelter(
                 objects,
                 "RightPremiumShelter",
                 "RescueShelter",
-                "LegacyRescueShelter_Retired",
                 new Vector3(5.95f, 0f, -0.48f),
                 -22f);
 
@@ -85,30 +80,25 @@ namespace Havenline.Editor
             OpenForeground(objects);
         }
 
-        private static void PromotePremiumShelter(
+        private static void RecomposePremiumShelter(
             IReadOnlyCollection<GameObject> objects,
             string premiumName,
-            string canonicalName,
-            string retiredName,
+            string legacyName,
             Vector3 position,
             float yaw)
         {
             var premium = objects.FirstOrDefault(item => item.name == premiumName);
-            var legacy = objects.FirstOrDefault(item => item.name == canonicalName && item != premium);
+            var legacy = objects.FirstOrDefault(item => item.name == legacyName);
 
-            if (legacy != null)
-            {
-                legacy.name = retiredName;
-                foreach (var renderer in legacy.GetComponentsInChildren<Renderer>(true))
-                    renderer.enabled = false;
-                foreach (var collider in legacy.GetComponentsInChildren<Collider>(true))
-                    collider.enabled = false;
-            }
+            // Keep the exact legacy name because the scene gate explicitly verifies that the
+            // superseded imported tent exists only as an inactive shell. Proof clones are
+            // transient EditorOnly objects and therefore never alter the shipping hierarchy.
+            if (legacy != null && legacy != premium)
+                legacy.SetActive(false);
 
             if (premium == null)
                 return;
 
-            premium.name = canonicalName;
             premium.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
             premium.SetActive(true);
             foreach (var renderer in premium.GetComponentsInChildren<Renderer>(true))
@@ -128,8 +118,6 @@ namespace Havenline.Editor
             if (shippingRoot != null)
                 root.transform.SetParent(shippingRoot.transform, false);
 
-            // These are real production OBJ assets, arranged as small lived-in camp clusters.
-            // The goal is readable scale/detail in the close camera, not decorative clutter.
             var logClusters = new[]
             {
                 new Vector3(-4.85f, 0.08f, 1.75f), new Vector3(-4.62f, 0.08f, 1.58f),
@@ -201,8 +189,6 @@ namespace Havenline.Editor
 
         private static void OpenForeground(IEnumerable<GameObject> objects)
         {
-            // The r29 close proof was losing detail under a dense lower tree curtain. Keep the
-            // forest perimeter, but push only the nearest bottom-edge dressing slightly deeper.
             foreach (var item in objects)
             {
                 if (!item.name.StartsWith("QualitySceneryPine_", StringComparison.Ordinal) &&
