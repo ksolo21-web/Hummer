@@ -143,7 +143,7 @@ namespace Havenline
             return ControlledLead;
         }
 
-        internal static bool TryResolveSavedLead(
+        public static bool TryResolveSavedLead(
             HavenlinePlayerProfileData profile,
             out HavenlineCharacterId selectedLead,
             out string failure)
