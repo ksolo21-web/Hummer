@@ -54,11 +54,6 @@ namespace Havenline
             ApplyAdaptiveTopLayout();
         }
 
-        /// <summary>
-        /// Rebinds the HUD to the actual selected C1/C2 lead after the runtime crew is spawned.
-        /// The shipping scene may be authored before the saved lead is known, so the HUD must
-        /// not retain event subscriptions to an obsolete bootstrap/generic player.
-        /// </summary>
         public void RebindControlledPlayer(HavenlinePlayerController controlledPlayer)
         {
             if (ReferenceEquals(player, controlledPlayer))
@@ -157,9 +152,9 @@ namespace Havenline
                     ? string.Empty
                     : foldableTopLayout
                         ? $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}\n" +
-                          $"METAL {inventory[ResourceKind.Metal]}   {inventory.Total}/{inventory.Capacity}"
+                          $"METAL {inventory[ResourceKind.Metal]}   LOAD {inventory.Total}"
                         : $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}   " +
-                          $"METAL {inventory[ResourceKind.Metal]}   {inventory.Total}/{inventory.Capacity}";
+                          $"METAL {inventory[ResourceKind.Metal]}   LOAD {inventory.Total}";
                 resourceText.gameObject.SetActive(inventory.Total > 0);
             }
 
