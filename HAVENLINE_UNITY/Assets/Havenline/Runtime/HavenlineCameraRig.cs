@@ -104,6 +104,7 @@ namespace Havenline
             {
                 HavenlineFeedbackKind.Death => 0.28f,
                 HavenlineFeedbackKind.Damage => 0.20f,
+                HavenlineFeedbackKind.Upgrade => 0.24f,
                 _ when pulse.Action == AutomaticActionKind.Combat => 0.15f,
                 _ when pulse.Action == AutomaticActionKind.Build || pulse.Action == AutomaticActionKind.Repair => 0.13f,
                 _ => 0.10f
