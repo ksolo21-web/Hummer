@@ -1,0 +1,56 @@
+name: HAVENLINE Character Lab static validation
+
+on:
+  push:
+    branches:
+      - havenline-unity-reference-rebuild
+      - havenline-threejs-character-lab
+    paths:
+      - 'HAVENLINE_WEB/character-lab/**'
+      - '.github/workflows/havenline-character-lab-pages.yml'
+  pull_request:
+    paths:
+      - 'HAVENLINE_WEB/character-lab/**'
+      - '.github/workflows/havenline-character-lab-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required static files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s HAVENLINE_WEB/character-lab/index.html
+          test -s HAVENLINE_WEB/character-lab/styles.css
+          test -s HAVENLINE_WEB/character-lab/app.js
+          test -s HAVENLINE_WEB/character-lab/README.md
+
+      - name: Verify Three.js version pin and module entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'three@0.185.0' HAVENLINE_WEB/character-lab/index.html
+          grep -q 'type="module" src="./app.js"' HAVENLINE_WEB/character-lab/index.html
+          grep -q "GLTFLoader" HAVENLINE_WEB/character-lab/app.js
+          grep -q "SkeletonHelper" HAVENLINE_WEB/character-lab/app.js
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: node --check HAVENLINE_WEB/character-lab/app.js
+
+      - name: Reject accidental binary character commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find HAVENLINE_WEB/character-lab -type f \( -iname '*.glb' -o -iname '*.gltf' -o -iname '*.fbx' \) | grep -q .; then
+            echo 'Character models must remain review inputs/artifacts, not silently committed into the static lab.' >&2
+            exit 1
+          fi
