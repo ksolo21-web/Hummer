@@ -35,7 +35,16 @@ namespace Havenline
         public const float RunSpeed = 5.85f;
         public const float Acceleration = 34f;
         public const float Deceleration = 42f;
-        public const int CarryCapacity = 8;
+
+        // Reference-game behavior: carrying is uncapped. Zero is the explicit unlimited sentinel
+        // consumed by HavenlineInventory; it must never be interpreted as "cannot carry".
+        public const bool UnlimitedCarry = true;
+        public const int CarryCapacity = 0;
+        // The visible stack is performance-bounded separately from logical inventory. Once more
+        // items are carried than physical slots, HavenlineCarryVisual compresses the representation
+        // while the underlying carried amount remains fully uncapped.
+        public const int VisibleCarrySlots = 32;
+
         public const float InteractionRadius = 1.9f;
         public const float CombatRadius = 2.25f;
         public const float DepositRadius = 2.35f;
