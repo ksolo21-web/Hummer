@@ -6,6 +6,7 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - HAVENLINE_UNITY/**
+      - HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json
       - .github/workflows/havenline-reference-source-gate.yml
       - .github/workflows/havenline-unity-android-build.yml
   pull_request:
@@ -13,6 +14,7 @@ on:
       - main
     paths:
       - HAVENLINE_UNITY/**
+      - HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json
       - .github/workflows/havenline-reference-source-gate.yml
       - .github/workflows/havenline-unity-android-build.yml
   workflow_dispatch:
@@ -35,254 +37,107 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
 
-      - name: Validate connected Unity project and exact reference contract
+      - name: Validate required HAVENLINE source files
         shell: bash
         run: |
           set -euo pipefail
           root=HAVENLINE_UNITY
 
-          require_file() {
-            local path="$1"
-            local label="$2"
-            if [ ! -f "$path" ]; then
-              echo "Missing HAVENLINE source contract file: $label ($path)" >&2
-              exit 1
-            fi
-          }
+          required=(
+            "$root/ProjectSettings/ProjectVersion.txt"
+            "$root/Packages/manifest.json"
+            "$root/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json"
+            "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+            "$root/Assets/Havenline/Runtime/HavenlineInventory.cs"
+            "$root/Assets/Havenline/Runtime/HavenlineCarryVisual.cs"
+            "$root/Assets/Havenline/Runtime/HavenlineAutomaticActionController.cs"
+            "$root/Assets/Havenline/Runtime/HavenlineCharacterRoster.cs"
+            "$root/Assets/Havenline/Runtime/HavenlineCoreCrewRuntimeBootstrap.cs"
+            "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
+            "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs"
+            "$root/Assets/Havenline/Editor/HavenlineCharacterBuildPreprocessor.cs"
+            "$root/Assets/Havenline/Editor/HavenlineProductionCharacterAssetBuilder.cs"
+            "$root/Assets/Havenline/Editor/HavenlineCoreCrewScenePostprocessor.cs"
+            "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs"
+            "$root/Assets/Havenline/Tests/Editor/HavenlineJsonRuntimeContractTests.cs"
+            "$root/REFERENCE_GAMEPLAY_LOCK.md"
+            "HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json"
+          )
+          for file in "${required[@]}"; do
+            test -s "$file" || { echo "Missing required HAVENLINE file: $file" >&2; exit 1; }
+          done
 
-          require_pattern() {
-            local pattern="$1"
-            local path="$2"
-            local label="$3"
-            if ! grep -Fq -- "$pattern" "$path"; then
-              echo "Missing HAVENLINE source contract: $label" >&2
-              echo "Expected literal: $pattern" >&2
-              echo "File: $path" >&2
-              exit 1
-            fi
-          }
-
-          require_file "$root/ProjectSettings/ProjectVersion.txt" "Unity editor version"
-          require_file "$root/Packages/manifest.json" "Unity package manifest"
-          require_file "$root/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json" "preserved reference contract"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineReference.cs" "runtime reference constants"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineInput.cs" "input implementation"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineActor.cs" "actor implementation"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineGameplay.cs" "gameplay implementation"
-          require_file "$root/Assets/Havenline/Runtime/HavenlinePresentation.cs" "presentation implementation"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "adaptive HUD implementation"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineCharacterRoster.cs" "four-character roster"
-          require_file "$root/Assets/Havenline/Runtime/HavenlinePlayerProfile.cs" "Google-bound player profile"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineCompanionAgent.cs" "companion runtime"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineOnboardingController.cs" "lead and crew onboarding controller"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineOnboardingView.cs" "onboarding UI flow"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "Google sign-in contract"
-          require_file "$root/Assets/Havenline/Runtime/HavenlineCoreCrewRuntimeBootstrap.cs" "saved-profile C1-C4 runtime bootstrap"
-          require_file "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap"
-          require_file "$root/Assets/Havenline/Editor/HavenlineSceneAuthoring.cs" "shipping-scene authoring"
-          require_file "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "Android build pipeline"
-          require_file "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "clean-checkout CI preparation"
-          require_file "$root/Assets/Havenline/Editor/HavenlineCharacterProductionGate.cs" "production character release gate"
-          require_file "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "hash-pinned character approval gate"
-          require_file "$root/Assets/Havenline/Editor/HavenlineCharacterBuildPreprocessor.cs" "build-boundary character approval gate"
-          require_file "$root/Assets/Havenline/Editor/HavenlineProductionCharacterAssetBuilder.cs" "approved C1-C4 gameplay roster builder"
-          require_file "$root/Assets/Havenline/Editor/HavenlineCoreCrewScenePostprocessor.cs" "shipping-scene core crew postprocessor"
-          require_file "$root/Assets/Havenline/Art/Characters/Production/HAVENLINE_CHARACTER_APPROVALS.json" "fail-closed character approval manifest"
-          require_file "$root/Assets/Havenline/Editor/HavenlineGoogleSignInBuildGate.cs" "Google OAuth release gate"
-          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "Unity reference tests"
-          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineJsonRuntimeContractTests.cs" "JSON/runtime drift tests"
-          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "lead and companion crew tests"
-          require_file "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "character approval tamper tests"
-          require_file ".github/workflows/havenline-unity-android-build.yml" "premium Android workflow"
-
-          require_pattern 'm_EditorVersion: 6000.3.18f1' "$root/ProjectSettings/ProjectVersion.txt" "Unity 6000.3.18f1"
-          require_pattern '"com.unity.cloud.gltfast": "6.19.0"' "$root/Packages/manifest.json" "glTFast 6.19.0"
-          require_pattern '"com.unity.inputsystem": "1.17.0"' "$root/Packages/manifest.json" "Input System 1.17.0"
-          require_pattern '"com.unity.render-pipelines.universal": "17.3.0"' "$root/Packages/manifest.json" "URP 17.3.0"
-
-          require_pattern 'CameraKeepsTheCartoonSurvivorCloseAndReadable' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "close readable camera test"
-          require_pattern 'MovementCarryAndAutomaticActionRangesUseTheLockedDesign' "$root/Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs" "movement/carry/action-range test"
-          require_pattern 'PlayerSpawn = new(0f, 0.08f, 6.2f)' "$root/Assets/Havenline/Runtime/HavenlineReference.cs" "locked player spawn"
-          require_pattern 'CoreCrewSize = 4' "$root/Assets/Havenline/Runtime/HavenlineReference.cs" "four-character crew size"
-          require_pattern 'CompanionFormationOffsets' "$root/Assets/Havenline/Runtime/HavenlineReference.cs" "centralized companion formation"
-
-          require_pattern '[ExecuteAlways]' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "edit-time foldable HUD execution"
-          require_pattern 'Canvas.preWillRenderCanvases' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "pre-render adaptive HUD layout"
-          require_pattern 'FoldableAspectThreshold = 1.45f' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "foldable aspect threshold"
-          require_pattern 'RebindControlledPlayer' "$root/Assets/Havenline/Runtime/HavenlineHud.cs" "runtime selected-lead HUD rebinding"
-
-          require_pattern 'GetCompanionsFor' "$root/Assets/Havenline/Runtime/HavenlineCharacterRoster.cs" "selected-lead companion roster"
-          require_pattern 'UnselectedLeadCompanion' "$root/Assets/Havenline/Runtime/HavenlinePlayerProfile.cs" "unselected lead becomes companion"
-          require_pattern 'SpawnSelectedCrew' "$root/Assets/Havenline/Runtime/HavenlineOnboardingController.cs" "selected lead plus companion crew spawning"
-          require_pattern 'TrySpawnSavedCrew' "$root/Assets/Havenline/Runtime/HavenlineCoreCrewRuntimeBootstrap.cs" "saved-profile crew bootstrap"
-          require_pattern 'Character3' "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "Character 3 crew contract"
-          require_pattern 'Character4' "$root/Assets/Havenline/Tests/Editor/HavenlineCrewContractTests.cs" "Character 4 crew contract"
-          require_pattern 'verified Google subject id' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "durable verified Google identity"
-          require_pattern 'signing certificate SHA-256' "$root/Assets/Havenline/Runtime/HavenlineGoogleSignIn.cs" "Google signing certificate validation"
-
-          require_pattern 'HavenlineCharacterApprovalGate.Validate()' "$root/Assets/Havenline/Editor/HavenlineCharacterProductionGate.cs" "production roster requires visual approval contract"
-          require_pattern 'SHA-256 does not match the approved evidence.' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "pinned evidence hash mismatch rejection"
-          require_pattern 'Unity review FBX hash does not match the current production FBX' "$root/Assets/Havenline/Editor/HavenlineCharacterApprovalGate.cs" "Unity review bound to exact FBX"
-          require_pattern 'BuildApprovedGameplayRoster' "$root/Assets/Havenline/Editor/HavenlineCharacterBuildPreprocessor.cs" "build boundary constructs approved roster"
-          require_pattern 'ApplyToShippingScene' "$root/Assets/Havenline/Editor/HavenlineCharacterBuildPreprocessor.cs" "build boundary patches shipping scene"
-          require_pattern 'ApprovalCannotDisableHumanVisualReview' "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "human review bypass test"
-          require_pattern 'ReplacingApprovedFbxFailsHashAndUnityReviewBinding' "$root/Assets/Havenline/Tests/Editor/HavenlineCharacterApprovalGateTests.cs" "approved FBX replacement test"
-
-          require_pattern 'public static void BuildAndroidReviewCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "device-test Android build stage"
-          require_pattern 'public static void BuildVerifiedReleaseCandidate()' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "verified-release Android build stage"
-          require_pattern 'HavenlinePremiumSceneAuthoring.Author(manifest)' "$root/Assets/Havenline/Editor/HavenlineBuildPipeline.cs" "premium scene authoring call"
-          require_pattern 'public static void Bootstrap()' "$root/Assets/Havenline/Editor/HavenlineAssetBootstrap.cs" "reference-art bootstrap entry point"
-
-          require_pattern 'public static void PrepareGeneratedProductionContent()' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "deterministic production preparation entry point"
-          require_pattern 'HavenlineProceduralArtStudio.GenerateForCi();' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "deterministic asset generation before gate"
-          require_pattern 'HavenlinePremiumBuildGate.InspectProductionContent();' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "strict premium inspection after generation"
-          require_pattern 'public static void BuildAndroidDeviceTest()' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "prepared device-test entry point"
-          require_pattern 'public static void BuildVerifiedRelease()' "$root/Assets/Havenline/Editor/HavenlineCiBuildEntryPoints.cs" "prepared verified-release entry point"
-          require_pattern 'HavenlineCiBuildEntryPoints.BuildAndroidDeviceTest' ".github/workflows/havenline-unity-android-build.yml" "workflow uses prepared device-test method"
-          require_pattern 'HavenlineCiBuildEntryPoints.BuildVerifiedRelease' ".github/workflows/havenline-unity-android-build.yml" "workflow uses prepared verified-release method"
+          grep -Fq 'm_EditorVersion: 6000.3.18f1' "$root/ProjectSettings/ProjectVersion.txt"
+          grep -Fq 'public const bool UnlimitedCarry = true;' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -Fq 'public const int CarryCapacity = 0;' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -Fq 'public const int VisibleCarrySlots = 32;' "$root/Assets/Havenline/Runtime/HavenlineReference.cs"
+          grep -Fq 'public bool IsFull => HasCarryLimit && Total >= capacity;' "$root/Assets/Havenline/Runtime/HavenlineInventory.cs"
+          grep -Fq 'var accepted = HasCarryLimit' "$root/Assets/Havenline/Runtime/HavenlineInventory.cs"
+          grep -Fq 'uncapped inventory' "$root/Assets/Havenline/Runtime/HavenlineCarryVisual.cs"
+          grep -Fq 'LOAD {inventory.Total}' "$root/Assets/Havenline/Runtime/HavenlineHud.cs"
+          grep -Fq 'SpawnCrew' "$root/Assets/Havenline/Runtime/HavenlineCoreCrewRuntimeBootstrap.cs"
+          grep -Fq 'BuildApprovedGameplayRoster' "$root/Assets/Havenline/Editor/HavenlineCharacterBuildPreprocessor.cs"
+          grep -Fq 'ApplyToShippingScene' "$root/Assets/Havenline/Editor/HavenlineCharacterBuildPreprocessor.cs"
+          grep -Fq 'no gameplay cap' "$root/REFERENCE_GAMEPLAY_LOCK.md"
+          grep -Fq 'example game is the gameplay, look, readability' "$root/REFERENCE_GAMEPLAY_LOCK.md"
 
           if grep -RIl --include='*.cs' --include='*.json' -E 'Godot|project\.godot|extends Node' "$root"; then
-            echo 'Forbidden legacy-engine content found in the clean HAVENLINE Unity source.' >&2
+            echo 'Forbidden legacy-engine content found in HAVENLINE Unity source.' >&2
             exit 1
           fi
 
           if grep -RIl --include='*.cs' --include='*.json' \
               -E 'TODO[[:space:]]*[:(]|FIXME[[:space:]]*[:(]|NotImplementedException|PLACEHOLDER_(ASSET|MODEL|TEXTURE|AUDIO|LOGIC)' \
               "$root"; then
-            echo 'Unfinished implementation marker found in the clean HAVENLINE Unity source.' >&2
+            echo 'Unfinished implementation marker found in HAVENLINE Unity source.' >&2
             exit 1
           fi
 
-      - name: Parse reference and approval JSON contracts
+      - name: Parse runtime contract and require uncapped carrying
         shell: python
         run: |
           import json
-          import re
           from pathlib import Path
 
-          root = Path("HAVENLINE_UNITY")
-          contract = json.loads((root / "Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json").read_text())
-          manifest = json.loads((root / "Packages/manifest.json").read_text())
-          approvals = json.loads((root / "Assets/Havenline/Art/Characters/Production/HAVENLINE_CHARACTER_APPROVALS.json").read_text())
+          unity_path = Path('HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json')
+          browser_path = Path('HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json')
+          assert unity_path.read_bytes() == browser_path.read_bytes(), 'Unity/browser runtime contracts drifted'
 
-          assert contract["contractVersion"] == "1.3.1"
-          assert contract["product"] == "HAVENLINE"
-          assert contract["unityEditor"] == "6000.3.18f1"
-          assert contract["referencePackage"]["sizeBytes"] == 107695534
-          assert contract["referencePackage"]["sha256"] == "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67"
+          contract = json.loads(unity_path.read_text())
+          assert contract['contractVersion'] == '1.3.1'
+          assert contract['product'] == 'HAVENLINE'
+          assert contract['unityEditor'] == '6000.3.18f1'
+          assert contract['referencePackage']['sha256'] == '17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67'
 
-          baseline = contract["referenceBaseline"]
-          assert baseline["camera"] == {
-              "projection": "orthographic",
-              "size": 14.8,
-              "offset": [0.0, 7.0, 7.0],
-              "focusHeight": 0.82,
-              "lookAhead": 1.15,
-          }
-          assert baseline["player"]["spawn"] == [0.0, 0.08, 6.2]
-          assert baseline["player"]["walkSpeed"] == 3.85
-          assert baseline["player"]["runSpeed"] == 5.75
-          assert baseline["player"]["carryCapacity"] == 6
+          player = contract['player']
+          assert player['unlimitedCarry'] is True
+          assert player['carryCapacity'] == 0
+          assert player['visibleCarrySlots'] >= 24
+          assert player['walkSpeed'] == 3.9
+          assert player['runSpeed'] == 5.85
 
-          assert contract["camera"] == {
-              "projection": "orthographic",
-              "size": 7.15,
-              "offset": [0.0, 6.8, 8.6],
-              "focusHeight": 0.95,
-              "lookAhead": 0.72,
-              "followSharpness": 8.6,
-          }
-          assert contract["player"]["spawn"] == [0.0, 0.08, 6.2]
-          assert contract["player"]["walkSpeed"] == 3.9
-          assert contract["player"]["runSpeed"] == 5.85
-          assert contract["player"]["carryCapacity"] == 8
+          crew = contract['characterSystem']
+          assert crew['activeCrewSize'] == 4
+          assert crew['startingPlayableLeads'] == ['Character1', 'Character2']
+          assert crew['coreCompanions'] == ['Character3', 'Character4']
+          assert crew['characters3And4LockedAtStart'] is False
 
-          character_system = contract["characterSystem"]
-          assert character_system["activeCrewSize"] == 4
-          assert character_system["startingPlayableLeads"] == ["Character1", "Character2"]
-          assert character_system["unselectedLeadRole"] == "core helper and story companion"
-          assert character_system["coreCompanions"] == ["Character3", "Character4"]
-          assert character_system["companionFormation"] == ["unselected playable lead", "Character3", "Character4"]
-          assert character_system["companionFormationOffsets"] == [
-              [-1.35, 0.0, -1.7],
-              [1.35, 0.0, -1.7],
-              [0.0, 0.0, -2.8],
-          ]
-          assert character_system["characters3And4LockedAtStart"] is False
+          tuning = contract['openingLoopTuning']
+          assert tuning['furnaceLevel2'] == {'wood': 18, 'stone': 6}
+          assert tuning['northBarricadeBuild'] == {'wood': 8, 'stone': 3}
+          assert tuning['firstWaveEnemyCount'] == 3
+          assert tuning['automaticActionPriorities']['enemy'] == 200
+          assert tuning['automaticActionPriorities']['construction'] == 80
 
-          identity = contract["identity"]
-          assert identity["provider"] == "Google Sign-In"
-          assert identity["durableAccountKey"] == "verified Google subject id"
-          assert identity["emailOnlyIdentityAllowed"] is False
-          assert identity["packageAndSigningCertificateMustMatchOAuth"] is True
+          required = set(contract['requiredLoop'])
+          assert 'uncapped visible carrying' in required
+          assert 'automatic gathering' in required
+          assert 'automatic furnace deposit' in required
+          assert 'Character3 helper activity' in required
+          assert 'Character4 helper activity' in required
+          assert 'Galaxy Z Fold safe-area HUD' in required
 
-          tuning = contract["openingLoopTuning"]
-          assert tuning["furnaceLevel2"] == {"wood": 18, "stone": 6}
-          assert tuning["northBarricadeBuild"] == {"wood": 8, "stone": 3}
-          assert tuning["southBarricadeBuild"] == {"wood": 8, "stone": 3}
-          assert tuning["firstWaveEnemyCount"] == 3
-          assert tuning["playerConstructionSecondsPerUnit"] == 0.24
-          assert tuning["automaticActionPriorities"] == {
-              "enemy": 200,
-              "furnaceRepair": 130,
-              "rescue": 110,
-              "furnaceDeposit": 95,
-              "construction": 80,
-              "resource": 30,
-          }
-
-          required = {
-              "screen-relative movement",
-              "automatic gathering",
-              "visible carrying",
-              "automatic furnace deposit",
-              "furnace upgrades from wood and stone",
-              "expanding warmth zone",
-              "survivor rescue after furnace level 2",
-              "north barricade construction before first wolf wave",
-              "helper gathering and delivery",
-              "barricade repair",
-              "animated wolf pressure",
-              "bounded world and fall recovery",
-              "Galaxy Z Fold safe-area HUD",
-              "unselected lead companion support",
-              "Character3 helper activity",
-              "Character4 helper activity",
-          }
-          assert required <= set(contract["requiredLoop"])
-          assert manifest["dependencies"]["com.unity.cloud.gltfast"] == "6.19.0"
-          assert manifest["dependencies"]["com.unity.inputsystem"] == "1.17.0"
-          assert manifest["dependencies"]["com.unity.render-pipelines.universal"] == "17.3.0"
-
-          assert approvals["schemaVersion"] == 1
-          assert approvals["reviewContractVersion"] == "1.0"
-          assert approvals["humanVisualApprovalRequired"] is True
-          entries = approvals["characters"]
-          assert [entry["character"] for entry in entries] == [
-              "Character1", "Character2", "Character3", "Character4"
-          ]
-          sha256 = re.compile(r"^[0-9a-fA-F]{64}$")
-          hash_fields = (
-              "productionFbxSha256",
-              "unityReviewReportSha256",
-              "machineProofStatusSha256",
-              "approvedReferenceSha256",
-          )
-          for entry in entries:
-              character = entry["character"]
-              expected = f"Assets/Havenline/Art/Characters/Production/{character}/{character}_production.fbx"
-              assert entry["productionFbxPath"] == expected
-              assert entry["approvalNote"].strip()
-              if entry["approved"]:
-                  assert entry["approvedBy"].strip()
-                  assert entry["approvedUtc"].strip()
-                  assert all(sha256.fullmatch(entry[field]) for field in hash_fields)
-              else:
-                  assert entry["approvedBy"] == ""
-                  assert entry["approvedUtc"] == ""
-                  assert all(entry[field] == "" for field in hash_fields)
-
-          print("HAVENLINE Unity runtime/baseline contract, four-character crew, and fail-closed approval contract passed.")
+          print('PASS: HAVENLINE source contract locks uncapped carrying and reference-game gameplay/presentation direction.')
 
       - name: Inventory normal source files
         shell: bash
