@@ -15,16 +15,6 @@ export const AutoActionKind = Object.freeze({
   Resource: 'resource'
 });
 
-export const AUTO_ACTION_PRIORITY = Object.freeze({
-  [AutoActionKind.Enemy]: 200,
-  [AutoActionKind.FurnaceRepair]: 130,
-  [AutoActionKind.Rescue]: 110,
-  [AutoActionKind.FurnaceDeposit]: 95,
-  [AutoActionKind.Barricade]: 70,
-  [AutoActionKind.Resource]: 30,
-  [AutoActionKind.None]: 0
-});
-
 const EPS = 1e-6;
 
 export function vec3(value) {
@@ -58,6 +48,19 @@ export function gatherSecondsFor(contract, kind) {
   const value = contract.openingLoopTuning?.gatherSecondsPerUnit?.[kind];
   if (!Number.isFinite(value) || value <= 0) throw new Error(`No valid gather timing for ${kind}`);
   return value;
+}
+
+function priorityFor(contract, kind) {
+  const p = contract.openingLoopTuning.automaticActionPriorities;
+  switch (kind) {
+    case AutoActionKind.Enemy: return p.enemy;
+    case AutoActionKind.FurnaceRepair: return p.furnaceRepair;
+    case AutoActionKind.Rescue: return p.rescue;
+    case AutoActionKind.FurnaceDeposit: return p.furnaceDeposit;
+    case AutoActionKind.Barricade: return p.construction;
+    case AutoActionKind.Resource: return p.resource;
+    default: return 0;
+  }
 }
 
 export class Inventory {
@@ -106,10 +109,7 @@ export class ResourceNodeState {
   get depleted() { return this.unitsRemaining <= 0; }
 
   stepGather(dt, inventory) {
-    if (this.depleted || inventory.full) {
-      this.progressSeconds = 0;
-      return 0;
-    }
+    if (this.depleted || inventory.full) return 0;
     this.progressSeconds += Math.max(0, dt);
     let gathered = 0;
     while (this.progressSeconds + EPS >= this.secondsPerUnit && !this.depleted && !inventory.full) {
@@ -151,14 +151,11 @@ export class FurnaceState {
   }
 
   stepDeposit(dt, inventory) {
-    if (inventory.empty) {
-      this.depositProgressSeconds = 0;
-      return { deposited: null, levelChanged: false };
-    }
+    if (inventory.empty || !this.operational) return { deposited: null, levelChanged: false };
     this.depositProgressSeconds += Math.max(0, dt);
     const seconds = this.contract.openingLoopTuning.furnaceDepositSecondsPerUnit;
     if (this.depositProgressSeconds + EPS < seconds) return { deposited: null, levelChanged: false };
-    this.depositProgressSeconds -= seconds;
+    this.depositProgressSeconds = 0;
     const item = inventory.removeFirst();
     if (item == null) return { deposited: null, levelChanged: false };
     this.stored[item] = (this.stored[item] ?? 0) + 1;
@@ -166,10 +163,7 @@ export class FurnaceState {
   }
 
   stepRepair(dt, inventory) {
-    if (this.durability >= this.maxDurability || inventory.countKind(ResourceKind.Wood) <= 0) {
-      this.repairProgressSeconds = 0;
-      return false;
-    }
+    if (this.durability >= this.maxDurability || inventory.countKind(ResourceKind.Wood) <= 0) return false;
     this.repairProgressSeconds += Math.max(0, dt);
     if (this.repairProgressSeconds + EPS < this.contract.openingLoopTuning.furnaceRepairSecondsPerUnit) return false;
     this.repairProgressSeconds = 0;
@@ -180,11 +174,13 @@ export class FurnaceState {
 }
 
 export class ConstructionSiteState {
-  constructor(id, position, requirement) {
+  constructor(id, position, requirement, secondsPerUnit) {
     this.id = id;
     this.position = position;
     this.requirement = { wood: requirement.wood ?? 0, stone: requirement.stone ?? 0, metal: requirement.metal ?? 0 };
     this.delivered = { wood: 0, stone: 0, metal: 0 };
+    this.secondsPerUnit = secondsPerUnit;
+    this.progressSeconds = 0;
     this.built = false;
     this.health = 0;
     this.maxHealth = 160;
@@ -213,6 +209,14 @@ export class ConstructionSiteState {
     }
     return null;
   }
+
+  stepContribute(dt, inventory) {
+    if (this.built || !canSiteAcceptInventory(this, inventory)) return null;
+    this.progressSeconds += Math.max(0, dt);
+    if (this.progressSeconds + EPS < this.secondsPerUnit) return null;
+    this.progressSeconds = 0;
+    return this.deliverOne(inventory);
+  }
 }
 
 export function meets(have, requirement) {
@@ -224,7 +228,8 @@ export function meets(have, requirement) {
 }
 
 export function createInitialState(contract, selectedLead = 'Character1') {
-  validateContract(contract);
+  const failures = validateContract(contract);
+  if (failures.length) throw new Error(failures.join(' | '));
   const inventory = new Inventory(contract.player.carryCapacity);
   const nodes = [];
   contract.world.woodNodes.forEach((p, i) => nodes.push(new ResourceNodeState(
@@ -250,8 +255,8 @@ export function createInitialState(contract, selectedLead = 'Character1') {
     furnace: new FurnaceState(contract),
     survivor: { position: vec3(contract.world.survivor), rescued: false, rescueProgressSeconds: 0 },
     defenses: {
-      north: new ConstructionSiteState('north', vec3(contract.world.northBarricade), contract.openingLoopTuning.northBarricadeBuild),
-      south: new ConstructionSiteState('south', vec3(contract.world.southBarricade), contract.openingLoopTuning.southBarricadeBuild)
+      north: new ConstructionSiteState('north', vec3(contract.world.northBarricade), contract.openingLoopTuning.northBarricadeBuild, contract.openingLoopTuning.playerConstructionSecondsPerUnit),
+      south: new ConstructionSiteState('south', vec3(contract.world.southBarricade), contract.openingLoopTuning.southBarricadeBuild, contract.openingLoopTuning.playerConstructionSecondsPerUnit)
     },
     waves: {
       unlocked: false,
@@ -263,8 +268,7 @@ export function createInitialState(contract, selectedLead = 'Character1') {
     },
     helper: { active: false, state: 'trapped', position: vec3(contract.world.survivor) },
     action: { kind: AutoActionKind.None, id: null, progress: 0, label: 'None' },
-    elapsedSeconds: 0,
-    eventSequence: 0
+    elapsedSeconds: 0
   };
 }
 
@@ -299,52 +303,85 @@ function moveToward(current, target, maxDelta) {
 }
 
 export function actionCandidates(state) {
-  const c = state.contract;
   const result = [];
-  const player = state.player.position;
-
   for (const enemy of state.waves.enemies) {
-    if (!enemy.alive) continue;
-    pushCandidate(result, AutoActionKind.Enemy, enemy.id, enemy.position, c.player.combatRadius, player, state.player.facing, 'Fight wolf');
+    if (enemy.alive) addCandidate(state, result, AutoActionKind.Enemy, enemy.id, enemy.position, state.contract.player.combatRadius, 'Fight wolf', false);
   }
 
-  const furnacePosition = vec3(c.world.furnace);
+  const furnacePosition = vec3(state.contract.world.furnace);
   if (state.furnace.durability < state.furnace.maxDurability && state.inventory.countKind(ResourceKind.Wood) > 0) {
-    pushCandidate(result, AutoActionKind.FurnaceRepair, 'furnace', furnacePosition, c.player.depositRadius, player, state.player.facing, 'Repair furnace');
-  }
-  if (!state.inventory.empty) {
-    pushCandidate(result, AutoActionKind.FurnaceDeposit, 'furnace', furnacePosition, c.player.depositRadius, player, state.player.facing, 'Feed furnace');
+    addCandidate(state, result, AutoActionKind.FurnaceRepair, 'furnace', furnacePosition, state.contract.player.depositRadius, 'Repair furnace', false);
+  } else if (!state.inventory.empty && state.furnace.operational) {
+    addCandidate(state, result, AutoActionKind.FurnaceDeposit, 'furnace', furnacePosition, state.contract.player.depositRadius, 'Feed furnace', false);
   }
 
   if (!state.survivor.rescued && state.furnace.operational && state.furnace.level >= 2) {
-    pushCandidate(result, AutoActionKind.Rescue, 'survivor', state.survivor.position, c.player.rescueRadius, player, state.player.facing, 'Rescue survivor');
+    addCandidate(state, result, AutoActionKind.Rescue, 'survivor', state.survivor.position, state.contract.player.rescueRadius, 'Rescue survivor', false);
   }
 
   for (const site of [state.defenses.north, state.defenses.south]) {
     if (!site.built && canSiteAcceptInventory(site, state.inventory)) {
-      pushCandidate(result, AutoActionKind.Barricade, site.id, site.position, c.player.buildRadius, player, state.player.facing, `Build ${site.id} barricade`);
+      addCandidate(state, result, AutoActionKind.Barricade, site.id, site.position, state.contract.player.buildRadius, `Build ${site.id} barricade`, false);
     }
   }
 
   if (!state.inventory.full) {
     for (const node of state.resources) {
-      if (!node.depleted) pushCandidate(result, AutoActionKind.Resource, node.id, node.position, c.player.interactionRadius, player, state.player.facing, `Gather ${node.kind}`);
+      if (!node.depleted) addCandidate(state, result, AutoActionKind.Resource, node.id, node.position, state.contract.player.interactionRadius, `Gather ${node.kind}`, false);
     }
   }
 
   return result.sort((a, b) => b.score - a.score || a.distance - b.distance || a.id.localeCompare(b.id));
 }
 
-function pushCandidate(list, kind, id, position, radius, player, facing, label) {
-  const distance = distance2D(player, position);
-  if (distance > radius) return;
-  const dx = position.x - player.x;
-  const dz = position.z - player.z;
-  const len = Math.hypot(dx, dz) || 1;
-  const dot = Math.max(-1, Math.min(1, (dx / len) * facing.x + (dz / len) * facing.z));
+function addCandidate(state, destination, kind, id, position, radius, label, allowHysteresis) {
+  const distance = distance2D(state.player.position, position);
+  const range = radius + (allowHysteresis ? state.contract.openingLoopTuning.automaticActionTargetHysteresis : 0);
+  if (distance > range) return null;
+  const dx = position.x - state.player.position.x;
+  const dz = position.z - state.player.position.z;
+  const len = Math.hypot(dx, dz);
+  const direction = len > 0.001 ? { x: dx / len, z: dz / len } : state.player.facing;
+  const dot = Math.max(-1, Math.min(1, direction.x * state.player.facing.x + direction.z * state.player.facing.z));
   const facing01 = (dot + 1) * 0.5;
-  const score = AUTO_ACTION_PRIORITY[kind] * 10 - distance + facing01 * 0.35;
-  list.push({ kind, id, position, radius, distance, score, label });
+  const distanceScore = 1 - Math.max(0, Math.min(1, distance / Math.max(0.01, radius)));
+  const t = state.contract.openingLoopTuning;
+  const score = priorityFor(state.contract, kind) + distanceScore * t.automaticActionDistanceScoreWeight + facing01 * t.automaticActionFacingWeight;
+  const candidate = { kind, id, position, radius, distance, score, label, progress: 0 };
+  destination?.push(candidate);
+  return candidate;
+}
+
+function canContinuePrevious(state, previous) {
+  if (!previous?.id || previous.kind === AutoActionKind.None) return null;
+  const c = state.contract;
+  if (previous.kind === AutoActionKind.Enemy) {
+    const enemy = state.waves.enemies.find((item) => item.id === previous.id && item.alive);
+    return enemy ? addCandidate(state, null, previous.kind, previous.id, enemy.position, c.player.combatRadius, previous.label || 'Fight wolf', true) : null;
+  }
+  if (previous.kind === AutoActionKind.FurnaceRepair) {
+    if (!(state.furnace.durability < state.furnace.maxDurability && state.inventory.countKind(ResourceKind.Wood) > 0)) return null;
+    return addCandidate(state, null, previous.kind, 'furnace', vec3(c.world.furnace), c.player.depositRadius, previous.label || 'Repair furnace', true);
+  }
+  if (previous.kind === AutoActionKind.FurnaceDeposit) {
+    if (state.inventory.empty || !state.furnace.operational || state.furnace.durability < state.furnace.maxDurability) return null;
+    return addCandidate(state, null, previous.kind, 'furnace', vec3(c.world.furnace), c.player.depositRadius, previous.label || 'Feed furnace', true);
+  }
+  if (previous.kind === AutoActionKind.Rescue) {
+    if (state.survivor.rescued || state.survivor.rescueProgressSeconds >= c.openingLoopTuning.survivorRescueSeconds) return null;
+    return addCandidate(state, null, previous.kind, 'survivor', state.survivor.position, c.player.rescueRadius, previous.label || 'Rescue survivor', true);
+  }
+  if (previous.kind === AutoActionKind.Barricade) {
+    const site = state.defenses[previous.id];
+    if (!site || site.built || !canSiteAcceptInventory(site, state.inventory)) return null;
+    return addCandidate(state, null, previous.kind, previous.id, site.position, c.player.buildRadius, previous.label || `Build ${previous.id} barricade`, true);
+  }
+  if (previous.kind === AutoActionKind.Resource) {
+    const node = state.resources.find((item) => item.id === previous.id);
+    if (!node || node.depleted || state.inventory.full) return null;
+    return addCandidate(state, null, previous.kind, previous.id, node.position, c.player.interactionRadius, previous.label || `Gather ${node.kind}`, true);
+  }
+  return null;
 }
 
 function canSiteAcceptInventory(site, inventory) {
@@ -352,14 +389,10 @@ function canSiteAcceptInventory(site, inventory) {
 }
 
 export function chooseAutoAction(state, previous = state.action) {
+  const retained = canContinuePrevious(state, previous);
+  if (retained) return { ...retained, progress: previous.progress ?? 0 };
   const candidates = actionCandidates(state);
-  if (!candidates.length) return { kind: AutoActionKind.None, id: null, label: 'None', progress: 0 };
-  const best = candidates[0];
-  if (previous?.id) {
-    const current = candidates.find((candidate) => candidate.id === previous.id && candidate.kind === previous.kind);
-    if (current && current.score + state.contract.openingLoopTuning.automaticActionTargetHysteresis >= best.score) return { ...current, progress: previous.progress ?? 0 };
-  }
-  return { ...best, progress: 0 };
+  return candidates.length ? candidates[0] : { kind: AutoActionKind.None, id: null, label: 'None', progress: 0 };
 }
 
 export function stepAutoAction(state, dt) {
@@ -370,14 +403,12 @@ export function stepAutoAction(state, dt) {
   if (action.kind === AutoActionKind.Resource) {
     const node = state.resources.find((candidate) => candidate.id === action.id);
     if (!node) return null;
-    const before = node.unitsRemaining;
     const gathered = node.stepGather(dt, state.inventory);
     action.progress = Math.min(1, node.progressSeconds / node.secondsPerUnit);
-    return gathered > 0 ? { type: 'gather', kind: node.kind, amount: before - node.unitsRemaining } : null;
+    return gathered > 0 ? { type: 'gather', kind: node.kind, amount: gathered } : null;
   }
 
   if (action.kind === AutoActionKind.FurnaceDeposit) {
-    state.furnace.depositProgressSeconds += 0;
     const result = state.furnace.stepDeposit(dt, state.inventory);
     action.progress = Math.min(1, state.furnace.depositProgressSeconds / t.furnaceDepositSecondsPerUnit);
     return result.deposited ? { type: 'deposit', kind: result.deposited, levelChanged: result.levelChanged, level: state.furnace.level } : null;
@@ -405,7 +436,7 @@ export function stepAutoAction(state, dt) {
   if (action.kind === AutoActionKind.Barricade) {
     const site = state.defenses[action.id];
     if (!site) return null;
-    const delivered = site.deliverOne(state.inventory);
+    const delivered = site.stepContribute(dt, state.inventory);
     action.progress = site.progress;
     return delivered ? { type: 'build', site: action.id, kind: delivered, built: site.built, progress: site.progress } : null;
   }
@@ -415,8 +446,8 @@ export function stepAutoAction(state, dt) {
     if (!enemy) return null;
     enemy.hitCooldown = (enemy.hitCooldown ?? 0) - dt;
     if (enemy.hitCooldown > 0) return null;
-    enemy.hitCooldown = 0.64;
-    enemy.health -= 22;
+    enemy.hitCooldown = t.wolf.playerHitSeconds;
+    enemy.health -= t.wolf.playerDamagePerHit;
     if (enemy.health <= 0) enemy.alive = false;
     return { type: 'enemy-hit', id: enemy.id, alive: enemy.alive, health: Math.max(0, enemy.health) };
   }
@@ -436,10 +467,11 @@ export function updateWaveGate(state, dt) {
   const count = 2 + state.waves.waveNumber;
   state.waves.enemies = Array.from({ length: count }, (_, index) => ({
     id: `wave-${state.waves.waveNumber}-wolf-${index + 1}`,
-    health: 65,
+    health: t.wolf.health,
     alive: true,
-    position: { x: (index - (count - 1) * 0.5) * 1.8, y: 0, z: index % 2 === 0 ? -15.2 : 15.2 },
-    hitCooldown: 0
+    position: { x: (index - (count - 1) * 0.5) * 1.8, y: 0, z: index % 2 === 0 ? -t.wolf.spawnZ : t.wolf.spawnZ },
+    hitCooldown: 0,
+    attackCooldown: 0
   }));
   return { type: 'wave-start', wave: state.waves.waveNumber, count };
 }
@@ -456,11 +488,11 @@ export function completeWaveIfClear(state) {
 export function validateContract(contract) {
   const failures = [];
   if (!contract || typeof contract !== 'object') return ['Contract is missing or not an object.'];
-  if (contract.contractVersion !== '1.3.0') failures.push(`Expected contractVersion 1.3.0; got ${contract.contractVersion ?? '<missing>'}.`);
+  if (contract.contractVersion !== '1.3.1') failures.push(`Expected contractVersion 1.3.1; got ${contract.contractVersion ?? '<missing>'}.`);
   if (contract.product !== 'HAVENLINE') failures.push('Contract product must be HAVENLINE.');
   if (contract.camera?.projection !== 'orthographic') failures.push('Shipping camera must remain orthographic.');
   if (!Number.isFinite(contract.camera?.size) || contract.camera.size <= 0) failures.push('Camera size is invalid.');
-  if (!Number.isFinite(contract.player?.carryCapacity) || contract.player.carryCapacity !== 8) failures.push('Carry capacity must be 8.');
+  if (contract.player?.carryCapacity !== 8) failures.push('Carry capacity must be 8.');
   if (contract.characterSystem?.activeCrewSize !== 4) failures.push('Active core crew size must be 4.');
   if (JSON.stringify(contract.characterSystem?.startingPlayableLeads) !== JSON.stringify(['Character1', 'Character2'])) failures.push('Starting leads must be Character1 and Character2.');
   if (!Array.isArray(contract.characterSystem?.companionFormationOffsets) || contract.characterSystem.companionFormationOffsets.length !== 3) failures.push('Three companion formation offsets are required.');
@@ -468,7 +500,10 @@ export function validateContract(contract) {
   if (!Array.isArray(contract.world?.stoneNodes) || contract.world.stoneNodes.length !== 4) failures.push('Four stone nodes are required.');
   if ((contract.openingLoopTuning?.furnaceLevel2?.wood ?? 0) !== 18 || (contract.openingLoopTuning?.furnaceLevel2?.stone ?? 0) !== 6) failures.push('Furnace Level 2 must require 18 wood and 6 stone.');
   if ((contract.openingLoopTuning?.northBarricadeBuild?.wood ?? 0) !== 8 || (contract.openingLoopTuning?.northBarricadeBuild?.stone ?? 0) !== 3) failures.push('North barricade must require 8 wood and 3 stone.');
+  if (contract.openingLoopTuning?.playerConstructionSecondsPerUnit !== 0.24) failures.push('Player construction timing must be 0.24 seconds per contribution.');
+  if (contract.openingLoopTuning?.automaticActionPriorities?.construction !== 80) failures.push('Construction priority must be 80.');
   if (contract.openingLoopTuning?.firstWaveEnemyCount !== 3) failures.push('First wave must contain three wolves.');
+  if (contract.openingLoopTuning?.wolf?.health !== 65 || contract.openingLoopTuning?.wolf?.playerDamagePerHit !== 22) failures.push('Wolf/player combat tuning does not match Unity.');
   for (const kind of Object.values(ResourceKind)) {
     try { gatherSecondsFor(contract, kind); } catch (error) { failures.push(error.message); }
   }
@@ -479,7 +514,7 @@ export function runDeterministicContractQA(contract) {
   const checks = [];
   const push = (id, pass, details) => checks.push({ id, pass: !!pass, details });
   const contractFailures = validateContract(contract);
-  push('contract-shape', contractFailures.length === 0, contractFailures.length ? contractFailures.join(' | ') : 'Contract v1.3 shape is valid.');
+  push('contract-shape', contractFailures.length === 0, contractFailures.length ? contractFailures.join(' | ') : 'Contract v1.3.1 shape is valid.');
   if (contractFailures.length) return { passed: false, checks };
 
   push('crew-c1', JSON.stringify(companionIdsFor('Character1')) === JSON.stringify(['Character2','Character3','Character4']), 'C1 lead produces C2/C3/C4 companion crew.');
@@ -521,6 +556,13 @@ export function runDeterministicContractQA(contract) {
   const inventory = new Inventory(contract.player.carryCapacity);
   for (let i = 0; i < contract.player.carryCapacity + 2; i++) inventory.add(ResourceKind.Wood);
   push('carry-capacity', inventory.count === 8, `Inventory stopped at ${inventory.count}/${inventory.capacity}.`);
+
+  const scoring = createInitialState(contract, 'Character1');
+  scoring.player.position = { ...vec3(contract.world.furnace), z: contract.world.furnace[2] + 0.5 };
+  scoring.inventory.add(ResourceKind.Wood);
+  scoring.furnace.durability = scoring.furnace.maxDurability - 50;
+  const selected = chooseAutoAction(scoring);
+  push('automatic-action-priority', selected.kind === AutoActionKind.FurnaceRepair, `Highest eligible nearby action = ${selected.kind}.`);
 
   return { passed: checks.every((check) => check.pass), checks };
 }
