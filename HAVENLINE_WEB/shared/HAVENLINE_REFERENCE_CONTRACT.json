@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1.3.1",
+  "contractVersion": "1.3.2",
   "product": "HAVENLINE",
   "engine": "Unity 6.3 LTS URP",
   "unityEditor": "6000.3.18f1",
@@ -14,7 +14,7 @@
     "shippingAuthoring": "Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs",
     "onboardingSource": "Assets/Havenline/Runtime/HavenlineOnboardingController.cs",
     "gameplayLock": "REFERENCE_GAMEPLAY_LOCK.md",
-    "rule": "The original reference-package measurements remain preserved under referenceBaseline. Top-level runtime values mirror the current approved Unity implementation; browser QA tools consume an exact mirror and must fail validation on drift."
+    "rule": "The reference game is the gameplay and presentation target. Top-level runtime values mirror the current approved Unity implementation; browser QA tools consume an exact mirror and must fail validation on drift."
   },
   "referenceBaseline": {
     "camera": {
@@ -30,7 +30,8 @@
       "runSpeed": 5.75,
       "acceleration": 30.0,
       "deceleration": 36.0,
-      "carryCapacity": 6,
+      "unlimitedCarry": true,
+      "carryCapacity": 0,
       "interactionRadius": 1.85
     }
   },
@@ -70,7 +71,9 @@
     "runSpeed": 5.85,
     "acceleration": 34.0,
     "deceleration": 42.0,
-    "carryCapacity": 8,
+    "unlimitedCarry": true,
+    "carryCapacity": 0,
+    "visibleCarrySlots": 32,
     "interactionRadius": 1.9,
     "combatRadius": 2.25,
     "depositRadius": 2.35,
@@ -169,7 +172,7 @@
   "requiredLoop": [
     "screen-relative movement",
     "automatic gathering",
-    "visible carrying",
+    "uncapped visible carrying",
     "automatic furnace deposit",
     "furnace upgrades from wood and stone",
     "expanding warmth zone",
