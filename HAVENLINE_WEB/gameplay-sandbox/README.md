@@ -14,6 +14,8 @@ CI requires that file to be byte-identical to:
 
 The sandbox refuses to boot when the contract is structurally invalid. Unity remains authoritative for production scene authoring, humanoid animation/deformation, native Android behavior, save/auth integrations, final performance, and APK delivery.
 
+The supplied example game remains the target for moment-to-moment gameplay language, camera readability, visual feedback and polish. Browser behavior is allowed to accelerate iteration, but it must not establish a second gameplay design.
+
 ## Current playable loop
 
 - Orthographic follow camera using the current runtime size, offset, look-ahead and follow sharpness.
@@ -24,7 +26,9 @@ The sandbox refuses to boot when the contract is structurally invalid. Unity rem
 - Companion formation offsets from the onboarding runtime contract.
 - Exact wood, stone, metal and fuel node placement used by premium scene authoring.
 - Automatic nearby gathering with per-resource production timings.
-- Carry capacity of eight.
+- **Unlimited logical carrying, matching the example game.** `carryCapacity = 0` is the explicit unlimited sentinel.
+- Gathering continues beyond the former eight-item assumption and never stops because an arbitrary inventory maximum was reached.
+- A bounded visible-stack budget keeps browser/mobile rendering practical while the carried amount itself remains uncapped.
 - Automatic furnace deposit and repair.
 - Furnace Level 2 gate at 18 wood + 6 stone.
 - Warmth expansion by furnace level.
@@ -43,7 +47,7 @@ The sandbox refuses to boot when the contract is structurally invalid. Unity rem
 node contract-qa.mjs
 ```
 
-The runner fails if the Unity and browser JSON contracts differ or if the critical opening-loop checks fail.
+The runner fails if the Unity and browser JSON contracts differ or if critical opening-loop checks fail. Carry QA explicitly loads well beyond the former small-cap values and verifies that gathering continues.
 
 ## Run locally
 
@@ -60,4 +64,4 @@ Open:
 
 ## Production boundary
 
-A browser QA pass does **not** make a release candidate. The shipping gate still requires approved C1-C4 production character assets, Unity scene authoring, Unity tests, rendered evidence, Android ARM64 build evidence, verified Google OAuth/signing configuration, and physical Galaxy Z Fold acceptance.
+A browser QA pass does **not** make a release candidate. The shipping gate still requires approved C1-C4 production character assets, Unity scene authoring, Unity tests, rendered evidence, Android ARM64 build evidence, verified Google OAuth/signing configuration, and physical Galaxy Z Fold acceptance. Visual acceptance also requires the final Unity presentation to meet the example game's standard for readability, animation feel, lighting/effects and overall polish rather than merely passing mechanical checks.
