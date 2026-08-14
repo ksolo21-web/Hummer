@@ -77,14 +77,19 @@ namespace Havenline
 
             impactQueued = false;
             elapsed = 0f;
+            HavenlineFeedbackBus.PublishActionImpact(currentAction, transform.position);
             return true;
         }
 
+        // Production animation clips call these animation-event entry points on the authored
+        // contact frame. ConsumeImpact publishes the presentation pulse when gameplay consumes
+        // that same frame, keeping camera feedback synchronized with actual harvesting/damage.
         public void ActionImpact() => impactQueued = true;
         public void PulseAction() => impactQueued = true;
 
         public void PlayHit()
         {
+            HavenlineFeedbackBus.PublishDamage(transform.position);
             if (animator != null)
                 animator.SetTrigger(HitHash);
         }
@@ -92,6 +97,7 @@ namespace Havenline
         public void PlayDeath()
         {
             currentAction = AutomaticActionKind.None;
+            HavenlineFeedbackBus.PublishDeath(transform.position);
             if (animator != null)
                 animator.SetTrigger(DeadHash);
         }
