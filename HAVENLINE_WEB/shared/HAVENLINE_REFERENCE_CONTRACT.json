@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1.3.2",
+  "contractVersion": "1.3.1",
   "product": "HAVENLINE",
   "engine": "Unity 6.3 LTS URP",
   "unityEditor": "6000.3.18f1",
@@ -31,7 +31,7 @@
       "acceleration": 30.0,
       "deceleration": 36.0,
       "unlimitedCarry": true,
-      "carryCapacity": 0,
+      "carryCapacity": 6,
       "interactionRadius": 1.85
     }
   },
