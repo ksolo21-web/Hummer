@@ -13,6 +13,14 @@ namespace Havenline
         public const string ScenePath = "Assets/Havenline/Scenes/FrozenOutpost.unity";
         public const string ReferenceApkSha256 = "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67";
 
+        public const int CoreCrewSize = 4;
+        public static readonly Vector3[] CompanionFormationOffsets =
+        {
+            new(-1.35f, 0f, -1.70f),
+            new(1.35f, 0f, -1.70f),
+            new(0f, 0f, -2.80f)
+        };
+
         // Close mobile-game framing: the survivor and automatic actions remain readable while
         // the furnace, shelters and immediate gathering loop stay together in one composed view.
         public const float CameraSize = 7.15f;
