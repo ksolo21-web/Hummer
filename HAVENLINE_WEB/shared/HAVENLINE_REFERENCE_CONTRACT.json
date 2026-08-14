@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1.3.0",
+  "contractVersion": "1.3.1",
   "product": "HAVENLINE",
   "engine": "Unity 6.3 LTS URP",
   "unityEditor": "6000.3.18f1",
@@ -131,10 +131,31 @@
     "survivorRescueSeconds": 2.2,
     "northBarricadeBuild": { "wood": 8, "stone": 3 },
     "southBarricadeBuild": { "wood": 8, "stone": 3 },
+    "playerConstructionSecondsPerUnit": 0.24,
+    "helperConstructionSecondsPerUnit": 0.32,
     "firstWaveDelaySeconds": 48.0,
     "minimumWaveDelaySeconds": 24.0,
     "waveDelayReductionPerCompletedWave": 3.0,
     "firstWaveEnemyCount": 3,
+    "wolf": {
+      "health": 65.0,
+      "moveSpeed": 3.9,
+      "playerDamagePerHit": 22.0,
+      "playerHitSeconds": 0.64,
+      "attackSeconds": 1.1,
+      "damageToBarricade": 16.0,
+      "damageToFurnace": 14.0,
+      "spawnZ": 15.2
+    },
+    "automaticActionPriorities": {
+      "enemy": 200,
+      "furnaceRepair": 130,
+      "rescue": 110,
+      "furnaceDeposit": 95,
+      "construction": 80,
+      "resource": 30
+    },
+    "automaticActionDistanceScoreWeight": 10.0,
     "automaticActionRescanSeconds": 0.075,
     "automaticActionTargetHysteresis": 0.32,
     "automaticActionMovementCancelThreshold": 0.12,
