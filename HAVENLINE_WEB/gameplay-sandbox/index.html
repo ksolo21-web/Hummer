@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#0d1621" />
+  <title>HAVENLINE Gameplay Sandbox</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand"><span>HAVENLINE</span><strong>Gameplay Sandbox</strong><em>Unity-contract driven</em></div>
+      <div class="top-actions">
+        <button id="resetBtn">Reset Run</button>
+        <button id="qaBtn" class="primary">Run Contract QA</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section id="stage" class="stage">
+        <div id="bootCard" class="boot-card">
+          <strong>Loading HAVENLINE runtime contract…</strong>
+          <span>The sandbox will not start with guessed tuning.</span>
+        </div>
+        <div class="hud safe-top">
+          <div class="hud-card objective"><span>OBJECTIVE</span><strong id="objective">Booting…</strong></div>
+          <div class="hud-card resources"><span>CARRY</span><strong id="carry">0 / —</strong></div>
+          <div class="hud-card furnace"><span>FURNACE</span><strong id="furnaceStatus">—</strong></div>
+        </div>
+        <div class="hud safe-bottom">
+          <div class="hud-card crew"><span>CREW</span><strong id="crewStatus">—</strong></div>
+          <div class="hud-card context"><span>AUTO ACTION</span><strong id="actionStatus">None</strong><div class="progress"><i id="actionProgress"></i></div></div>
+          <div class="hud-card perf"><span>RENDER</span><strong id="perfStatus">—</strong></div>
+        </div>
+
+        <div id="joystick" class="joystick" aria-label="movement joystick"><div id="stick" class="stick"></div></div>
+        <button id="sprintBtn" class="sprint" aria-label="Sprint">SPRINT</button>
+
+        <div class="legend">
+          <span><i class="dot player"></i> Lead</span>
+          <span><i class="dot companion"></i> Crew</span>
+          <span><i class="dot wood"></i> Wood</span>
+          <span><i class="dot stone"></i> Stone</span>
+          <span><i class="dot warmth"></i> Warmth</span>
+          <span><i class="dot wolf"></i> Wolf</span>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <section>
+          <h2>Runtime Authority</h2>
+          <dl class="kv">
+            <div><dt>Contract</dt><dd id="contractVersion">—</dd></div>
+            <div><dt>Unity</dt><dd id="unityVersion">—</dd></div>
+            <div><dt>Camera</dt><dd id="cameraLock">—</dd></div>
+            <div><dt>Walk / Run</dt><dd id="speedLock">—</dd></div>
+            <div><dt>Carry</dt><dd id="carryLock">—</dd></div>
+            <div><dt>Bounds</dt><dd id="boundsLock">—</dd></div>
+          </dl>
+          <div id="authorityNote" class="note">Waiting for JSON.</div>
+        </section>
+
+        <section>
+          <h2>Playable Lead</h2>
+          <div class="segmented">
+            <button data-lead="Character1" class="active">Character 1</button>
+            <button data-lead="Character2">Character 2</button>
+          </div>
+          <label class="file-button">Load lead GLB<input id="leadModelInput" type="file" accept=".glb,.gltf,model/gltf-binary" /></label>
+          <div class="small-note">Without a GLB, the sandbox uses a lightweight proxy so gameplay logic stays testable.</div>
+        </section>
+
+        <section>
+          <h2>Debug Run</h2>
+          <label class="check"><input id="showRanges" type="checkbox" /> Show interaction ranges</label>
+          <label class="check"><input id="showBounds" type="checkbox" checked /> Show world bounds</label>
+          <label class="check"><input id="pauseWaves" type="checkbox" /> Pause wolf timer</label>
+          <div class="button-grid">
+            <button id="teleportWood">Go Wood</button>
+            <button id="teleportFurnace">Go Furnace</button>
+            <button id="teleportSurvivor">Go Survivor</button>
+            <button id="spawnWolf">Spawn Wolf</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>State</h2>
+          <dl class="kv compact">
+            <div><dt>Wood</dt><dd id="woodCount">0</dd></div>
+            <div><dt>Stone</dt><dd id="stoneCount">0</dd></div>
+            <div><dt>Stored W/S</dt><dd id="storedCount">0 / 0</dd></div>
+            <div><dt>Warmth</dt><dd id="warmthRadius">—</dd></div>
+            <div><dt>Rescue</dt><dd id="rescueState">Trapped</dd></div>
+            <div><dt>Wave</dt><dd id="waveState">Locked</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Evidence Log</h2>
+          <ol id="eventLog" class="event-log"><li>Waiting for runtime contract.</li></ol>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
