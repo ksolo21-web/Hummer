@@ -213,14 +213,20 @@ namespace Havenline.Editor
             var canonical = all.FirstOrDefault(item =>
                 item.name == proofName &&
                 !item.name.StartsWith("Legacy", StringComparison.Ordinal) &&
-                item.GetComponentsInChildren<Renderer>(true).Any(renderer => renderer.enabled));
+                item.activeInHierarchy &&
+                item.GetComponentsInChildren<Renderer>(true)
+                    .Any(renderer => renderer.enabled && renderer.gameObject.activeInHierarchy));
             if (canonical != null)
                 return;
 
-            var source = all.FirstOrDefault(item => item.name == productionName);
+            var source = all.FirstOrDefault(item =>
+                item.name == productionName &&
+                item.activeInHierarchy &&
+                item.GetComponentsInChildren<Renderer>(true)
+                    .Any(renderer => renderer.enabled && renderer.gameObject.activeInHierarchy));
             if (source == null)
                 throw new InvalidOperationException(
-                    $"Premium shelter '{productionName}'/'{proofName}' is missing; proof cannot fall back to the retired tent.");
+                    $"Visible premium shelter '{productionName}'/'{proofName}' is missing; proof cannot fall back to the retired tent.");
 
             var clone = UnityEngine.Object.Instantiate(source);
             clone.name = proofName;
