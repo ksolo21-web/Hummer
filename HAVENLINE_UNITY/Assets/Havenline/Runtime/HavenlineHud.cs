@@ -29,6 +29,9 @@ namespace Havenline
         private float lastLayoutAspect = -1f;
         private bool foldableTopLayout;
 
+        public HavenlinePlayerController ControlledPlayer => player;
+        public HavenlineGameDirector Director => director;
+
         public void Configure(
             Text resources,
             Text objective,
@@ -45,10 +48,40 @@ namespace Havenline
             contextualText = helper;
             threatText = wave;
             contextualProgress = progress;
-            player = controlledPlayer;
             director = gameDirector;
+            RebindControlledPlayer(controlledPlayer);
             lastLayoutAspect = -1f;
             ApplyAdaptiveTopLayout();
+        }
+
+        /// <summary>
+        /// Rebinds the HUD to the actual selected C1/C2 lead after the runtime crew is spawned.
+        /// The shipping scene may be authored before the saved lead is known, so the HUD must
+        /// not retain event subscriptions to an obsolete bootstrap/generic player.
+        /// </summary>
+        public void RebindControlledPlayer(HavenlinePlayerController controlledPlayer)
+        {
+            if (ReferenceEquals(player, controlledPlayer))
+                return;
+
+            if (Application.isPlaying && player != null && player.AutomaticActions != null)
+                player.AutomaticActions.ContextChanged -= HandleContext;
+
+            player = controlledPlayer;
+            lastAction = AutomaticActionKind.None;
+            lastLabel = string.Empty;
+            lastProgress = -1f;
+
+            if (contextualText != null)
+                SetPanelVisible(contextualText, false);
+            if (contextualProgress != null)
+                contextualProgress.gameObject.SetActive(false);
+
+            if (Application.isPlaying && isActiveAndEnabled && player != null && player.AutomaticActions != null)
+            {
+                player.AutomaticActions.ContextChanged -= HandleContext;
+                player.AutomaticActions.ContextChanged += HandleContext;
+            }
         }
 
         private void OnEnable()
@@ -196,8 +229,6 @@ namespace Havenline
 
             if (foldableTopLayout)
             {
-                // Fold mode still uses the same compact 72 px card height. Resource text
-                // wraps to two smaller lines instead of expanding back into a dashboard.
                 SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(430f, 72f));
                 SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(255f, 72f));
                 SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(540f, 72f));
@@ -207,9 +238,6 @@ namespace Havenline
             }
             else
             {
-                // Match the authored reference-grade HUD dimensions. ExecuteAlways used to
-                // overwrite these with 500x92 cards after the final visual pass, which made
-                // the generated shipping scene fail its own compact-HUD contract.
                 SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(26f, -24f), new Vector2(430f, 72f));
                 SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(500f, 68f));
                 SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-26f, -24f), new Vector2(255f, 72f));
