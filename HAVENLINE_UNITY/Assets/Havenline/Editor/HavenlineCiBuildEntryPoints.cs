@@ -5,9 +5,9 @@ using UnityEngine;
 namespace Havenline.Editor
 {
     /// <summary>
-    /// Clean-checkout CI entry points. HAVENLINE's approved production library is generated
-    /// deterministically from normal Unity source before the unchanged premium content and
-    /// scene gates are enforced. No missing asset is waived and no release stage is promoted.
+    /// Clean-checkout CI entry points. HAVENLINE's deterministic world library is generated
+    /// before the unchanged premium content and scene gates are enforced. Build stage is kept
+    /// explicit so a device-test character review path can never masquerade as verified release.
     /// </summary>
     public static class HavenlineCiBuildEntryPoints
     {
@@ -37,14 +37,30 @@ namespace Havenline.Editor
 
         public static void BuildAndroidDeviceTest()
         {
-            PrepareGeneratedProductionContent();
-            HavenlineBuildPipeline.BuildAndroidReviewCandidate();
+            HavenlineBuildStageContext.Set(HavenlineBuildStage.DeviceTest);
+            try
+            {
+                PrepareGeneratedProductionContent();
+                HavenlineBuildPipeline.BuildAndroidReviewCandidate();
+            }
+            finally
+            {
+                HavenlineBuildStageContext.Clear();
+            }
         }
 
         public static void BuildVerifiedRelease()
         {
-            PrepareGeneratedProductionContent();
-            HavenlineBuildPipeline.BuildVerifiedReleaseCandidate();
+            HavenlineBuildStageContext.Set(HavenlineBuildStage.VerifiedRelease);
+            try
+            {
+                PrepareGeneratedProductionContent();
+                HavenlineBuildPipeline.BuildVerifiedReleaseCandidate();
+            }
+            finally
+            {
+                HavenlineBuildStageContext.Clear();
+            }
         }
 
         [MenuItem("HAVENLINE Premium/CI/Prepare Deterministic Production Content")]
