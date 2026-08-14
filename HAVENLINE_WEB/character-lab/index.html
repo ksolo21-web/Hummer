@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#11151b" />
+  <title>HAVENLINE Character Lab</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-kicker">HAVENLINE</span>
+        <strong>Character Lab</strong>
+        <span class="build-badge">Three.js r185</span>
+      </div>
+      <div class="top-actions">
+        <button id="proofBtn" class="primary">Export 4-View Proof</button>
+        <button id="reportBtn">Export QA JSON</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel left-panel">
+        <section>
+          <h2>Character</h2>
+          <div id="slotButtons" class="segmented four">
+            <button data-slot="C1" class="active">C1</button>
+            <button data-slot="C2">C2</button>
+            <button data-slot="C3">C3</button>
+            <button data-slot="C4">C4</button>
+          </div>
+          <label class="file-button primary-file">
+            Load rigged GLB
+            <input id="modelInput" type="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" />
+          </label>
+          <label class="file-button">
+            Load approved reference
+            <input id="referenceInput" type="file" accept="image/*" />
+          </label>
+          <div id="dropZone" class="drop-zone">
+            Drop a GLB or reference image here
+          </div>
+          <div class="file-status">
+            <span>Model</span><strong id="modelName">Not loaded</strong>
+            <span>Reference</span><strong id="referenceName">Not loaded</strong>
+          </div>
+        </section>
+
+        <section>
+          <h2>Review Camera</h2>
+          <div class="camera-grid">
+            <button data-view="front" class="active">Front</button>
+            <button data-view="three-quarter">3/4</button>
+            <button data-view="side">Side</button>
+            <button data-view="back">Back</button>
+          </div>
+          <div class="control-row">
+            <label for="zoomRange">Framing</label>
+            <input id="zoomRange" type="range" min="70" max="140" value="100" />
+            <output id="zoomValue">100%</output>
+          </div>
+          <label class="check-row"><input id="autoRotate" type="checkbox" /> Auto rotate</label>
+        </section>
+
+        <section>
+          <h2>Inspection</h2>
+          <label class="check-row"><input id="skeletonToggle" type="checkbox" /> Skeleton</label>
+          <label class="check-row"><input id="wireframeToggle" type="checkbox" /> Wireframe</label>
+          <label class="check-row"><input id="gridToggle" type="checkbox" checked /> Ground grid</label>
+          <label class="check-row"><input id="overlayToggle" type="checkbox" /> Overlay reference on 3D</label>
+          <div class="control-row">
+            <label for="overlayOpacity">Overlay</label>
+            <input id="overlayOpacity" type="range" min="0" max="100" value="35" />
+            <output id="overlayValue">35%</output>
+          </div>
+          <div class="control-row">
+            <label for="exposureRange">Exposure</label>
+            <input id="exposureRange" type="range" min="50" max="180" value="110" />
+            <output id="exposureValue">1.10</output>
+          </div>
+        </section>
+
+        <section>
+          <h2>Animation</h2>
+          <select id="animationSelect" disabled>
+            <option>No animation clips</option>
+          </select>
+          <div class="button-row">
+            <button id="playBtn" disabled>Play</button>
+            <button id="pauseBtn" disabled>Pause</button>
+            <button id="resetAnimBtn" disabled>Reset</button>
+          </div>
+          <div class="control-row">
+            <label for="speedRange">Speed</label>
+            <input id="speedRange" type="range" min="0" max="200" value="100" />
+            <output id="speedValue">1.00×</output>
+          </div>
+        </section>
+      </aside>
+
+      <section class="stage-column">
+        <div id="stage" class="stage" aria-label="3D character viewport">
+          <div id="stageEmpty" class="stage-empty">
+            <strong>Load a rigged Havenline GLB</strong>
+            <span>Drag it here or use the Load rigged GLB button.</span>
+          </div>
+          <img id="referenceOverlay" alt="Approved reference overlay" />
+          <div class="viewport-hud top-left"><span id="viewLabel">FRONT</span></div>
+          <div class="viewport-hud bottom-left"><span id="fpsLabel">-- FPS</span></div>
+          <div class="viewport-hud bottom-right"><span id="renderLabel">0 calls · 0 tris</span></div>
+        </div>
+        <div class="status-strip">
+          <div><span>Status</span><strong id="qaStatus" class="status-neutral">Awaiting model</strong></div>
+          <div><span>Rig</span><strong id="rigStatus">—</strong></div>
+          <div><span>Scale</span><strong id="scaleStatus">—</strong></div>
+          <div><span>Animations</span><strong id="animationStatus">—</strong></div>
+        </div>
+      </section>
+
+      <aside class="panel right-panel">
+        <section class="reference-section">
+          <div class="section-heading">
+            <h2>Approved Artwork</h2>
+            <button id="fitReferenceBtn" class="small">Fit</button>
+          </div>
+          <div class="reference-frame">
+            <div id="referenceEmpty" class="reference-empty">Load the approved turnaround for the active character.</div>
+            <img id="referenceImage" alt="Approved character turnaround" />
+          </div>
+        </section>
+
+        <section>
+          <h2>Model QA</h2>
+          <dl id="statsGrid" class="stats-grid">
+            <div><dt>Vertices</dt><dd>—</dd></div>
+            <div><dt>Triangles</dt><dd>—</dd></div>
+            <div><dt>Meshes</dt><dd>—</dd></div>
+            <div><dt>Skinned</dt><dd>—</dd></div>
+            <div><dt>Bones</dt><dd>—</dd></div>
+            <div><dt>Materials</dt><dd>—</dd></div>
+            <div><dt>Textures</dt><dd>—</dd></div>
+            <div><dt>Clips</dt><dd>—</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Automated Findings</h2>
+          <ul id="findings" class="findings">
+            <li class="muted">No model loaded.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Material Audit</h2>
+          <div id="materialAudit" class="material-audit muted">No materials loaded.</div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
