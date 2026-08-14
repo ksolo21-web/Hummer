@@ -106,6 +106,30 @@ namespace Havenline.Tests
         }
 
         [Serializable]
+        private sealed class WolfTuning
+        {
+            public float health;
+            public float moveSpeed;
+            public float playerDamagePerHit;
+            public float playerHitSeconds;
+            public float attackSeconds;
+            public float damageToBarricade;
+            public float damageToFurnace;
+            public float spawnZ;
+        }
+
+        [Serializable]
+        private sealed class AutomaticActionPriorities
+        {
+            public int enemy;
+            public int furnaceRepair;
+            public int rescue;
+            public int furnaceDeposit;
+            public int construction;
+            public int resource;
+        }
+
+        [Serializable]
         private sealed class OpeningLoopTuning
         {
             public GatherSecondsPerUnit gatherSecondsPerUnit;
@@ -125,10 +149,15 @@ namespace Havenline.Tests
             public float survivorRescueSeconds;
             public ResourceRequirement northBarricadeBuild;
             public ResourceRequirement southBarricadeBuild;
+            public float playerConstructionSecondsPerUnit;
+            public float helperConstructionSecondsPerUnit;
             public float firstWaveDelaySeconds;
             public float minimumWaveDelaySeconds;
             public float waveDelayReductionPerCompletedWave;
             public int firstWaveEnemyCount;
+            public WolfTuning wolf;
+            public AutomaticActionPriorities automaticActionPriorities;
+            public float automaticActionDistanceScoreWeight;
             public float automaticActionRescanSeconds;
             public float automaticActionTargetHysteresis;
             public float automaticActionMovementCancelThreshold;
@@ -146,9 +175,8 @@ namespace Havenline.Tests
         [Test]
         public void JsonRuntimeLockMatchesTheCompiledReferenceConstants()
         {
-            Assert.That(File.Exists(ContractPath), Is.True, $"Missing runtime contract: {ContractPath}");
             var contract = LoadContract();
-            Assert.That(contract.contractVersion, Is.EqualTo("1.3.0"));
+            Assert.That(contract.contractVersion, Is.EqualTo("1.3.1"));
 
             Assert.That(contract.camera.projection, Is.EqualTo("orthographic"));
             Assert.That(contract.camera.size, Is.EqualTo(Reference.CameraSize).Within(0.0001f));
@@ -258,11 +286,30 @@ namespace Havenline.Tests
             Assert.That(tuning.northBarricadeBuild.stone, Is.EqualTo(3));
             Assert.That(tuning.southBarricadeBuild.wood, Is.EqualTo(8));
             Assert.That(tuning.southBarricadeBuild.stone, Is.EqualTo(3));
+            Assert.That(tuning.playerConstructionSecondsPerUnit, Is.EqualTo(0.24f).Within(0.0001f));
+            Assert.That(tuning.helperConstructionSecondsPerUnit, Is.EqualTo(0.32f).Within(0.0001f));
+
             Assert.That(tuning.firstWaveDelaySeconds, Is.EqualTo(48f).Within(0.0001f));
             Assert.That(tuning.minimumWaveDelaySeconds, Is.EqualTo(24f).Within(0.0001f));
             Assert.That(tuning.waveDelayReductionPerCompletedWave, Is.EqualTo(3f).Within(0.0001f));
             Assert.That(tuning.firstWaveEnemyCount, Is.EqualTo(3));
 
+            Assert.That(tuning.wolf.health, Is.EqualTo(65f).Within(0.0001f));
+            Assert.That(tuning.wolf.moveSpeed, Is.EqualTo(3.9f).Within(0.0001f));
+            Assert.That(tuning.wolf.playerDamagePerHit, Is.EqualTo(22f).Within(0.0001f));
+            Assert.That(tuning.wolf.playerHitSeconds, Is.EqualTo(0.64f).Within(0.0001f));
+            Assert.That(tuning.wolf.attackSeconds, Is.EqualTo(1.1f).Within(0.0001f));
+            Assert.That(tuning.wolf.damageToBarricade, Is.EqualTo(16f).Within(0.0001f));
+            Assert.That(tuning.wolf.damageToFurnace, Is.EqualTo(14f).Within(0.0001f));
+            Assert.That(tuning.wolf.spawnZ, Is.EqualTo(15.2f).Within(0.0001f));
+
+            Assert.That(tuning.automaticActionPriorities.enemy, Is.EqualTo(200));
+            Assert.That(tuning.automaticActionPriorities.furnaceRepair, Is.EqualTo(130));
+            Assert.That(tuning.automaticActionPriorities.rescue, Is.EqualTo(110));
+            Assert.That(tuning.automaticActionPriorities.furnaceDeposit, Is.EqualTo(95));
+            Assert.That(tuning.automaticActionPriorities.construction, Is.EqualTo(80));
+            Assert.That(tuning.automaticActionPriorities.resource, Is.EqualTo(30));
+            Assert.That(tuning.automaticActionDistanceScoreWeight, Is.EqualTo(10f).Within(0.0001f));
             Assert.That(tuning.automaticActionRescanSeconds, Is.EqualTo(0.075f).Within(0.0001f));
             Assert.That(tuning.automaticActionTargetHysteresis, Is.EqualTo(0.32f).Within(0.0001f));
             Assert.That(tuning.automaticActionMovementCancelThreshold, Is.EqualTo(0.12f).Within(0.0001f));
