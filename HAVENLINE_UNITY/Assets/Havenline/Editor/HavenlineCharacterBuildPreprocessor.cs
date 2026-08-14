@@ -12,9 +12,9 @@ namespace Havenline.Editor
     /// <summary>
     /// Last-line build safety gate for the four canonical HAVENLINE characters.
     ///
-    /// A direct BuildPipeline.BuildPlayer invocation cannot bypass human character approval,
-    /// gameplay-prefab/roster generation, or conversion of the legacy authored generic-player
-    /// shell into the saved-profile C1-C4 runtime binding.
+    /// Verified release remains fail-closed on checksum-pinned human approval. Device-test
+    /// packages may use the separately pinned review stage so real C1-C4 integration can be
+    /// exercised on Android before promotion; that path cannot produce a verified release.
     /// </summary>
     public sealed class HavenlineCharacterBuildPreprocessor : IPreprocessBuildWithReport
     {
@@ -22,8 +22,18 @@ namespace Havenline.Editor
 
         public void OnPreprocessBuild(BuildReport report)
         {
-            RequireApprovedCharacters(HavenlineCharacterApprovalGate.Validate);
-            var roster = HavenlineProductionCharacterAssetBuilder.BuildApprovedGameplayRoster();
+            HavenlineCharacterRoster roster;
+            if (HavenlineBuildStageContext.IsDeviceTest)
+            {
+                HavenlineDeviceTestCharacterGate.Require();
+                roster = HavenlineDeviceTestCharacterAssetBuilder.Build();
+            }
+            else
+            {
+                RequireApprovedCharacters(HavenlineCharacterApprovalGate.Validate);
+                roster = HavenlineProductionCharacterAssetBuilder.BuildApprovedGameplayRoster();
+            }
+
             HavenlineCoreCrewScenePostprocessor.ApplyToShippingScene(roster);
 
             var scene = EditorSceneManager.OpenScene(Reference.ScenePath, OpenSceneMode.Single);
