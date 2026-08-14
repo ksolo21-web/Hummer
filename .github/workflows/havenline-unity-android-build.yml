@@ -7,6 +7,7 @@ on:
     paths:
       - 'HAVENLINE_UNITY/**'
       - 'HAVENLINE_WEB/**'
+      - '.github/scripts/stage-havenline-device-test-characters.sh'
       - '.github/workflows/havenline-unity-android-build.yml'
   workflow_dispatch:
     inputs:
@@ -21,6 +22,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: havenline-premium-android-${{ github.ref }}
@@ -47,6 +49,14 @@ jobs:
             HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json \
             HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json
           echo 'Three.js/JSON shared contract matches the Unity shipping mirror byte-for-byte.'
+
+      - name: Stage checksum-pinned real C1-C4 review crew for device test
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode == 'device_test' }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BUILD_MODE: device_test
+        run: bash .github/scripts/stage-havenline-device-test-characters.sh
 
       - name: Confirm Unity CI secrets exist
         shell: bash
@@ -202,6 +212,11 @@ jobs:
             echo '- ABI target: `ARM64`'
             echo '- Graphics APIs: `Vulkan`, `OpenGLES3` fallback'
             echo '- Three.js/JSON shared contract: `passed`'
+            if [ "$BUILD_MODE" = 'device_test' ]; then
+              echo '- Character stage: `checksum-pinned review crew; device-test only`'
+            else
+              echo '- Character stage: `human-approved release assets required`'
+            fi
             echo '- APK bytes: `${{ steps.verify.outputs.size }}`'
             echo '- APK SHA-256: `${{ steps.verify.outputs.sha256 }}`'
             echo '- Rendered proof-set SHA-256: `${{ steps.verify.outputs.proof_set_sha }}`'
