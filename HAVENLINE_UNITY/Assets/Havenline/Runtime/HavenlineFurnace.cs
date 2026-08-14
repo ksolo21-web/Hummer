@@ -195,7 +195,10 @@ namespace Havenline
             WarmthRadius = 4.5f + (Level - 1) * 3.5f;
             ApplyVisuals();
             if (Level != previous)
+            {
+                HavenlineFeedbackBus.PublishUpgrade(transform.position);
                 LevelChanged?.Invoke(Level);
+            }
         }
 
         private void ApplyVisuals()
