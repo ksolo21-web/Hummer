@@ -18,8 +18,14 @@ namespace Havenline
         [SerializeField] private GameObject[] fuelSlots = Array.Empty<GameObject>();
         [SerializeField] private float maximumCompressedHeightScale = 1.35f;
         [SerializeField] private float maximumCompressedWidthScale = 1.10f;
+        [SerializeField] private float pickupPulse = 1.075f;
+        [SerializeField] private float unloadPulse = 0.94f;
+        [SerializeField] private float scaleSharpness = 18f;
 
         private Vector3 baseScale = Vector3.one;
+        private Vector3 targetScale = Vector3.one;
+        private float transientPulse = 1f;
+        private int lastTotal = -1;
         private bool capturedBaseScale;
 
         public void Configure(GameObject[] wood, GameObject[] stone, GameObject[] metal, GameObject[] fuel)
@@ -29,6 +35,7 @@ namespace Havenline
             metalSlots = metal ?? Array.Empty<GameObject>();
             fuelSlots = fuel ?? Array.Empty<GameObject>();
             CaptureBaseScale();
+            targetScale = baseScale;
         }
 
         public void Apply(HavenlineInventorySnapshot snapshot, int total, int capacity)
@@ -53,7 +60,28 @@ namespace Havenline
                 SetSlot(fuelSlots, index, index >= metalEnd && index < fuelEnd);
             }
 
-            ApplyCompressedLoadScale(total, maximumSlots);
+            targetScale = CompressedLoadScale(total, maximumSlots);
+            if (Application.isPlaying && lastTotal >= 0 && total != lastTotal)
+                transientPulse = total > lastTotal ? pickupPulse : unloadPulse;
+            else if (!Application.isPlaying)
+                transform.localScale = targetScale;
+            lastTotal = total;
+        }
+
+        private void LateUpdate()
+        {
+            if (!capturedBaseScale)
+                return;
+
+            transientPulse = Mathf.Lerp(
+                transientPulse,
+                1f,
+                1f - Mathf.Exp(-scaleSharpness * 0.72f * Time.deltaTime));
+            var desired = targetScale * transientPulse;
+            transform.localScale = Vector3.Lerp(
+                transform.localScale,
+                desired,
+                1f - Mathf.Exp(-scaleSharpness * Time.deltaTime));
         }
 
         private HavenlineInventorySnapshot AllocateVisibleCounts(
@@ -125,18 +153,15 @@ namespace Havenline
             };
         }
 
-        private void ApplyCompressedLoadScale(int total, int maximumSlots)
+        private Vector3 CompressedLoadScale(int total, int maximumSlots)
         {
             if (maximumSlots <= 0 || total <= maximumSlots)
-            {
-                transform.localScale = baseScale;
-                return;
-            }
+                return baseScale;
 
             var overload = Mathf.Log(Mathf.Max(1f, total / (float)maximumSlots), 2f);
             var height = Mathf.Min(maximumCompressedHeightScale, 1f + overload * 0.09f);
             var width = Mathf.Min(maximumCompressedWidthScale, 1f + overload * 0.025f);
-            transform.localScale = Vector3.Scale(baseScale, new Vector3(width, height, width));
+            return Vector3.Scale(baseScale, new Vector3(width, height, width));
         }
 
         private void CaptureBaseScale()
@@ -144,6 +169,7 @@ namespace Havenline
             if (capturedBaseScale)
                 return;
             baseScale = transform.localScale;
+            targetScale = baseScale;
             capturedBaseScale = true;
         }
 
