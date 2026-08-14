@@ -14,6 +14,7 @@ namespace Havenline.Tests
         {
             public string contractVersion;
             public Baseline referenceBaseline;
+            public CharacterSystem characterSystem;
             public CameraLock camera;
             public PlayerLock player;
             public WorldLock world;
@@ -26,6 +27,16 @@ namespace Havenline.Tests
         {
             public CameraLock camera;
             public PlayerLock player;
+        }
+
+        [Serializable]
+        private sealed class CharacterSystem
+        {
+            public int activeCrewSize;
+            public string[] startingPlayableLeads;
+            public string[] companionFormation;
+            public float[][] companionFormationOffsets;
+            public bool characters3And4LockedAtStart;
         }
 
         [Serializable]
@@ -71,23 +82,53 @@ namespace Havenline.Tests
             public float[] northBarricade;
             public float[] southBarricade;
             public float[] forestGate;
+            public float[] metalNode;
+            public float[] fuelNode;
             public float[][] woodNodes;
             public float[][] stoneNodes;
         }
 
         [Serializable]
+        private sealed class GatherSecondsPerUnit
+        {
+            public float wood;
+            public float stone;
+            public float metal;
+            public float fuel;
+        }
+
+        [Serializable]
+        private sealed class ResourceRequirement
+        {
+            public int wood;
+            public int stone;
+            public int metal;
+        }
+
+        [Serializable]
         private sealed class OpeningLoopTuning
         {
-            public float resourceSecondsPerUnit;
+            public GatherSecondsPerUnit gatherSecondsPerUnit;
             public int woodUnitsPerNode;
             public int stoneUnitsPerNode;
+            public int metalUnitsPerNode;
+            public int fuelUnitsPerNode;
             public float furnaceMaxDurability;
             public float furnaceRepairPerWood;
             public float furnaceDepositSecondsPerUnit;
             public float furnaceRepairSecondsPerUnit;
+            public ResourceRequirement furnaceLevel2;
+            public ResourceRequirement furnaceLevel3;
+            public ResourceRequirement furnaceLevel4;
             public float warmthRadiusLevel1;
             public float warmthRadiusPerAdditionalLevel;
             public float survivorRescueSeconds;
+            public ResourceRequirement northBarricadeBuild;
+            public ResourceRequirement southBarricadeBuild;
+            public float firstWaveDelaySeconds;
+            public float minimumWaveDelaySeconds;
+            public float waveDelayReductionPerCompletedWave;
+            public int firstWaveEnemyCount;
             public float automaticActionRescanSeconds;
             public float automaticActionTargetHysteresis;
             public float automaticActionMovementCancelThreshold;
@@ -106,9 +147,8 @@ namespace Havenline.Tests
         public void JsonRuntimeLockMatchesTheCompiledReferenceConstants()
         {
             Assert.That(File.Exists(ContractPath), Is.True, $"Missing runtime contract: {ContractPath}");
-            var contract = JsonUtility.FromJson<Contract>(File.ReadAllText(ContractPath));
-            Assert.That(contract, Is.Not.Null);
-            Assert.That(contract.contractVersion, Is.EqualTo("1.2.0"));
+            var contract = LoadContract();
+            Assert.That(contract.contractVersion, Is.EqualTo("1.3.0"));
 
             Assert.That(contract.camera.projection, Is.EqualTo("orthographic"));
             Assert.That(contract.camera.size, Is.EqualTo(Reference.CameraSize).Within(0.0001f));
@@ -158,7 +198,7 @@ namespace Havenline.Tests
         [Test]
         public void OriginalReferenceApkMeasurementsRemainPreservedAsBaseline()
         {
-            var contract = JsonUtility.FromJson<Contract>(File.ReadAllText(ContractPath));
+            var contract = LoadContract();
             Assert.That(contract.referenceBaseline.camera.size, Is.EqualTo(14.8f).Within(0.0001f));
             AssertVector(contract.referenceBaseline.camera.offset, new Vector3(0f, 7f, 7f), "referenceBaseline.camera.offset");
             Assert.That(contract.referenceBaseline.player.walkSpeed, Is.EqualTo(3.85f).Within(0.0001f));
@@ -167,24 +207,74 @@ namespace Havenline.Tests
         }
 
         [Test]
-        public void OpeningLoopTuningMatchesTheAuthoredRuntimeRules()
+        public void CrewFormationMatchesTheOnboardingRuntimeContract()
         {
-            var contract = JsonUtility.FromJson<Contract>(File.ReadAllText(ContractPath));
+            var contract = LoadContract();
+            Assert.That(contract.characterSystem.activeCrewSize, Is.EqualTo(4));
+            Assert.That(contract.characterSystem.startingPlayableLeads, Is.EqualTo(new[] { "Character1", "Character2" }));
+            Assert.That(contract.characterSystem.companionFormation,
+                Is.EqualTo(new[] { "unselected playable lead", "Character3", "Character4" }));
+            Assert.That(contract.characterSystem.characters3And4LockedAtStart, Is.False);
+            Assert.That(contract.characterSystem.companionFormationOffsets, Has.Length.EqualTo(3));
+            AssertVector(contract.characterSystem.companionFormationOffsets[0], new Vector3(-1.35f, 0f, -1.7f), "characterSystem.companionFormationOffsets[0]");
+            AssertVector(contract.characterSystem.companionFormationOffsets[1], new Vector3(1.35f, 0f, -1.7f), "characterSystem.companionFormationOffsets[1]");
+            AssertVector(contract.characterSystem.companionFormationOffsets[2], new Vector3(0f, 0f, -2.8f), "characterSystem.companionFormationOffsets[2]");
+        }
+
+        [Test]
+        public void OpeningLoopTuningMatchesTheShippingAuthoringAndRuntimeRules()
+        {
+            var contract = LoadContract();
             var tuning = contract.openingLoopTuning;
-            Assert.That(tuning.resourceSecondsPerUnit, Is.EqualTo(0.62f).Within(0.0001f));
+
+            Assert.That(tuning.gatherSecondsPerUnit.wood, Is.EqualTo(0.58f).Within(0.0001f));
+            Assert.That(tuning.gatherSecondsPerUnit.stone, Is.EqualTo(0.70f).Within(0.0001f));
+            Assert.That(tuning.gatherSecondsPerUnit.metal, Is.EqualTo(0.70f).Within(0.0001f));
+            Assert.That(tuning.gatherSecondsPerUnit.fuel, Is.EqualTo(0.70f).Within(0.0001f));
             Assert.That(tuning.woodUnitsPerNode, Is.EqualTo(18));
             Assert.That(tuning.stoneUnitsPerNode, Is.EqualTo(14));
+            Assert.That(tuning.metalUnitsPerNode, Is.EqualTo(10));
+            Assert.That(tuning.fuelUnitsPerNode, Is.EqualTo(10));
+
+            AssertVector(contract.world.metalNode, new Vector3(-9.4f, 0f, -8.8f), "world.metalNode");
+            AssertVector(contract.world.fuelNode, new Vector3(9.5f, 0f, -8.6f), "world.fuelNode");
+
             Assert.That(tuning.furnaceMaxDurability, Is.EqualTo(260f).Within(0.0001f));
             Assert.That(tuning.furnaceRepairPerWood, Is.EqualTo(42f).Within(0.0001f));
             Assert.That(tuning.furnaceDepositSecondsPerUnit, Is.EqualTo(0.16f).Within(0.0001f));
             Assert.That(tuning.furnaceRepairSecondsPerUnit, Is.EqualTo(0.34f).Within(0.0001f));
+            Assert.That(tuning.furnaceLevel2.wood, Is.EqualTo(18));
+            Assert.That(tuning.furnaceLevel2.stone, Is.EqualTo(6));
+            Assert.That(tuning.furnaceLevel3.wood, Is.EqualTo(38));
+            Assert.That(tuning.furnaceLevel3.stone, Is.EqualTo(16));
+            Assert.That(tuning.furnaceLevel4.wood, Is.EqualTo(64));
+            Assert.That(tuning.furnaceLevel4.stone, Is.EqualTo(28));
+            Assert.That(tuning.furnaceLevel4.metal, Is.EqualTo(6));
             Assert.That(tuning.warmthRadiusLevel1, Is.EqualTo(4.5f).Within(0.0001f));
             Assert.That(tuning.warmthRadiusPerAdditionalLevel, Is.EqualTo(3.5f).Within(0.0001f));
             Assert.That(tuning.survivorRescueSeconds, Is.EqualTo(2.2f).Within(0.0001f));
+
+            Assert.That(tuning.northBarricadeBuild.wood, Is.EqualTo(8));
+            Assert.That(tuning.northBarricadeBuild.stone, Is.EqualTo(3));
+            Assert.That(tuning.southBarricadeBuild.wood, Is.EqualTo(8));
+            Assert.That(tuning.southBarricadeBuild.stone, Is.EqualTo(3));
+            Assert.That(tuning.firstWaveDelaySeconds, Is.EqualTo(48f).Within(0.0001f));
+            Assert.That(tuning.minimumWaveDelaySeconds, Is.EqualTo(24f).Within(0.0001f));
+            Assert.That(tuning.waveDelayReductionPerCompletedWave, Is.EqualTo(3f).Within(0.0001f));
+            Assert.That(tuning.firstWaveEnemyCount, Is.EqualTo(3));
+
             Assert.That(tuning.automaticActionRescanSeconds, Is.EqualTo(0.075f).Within(0.0001f));
             Assert.That(tuning.automaticActionTargetHysteresis, Is.EqualTo(0.32f).Within(0.0001f));
             Assert.That(tuning.automaticActionMovementCancelThreshold, Is.EqualTo(0.12f).Within(0.0001f));
             Assert.That(tuning.automaticActionFacingWeight, Is.EqualTo(0.35f).Within(0.0001f));
+        }
+
+        private static Contract LoadContract()
+        {
+            Assert.That(File.Exists(ContractPath), Is.True, $"Missing runtime contract: {ContractPath}");
+            var contract = JsonUtility.FromJson<Contract>(File.ReadAllText(ContractPath));
+            Assert.That(contract, Is.Not.Null);
+            return contract;
         }
 
         private static void AssertVector(float[] actual, Vector3 expected, string label)
