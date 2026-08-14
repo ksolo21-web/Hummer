@@ -7,7 +7,8 @@ namespace Havenline
     {
         ActionImpact = 0,
         Damage = 1,
-        Death = 2
+        Death = 2,
+        Upgrade = 3
     }
 
     public readonly struct HavenlineFeedbackPulse
@@ -63,6 +64,13 @@ namespace Havenline
                 AutomaticActionKind.Combat,
                 worldPosition,
                 1f));
+
+        public static void PublishUpgrade(Vector3 worldPosition) =>
+            Pulse?.Invoke(new HavenlineFeedbackPulse(
+                HavenlineFeedbackKind.Upgrade,
+                AutomaticActionKind.Deposit,
+                worldPosition,
+                0.68f));
 
         private static float StrengthFor(AutomaticActionKind action) => action switch
         {
