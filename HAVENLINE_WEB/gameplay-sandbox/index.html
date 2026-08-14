@@ -33,7 +33,7 @@
         </div>
         <div class="hud safe-top">
           <div class="hud-card objective"><span>OBJECTIVE</span><strong id="objective">Booting…</strong></div>
-          <div class="hud-card resources"><span>CARRY</span><strong id="carry">0 / —</strong></div>
+          <div class="hud-card resources"><span>CARRY</span><strong id="carry">0 carried</strong></div>
           <div class="hud-card furnace"><span>FURNACE</span><strong id="furnaceStatus">—</strong></div>
         </div>
         <div class="hud safe-bottom">
@@ -63,7 +63,7 @@
             <div><dt>Unity</dt><dd id="unityVersion">—</dd></div>
             <div><dt>Camera</dt><dd id="cameraLock">—</dd></div>
             <div><dt>Walk / Run</dt><dd id="speedLock">—</dd></div>
-            <div><dt>Carry</dt><dd id="carryLock">—</dd></div>
+            <div><dt>Carry</dt><dd id="carryLock">Unlimited</dd></div>
             <div><dt>Bounds</dt><dd id="boundsLock">—</dd></div>
           </dl>
           <div id="authorityNote" class="note">Waiting for JSON.</div>
@@ -112,5 +112,6 @@
     </main>
   </div>
   <script type="module" src="./runtime-v2.js"></script>
+  <script type="module" src="./uncapped-ui-patch.js"></script>
 </body>
 </html>
