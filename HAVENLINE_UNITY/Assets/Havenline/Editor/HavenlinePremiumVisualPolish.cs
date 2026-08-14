@@ -53,6 +53,11 @@ namespace Havenline.Editor
             BuildLayeredGround(dressing.transform);
             BuildCampDetails(dressing.transform);
             BuildShelterSilhouettes(dressing.transform);
+
+            // RebuildDressing destroys the previous dressing tree. Never keep enumerating the
+            // pre-destruction snapshot: Unity's destroyed-object sentinels can throw during the
+            // recursive scene-save pass used by the final quality authoring stage.
+            objects = AllObjects(scene);
             TuneWorldLayout(objects);
             TuneLighting(objects, dressing.transform);
             ConfigureInterface(objects, mainCamera);
@@ -396,7 +401,9 @@ namespace Havenline.Editor
                 if (image.name.Contains("Panel", StringComparison.OrdinalIgnoreCase))
                 {
                     var color = image.color;
-                    color.a = Mathf.Clamp(color.a, 0.68f, 0.84f);
+                    color.a = image.name is "ResourcesPanel" or "ObjectivePanel" or "FurnacePanel"
+                        ? 1f
+                        : Mathf.Clamp(color.a, 0.68f, 0.84f);
                     image.color = color;
                 }
             }
