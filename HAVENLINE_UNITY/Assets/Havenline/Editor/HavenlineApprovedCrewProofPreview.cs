@@ -103,6 +103,12 @@ namespace Havenline.Editor
                     "Cannot build HAVENLINE core crew proof preview:\n - " +
                     string.Join("\n - ", failures));
 
+            var manifest = HavenlinePremiumBuildGate.RequireProductionContent();
+            var proofController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(manifest.playerController)
+                ?? throw new FileNotFoundException(
+                    "Production player AnimatorController is missing from the proof path.",
+                    manifest.playerController);
+
             var previewRoot = new GameObject(RootName)
             {
                 tag = "EditorOnly",
@@ -119,7 +125,8 @@ namespace Havenline.Editor
                     LeadProofName,
                     leadPosition,
                     Quaternion.Euler(0f, 180f, 0f),
-                    previewRoot.transform);
+                    previewRoot.transform,
+                    proofController);
 
                 var companionIds = new[]
                 {
@@ -135,11 +142,10 @@ namespace Havenline.Editor
                         companionIds[index] + "_ProofCompanion",
                         leadPosition + offset,
                         Quaternion.Euler(0f, 180f, 0f),
-                        previewRoot.transform);
+                        previewRoot.transform,
+                        proofController);
                 }
 
-                // r30 promotes the premium shelters directly to the canonical proof names. Older
-                // scene states may still retain Left/RightPremiumShelter, so clone only then.
                 EnsureShelterProofIdentity(
                     scene,
                     LeftPremiumShelterName,
@@ -165,7 +171,8 @@ namespace Havenline.Editor
             string proofName,
             Vector3 position,
             Quaternion rotation,
-            Transform parent)
+            Transform parent,
+            RuntimeAnimatorController proofController)
         {
             var plan = HavenlineProductionCharacterAssetBuilder.Plans.Single(item => item.Id == characterId);
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(plan.ModelPath)
@@ -179,6 +186,18 @@ namespace Havenline.Editor
             instance.transform.SetParent(parent, true);
             instance.transform.rotation = rotation;
             GroundAt(instance, position);
+
+            var animators = instance.GetComponentsInChildren<Animator>(true);
+            if (animators.Length == 0)
+                throw new InvalidOperationException($"{characterId} proof model has no Animator after Humanoid import.");
+            foreach (var animator in animators)
+            {
+                if (animator.avatar == null || !animator.avatar.isValid)
+                    throw new InvalidOperationException($"{characterId} proof model has no valid Humanoid avatar.");
+                animator.runtimeAnimatorController = proofController;
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            }
 
             foreach (var component in instance.GetComponentsInChildren<MonoBehaviour>(true))
                 component.enabled = false;
