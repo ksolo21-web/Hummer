@@ -23,11 +23,13 @@ namespace Havenline.Tests
         }
 
         [Test]
-        public void MovementCarryAndAutomaticActionRangesUseTheLockedDesign()
+        public void MovementUncappedCarryAndAutomaticActionRangesUseTheLockedDesign()
         {
             Assert.That(Reference.WalkSpeed, Is.EqualTo(3.9f).Within(0.0001f));
             Assert.That(Reference.RunSpeed, Is.EqualTo(5.85f).Within(0.0001f));
-            Assert.That(Reference.CarryCapacity, Is.EqualTo(8));
+            Assert.That(Reference.UnlimitedCarry, Is.True);
+            Assert.That(Reference.CarryCapacity, Is.EqualTo(0));
+            Assert.That(Reference.VisibleCarrySlots, Is.GreaterThanOrEqualTo(24));
             Assert.That(Reference.InteractionRadius, Is.EqualTo(1.9f).Within(0.0001f));
             Assert.That(Reference.CombatRadius, Is.GreaterThan(Reference.InteractionRadius));
             Assert.That(Reference.DepositRadius, Is.GreaterThan(Reference.InteractionRadius));
