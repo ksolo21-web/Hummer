@@ -28,12 +28,16 @@ namespace Havenline
         private int lastTotal = -1;
         private bool capturedBaseScale;
 
+        public int VisualSlotBudget => Mathf.Max(
+            Mathf.Max(woodSlots.Length, stoneSlots.Length),
+            Mathf.Max(metalSlots.Length, fuelSlots.Length));
+
         public void Configure(GameObject[] wood, GameObject[] stone, GameObject[] metal, GameObject[] fuel)
         {
-            woodSlots = wood ?? Array.Empty<GameObject>();
-            stoneSlots = stone ?? Array.Empty<GameObject>();
-            metalSlots = metal ?? Array.Empty<GameObject>();
-            fuelSlots = fuel ?? Array.Empty<GameObject>();
+            woodSlots = ExpandToSharedBudget(wood ?? Array.Empty<GameObject>(), "Wood");
+            stoneSlots = ExpandToSharedBudget(stone ?? Array.Empty<GameObject>(), "Stone");
+            metalSlots = ExpandToSharedBudget(metal ?? Array.Empty<GameObject>(), "Metal");
+            fuelSlots = ExpandToSharedBudget(fuel ?? Array.Empty<GameObject>(), "Fuel");
             CaptureBaseScale();
             targetScale = baseScale;
         }
@@ -41,9 +45,7 @@ namespace Havenline
         public void Apply(HavenlineInventorySnapshot snapshot, int total, int capacity)
         {
             CaptureBaseScale();
-            var maximumSlots = Mathf.Max(
-                Mathf.Max(woodSlots.Length, stoneSlots.Length),
-                Mathf.Max(metalSlots.Length, fuelSlots.Length));
+            var maximumSlots = VisualSlotBudget;
             var slotCount = Mathf.Min(Mathf.Max(0, total), maximumSlots);
 
             var display = AllocateVisibleCounts(snapshot, total, slotCount);
@@ -82,6 +84,33 @@ namespace Havenline
                 transform.localScale,
                 desired,
                 1f - Mathf.Exp(-scaleSharpness * Time.deltaTime));
+        }
+
+        private GameObject[] ExpandToSharedBudget(GameObject[] slots, string prefix)
+        {
+            if (slots.Length == 0 || slots.Length >= Reference.VisibleCarrySlots)
+                return slots;
+
+            var result = new GameObject[Reference.VisibleCarrySlots];
+            Array.Copy(slots, result, slots.Length);
+            for (var index = slots.Length; index < result.Length; index++)
+            {
+                var source = slots[index % slots.Length];
+                if (source == null)
+                    continue;
+
+                var clone = Instantiate(source, transform, false);
+                clone.name = $"{prefix}_{index + 1}_Expanded";
+                var row = index / 4;
+                var column = index % 4;
+                clone.transform.localPosition = new Vector3(
+                    (column - 1.5f) * 0.16f,
+                    0.15f + row * 0.18f,
+                    -0.08f - row * 0.08f);
+                clone.SetActive(false);
+                result[index] = clone;
+            }
+            return result;
         }
 
         private HavenlineInventorySnapshot AllocateVisibleCounts(
