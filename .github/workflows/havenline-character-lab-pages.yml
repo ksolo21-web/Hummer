@@ -1,4 +1,4 @@
-name: HAVENLINE Character Lab static validation
+name: HAVENLINE browser QA static validation
 
 on:
   push:
@@ -6,11 +6,13 @@ on:
       - havenline-unity-reference-rebuild
       - havenline-threejs-character-lab
     paths:
-      - 'HAVENLINE_WEB/character-lab/**'
+      - 'HAVENLINE_WEB/**'
+      - 'HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json'
       - '.github/workflows/havenline-character-lab-pages.yml'
   pull_request:
     paths:
-      - 'HAVENLINE_WEB/character-lab/**'
+      - 'HAVENLINE_WEB/**'
+      - 'HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json'
       - '.github/workflows/havenline-character-lab-pages.yml'
   workflow_dispatch:
 
@@ -24,7 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate required static files
+      - name: Validate required browser QA files
         shell: bash
         run: |
           set -euo pipefail
@@ -32,25 +34,55 @@ jobs:
           test -s HAVENLINE_WEB/character-lab/styles.css
           test -s HAVENLINE_WEB/character-lab/app.js
           test -s HAVENLINE_WEB/character-lab/README.md
+          test -s HAVENLINE_WEB/gameplay-sandbox/index.html
+          test -s HAVENLINE_WEB/gameplay-sandbox/styles.css
+          test -s HAVENLINE_WEB/gameplay-sandbox/app.js
+          test -s HAVENLINE_WEB/gameplay-sandbox/sim-core.js
+          test -s HAVENLINE_WEB/gameplay-sandbox/contract-qa.mjs
+          test -s HAVENLINE_WEB/gameplay-sandbox/README.md
+          test -s HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json
+          test -s HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json
 
-      - name: Verify Three.js version pin and module entry
+      - name: Verify Three.js pins and module entries
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'three@0.185.0' HAVENLINE_WEB/character-lab/index.html
+          grep -q 'three@0.185.0' HAVENLINE_WEB/gameplay-sandbox/index.html
           grep -q 'type="module" src="./app.js"' HAVENLINE_WEB/character-lab/index.html
-          grep -q "GLTFLoader" HAVENLINE_WEB/character-lab/app.js
-          grep -q "SkeletonHelper" HAVENLINE_WEB/character-lab/app.js
+          grep -q 'type="module" src="./app.js"' HAVENLINE_WEB/gameplay-sandbox/index.html
+          grep -q 'GLTFLoader' HAVENLINE_WEB/character-lab/app.js
+          grep -q 'SkeletonHelper' HAVENLINE_WEB/character-lab/app.js
+          grep -q 'GLTFLoader' HAVENLINE_WEB/gameplay-sandbox/app.js
+          grep -q 'runDeterministicContractQA' HAVENLINE_WEB/gameplay-sandbox/app.js
 
-      - name: JavaScript syntax check
-        shell: bash
-        run: node --check HAVENLINE_WEB/character-lab/app.js
-
-      - name: Reject accidental binary character commits
+      - name: JavaScript syntax checks
         shell: bash
         run: |
           set -euo pipefail
-          if find HAVENLINE_WEB/character-lab -type f \( -iname '*.glb' -o -iname '*.gltf' -o -iname '*.fbx' \) | grep -q .; then
-            echo 'Character models must remain review inputs/artifacts, not silently committed into the static lab.' >&2
+          node --check HAVENLINE_WEB/character-lab/app.js
+          node --check HAVENLINE_WEB/gameplay-sandbox/sim-core.js
+          node --check HAVENLINE_WEB/gameplay-sandbox/app.js
+          node --check HAVENLINE_WEB/gameplay-sandbox/contract-qa.mjs
+
+      - name: Verify Unity and browser contract mirrors
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp \
+            HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json \
+            HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json
+          node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json','utf8')); if(c.contractVersion!=='1.3.0') throw new Error('Expected HAVENLINE contract 1.3.0');"
+
+      - name: Run deterministic gameplay contract QA
+        shell: bash
+        run: node HAVENLINE_WEB/gameplay-sandbox/contract-qa.mjs
+
+      - name: Reject accidental browser-model commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find HAVENLINE_WEB -type f \( -iname '*.glb' -o -iname '*.gltf' -o -iname '*.fbx' \) | grep -q .; then
+            echo 'Character models must remain review inputs/artifacts and must not be silently committed into browser QA tools.' >&2
             exit 1
           fi
