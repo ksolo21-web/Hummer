@@ -6,6 +6,7 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - 'HAVENLINE_UNITY/**'
+      - 'HAVENLINE_WEB/**'
       - '.github/workflows/havenline-unity-android-build.yml'
   workflow_dispatch:
     inputs:
@@ -37,6 +38,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate shared Three.js JSON gameplay contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node HAVENLINE_WEB/gameplay-sandbox/contract-qa.mjs
+          cmp \
+            HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json \
+            HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json
+          echo 'Three.js/JSON shared contract matches the Unity shipping mirror byte-for-byte.'
+
       - name: Confirm Unity CI secrets exist
         shell: bash
         env:
@@ -65,7 +76,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: HAVENLINE_UNITY/Library
-          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json', 'HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineRenderProofGate.cs') }}
+          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json', 'HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineRenderProofGate.cs', 'HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json') }}
           restore-keys: |
             havenline-premium-unity-6000.3.18f1-android-
 
@@ -190,6 +201,7 @@ jobs:
             echo '- Unity: `6000.3.18f1`'
             echo '- ABI target: `ARM64`'
             echo '- Graphics APIs: `Vulkan`, `OpenGLES3` fallback'
+            echo '- Three.js/JSON shared contract: `passed`'
             echo '- APK bytes: `${{ steps.verify.outputs.size }}`'
             echo '- APK SHA-256: `${{ steps.verify.outputs.sha256 }}`'
             echo '- Rendered proof-set SHA-256: `${{ steps.verify.outputs.proof_set_sha }}`'
