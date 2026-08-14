@@ -1,5 +1,5 @@
 {
-  "contractVersion": "1.1.0",
+  "contractVersion": "1.2.0",
   "product": "HAVENLINE",
   "engine": "Unity 6.3 LTS URP",
   "unityEditor": "6000.3.18f1",
@@ -7,6 +7,30 @@
     "name": "HAVENLINE-v0.3.0-reference-final-ARM64.apk",
     "sizeBytes": 107695534,
     "sha256": "17996ba270e6b56505d3273fca1915f977f6d892b4949f37c66098ac6efcfa67"
+  },
+  "authority": {
+    "runtimeSource": "Assets/Havenline/Runtime/HavenlineReference.cs",
+    "runtimeTests": "Assets/Havenline/Tests/Editor/HavenlineReferenceContractTests.cs",
+    "gameplayLock": "REFERENCE_GAMEPLAY_LOCK.md",
+    "rule": "The original reference-package measurements remain preserved under referenceBaseline. The top-level camera/player/world fields are the current approved HAVENLINE runtime lock and must match HavenlineReference.cs plus its contract tests."
+  },
+  "referenceBaseline": {
+    "camera": {
+      "projection": "orthographic",
+      "size": 14.8,
+      "offset": [0.0, 7.0, 7.0],
+      "focusHeight": 0.82,
+      "lookAhead": 1.15
+    },
+    "player": {
+      "spawn": [0.0, 0.08, 6.2],
+      "walkSpeed": 3.85,
+      "runSpeed": 5.75,
+      "acceleration": 30.0,
+      "deceleration": 36.0,
+      "carryCapacity": 6,
+      "interactionRadius": 1.85
+    }
   },
   "characterSystem": {
     "activeCrewSize": 4,
@@ -37,19 +61,25 @@
   },
   "camera": {
     "projection": "orthographic",
-    "size": 14.8,
-    "offset": [0.0, 7.0, 7.0],
-    "focusHeight": 0.82,
-    "lookAhead": 1.15
+    "size": 7.15,
+    "offset": [0.0, 6.8, 8.6],
+    "focusHeight": 0.95,
+    "lookAhead": 0.72,
+    "followSharpness": 8.6
   },
   "player": {
     "spawn": [0.0, 0.08, 6.2],
-    "walkSpeed": 3.85,
-    "runSpeed": 5.75,
-    "acceleration": 30.0,
-    "deceleration": 36.0,
-    "carryCapacity": 6,
-    "interactionRadius": 1.85
+    "walkSpeed": 3.9,
+    "runSpeed": 5.85,
+    "acceleration": 34.0,
+    "deceleration": 42.0,
+    "carryCapacity": 8,
+    "interactionRadius": 1.9,
+    "combatRadius": 2.25,
+    "depositRadius": 2.35,
+    "rescueRadius": 2.1,
+    "buildRadius": 2.15,
+    "turnSharpness": 16.0
   },
   "world": {
     "boundX": 14.2,
@@ -63,7 +93,45 @@
     "survivor": [7.1, 0.0, -2.8],
     "northBarricade": [0.0, 0.0, -10.7],
     "southBarricade": [0.0, 0.0, 11.7],
-    "forestGate": [0.0, 0.0, -14.8]
+    "forestGate": [0.0, 0.0, -14.8],
+    "woodNodes": [
+      [-5.9, 0.0, 6.0],
+      [-8.2, 0.0, 2.6],
+      [6.4, 0.0, 5.6],
+      [8.8, 0.0, 1.1],
+      [-8.1, 0.0, -6.4],
+      [8.2, 0.0, -6.1]
+    ],
+    "stoneNodes": [
+      [-4.8, 0.0, 8.2],
+      [5.0, 0.0, 8.0],
+      [-8.9, 0.0, -3.7],
+      [9.0, 0.0, -3.5]
+    ]
+  },
+  "openingLoopTuning": {
+    "resourceSecondsPerUnit": 0.62,
+    "woodUnitsPerNode": 18,
+    "stoneUnitsPerNode": 14,
+    "furnaceMaxDurability": 260.0,
+    "furnaceRepairPerWood": 42.0,
+    "furnaceDepositSecondsPerUnit": 0.16,
+    "furnaceRepairSecondsPerUnit": 0.34,
+    "furnaceLevel2": { "wood": 18, "stone": 6 },
+    "furnaceLevel3": { "wood": 38, "stone": 16 },
+    "furnaceLevel4": { "wood": 64, "stone": 28, "metal": 6 },
+    "warmthRadiusLevel1": 4.5,
+    "warmthRadiusPerAdditionalLevel": 3.5,
+    "survivorRescueSeconds": 2.2,
+    "automaticActionRescanSeconds": 0.075,
+    "automaticActionTargetHysteresis": 0.32,
+    "automaticActionMovementCancelThreshold": 0.12,
+    "automaticActionFacingWeight": 0.35
+  },
+  "performance": {
+    "minimumFrameRate": 60,
+    "balancedFrameRate": 90,
+    "maximumFrameRate": 120
   },
   "requiredLoop": [
     "screen-relative movement",
