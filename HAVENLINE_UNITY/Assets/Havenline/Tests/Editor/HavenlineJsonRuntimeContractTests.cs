@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -319,9 +322,67 @@ namespace Havenline.Tests
         private static Contract LoadContract()
         {
             Assert.That(File.Exists(ContractPath), Is.True, $"Missing runtime contract: {ContractPath}");
-            var contract = JsonUtility.FromJson<Contract>(File.ReadAllText(ContractPath));
+            var json = File.ReadAllText(ContractPath);
+            var contract = JsonUtility.FromJson<Contract>(json);
             Assert.That(contract, Is.Not.Null);
+            Assert.That(contract.characterSystem, Is.Not.Null);
+            Assert.That(contract.world, Is.Not.Null);
+
+            // Unity JsonUtility does not hydrate jagged arrays such as [[x,y,z], ...]. Keep the
+            // shared contract in its natural Three.js/JSON shape and parse only those vector-array
+            // fields with a deterministic bracket-depth reader instead of weakening the contract.
+            contract.characterSystem.companionFormationOffsets = ParseVectorArray(json, "companionFormationOffsets");
+            contract.world.woodNodes = ParseVectorArray(json, "woodNodes");
+            contract.world.stoneNodes = ParseVectorArray(json, "stoneNodes");
             return contract;
+        }
+
+        private static float[][] ParseVectorArray(string json, string propertyName)
+        {
+            var key = "\"" + propertyName + "\"";
+            var keyIndex = json.IndexOf(key, StringComparison.Ordinal);
+            Assert.That(keyIndex, Is.GreaterThanOrEqualTo(0), $"Runtime contract is missing '{propertyName}'.");
+
+            var arrayStart = json.IndexOf('[', keyIndex + key.Length);
+            Assert.That(arrayStart, Is.GreaterThan(keyIndex), $"Runtime contract '{propertyName}' is not an array.");
+
+            var rows = new List<float[]>();
+            var depth = 0;
+            var rowStart = -1;
+            for (var index = arrayStart; index < json.Length; index++)
+            {
+                var character = json[index];
+                if (character == '[')
+                {
+                    depth++;
+                    if (depth == 2)
+                        rowStart = index + 1;
+                    continue;
+                }
+
+                if (character != ']')
+                    continue;
+
+                if (depth == 2)
+                {
+                    Assert.That(rowStart, Is.GreaterThanOrEqualTo(0), $"Runtime contract '{propertyName}' contains a malformed vector row.");
+                    var rowText = json.Substring(rowStart, index - rowStart);
+                    var values = rowText.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(value => float.Parse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture))
+                        .ToArray();
+                    Assert.That(values, Has.Length.EqualTo(3), $"Runtime contract '{propertyName}' rows must contain exactly three values.");
+                    rows.Add(values);
+                    rowStart = -1;
+                }
+
+                depth--;
+                if (depth == 0)
+                    return rows.ToArray();
+                Assert.That(depth, Is.GreaterThanOrEqualTo(0), $"Runtime contract '{propertyName}' has unbalanced brackets.");
+            }
+
+            Assert.Fail($"Runtime contract '{propertyName}' array is not terminated.");
+            return Array.Empty<float[]>();
         }
 
         private static void AssertVector(float[] actual, Vector3 expected, string label)
