@@ -169,10 +169,10 @@ namespace Havenline.Editor
                 carryRoot.localRotation = Quaternion.Euler(0f, 180f, 0f);
                 var carryVisual = carryRoot.gameObject.AddComponent<HavenlineCarryVisual>();
                 carryVisual.Configure(
-                    BuildCarrySlots(carryRoot, manifest.logModel, "Wood", 8, 0.26f),
-                    BuildCarrySlots(carryRoot, manifest.stoneResourceModel, "Stone", 8, 0.18f),
-                    BuildCarrySlots(carryRoot, manifest.metalResourceModel, "Metal", 8, 0.17f),
-                    BuildCarrySlots(carryRoot, manifest.fuelResourceModel, "Fuel", 8, 0.19f));
+                    BuildCarrySlots(carryRoot, manifest.logModel, "Wood", Reference.VisibleCarrySlots, 0.26f),
+                    BuildCarrySlots(carryRoot, manifest.stoneResourceModel, "Stone", Reference.VisibleCarrySlots, 0.18f),
+                    BuildCarrySlots(carryRoot, manifest.metalResourceModel, "Metal", Reference.VisibleCarrySlots, 0.17f),
+                    BuildCarrySlots(carryRoot, manifest.fuelResourceModel, "Fuel", Reference.VisibleCarrySlots, 0.19f));
                 inventory.Configure(carryRoot, carryVisual, Reference.CarryCapacity);
 
                 var input = wrapper.AddComponent<HavenlineInputRouter>();
