@@ -11,7 +11,7 @@ namespace Havenline
     public sealed class HavenlineHud : MonoBehaviour
     {
         private const float FoldableAspectThreshold = 1.45f;
-        private const float TopPanelOpacity = 1f;
+        private const float TopPanelOpacity = 0.72f;
 
         [SerializeField] private Text resourceText;
         [SerializeField] private Text objectiveText;
@@ -52,6 +52,7 @@ namespace Havenline
             RebindControlledPlayer(controlledPlayer);
             lastLayoutAspect = -1f;
             ApplyAdaptiveTopLayout();
+            ApplyIdleVisibility();
         }
 
         public void RebindControlledPlayer(HavenlinePlayerController controlledPlayer)
@@ -67,8 +68,7 @@ namespace Havenline
             lastLabel = string.Empty;
             lastProgress = -1f;
 
-            if (contextualText != null)
-                SetPanelVisible(contextualText, false);
+            SetPanelVisible(contextualText, false);
             if (contextualProgress != null)
                 contextualProgress.gameObject.SetActive(false);
 
@@ -86,7 +86,11 @@ namespace Havenline
             ApplyAdaptiveTopLayout();
 
             if (!Application.isPlaying)
+            {
+                ApplyIdleVisibility();
                 return;
+            }
+
             if (player != null && player.AutomaticActions != null)
                 player.AutomaticActions.ContextChanged += HandleContext;
             if (director != null && director.Furnace != null)
@@ -109,11 +113,7 @@ namespace Havenline
                 director.Furnace.LevelChanged += HandleFurnaceLevel;
             }
 
-            SetPanelVisible(contextualText, false);
-            SetPanelVisible(transientStatusText, false);
-            SetPanelVisible(threatText, false);
-            if (contextualProgress != null)
-                contextualProgress.gameObject.SetActive(false);
+            ApplyIdleVisibility();
         }
 
         private void OnDisable()
@@ -137,6 +137,8 @@ namespace Havenline
         {
             lastLayoutAspect = -1f;
             ApplyAdaptiveTopLayout();
+            if (!Application.isPlaying)
+                ApplyIdleVisibility();
         }
 
         private void Update()
@@ -148,14 +150,16 @@ namespace Havenline
             var inventory = player.Inventory;
             if (resourceText != null)
             {
-                resourceText.text = inventory.Total == 0
-                    ? string.Empty
-                    : foldableTopLayout
+                var showResources = inventory.Total > 0;
+                SetPanelVisible(resourceText, showResources);
+                if (showResources)
+                {
+                    resourceText.text = foldableTopLayout
                         ? $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}\n" +
                           $"METAL {inventory[ResourceKind.Metal]}   LOAD {inventory.Total}"
                         : $"WOOD {inventory[ResourceKind.Wood]}   STONE {inventory[ResourceKind.Stone]}   " +
                           $"METAL {inventory[ResourceKind.Metal]}   LOAD {inventory.Total}";
-                resourceText.gameObject.SetActive(inventory.Total > 0);
+                }
             }
 
             if (objectiveText != null)
@@ -224,22 +228,32 @@ namespace Havenline
 
             if (foldableTopLayout)
             {
-                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(430f, 72f));
-                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(255f, 72f));
-                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(540f, 72f));
-                ConfigureTopText(resourceText, 18, HorizontalWrapMode.Wrap);
-                ConfigureTopText(objectiveText, 19, HorizontalWrapMode.Wrap);
-                ConfigureTopText(transientStatusText, 18, HorizontalWrapMode.Wrap);
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(22f, -22f), new Vector2(390f, 64f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-22f, -22f), new Vector2(235f, 62f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(470f, 62f));
+                ConfigureTopText(resourceText, 17, HorizontalWrapMode.Wrap);
+                ConfigureTopText(objectiveText, 18, HorizontalWrapMode.Wrap);
+                ConfigureTopText(transientStatusText, 17, HorizontalWrapMode.Wrap);
             }
             else
             {
-                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(26f, -24f), new Vector2(430f, 72f));
-                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -24f), new Vector2(500f, 68f));
-                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-26f, -24f), new Vector2(255f, 72f));
-                ConfigureTopText(resourceText, 22, HorizontalWrapMode.Overflow);
-                ConfigureTopText(objectiveText, 22, HorizontalWrapMode.Overflow);
-                ConfigureTopText(transientStatusText, 20, HorizontalWrapMode.Overflow);
+                SetTopRect(resourcesPanel, new Vector2(0f, 1f), new Vector2(22f, -22f), new Vector2(408f, 60f));
+                SetTopRect(objectivePanel, new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(460f, 60f));
+                SetTopRect(furnacePanel, new Vector2(1f, 1f), new Vector2(-22f, -22f), new Vector2(235f, 60f));
+                ConfigureTopText(resourceText, 19, HorizontalWrapMode.Overflow);
+                ConfigureTopText(objectiveText, 20, HorizontalWrapMode.Overflow);
+                ConfigureTopText(transientStatusText, 18, HorizontalWrapMode.Overflow);
             }
+        }
+
+        private void ApplyIdleVisibility()
+        {
+            SetPanelVisible(resourceText, false);
+            SetPanelVisible(contextualText, false);
+            SetPanelVisible(transientStatusText, false);
+            SetPanelVisible(threatText, false);
+            if (contextualProgress != null)
+                contextualProgress.gameObject.SetActive(false);
         }
 
         private void HandleContext(AutomaticActionKind action, string label, float progress)
