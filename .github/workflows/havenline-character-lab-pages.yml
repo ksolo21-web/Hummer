@@ -36,7 +36,7 @@ jobs:
           test -s HAVENLINE_WEB/character-lab/README.md
           test -s HAVENLINE_WEB/gameplay-sandbox/index.html
           test -s HAVENLINE_WEB/gameplay-sandbox/styles.css
-          test -s HAVENLINE_WEB/gameplay-sandbox/app.js
+          test -s HAVENLINE_WEB/gameplay-sandbox/runtime-v2.js
           test -s HAVENLINE_WEB/gameplay-sandbox/sim-core.js
           test -s HAVENLINE_WEB/gameplay-sandbox/contract-qa.mjs
           test -s HAVENLINE_WEB/gameplay-sandbox/README.md
@@ -50,11 +50,11 @@ jobs:
           grep -q 'three@0.185.0' HAVENLINE_WEB/character-lab/index.html
           grep -q 'three@0.185.0' HAVENLINE_WEB/gameplay-sandbox/index.html
           grep -q 'type="module" src="./app.js"' HAVENLINE_WEB/character-lab/index.html
-          grep -q 'type="module" src="./app.js"' HAVENLINE_WEB/gameplay-sandbox/index.html
+          grep -q 'type="module" src="./runtime-v2.js"' HAVENLINE_WEB/gameplay-sandbox/index.html
           grep -q 'GLTFLoader' HAVENLINE_WEB/character-lab/app.js
           grep -q 'SkeletonHelper' HAVENLINE_WEB/character-lab/app.js
-          grep -q 'GLTFLoader' HAVENLINE_WEB/gameplay-sandbox/app.js
-          grep -q 'runDeterministicContractQA' HAVENLINE_WEB/gameplay-sandbox/app.js
+          grep -q 'GLTFLoader' HAVENLINE_WEB/gameplay-sandbox/runtime-v2.js
+          grep -q 'runDeterministicContractQA' HAVENLINE_WEB/gameplay-sandbox/runtime-v2.js
 
       - name: JavaScript syntax checks
         shell: bash
@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           node --check HAVENLINE_WEB/character-lab/app.js
           node --check HAVENLINE_WEB/gameplay-sandbox/sim-core.js
-          node --check HAVENLINE_WEB/gameplay-sandbox/app.js
+          node --check HAVENLINE_WEB/gameplay-sandbox/runtime-v2.js
           node --check HAVENLINE_WEB/gameplay-sandbox/contract-qa.mjs
 
       - name: Verify Unity and browser contract mirrors
