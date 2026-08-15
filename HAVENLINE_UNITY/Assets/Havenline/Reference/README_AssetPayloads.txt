@@ -1,0 +1,1 @@
+Third-party payload policy: do not add raw marketplace/Fab/Asset Store packages to source control until license/source-control redistribution terms are recorded. Prefer reproducible package references where licensing and tooling support them; otherwise commit only the cleaned production subset when permitted.
