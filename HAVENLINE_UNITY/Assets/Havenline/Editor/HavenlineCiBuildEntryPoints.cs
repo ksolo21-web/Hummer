@@ -26,6 +26,7 @@ namespace Havenline.Editor
             HavenlineProceduralArtStudio.GenerateForCi();
             HavenlineR31ProductionArtUpgrade.ApplyToGeneratedProduction();
             HavenlineR32ProductionArtUpgrade.ApplyToGeneratedProduction();
+            HavenlineR32VisualRecoveryPass.ApplyToGeneratedProduction();
 
             var prepared = HavenlinePremiumBuildGate.InspectProductionContent();
             if (!prepared.Passed)
