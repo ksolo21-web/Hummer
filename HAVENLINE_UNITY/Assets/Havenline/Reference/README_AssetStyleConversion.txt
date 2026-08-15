@@ -1,0 +1,1 @@
+Style-conversion rule: third-party assets are raw production inputs. Final Havenline assets must use the approved stylized/animated material, lighting, palette, proportions, weathering, outline/rim/highlight, and animation language before promotion.
