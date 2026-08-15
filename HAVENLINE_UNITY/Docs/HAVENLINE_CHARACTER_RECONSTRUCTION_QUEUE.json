@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "status": "active_audition",
+  "referenceLock": "HAVENLINE_WHITEOUT_REFERENCE_LOCK.md",
+  "goal": "Preserve approved Havenline stylized character identity while producing riggable high-quality 3D meshes and 8K authoring texture masters.",
+  "sourceCharacters": [
+    {
+      "id": "character_1",
+      "turnaround": "image-gen-1(20260806-004835).png",
+      "views": ["front", "three_quarter", "side", "back"]
+    },
+    {
+      "id": "character_2",
+      "turnaround": "image-gen-2(20260806-004837).png",
+      "views": ["front", "three_quarter", "side", "back"]
+    },
+    {
+      "id": "character_3",
+      "turnaround": "Expedition Girl Character Turnaround.png",
+      "views": ["three_quarter", "front", "side", "back"]
+    },
+    {
+      "id": "character_4",
+      "turnaround": "Expedition Girl Character Turnaround(1).png",
+      "views": ["three_quarter", "front", "side", "back"]
+    }
+  ],
+  "tools": [
+    {
+      "rank": 1,
+      "name": "TripoSR",
+      "source": "https://github.com/VAST-AI-Research/TripoSR",
+      "role": "geometry_baseline",
+      "licenseClass": "MIT",
+      "commercialLane": true,
+      "observedVramGb": 6,
+      "textureAtlasConfigurable": true,
+      "notes": "Primary local geometry audition. Final 8K texture must be source-projected from approved turnarounds."
+    },
+    {
+      "rank": 2,
+      "name": "Stable Fast 3D",
+      "source": "https://github.com/Stability-AI/stable-fast-3d",
+      "role": "geometry_pbr_comparison",
+      "licenseClass": "Stability AI Community License",
+      "commercialLane": "conditional_under_current_revenue_threshold_and_registration",
+      "observedVramGb": 6,
+      "textureAtlasConfigurable": true,
+      "notes": "Use only after recording current license eligibility."
+    },
+    {
+      "rank": 3,
+      "name": "Meshy Free",
+      "source": "https://www.meshy.ai/",
+      "role": "cloud_geometry_and_rig_audition",
+      "licenseClass": "CC BY 4.0 free-tier output",
+      "commercialLane": true,
+      "attributionRequired": true,
+      "notes": "Free tier is an audition lane. Do not assume latest-model downloads, multiview or 8K are free."
+    },
+    {
+      "rank": 4,
+      "name": "UniRig",
+      "source": "https://github.com/VAST-AI-Research/UniRig",
+      "role": "skeleton_and_skinning",
+      "licenseClass": "MIT",
+      "commercialLane": true,
+      "minimumVramGb": 8,
+      "notes": "Inspect/refine predicted skeleton before final skinning."
+    },
+    {
+      "rank": 100,
+      "name": "CharacterGen",
+      "source": "https://github.com/zjp-shadow/CharacterGen",
+      "role": "stylized_character_rnd_benchmark",
+      "licenseClass": "Apache-2.0 top-level, blocked dependency",
+      "commercialLane": false,
+      "blocker": "Released requirements include NVIDIA nvdiffrast, whose current source license restricts use to non-commercial research/evaluation."
+    },
+    {
+      "rank": 101,
+      "name": "Unique3D",
+      "source": "https://github.com/AiuniAI/Unique3D",
+      "role": "high_fidelity_rnd_benchmark",
+      "licenseClass": "MIT top-level, blocked dependency",
+      "commercialLane": false,
+      "blocker": "Released requirements include NVIDIA nvdiffrast."
+    },
+    {
+      "rank": 102,
+      "name": "TRELLIS.2 native PBR",
+      "source": "https://github.com/microsoft/TRELLIS.2",
+      "role": "high_fidelity_rnd_benchmark",
+      "licenseClass": "MIT top-level, blocked native material dependencies",
+      "commercialLane": false,
+      "blocker": "Native PBR/render pipeline depends on NVIDIA nvdiffrast/nvdiffrec and is hardware-heavy."
+    },
+    {
+      "rank": 103,
+      "name": "Hunyuan3D 2.1",
+      "source": "https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1",
+      "role": "high_fidelity_rnd_benchmark",
+      "licenseClass": "Tencent Hunyuan 3D 2.1 Community License",
+      "commercialLane": false,
+      "blocker": "Territory restrictions create global-distribution risk; EU, UK and South Korea are excluded by current license."
+    }
+  ],
+  "masterTexture": {
+    "resolution": 8192,
+    "source": "approved turnaround projection",
+    "maps": ["baseColor", "normal", "roughness", "ao", "mask"],
+    "runtimePolicy": "derive 4K/2K ASTC variants and keep only visually justified resolution in Android build"
+  },
+  "acceptance": [
+    "front silhouette match",
+    "side silhouette match",
+    "back silhouette match",
+    "face identity preserved",
+    "hair identity preserved",
+    "winter outfit and gear layout preserved",
+    "clean stress-pose deformation",
+    "Unity Humanoid mapping valid",
+    "shipping-camera visual approval",
+    "Whiteout-reference presentation compatibility"
+  ]
+}
