@@ -4,15 +4,17 @@ using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace Havenline.Editor
 {
     /// <summary>
-    /// Keeps the editor-only C1-C4/shelter proof overlay out of production scene validation.
-    /// Scene-open validation sees the transient root inactive; Camera.Render activates it just
-    /// before proof capture so the proof gate still measures the real staged crew and premium
-    /// shelter aliases. Nothing is serialized and nothing enters the Android player.
+    /// Keeps the editor-only C1-C4 proof overlay out of production scene validation, then restores
+    /// it at the actual URP render boundary used by Camera.Render. The two retired-name shelter
+    /// aliases remain renderer-backed for bounds/identity analysis but are force-rendered off, so
+    /// proof measures the real premium shelters without drawing duplicate geometry. Nothing is
+    /// serialized and nothing enters the Android player.
     /// </summary>
     [InitializeOnLoad]
     internal static class ZZZZHavenlineProofPreviewIsolation
@@ -22,33 +24,65 @@ namespace Havenline.Editor
             RuntimeHelpers.RunClassConstructor(typeof(HavenlineApprovedCrewProofPreview).TypeHandle);
             EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneOpened += OnSceneOpened;
-            Camera.onPreCull -= OnCameraPreCull;
-            Camera.onPreCull += OnCameraPreCull;
+            RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+            RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         }
 
         private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
         {
             if (!scene.IsValid() || !string.Equals(scene.path, Reference.ScenePath, StringComparison.Ordinal))
                 return;
-            SetPreviewActive(scene, false);
+
+            var preview = FindPreview(scene);
+            if (preview == null)
+                return;
+
+            ConfigureShelterAliases(preview);
+            preview.SetActive(false);
         }
 
-        private static void OnCameraPreCull(Camera camera)
+        private static void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
         {
             if (camera == null)
                 return;
+
             var scene = camera.gameObject.scene;
             if (!scene.IsValid() || !string.Equals(scene.path, Reference.ScenePath, StringComparison.Ordinal))
                 return;
-            SetPreviewActive(scene, true);
+
+            var preview = FindPreview(scene);
+            if (preview == null)
+                return;
+
+            ConfigureShelterAliases(preview);
+            if (!preview.activeSelf)
+                preview.SetActive(true);
         }
 
-        private static void SetPreviewActive(Scene scene, bool active)
+        private static GameObject FindPreview(Scene scene) => scene.GetRootGameObjects()
+            .FirstOrDefault(root => root.name == HavenlineApprovedCrewProofPreview.RootName);
+
+        private static void ConfigureShelterAliases(GameObject preview)
         {
-            var preview = scene.GetRootGameObjects()
-                .FirstOrDefault(root => root.name == HavenlineApprovedCrewProofPreview.RootName);
-            if (preview != null && preview.activeSelf != active)
-                preview.SetActive(active);
+            foreach (var aliasName in new[]
+                     {
+                         HavenlineApprovedCrewProofPreview.LeftShelterProofName,
+                         HavenlineApprovedCrewProofPreview.RightShelterProofName
+                     })
+            {
+                var alias = preview.GetComponentsInChildren<Transform>(true)
+                    .FirstOrDefault(item => string.Equals(item.name, aliasName, StringComparison.Ordinal));
+                if (alias == null)
+                    continue;
+
+                foreach (var renderer in alias.GetComponentsInChildren<Renderer>(true))
+                {
+                    renderer.enabled = true;
+                    renderer.forceRenderingOff = true;
+                    renderer.shadowCastingMode = ShadowCastingMode.Off;
+                    renderer.receiveShadows = false;
+                }
+            }
         }
     }
 }
