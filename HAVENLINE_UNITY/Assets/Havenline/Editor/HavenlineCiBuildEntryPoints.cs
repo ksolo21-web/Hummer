@@ -45,6 +45,7 @@ namespace Havenline.Editor
             try
             {
                 PrepareGeneratedProductionContent();
+                HavenlineDeviceTestCharacterMaterialRestorer.PrepareForProof();
                 HavenlineBuildPipeline.BuildAndroidReviewCandidate();
             }
             finally
