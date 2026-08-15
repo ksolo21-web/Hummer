@@ -1,0 +1,1 @@
+Havenline runtime now requests 60/90/120 FPS based on the active display refresh rate. 60 FPS is the production floor; 90/120 FPS are high-refresh targets, not guarantees for every device. Device-level profiling and thermal validation remain mandatory before shipping high-refresh modes.
