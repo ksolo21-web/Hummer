@@ -1,10 +1,18 @@
-# HAVENLINE — clean Unity reference rebuild
+# HAVENLINE — authoritative Unity rebuild
 
-This is the production restart of HAVENLINE in the repository path already connected to the Unity project: `HAVENLINE_UNITY`.
+This is the active HAVENLINE Unity project at `HAVENLINE_UNITY` on branch `havenline-unity-reference-rebuild`.
 
-The folder name is retained for Unity connectivity, but its implementation is entirely new. It does **not** reuse the abandoned generator, Godot scenes, Godot runtime, generated prefabs, local auto-build scripts, or previous build outputs.
+## Two separate authorities
 
-## Reference identity
+HAVENLINE intentionally separates gameplay truth from visual truth:
+
+- **Gameplay authority:** the preserved verified HAVENLINE reference game and `Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json`.
+- **Visual-style authority:** the approved example video and `Assets/Havenline/Reference/HAVENLINE_VISUAL_DIRECTION_CONTRACT.json`.
+- **Hero identity authority:** the approved 2D turnaround artwork for Characters 1–4.
+
+The gameplay reference does **not** authorize a realistic survival-game appearance. The example video and approved character artwork control how the final game must look.
+
+## Technical identity
 
 - Reference APK: `HAVENLINE-v0.3.0-reference-final-ARM64.apk`
 - Reference APK size: `107,695,534` bytes
@@ -13,49 +21,61 @@ The folder name is retained for Unity connectivity, but its implementation is en
 - Render pipeline: URP 17.3
 - Android: ARM64, IL2CPP, landscape, API 26+
 
-The machine-readable reference is `Assets/Havenline/Reference/HAVENLINE_REFERENCE_CONTRACT.json`.
+## Required gameplay retained
 
-## Required gameplay
-
-The first vertical slice contains the original compact frozen-outpost presentation and loop:
-
-- close three-quarter orthographic camera;
-- screen-relative keyboard, controller, and touch movement;
-- bounded world and safe fall recovery;
+- close three-quarter orthographic/isometric camera;
+- screen-relative keyboard, controller and touch movement;
+- bounded world and fall recovery;
 - automatic nearby gathering;
 - visible carried supplies;
-- automatic furnace delivery;
-- furnace upgrades and visible warmth expansion;
-- rescueable survivor and autonomous helper behavior;
-- repairable barricades;
-- animated wolf attacks and escalating waves;
-- compact safe-area-aware Galaxy Z Fold HUD.
+- automatic furnace delivery and repair;
+- furnace upgrades and warmth expansion;
+- active four-character crew behavior;
+- autonomous helper behavior;
+- repairable/buildable barricades;
+- wolf attacks and escalating pressure;
+- compact safe-area-aware Galaxy Z Fold HUD;
+- adaptive 60/90/120 Hz operation.
 
-## Deterministic scene and build
+## Required visual direction
 
-The project authors the exact Unity scene from normal source files and checksum-locked CC0 reference art:
+HAVENLINE must read as a **stylized animated 3D survival game**, not a realistic human survival game.
 
-- scene authoring: `Havenline.Editor.HavenlineSceneAuthoring.Author`
-- asset bootstrap: `Havenline.Editor.HavenlineAssetBootstrap.Bootstrap`
-- Android build: `Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate`
+The following are automatic visual rejection conditions:
 
-Unity Build Automation target:
+- photorealistic or real-world survival presentation;
+- generic Unity asset-pack visual identity;
+- realistic marketplace heroes replacing the approved crew;
+- characters and environment using mismatched art styles;
+- technically valid models that fail to match the approved 2D identities;
+- prototype/blockout-looking world art being treated as production-ready.
+
+Characters, terrain, snow/ice, trees, rocks, buildings, props, wolves, furnace, VFX, lighting and HUD must belong to one coherent animated world.
+
+## Character production
+
+Characters 1–4 are built from the approved 2D identities. A custom mesh or a heavily remodeled rigged base is acceptable when it reproduces the approved design. Fab/marketplace hero replacement is not acceptable. Fab may support animation and non-hero environment/prop work.
+
+Production path:
+
+`approved 2D -> custom/remodeled stylized 3D -> stylized materials -> humanoid rig -> Unity four-view proof -> gameplay/deformation proof -> human approval`
+
+## Rejected legacy art chain
+
+The former `ProceduralArtStudio -> R31 -> R32 -> VisualRecovery` production generation chain is retired from clean-checkout CI/build preparation because its output drifted toward the wrong realistic/prototype survival presentation.
+
+The old source files may remain for history or selective technical reuse, but the authoritative build entry point must not execute that chain. The production-art manifest is intentionally blocked until a replacement stylized set receives visual approval.
+
+## Build target
 
 - repository: `ksolo21-web/Hummer`
 - branch: `havenline-unity-reference-rebuild`
 - project path: `HAVENLINE_UNITY`
 - editor: `6000.3.18f1`
-- platform: Android
-- custom build method: `Havenline.Editor.HavenlineBuildPipeline.BuildAndroidReviewCandidate`
+- platform: Android ARM64
 
-Expected outputs:
-
-- `Builds/Android/HAVENLINE-Unity-reference-review-arm64.apk`
-- `Builds/Android/HAVENLINE-Unity-reference-review-arm64.apk.sha256`
-- `Builds/Review/HAVENLINE-reference-frozen-outpost.png`
-- `Builds/Review/HAVENLINE-reference-close-camera.png`
-- `Builds/Review/HAVENLINE-evidence.json`
+Android proof/release builds are intentionally fail-closed while production art is blocked. Opening the Unity project and continuing source/art development does not require pretending the rejected art set is approved.
 
 ## Truth gate
 
-Source code is not a completed game build. This project remains unapproved until the same commit produces a compiled Unity scene, two Unity-rendered frames, an installable APK, build evidence, and a successful physical Galaxy Z Fold test.
+Source compilation and automated tests are not visual approval. A release remains blocked until the exact commit produces acceptable Unity gameplay frames, approved Characters 1–4, an installable ARM64 APK, machine-readable evidence, and successful physical Galaxy Z Fold acceptance.
