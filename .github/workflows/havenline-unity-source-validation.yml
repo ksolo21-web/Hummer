@@ -76,24 +76,65 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: HAVENLINE Unity ${{ matrix.testMode }} validation
 
-      - name: Commit Unity-generated missing meta files
+      - name: Normalize Unity-generated missing meta files and prove source-tree cleanliness
         if: matrix.testMode == 'editmode' && always()
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -d '' missing_meta < <(git ls-files --others --exclude-standard -z -- HAVENLINE_UNITY/Assets | grep -z '\.meta$' || true)
-          if [ "${#missing_meta[@]}" -eq 0 ]; then
-            echo "No untracked Unity .meta files were generated."
-            exit 0
+
+          # Use Python to parse Git's NUL-delimited output. The previous grep/mapfile pipeline
+          # could concatenate paths and make `git add` interpret a filename as a revision.
+          python3 - <<'PY'
+          import subprocess
+
+          raw = subprocess.check_output([
+              'git', 'ls-files', '--others', '--exclude-standard', '-z', '--',
+              'HAVENLINE_UNITY/Assets'
+          ])
+          paths = [item.decode('utf-8', errors='surrogateescape')
+                   for item in raw.split(b'\0') if item]
+          meta = [path for path in paths if path.endswith('.meta')]
+          print(f'Unity generated {len(meta)} previously-untracked .meta files.')
+          if meta:
+              subprocess.check_call(['git', 'add', '--', *meta])
+          PY
+
+          # Capture anything Unity changed beyond the missing .meta files. We do not silently
+          # commit other generated source changes: they require an explicit repository decision.
+          git status --porcelain=v1 --untracked-files=all -- \
+            HAVENLINE_UNITY/Assets \
+            HAVENLINE_UNITY/Packages \
+            HAVENLINE_UNITY/ProjectSettings \
+            | grep -v '^?? .*\.meta$' > /tmp/havenline_remaining_source_changes.txt || true
+
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore(havenline): track Unity-generated meta files'
+
+            # This is an ephemeral runner. Remove only Unity-import source-tree leftovers so a
+            # rebase cannot be blocked by generated files that are deliberately not being kept.
+            git reset --hard HEAD
+            git clean -fd -- \
+              HAVENLINE_UNITY/Assets \
+              HAVENLINE_UNITY/Packages \
+              HAVENLINE_UNITY/ProjectSettings
+
+            git fetch origin havenline-unity-reference-rebuild
+            git rebase origin/havenline-unity-reference-rebuild
+            git push origin HEAD:havenline-unity-reference-rebuild
+          else
+            echo 'No untracked Unity .meta files were generated.'
           fi
 
-          printf 'Unity generated %s previously-untracked .meta files; committing them so a clean checkout stays clean.\n' "${#missing_meta[@]}"
-          printf '%s\0' "${missing_meta[@]}" | xargs -0 git add --
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'chore(havenline): track Unity-generated meta files'
-          git pull --rebase origin havenline-unity-reference-rebuild
-          git push origin HEAD:havenline-unity-reference-rebuild
+          if [ -s /tmp/havenline_remaining_source_changes.txt ]; then
+            echo 'Unity changed additional non-meta source files on a clean import:' >&2
+            cat /tmp/havenline_remaining_source_changes.txt >&2
+            echo 'These changes were NOT committed automatically. The branch is not yet clean-checkout proven.' >&2
+            exit 1
+          fi
+
+          echo 'Unity import produced no remaining non-ignored source-tree changes.'
 
       - name: Upload ${{ matrix.testMode }} test, compiler and studio diagnostics
         if: always()
