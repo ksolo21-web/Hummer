@@ -1,0 +1,1 @@
+License gate: source URL, publisher, version/date, license/EULA, commercial-use permission, source-control/redistribution permission, and attribution requirements must be recorded before a third-party payload is committed or promoted.
