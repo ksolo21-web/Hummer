@@ -1,0 +1,1 @@
+Promotion rule: only the intentionally selected, restyled, licensed, benchmarked, and visually approved subset of any candidate pack may enter Havenline production. Demo scenes, redundant textures/materials, unused shaders/scripts, and unrelated pack content remain excluded.
