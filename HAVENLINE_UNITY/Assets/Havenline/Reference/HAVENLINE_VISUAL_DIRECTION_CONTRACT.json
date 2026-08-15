@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "visualDirectionVersion": "1.0",
+  "product": "HAVENLINE",
+  "authority": {
+    "exampleVideoIsVisualAuthority": true,
+    "approved2DCharacterTurnaroundsAreIdentityAuthority": true,
+    "referenceGameRemainsGameplayAuthority": true
+  },
+  "style": {
+    "targetStyle": "stylized-animated-3d-survival",
+    "photorealisticSurvivalAestheticAllowed": false,
+    "genericUnityAssetPackLookAllowed": false,
+    "environmentMustMatchAnimatedLanguage": true,
+    "oneUnifiedAnimatedArtLanguage": true,
+    "styleMismatchIsAutomaticRejection": true
+  },
+  "characters": {
+    "customOrRemodeledCharactersAllowed": true,
+    "fabHeroReplacementAllowed": false,
+    "fabSupportingAssetsAllowed": true,
+    "mustMatchApproved2DIdentity": true,
+    "requiredPipeline": "approved-2d->custom-or-remodeled-3d->stylized-materials->humanoid-rig->unity-four-view-and-gameplay-review"
+  },
+  "fab": {
+    "role": "supporting-assets-only",
+    "allowedExamples": [
+      "animations",
+      "generic props",
+      "trees",
+      "rocks",
+      "debris",
+      "tools",
+      "supporting environment pieces"
+    ],
+    "disallowedExamples": [
+      "replacement main characters",
+      "hero identity source",
+      "photorealistic environment direction"
+    ]
+  },
+  "world": {
+    "charactersStylized": true,
+    "snowIceRocksTreesTerrainStylized": true,
+    "buildingsAndPropsStylized": true,
+    "wolvesStylized": true,
+    "furnaceFireSmokeSnowFxStylized": true,
+    "lightingStylizedCinematic": true,
+    "mobileGameplayReadabilityRequired": true
+  },
+  "humanGate": {
+    "humanVisualApprovalRequired": true,
+    "shippingVisualStatus": "blocked",
+    "approvedBy": "",
+    "approvalNote": "The current realistic/prototype survival-game drift is rejected. Shipping stays blocked until the four approved 2D character identities are reproduced in stylized 3D and the complete environment matches the animated example-video language in actual Unity gameplay frames."
+  }
+}
