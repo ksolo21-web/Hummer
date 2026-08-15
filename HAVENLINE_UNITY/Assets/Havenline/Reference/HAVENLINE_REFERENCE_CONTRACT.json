@@ -14,7 +14,8 @@
     "shippingAuthoring": "Assets/Havenline/Editor/HavenlinePremiumSceneAuthoring.cs",
     "onboardingSource": "Assets/Havenline/Runtime/HavenlineOnboardingController.cs",
     "gameplayLock": "REFERENCE_GAMEPLAY_LOCK.md",
-    "rule": "The reference game is the gameplay and presentation target. Top-level runtime values mirror the current approved Unity implementation; browser QA tools consume an exact mirror and must fail validation on drift."
+    "visualDirection": "Assets/Havenline/Reference/HAVENLINE_VISUAL_DIRECTION_CONTRACT.json",
+    "rule": "The verified reference game remains the gameplay target. The approved example video plus the approved 2D character turnarounds are the visual target. Top-level runtime values mirror the current approved Unity implementation; browser QA tools consume an exact mirror and must fail validation on drift."
   },
   "referenceBaseline": {
     "camera": {
@@ -195,6 +196,9 @@
     "productionCharacterPrefabsForAllFour": true,
     "selectedLeadAndThreeCompanionsProvenInGameplay": true,
     "verifiedGoogleOAuthPackageAndCertificate": true,
-    "physicalGalaxyZFoldAcceptance": true
+    "physicalGalaxyZFoldAcceptance": true,
+    "approved2DCharacterIdentityMatch": true,
+    "animatedVisualDirectionHumanApproval": true,
+    "photorealisticSurvivalDriftRejected": true
   }
 }
