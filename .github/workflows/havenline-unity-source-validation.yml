@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   checks: write
 
 concurrency:
@@ -75,6 +75,25 @@ jobs:
           artifactsPath: artifacts/${{ matrix.testMode }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: HAVENLINE Unity ${{ matrix.testMode }} validation
+
+      - name: Commit Unity-generated missing meta files
+        if: matrix.testMode == 'editmode' && always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' missing_meta < <(git ls-files --others --exclude-standard -z -- HAVENLINE_UNITY/Assets | grep -z '\.meta$' || true)
+          if [ "${#missing_meta[@]}" -eq 0 ]; then
+            echo "No untracked Unity .meta files were generated."
+            exit 0
+          fi
+
+          printf 'Unity generated %s previously-untracked .meta files; committing them so a clean checkout stays clean.\n' "${#missing_meta[@]}"
+          printf '%s\0' "${missing_meta[@]}" | xargs -0 git add --
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(havenline): track Unity-generated meta files'
+          git pull --rebase origin havenline-unity-reference-rebuild
+          git push origin HEAD:havenline-unity-reference-rebuild
 
       - name: Upload ${{ matrix.testMode }} test, compiler and studio diagnostics
         if: always()
