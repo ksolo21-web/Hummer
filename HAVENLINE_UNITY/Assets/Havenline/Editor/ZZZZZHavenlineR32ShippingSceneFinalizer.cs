@@ -82,6 +82,7 @@ namespace Havenline.Editor
 
             AddShelterRibs(scene);
             AddPerimeterDressing(root.transform);
+            AddCloseRangeCampDetail(root.transform, scene);
             VaryPineSilhouettes(scene);
             TuneAtmosphere(scene);
         }
@@ -180,6 +181,85 @@ namespace Havenline.Editor
                     21f + index * 47f,
                     0f);
                 item.transform.localScale *= index % 2 == 0 ? 0.78f : 0.62f;
+            }
+        }
+
+        private static void AddCloseRangeCampDetail(Transform parent, Scene scene)
+        {
+            var objects = AllObjects(scene);
+            var furnace = objects.FirstOrDefault(item => item != null && item.name == "Furnace");
+            var campfire = objects.FirstOrDefault(item => item != null && item.name == "Campfire");
+            var storage = objects.FirstOrDefault(item => item != null && item.name == "SupplyStorage");
+            if (furnace == null || campfire == null || storage == null)
+                throw new InvalidOperationException("R32 close-range detail requires Furnace, Campfire and SupplyStorage anchors.");
+
+            // A compact two-course firewood cache. It lives near the furnace so the close camera
+            // resolves individual logs and shadows instead of seeing a single broad snow surface.
+            var woodBase = furnace.transform.position + new Vector3(-1.72f, 0.10f, 0.58f);
+            for (var index = 0; index < 10; index++)
+            {
+                var row = index / 5;
+                var column = index % 5;
+                var log = InstantiateProductionModel(
+                    ResourceRoot + "/HAVENLINE_Log.obj",
+                    parent,
+                    $"R32CloseFirewood_{index + 1:00}");
+                log.transform.position = woodBase + new Vector3(
+                    (column - 2f) * 0.31f + row * 0.07f,
+                    row * 0.22f,
+                    (column % 2 == 0 ? -0.05f : 0.05f));
+                log.transform.rotation = Quaternion.Euler(
+                    88f + (column % 2) * 3f,
+                    68f + column * 6f + row * 9f,
+                    row == 0 ? 2f : -3f);
+                log.transform.localScale *= 0.46f + (index % 3) * 0.035f;
+            }
+
+            // Replace the old broad, unreadable campfire footprint with visible stone-scale detail.
+            // These are production rock meshes, not proof geometry or primitive edge noise.
+            for (var index = 0; index < 8; index++)
+            {
+                var angle = index * Mathf.PI * 2f / 8f + 0.15f;
+                var rock = InstantiateProductionModel(
+                    EnvironmentRoot + "/HAVENLINE_Rock_B.obj",
+                    parent,
+                    $"R32CampfireStone_{index + 1:00}");
+                rock.transform.position = campfire.transform.position + new Vector3(
+                    Mathf.Cos(angle) * 0.82f,
+                    0.055f,
+                    Mathf.Sin(angle) * 0.82f);
+                rock.transform.rotation = Quaternion.Euler(
+                    (index % 3 - 1) * 4f,
+                    17f + index * 43f,
+                    (index % 2 == 0 ? 3f : -4f));
+                rock.transform.localScale *= 0.34f + (index % 4) * 0.025f;
+            }
+
+            // Small supply-service pieces break up the otherwise empty center foreground while
+            // reinforcing the inhabited-outpost story. Four authored debris models are alternated
+            // twice at different rotations/scales so the cluster does not read as duplicated props.
+            var serviceOffsets = new[]
+            {
+                new Vector3(-0.88f,0.04f,-0.56f),
+                new Vector3(-0.35f,0.04f,-0.84f),
+                new Vector3(0.34f,0.04f,-0.78f),
+                new Vector3(0.82f,0.04f,-0.44f),
+                new Vector3(-0.66f,0.04f,0.60f),
+                new Vector3(0.62f,0.04f,0.66f)
+            };
+            for (var index = 0; index < serviceOffsets.Length; index++)
+            {
+                var modelIndex = index % 4 + 1;
+                var item = InstantiateProductionModel(
+                    PropsRoot + $"/HAVENLINE_SupplyDebris_{modelIndex:00}.obj",
+                    parent,
+                    $"R32CloseSupplyDetail_{index + 1:00}");
+                item.transform.position = storage.transform.position + serviceOffsets[index];
+                item.transform.rotation = Quaternion.Euler(
+                    index % 2 == 0 ? 0f : 5f,
+                    23f + index * 51f,
+                    index % 3 == 0 ? 4f : -2f);
+                item.transform.localScale *= 0.42f + (index % 3) * 0.055f;
             }
         }
 
