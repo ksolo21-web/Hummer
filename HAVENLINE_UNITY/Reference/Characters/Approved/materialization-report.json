@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "approvedReferenceCount": 4,
+  "allVerified": true,
+  "references": [
+    {
+      "character": "Character1",
+      "destination": "HAVENLINE_UNITY/Reference/Characters/Approved/Character1.jpg",
+      "format": "JPEG",
+      "bytes": 17937,
+      "sha256": "36dd42d6d8f80651140958396742d37d14ae2c2676e167fe162a8d96b51df77f",
+      "payloadParts": [
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character1.part01.b64",
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character1.part02.b64",
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character1.part03.b64"
+      ],
+      "verified": true
+    },
+    {
+      "character": "Character2",
+      "destination": "HAVENLINE_UNITY/Reference/Characters/Approved/Character2.webp",
+      "format": "WEBP",
+      "bytes": 10762,
+      "sha256": "a3b492768c5d0bf9fb8cfc9cc294500590987f51e9b4c0668b8125537e7d72b8",
+      "payloadParts": [
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character2.part01.b64",
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character2.part02.b64"
+      ],
+      "verified": true
+    },
+    {
+      "character": "Character3",
+      "destination": "HAVENLINE_UNITY/Reference/Characters/Approved/Character3.webp",
+      "format": "WEBP",
+      "bytes": 11506,
+      "sha256": "f51c249f4a1a904c40edb0cd35d1bfed0fbdfeb64c4f17dd052cc9b8a27c3d85",
+      "payloadParts": [
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character3.part01.b64",
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character3.part02.b64"
+      ],
+      "verified": true
+    },
+    {
+      "character": "Character4",
+      "destination": "HAVENLINE_UNITY/Reference/Characters/Approved/Character4.webp",
+      "format": "WEBP",
+      "bytes": 11508,
+      "sha256": "2341399aefa304670c90835dfb14e24e31997d51d5ba2ae90a755d6e1ffcb671",
+      "payloadParts": [
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character4.part01.b64",
+        "/home/runner/work/Hummer/Hummer/.tooling/havenline-character-reference-payload/Character4.part02.b64"
+      ],
+      "verified": true
+    }
+  ]
+}
