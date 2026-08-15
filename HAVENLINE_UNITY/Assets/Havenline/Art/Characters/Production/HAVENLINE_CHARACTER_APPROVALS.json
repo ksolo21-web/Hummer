@@ -2,6 +2,9 @@
   "schemaVersion": 1,
   "reviewContractVersion": "1.0",
   "humanVisualApprovalRequired": true,
+  "characterIdentityAuthority": "approved-2d-turnaround-sheets",
+  "fabHeroReplacementAllowed": false,
+  "customOrRemodeledProductionCharactersAllowed": true,
   "characters": [
     {
       "character": "Character1",
@@ -16,7 +19,7 @@
       "approved": false,
       "approvedBy": "",
       "approvedUtc": "",
-      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+      "approvalNote": "Pending side-by-side review. The approved 2D turnaround is the identity authority; the production mesh may be custom-built or remodeled from a rigged base, but a Fab/marketplace hero replacement is not acceptable."
     },
     {
       "character": "Character2",
@@ -31,7 +34,7 @@
       "approved": false,
       "approvedBy": "",
       "approvedUtc": "",
-      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+      "approvalNote": "Pending side-by-side review. The approved 2D turnaround is the identity authority; the production mesh may be custom-built or remodeled from a rigged base, but a Fab/marketplace hero replacement is not acceptable."
     },
     {
       "character": "Character3",
@@ -46,7 +49,7 @@
       "approved": false,
       "approvedBy": "",
       "approvedUtc": "",
-      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+      "approvalNote": "Pending side-by-side review. The approved 2D turnaround is the identity authority; the production mesh may be custom-built or remodeled from a rigged base, but a Fab/marketplace hero replacement is not acceptable."
     },
     {
       "character": "Character4",
@@ -61,7 +64,7 @@
       "approved": false,
       "approvedBy": "",
       "approvedUtc": "",
-      "approvalNote": "Pending side-by-side review of Blender and Unity front, three-quarter, side, and back proofs."
+      "approvalNote": "Pending side-by-side review. The approved 2D turnaround is the identity authority; the production mesh may be custom-built or remodeled from a rigged base, but a Fab/marketplace hero replacement is not acceptable."
     }
   ]
 }
