@@ -15,13 +15,17 @@ namespace Havenline.Editor
     /// Keeps the shipping HUD visually subordinate to the play space. The reference-game target
     /// communicates warmth, gathering and combat primarily through the world and the character,
     /// so HAVENLINE must not rebuild into a dashboard of large permanent cards or fake action
-    /// buttons. This pass is deterministic and runs whenever the shipping scene is saved.
+    /// buttons. Compact top cards are intentionally opaque: their small footprint preserves the
+    /// play space while preventing bright world geometry from reading through the text/glyphs.
+    /// Secondary/transient HUD remains translucent.
     /// </summary>
     [InitializeOnLoad]
     internal static class HavenlineExampleGameHudPolish
     {
         internal const string GameplayHudName = "GameplayHUD";
-        internal const float MaximumPermanentPanelAlpha = 0.76f;
+        internal const float TopCardAlpha = 1f;
+        internal const float MinimumReadableTopCardAlpha = 0.99f;
+        internal const float MaximumSecondaryPanelAlpha = 0.84f;
 
         static HavenlineExampleGameHudPolish()
         {
@@ -57,12 +61,12 @@ namespace Havenline.Editor
                 return;
 
             var pill = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-            PolishPanel(hudRoot, "ObjectivePanel", new Vector2(460f, 60f), 0.72f, pill, true);
-            PolishPanel(hudRoot, "ResourcesPanel", new Vector2(408f, 60f), 0.70f, pill, false);
-            PolishPanel(hudRoot, "FurnacePanel", new Vector2(235f, 60f), 0.70f, pill, false);
-            PolishPanel(hudRoot, "ContextPanel", new Vector2(430f, 64f), 0.72f, pill, false);
-            PolishPanel(hudRoot, "HelperPanel", new Vector2(228f, 56f), 0.68f, pill, false);
-            PolishPanel(hudRoot, "ThreatPanel", new Vector2(228f, 56f), 0.72f, pill, false);
+            PolishPanel(hudRoot, "ObjectivePanel", new Vector2(460f, 60f), TopCardAlpha, pill, true, true);
+            PolishPanel(hudRoot, "ResourcesPanel", new Vector2(408f, 60f), TopCardAlpha, pill, false, true);
+            PolishPanel(hudRoot, "FurnacePanel", new Vector2(235f, 60f), TopCardAlpha, pill, false, true);
+            PolishPanel(hudRoot, "ContextPanel", new Vector2(430f, 64f), 0.72f, pill, false, false);
+            PolishPanel(hudRoot, "HelperPanel", new Vector2(228f, 56f), 0.68f, pill, false, false);
+            PolishPanel(hudRoot, "ThreatPanel", new Vector2(228f, 56f), 0.72f, pill, false, false);
 
             var warmth = Find(hudRoot, "WarmthIndicator");
             if (warmth != null)
@@ -121,7 +125,8 @@ namespace Havenline.Editor
             Vector2 size,
             float alpha,
             Sprite sprite,
-            bool active)
+            bool active,
+            bool topCard)
         {
             var panel = Find(root, name);
             if (panel == null)
@@ -134,7 +139,10 @@ namespace Havenline.Editor
             var image = panel.GetComponent<Image>();
             if (image != null)
             {
-                image.color = new Color(0.025f, 0.075f, 0.105f, Mathf.Min(alpha, MaximumPermanentPanelAlpha));
+                var finalAlpha = topCard
+                    ? Mathf.Max(alpha, MinimumReadableTopCardAlpha)
+                    : Mathf.Min(alpha, MaximumSecondaryPanelAlpha);
+                image.color = new Color(0.025f, 0.075f, 0.105f, finalAlpha);
                 if (sprite != null)
                 {
                     image.sprite = sprite;
@@ -172,7 +180,7 @@ namespace Havenline.Editor
     /// <summary>
     /// Release invariant for the reference-game HUD language. Functional HUD validation still
     /// lives in the normal scene gate; this one prevents visual drift back to permanent cards,
-    /// decorative rails or action-looking controls.
+    /// decorative rails or action-looking controls while preserving top-card readability.
     /// </summary>
     public sealed class HavenlineExampleGameHudGate : IProcessSceneWithReport
     {
@@ -227,9 +235,9 @@ namespace Havenline.Editor
                     string.Join(", ", activeButtons));
             }
 
-            CheckPanel(hud, "ObjectivePanel", 480f, 64f, failures);
-            CheckPanel(hud, "ResourcesPanel", 420f, 64f, failures);
-            CheckPanel(hud, "FurnacePanel", 250f, 64f, failures);
+            CheckTopPanel(hud, "ObjectivePanel", 480f, 64f, failures);
+            CheckTopPanel(hud, "ResourcesPanel", 420f, 64f, failures);
+            CheckTopPanel(hud, "FurnacePanel", 250f, 64f, failures);
 
             var objective = Find(hud, "ObjectivePanel");
             if (objective == null || !objective.activeSelf)
@@ -248,7 +256,7 @@ namespace Havenline.Editor
             return failures.Distinct().OrderBy(item => item, StringComparer.Ordinal).ToArray();
         }
 
-        private static void CheckPanel(
+        private static void CheckTopPanel(
             GameObject hud,
             string name,
             float maximumWidth,
@@ -265,8 +273,8 @@ namespace Havenline.Editor
             if (rect == null || rect.sizeDelta.x > maximumWidth || rect.sizeDelta.y > maximumHeight)
                 failures.Add($"{name} exceeds compact HUD size limit {maximumWidth:0}×{maximumHeight:0}.");
             var image = panel.GetComponent<Image>();
-            if (image != null && image.color.a > 0.84f)
-                failures.Add($"{name} is too opaque and covers too much of the play space.");
+            if (image == null || image.color.a < HavenlineExampleGameHudPolish.MinimumReadableTopCardAlpha)
+                failures.Add($"{name} must be opaque enough to keep world geometry from reading through HUD text.");
         }
 
         private static void RequireInactive(
