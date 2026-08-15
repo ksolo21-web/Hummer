@@ -187,3 +187,5 @@ jobs:
             HAVENLINE_UNITY/Logs/**
             HAVENLINE_UNITY/Builds/Review/HAVENLINE-Studio/**
             Builds/Review/HAVENLINE-Studio/**
+
+# Intentional authored trigger: validate the normalized branch HEAD after CI baseline repair.
