@@ -1,4 +1,4 @@
-name: HAVENLINE Production Character Pipeline Router
+name: HAVENLINE Character Authority and Candidate Router
 
 on:
   workflow_dispatch:
@@ -8,24 +8,24 @@ on:
     paths:
       - '.tooling/havenline-character-production/**'
       - '.tooling/havenline-character-reference-payload/**'
+      - 'HAVENLINE_UNITY/Assets/Havenline/Art/Characters/Production/HAVENLINE_CHARACTER_APPROVALS.json'
       - '.github/workflows/generate-havenline-character-production.yml'
-      - '.github/workflows/generate-havenline-support-characters-sf3d.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: havenline-production-character-router-${{ github.ref }}
+  group: havenline-character-authority-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate-routing-contract:
+  validate-character-authority:
     runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify active reconstruction routes and production boundaries
+      - name: Verify approved 2D identity authority and candidate-only generators
         shell: python
         run: |
           import json
@@ -33,83 +33,42 @@ jobs:
 
           root = Path('.tooling/havenline-character-production')
           versions = json.loads((root / 'runtime-versions.json').read_text())
-          reconstruction = versions['reconstruction']
+          approvals = json.loads(Path(
+              'HAVENLINE_UNITY/Assets/Havenline/Art/Characters/Production/HAVENLINE_CHARACTER_APPROVALS.json'
+          ).read_text())
 
           assert versions['schemaVersion'] == 3
+          assert versions['identityAuthority'] == 'approved-2d-turnaround-sheets'
+          assert versions['generatorRole'] == 'candidate-base-generation-only'
+          assert versions['customRemodelingAllowed'] is True
+          assert versions['fabHeroReplacementAllowed'] is False
           assert versions['blender']['version'] == '4.5.12'
-          assert reconstruction['Character1']['generator'] == 'Stability-AI/stable-fast-3d'
+          assert 'custom mesh construction and remodeling' in versions['blender']['purpose']
+
+          assert approvals['characterIdentityAuthority'] == 'approved-2d-turnaround-sheets'
+          assert approvals['fabHeroReplacementAllowed'] is False
+          assert approvals['customOrRemodeledProductionCharactersAllowed'] is True
+          assert approvals['humanVisualApprovalRequired'] is True
+
+          expected = {'Character1', 'Character2', 'Character3', 'Character4'}
+          entries = approvals['characters']
+          assert {entry['character'] for entry in entries} == expected
+          for entry in entries:
+              assert entry['approved'] is False
+              assert not entry['approvedBy']
+              assert 'approved 2D turnaround is the identity authority' in entry['approvalNote']
+
+          reconstruction = versions['reconstruction']
+          assert set(reconstruction) == expected
           assert reconstruction['Character1']['rejectedPrimary']['humanVisualReviewStatus'] == 'rejected'
-          assert reconstruction['Character1']['rejectedPrimary']['productionArtifactId'] == 8974534288
-          assert reconstruction['Character2']['generator'] == 'trellis-community/TRELLIS'
-          assert reconstruction['Character2']['artifactId'] == 8973791027
           assert reconstruction['Character2']['humanVisualReviewStatus'] == 'pending-unity-review'
-          assert reconstruction['Character3']['generator'] == 'Stability-AI/stable-fast-3d'
-          assert reconstruction['Character4']['generator'] == 'Stability-AI/stable-fast-3d'
-          assert versions['stableFast3D']['commit'] == 'ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2'
-          assert versions['stableFast3D']['minimumVramGb'] == 6
-          assert versions['stableFast3D']['textureResolution'] == 2048
-          assert versions['stableFast3D']['remeshOption'] == 'triangle'
-          assert versions['stableFast3D']['targetVertexCount'] == 42000
-          assert versions['promotionBoundary'].startswith('No generated character may enter')
 
-          required = [
-              root / 'prepare_sf3d_character_input.py',
-              root / 'finalize_sf3d_generation.py',
-              root / 'run_sf3d_character_pipeline.ps1',
-              root / 'run_sf3d_support_pipeline.ps1',
-              root / 'record_blender_unity_review_candidate.py',
-              root / 'character1-seed9101-visual-rejection.json',
-              root / 'character2-unity-review-candidate.json',
-              root / 'stage_unity_character_review_sources.py',
-              root / 'build_unity_character_comparisons.py',
-              root / 'test_character_artifact_policy.py',
-              Path('.github/workflows/generate-havenline-support-characters-sf3d.yml'),
-              Path('.github/workflows/havenline-unity-mixed-character-review.yml'),
-          ]
-          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
-          if missing:
-              raise SystemExit('Missing routed production files: ' + ', '.join(missing))
+          # Existing image-to-3D outputs are optional starting points only. The router deliberately
+          # does not require a specific generator to be the final hero-production path.
+          assert versions['stableFast3D']['role'].endswith('never identity authority')
+          assert versions['promotionBoundary'].startswith('No generated, marketplace, or remodeled character')
 
-          active_contract = '\n'.join(path.read_text(errors='ignore') for path in required)
-          if 'local-triposr' in active_contract or 'VAST-AI-Research/TripoSR' in active_contract:
-              raise SystemExit('Obsolete TripoSR execution remains in an active production route.')
-          for literal in (
-              "[ValidateSet('Character1', 'Character3', 'Character4')]",
-              "run_sf3d_character_pipeline.ps1",
-              "acceptedForUnityReview = $false",
-              "humanVisualApprovalRequired = $true",
-              "I-REVIEWED-FOUR-VIEWS",
-              "candidate_policy_path",
-              "accepted-for-unity-review",
-              "Unity imported FBX hash does not match",
-          ):
-              if literal not in active_contract:
-                  raise SystemExit(f'Missing active character-review contract literal: {literal}')
-
-          rejection = json.loads((root / 'character1-seed9101-visual-rejection.json').read_text())
-          assert rejection['artifact']['id'] == '8974534288'
-          assert rejection['humanVisualReview']['status'] == 'rejected'
-          assert rejection['acceptedForUnityReview'] is False
-          assert rejection['approved'] is False
-          assert rejection['unityIntegrated'] is False
-
-          candidate = json.loads((root / 'character2-unity-review-candidate.json').read_text())
-          assert candidate['artifact']['id'] == '8973791027'
-          assert candidate['blenderVisualReview']['status'] == 'accepted-for-unity-review'
-          assert candidate['approved'] is False
-          assert candidate['unityIntegrated'] is False
-
-          for character in ('Character1', 'Character3', 'Character4'):
-              pending = root / f'{character.lower()}-unity-review-candidate.json'
-              if pending.exists():
-                  payload = json.loads(pending.read_text())
-                  assert payload['character'] == character
-                  assert payload['blenderVisualReview']['status'] == 'accepted-for-unity-review'
-                  assert payload['humanVisualApprovalRequired'] is True
-                  assert payload['approved'] is False
-                  assert payload['unityIntegrated'] is False
-
-          print('HAVENLINE routing passed: Character 1/3/4 SF3D RTX; pinned Character 2 candidate; four-view Blender candidate policies; exact Unity FBX binding; final approval still blocked.')
+          print('HAVENLINE character authority passed: approved 2D sheets control identity; custom/remodeled stylized 3D is allowed; Fab hero replacement is forbidden; reconstruction outputs remain candidates only.')
 
       - name: Run immutable artifact rejection and substitution tests
         shell: bash
@@ -117,13 +76,16 @@ jobs:
           set -euo pipefail
           python3 .tooling/havenline-character-production/test_character_artifact_policy.py
 
-      - name: Confirm obsolete reconstruction routes cannot execute
-        shell: bash
+      - name: Confirm no character is silently promoted by routing metadata
+        shell: python
         run: |
-          set -euo pipefail
-          workflow=.github/workflows/generate-havenline-character-production.yml
-          ! grep -Fq 'local-triposr' "$workflow"
-          ! grep -Fq 'VAST-AI-Research/TripoSR' "$workflow"
-          ! grep -Fq 'prepare_triposr_character_input.py' "$workflow"
-          test ! -e .tooling/havenline-character-production/prepare_triposr_character_input.py
-          test ! -e .github/workflows/regenerate-havenline-character1-triposr.yml
+          import json
+          from pathlib import Path
+
+          root = Path('.tooling/havenline-character-production')
+          for path in root.glob('*unity-review-candidate.json'):
+              payload = json.loads(path.read_text())
+              assert payload.get('approved') is False
+              assert payload.get('unityIntegrated') is False
+              assert payload.get('humanVisualApprovalRequired', True) is True
+          print('All routed character candidates remain non-promoted pending visual approval.')
