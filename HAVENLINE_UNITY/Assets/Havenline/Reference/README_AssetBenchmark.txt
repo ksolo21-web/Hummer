@@ -1,0 +1,1 @@
+Benchmark rule: evaluate candidate assets inside representative Havenline gameplay scenes, not isolated editor previews. Record CPU, render thread, GPU frame time, draw calls/batches, geometry, texture memory, shader/overdraw cost, particles, animation cost, and thermal behavior where applicable.
