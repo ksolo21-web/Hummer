@@ -1,0 +1,1 @@
+Visual gate: automated tests, import success, and performance measurements do not approve visual quality. Direct frame review against Havenline's approved animated/stylized reference is mandatory before an asset or scene is marked production-ready.
