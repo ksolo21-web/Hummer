@@ -1,14 +1,6 @@
 name: HAVENLINE Premium Android Build
 
 on:
-  push:
-    branches:
-      - havenline-unity-reference-rebuild
-    paths:
-      - 'HAVENLINE_UNITY/**'
-      - 'HAVENLINE_WEB/**'
-      - '.github/scripts/stage-havenline-device-test-characters.sh'
-      - '.github/workflows/havenline-unity-android-build.yml'
   workflow_dispatch:
     inputs:
       mode:
@@ -30,7 +22,7 @@ concurrency:
 
 jobs:
   build-android:
-    name: Build and verify premium ARM64 ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}
+    name: Build and verify premium ARM64 ${{ inputs.mode }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
 
@@ -39,6 +31,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Enforce stylized visual-direction readiness before spending build time
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract='HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_VISUAL_DIRECTION_CONTRACT.json'
+          manifest='HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json'
+
+          jq -e '.authority.exampleVideoIsVisualAuthority == true' "$contract"
+          jq -e '.authority.approved2DCharacterTurnaroundsAreIdentityAuthority == true' "$contract"
+          jq -e '.style.targetStyle == "stylized-animated-3d-survival"' "$contract"
+          jq -e '.style.photorealisticSurvivalAestheticAllowed == false' "$contract"
+          jq -e '.style.genericUnityAssetPackLookAllowed == false' "$contract"
+          jq -e '.characters.fabHeroReplacementAllowed == false' "$contract"
+
+          if ! jq -e '.approved == true and (.artVersion | contains("blocked") | not)' "$manifest" >/dev/null; then
+            echo 'HAVENLINE Android build is intentionally blocked.' >&2
+            echo 'The rejected R28/R31/R32 realistic/prototype production-art set is not approved.' >&2
+            echo 'Author and visually approve the stylized animated replacement set before running an Android proof build.' >&2
+            exit 1
+          fi
 
       - name: Validate shared Three.js JSON gameplay contract
         shell: bash
@@ -51,7 +64,7 @@ jobs:
           echo 'Three.js/JSON shared contract matches the Unity shipping mirror byte-for-byte.'
 
       - name: Stage checksum-pinned real C1-C4 review crew for device test
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode == 'device_test' }}
+        if: ${{ inputs.mode == 'device_test' }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -86,7 +99,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: HAVENLINE_UNITY/Library
-          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json', 'HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineRenderProofGate.cs', 'HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json') }}
+          key: havenline-premium-unity-6000.3.18f1-android-${{ hashFiles('HAVENLINE_UNITY/Packages/manifest.json', 'HAVENLINE_UNITY/Packages/packages-lock.json', 'HAVENLINE_UNITY/ProjectSettings/ProjectVersion.txt', 'HAVENLINE_UNITY/Assets/Havenline/Art/Production/HAVENLINE_PRODUCTION_ART.json', 'HAVENLINE_UNITY/Assets/Havenline/Reference/HAVENLINE_VISUAL_DIRECTION_CONTRACT.json', 'HAVENLINE_UNITY/Assets/Havenline/Editor/HavenlineRenderProofGate.cs', 'HAVENLINE_WEB/shared/HAVENLINE_REFERENCE_CONTRACT.json') }}
           restore-keys: |
             havenline-premium-unity-6000.3.18f1-android-
 
@@ -102,7 +115,7 @@ jobs:
           unityVersion: 6000.3.18f1
           targetPlatform: Android
           androidExportType: androidPackage
-          buildMethod: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineCiBuildEntryPoints.BuildVerifiedRelease' || 'Havenline.Editor.HavenlineCiBuildEntryPoints.BuildAndroidDeviceTest' }}
+          buildMethod: ${{ inputs.mode == 'verified_release' && 'Havenline.Editor.HavenlineCiBuildEntryPoints.BuildVerifiedRelease' || 'Havenline.Editor.HavenlineCiBuildEntryPoints.BuildAndroidDeviceTest' }}
           allowDirtyBuild: true
           collectUnityLogs: true
           streamUnityLogs: true
@@ -111,7 +124,7 @@ jobs:
         id: verify
         shell: bash
         env:
-          BUILD_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}
+          BUILD_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
           if [ "$BUILD_MODE" = "verified_release" ]; then
@@ -194,42 +207,29 @@ jobs:
           echo "size=$size" >> "$GITHUB_OUTPUT"
           echo "proof_dir=$proof_dir" >> "$GITHUB_OUTPUT"
           echo "proof_set_sha=$proof_set_sha" >> "$GITHUB_OUTPUT"
-          echo "Verified premium HAVENLINE package: $apk"
-          echo "Size: $size bytes"
-          echo "SHA-256: $calculated_sha"
-          echo "Rendered proof-set SHA-256: $proof_set_sha"
 
       - name: Write build summary
         shell: bash
         env:
-          BUILD_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}
+          BUILD_MODE: ${{ inputs.mode }}
         run: |
           {
             echo '## HAVENLINE premium Android build'
             echo ''
             echo "- Stage: \`$BUILD_MODE\`"
+            echo '- Visual authority: `approved example video + approved 2D hero sheets`'
             echo '- Unity: `6000.3.18f1`'
             echo '- ABI target: `ARM64`'
-            echo '- Graphics APIs: `Vulkan`, `OpenGLES3` fallback'
-            echo '- Three.js/JSON shared contract: `passed`'
-            if [ "$BUILD_MODE" = 'device_test' ]; then
-              echo '- Character stage: `checksum-pinned review crew; device-test only`'
-            else
-              echo '- Character stage: `human-approved release assets required`'
-            fi
             echo '- APK bytes: `${{ steps.verify.outputs.size }}`'
             echo '- APK SHA-256: `${{ steps.verify.outputs.sha256 }}`'
             echo '- Rendered proof-set SHA-256: `${{ steps.verify.outputs.proof_set_sha }}`'
             echo '- Commit: `${{ github.sha }}`'
-            echo '- Deterministic production preparation: `passed`'
-            echo '- Premium content and functional gates: `passed`'
-            echo '- Rendered visual quality gate: `passed`'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload verified premium HAVENLINE APK and rendered proof
         uses: actions/upload-artifact@v4
         with:
-          name: HAVENLINE-Premium-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'device_test' }}-ARM64-${{ github.run_number }}
+          name: HAVENLINE-Premium-${{ inputs.mode }}-ARM64-${{ github.run_number }}
           if-no-files-found: error
           retention-days: 30
           path: |
