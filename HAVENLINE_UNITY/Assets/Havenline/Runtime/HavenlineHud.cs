@@ -11,7 +11,10 @@ namespace Havenline
     public sealed class HavenlineHud : MonoBehaviour
     {
         private const float FoldableAspectThreshold = 1.45f;
-        private const float TopPanelOpacity = 0.72f;
+        // Compact top cards are intentionally opaque. Their footprint is small enough to preserve
+        // the play space, while opacity prevents bright snow/props from reading through status
+        // text. Keep this aligned with the deterministic editor HUD contract.
+        private const float TopPanelOpacity = 1f;
 
         [SerializeField] private Text resourceText;
         [SerializeField] private Text objectiveText;
