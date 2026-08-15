@@ -159,6 +159,18 @@ jobs:
           local_head="$(git rev-parse HEAD)"
           original_head="$(git rev-parse ${{ github.sha }})"
           if [ "$local_head" != "$original_head" ]; then
+            # game-ci runs Unity inside a container and can leave generated project files owned by
+            # root. Restore runner ownership before Git resets/cleans those files, otherwise the
+            # normalization commit never reaches the branch and this job fails with EACCES.
+            sudo chown -R "$(id -u):$(id -g)" \
+              HAVENLINE_UNITY/Assets \
+              HAVENLINE_UNITY/Packages \
+              HAVENLINE_UNITY/ProjectSettings
+            chmod -R u+rwX \
+              HAVENLINE_UNITY/Assets \
+              HAVENLINE_UNITY/Packages \
+              HAVENLINE_UNITY/ProjectSettings
+
             git reset --hard HEAD
             git clean -fd -- \
               HAVENLINE_UNITY/Assets \
