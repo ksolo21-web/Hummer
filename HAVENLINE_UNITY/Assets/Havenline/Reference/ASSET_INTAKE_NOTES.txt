@@ -1,0 +1,1 @@
+The candidate registry records research targets only. It is not proof that any third-party payload has been imported, licensed for redistribution, visually approved, or performance-approved. Production promotion remains fail-closed until the intake record is complete.
