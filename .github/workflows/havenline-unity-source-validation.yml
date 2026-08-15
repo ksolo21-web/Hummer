@@ -6,6 +6,8 @@ on:
       - havenline-unity-reference-rebuild
     paths:
       - 'HAVENLINE_UNITY/Assets/Havenline/**'
+      - 'HAVENLINE_UNITY/Assets/Settings/**'
+      - 'HAVENLINE_UNITY/Assets/DefaultVolumeProfile.asset*'
       - 'HAVENLINE_UNITY/Packages/**'
       - 'HAVENLINE_UNITY/ProjectSettings/**'
       - '.github/workflows/havenline-unity-source-validation.yml'
@@ -76,65 +78,105 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: HAVENLINE Unity ${{ matrix.testMode }} validation
 
-      - name: Normalize Unity-generated missing meta files and prove source-tree cleanliness
+      - name: Normalize Unity project baseline and prove source-tree cleanliness
         if: matrix.testMode == 'editmode' && always()
         shell: bash
         run: |
           set -euo pipefail
 
-          # Use Python to parse Git's NUL-delimited output. The previous grep/mapfile pipeline
-          # could concatenate paths and make `git add` interpret a filename as a revision.
+          # A normal Unity repository must version its ProjectSettings, package lock and URP
+          # project settings. The old branch only carried ProjectVersion.txt/manifest.json, which
+          # is why a clean Windows checkout immediately appeared to have ~189 source changes.
+          git add -A -- HAVENLINE_UNITY/ProjectSettings || true
+          if [ -e HAVENLINE_UNITY/Packages/packages-lock.json ]; then
+            git add -- HAVENLINE_UNITY/Packages/packages-lock.json
+          fi
+          if [ -e HAVENLINE_UNITY/Assets/DefaultVolumeProfile.asset ]; then
+            git add -A -- HAVENLINE_UNITY/Assets/DefaultVolumeProfile.asset*
+          fi
+          if [ -d HAVENLINE_UNITY/Assets/Settings ]; then
+            git add -A -- HAVENLINE_UNITY/Assets/Settings
+          fi
+
+          # Stage only missing .meta files whose target is already versioned (or is one of the
+          # explicitly-approved Unity/URP baseline paths above). Do not accidentally version the
+          # rejected generated scene/art directories just because Unity imported them during a test.
           python3 - <<'PY'
           import subprocess
 
-          raw = subprocess.check_output([
+          def nul(args):
+              raw = subprocess.check_output(args)
+              return [item.decode('utf-8', errors='surrogateescape')
+                      for item in raw.split(b'\0') if item]
+
+          tracked = set(nul(['git', 'ls-files', '-z']))
+          staged = set(nul(['git', 'diff', '--cached', '--name-only', '-z']))
+          untracked = nul([
               'git', 'ls-files', '--others', '--exclude-standard', '-z', '--',
               'HAVENLINE_UNITY/Assets'
           ])
-          paths = [item.decode('utf-8', errors='surrogateescape')
-                   for item in raw.split(b'\0') if item]
-          meta = [path for path in paths if path.endswith('.meta')]
-          print(f'Unity generated {len(meta)} previously-untracked .meta files.')
-          if meta:
-              subprocess.check_call(['git', 'add', '--', *meta])
-          PY
 
-          # Capture anything Unity changed beyond the missing .meta files. We do not silently
-          # commit other generated source changes: they require an explicit repository decision.
-          git status --porcelain=v1 --untracked-files=all -- \
-            HAVENLINE_UNITY/Assets \
-            HAVENLINE_UNITY/Packages \
-            HAVENLINE_UNITY/ProjectSettings \
-            | grep -v '^?? .*\.meta$' > /tmp/havenline_remaining_source_changes.txt || true
+          allowed_prefixes = (
+              'HAVENLINE_UNITY/Assets/Settings/',
+          )
+          allowed_files = {
+              'HAVENLINE_UNITY/Assets/DefaultVolumeProfile.asset',
+          }
+
+          keep = []
+          for meta in untracked:
+              if not meta.endswith('.meta'):
+                  continue
+              target = meta[:-5]
+              target_is_tracked_file = target in tracked or target in staged
+              target_is_tracked_dir = any(path.startswith(target + '/') for path in tracked | staged)
+              target_is_baseline = target in allowed_files or target.startswith(allowed_prefixes)
+              if target_is_tracked_file or target_is_tracked_dir or target_is_baseline:
+                  keep.append(meta)
+
+          print(f'Staging {len(keep)} missing Unity .meta files that belong to versioned source/baseline paths.')
+          if keep:
+              subprocess.check_call(['git', 'add', '--', *keep])
+          PY
 
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'chore(havenline): track Unity-generated meta files'
+            git commit -m 'chore(havenline): normalize Unity project baseline and meta files'
+          else
+            echo 'No Unity baseline or source metadata normalization was needed.'
+          fi
 
-            # This is an ephemeral runner. Remove only Unity-import source-tree leftovers so a
-            # rebase cannot be blocked by generated files that are deliberately not being kept.
+          # Anything still dirty after the approved baseline commit is suspicious. Capture it
+          # before cleaning the ephemeral runner so the job can fail closed and show us exactly
+          # what a fresh Unity import would still change.
+          git status --porcelain=v1 --untracked-files=all -- \
+            HAVENLINE_UNITY/Assets \
+            HAVENLINE_UNITY/Packages \
+            HAVENLINE_UNITY/ProjectSettings \
+            > /tmp/havenline_remaining_source_changes.txt || true
+
+          local_head="$(git rev-parse HEAD)"
+          original_head="$(git rev-parse ${{ github.sha }})"
+          if [ "$local_head" != "$original_head" ]; then
             git reset --hard HEAD
             git clean -fd -- \
               HAVENLINE_UNITY/Assets \
               HAVENLINE_UNITY/Packages \
               HAVENLINE_UNITY/ProjectSettings
-
             git fetch origin havenline-unity-reference-rebuild
             git rebase origin/havenline-unity-reference-rebuild
             git push origin HEAD:havenline-unity-reference-rebuild
-          else
-            echo 'No untracked Unity .meta files were generated.'
           fi
 
           if [ -s /tmp/havenline_remaining_source_changes.txt ]; then
-            echo 'Unity changed additional non-meta source files on a clean import:' >&2
+            echo 'Unity still changed additional non-approved source files on a clean import:' >&2
             cat /tmp/havenline_remaining_source_changes.txt >&2
-            echo 'These changes were NOT committed automatically. The branch is not yet clean-checkout proven.' >&2
+            echo 'Those files were NOT committed automatically. HAVENLINE is not yet clean-checkout proven.' >&2
             exit 1
           fi
 
-          echo 'Unity import produced no remaining non-ignored source-tree changes.'
+          echo 'Unity clean import produced no remaining non-ignored source-tree changes.'
 
       - name: Upload ${{ matrix.testMode }} test, compiler and studio diagnostics
         if: always()
