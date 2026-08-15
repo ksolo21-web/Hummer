@@ -27,6 +27,7 @@ namespace Havenline.Editor
             {
                 HavenlineDeviceTestCharacterGate.Require();
                 roster = HavenlineDeviceTestCharacterAssetBuilder.Build();
+                HavenlineDeviceTestCharacterMaterialRestorer.ApplyToGameplayPrefabs();
             }
             else
             {
