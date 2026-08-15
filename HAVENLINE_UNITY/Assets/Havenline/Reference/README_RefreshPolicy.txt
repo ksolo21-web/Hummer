@@ -1,0 +1,1 @@
+Runtime refresh policy is implemented in HavenlineFrameRatePolicy.cs and HavenlineFrameRateBootstrap.cs. The production floor is 60 FPS with 90/120 FPS requests on displays that advertise sufficient refresh capability. Actual device performance remains subject to representative profiling and thermal validation.
