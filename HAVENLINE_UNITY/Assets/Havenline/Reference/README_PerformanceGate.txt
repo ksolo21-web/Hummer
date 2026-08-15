@@ -1,0 +1,1 @@
+Performance gate: production assets and scenes must hold the required frame-time envelope in representative gameplay. 60 Hz = 16.67 ms; 90 Hz = 11.11 ms; 120 Hz = 8.33 ms. High-refresh support is capability-dependent and must not be claimed from import success or editor-only tests.
