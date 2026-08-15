@@ -1,0 +1,44 @@
+{
+  "assetName": "",
+  "publisher": "",
+  "source": "",
+  "sourceUrl": "",
+  "version": "",
+  "retrievedDate": "",
+  "licenseName": "",
+  "licenseUrl": "",
+  "commercialUseAllowed": false,
+  "sourceControlRedistributionAllowed": false,
+  "attributionRequired": false,
+  "attributionText": "",
+  "approvedRoles": [],
+  "quarantinePath": "",
+  "productionPath": "",
+  "styleConversion": {
+    "completed": false,
+    "notes": ""
+  },
+  "technicalReview": {
+    "lodValidated": false,
+    "collidersValidated": false,
+    "materialsConverted": false,
+    "textureBudgetValidated": false,
+    "unneededDemoContentRemoved": false
+  },
+  "performanceReview": {
+    "representativeScene": "",
+    "target60Passed": false,
+    "target90Passed": false,
+    "target120Passed": false,
+    "cpuMainThreadMs": 0.0,
+    "renderThreadMs": 0.0,
+    "gpuMs": 0.0,
+    "notes": ""
+  },
+  "visualReview": {
+    "directFrameReviewCompleted": false,
+    "approved": false,
+    "notes": ""
+  },
+  "productionApproved": false
+}
