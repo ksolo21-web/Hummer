@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "status": "active_audition",
   "referenceLock": "HAVENLINE_WHITEOUT_REFERENCE_LOCK.md",
-  "goal": "Preserve approved Havenline stylized character identity while producing riggable high-quality 3D meshes and 8K authoring texture masters.",
+  "goal": "Preserve approved Havenline stylized character identity while producing riggable high-quality triangle meshes and 8K authoring texture masters.",
   "sourceCharacters": [
     {
       "id": "character_1",
@@ -30,26 +30,38 @@
       "rank": 1,
       "name": "TripoSR",
       "source": "https://github.com/VAST-AI-Research/TripoSR",
-      "role": "geometry_baseline",
+      "role": "shipping_triangle_mesh_geometry_baseline",
       "licenseClass": "MIT",
       "commercialLane": true,
       "observedVramGb": 6,
       "textureAtlasConfigurable": true,
-      "notes": "Primary local geometry audition. Final 8K texture must be source-projected from approved turnarounds."
+      "notes": "Primary local triangle-mesh audition. Final 8K texture must be source-projected from approved turnarounds rather than trusting generated detail."
     },
     {
       "rank": 2,
+      "name": "LHM++ SMPLX-FREE",
+      "source": "https://github.com/aigc3d/LHM-plusplus",
+      "role": "multi_view_identity_and_silhouette_reference",
+      "licenseClass": "Apache-2.0 top-level; pretrained/prior asset rights must be recorded at acquisition",
+      "commercialLane": "reference_only_until_weight_and_prior_asset_license_ledger_is_complete",
+      "minimumVramGb": 8,
+      "multiView": true,
+      "output": "3D Gaussian Splatting PLY",
+      "notes": "Excellent match for Havenline's existing front/3q/side/back sheets and fits 8GB GPUs. Current official export is Gaussian-splat PLY, not a conventional skinned triangle mesh, so use it as a faithful 3D reference/validation target rather than the Unity shipping character. Prefer SMPLX-FREE variants."
+    },
+    {
+      "rank": 3,
       "name": "Stable Fast 3D",
       "source": "https://github.com/Stability-AI/stable-fast-3d",
-      "role": "geometry_pbr_comparison",
+      "role": "triangle_mesh_geometry_pbr_comparison",
       "licenseClass": "Stability AI Community License",
       "commercialLane": "conditional_under_current_revenue_threshold_and_registration",
       "observedVramGb": 6,
       "textureAtlasConfigurable": true,
-      "notes": "Use only after recording current license eligibility."
+      "notes": "Use only after recording current license eligibility and required notices/attribution."
     },
     {
-      "rank": 3,
+      "rank": 4,
       "name": "Meshy Free",
       "source": "https://www.meshy.ai/",
       "role": "cloud_geometry_and_rig_audition",
@@ -59,14 +71,14 @@
       "notes": "Free tier is an audition lane. Do not assume latest-model downloads, multiview or 8K are free."
     },
     {
-      "rank": 4,
+      "rank": 5,
       "name": "UniRig",
       "source": "https://github.com/VAST-AI-Research/UniRig",
       "role": "skeleton_and_skinning",
       "licenseClass": "MIT",
       "commercialLane": true,
       "minimumVramGb": 8,
-      "notes": "Inspect/refine predicted skeleton before final skinning."
+      "notes": "Inspect/refine predicted skeleton before final skinning, then map to Unity Humanoid."
     },
     {
       "rank": 100,
@@ -103,21 +115,51 @@
       "licenseClass": "Tencent Hunyuan 3D 2.1 Community License",
       "commercialLane": false,
       "blocker": "Territory restrictions create global-distribution risk; EU, UK and South Korea are excluded by current license."
+    },
+    {
+      "rank": 104,
+      "name": "IDOL",
+      "source": "https://github.com/yiyuzhuang/IDOL",
+      "role": "human_specific_rnd_benchmark",
+      "licenseClass": "MIT code with externally licensed body-model dependencies",
+      "commercialLane": false,
+      "blocker": "Official setup requires SMPL-X and FLAME templates; the normal SMPL-X license is non-commercial scientific research unless separate commercial rights are obtained. Official setup also recommends 24GB+ VRAM."
+    },
+    {
+      "rank": 105,
+      "name": "SiTH",
+      "source": "https://github.com/SiTH-Diffusion/SiTH",
+      "role": "textured_human_mesh_rnd_benchmark",
+      "licenseClass": "MIT code with externally licensed SMPL-X dependency",
+      "commercialLane": false,
+      "blocker": "Official reconstruction pipeline requires SMPL-X body-model files, which are not free for commercial production under the standard SMPL-X license."
+    },
+    {
+      "rank": 106,
+      "name": "PSHuman",
+      "source": "https://github.com/pengHTYX/PSHuman",
+      "role": "human_mesh_rnd_benchmark",
+      "licenseClass": "MIT top-level; borrowed model/dependency rights require separate audit",
+      "commercialLane": false,
+      "blocker": "Current 768 model requires over 40GB VRAM and the project borrows/reorganizes models from ECON/SIFU; unsuitable for the RTX 3080 production lane until dependencies and a lower-memory release are cleared."
     }
   ],
   "masterTexture": {
     "resolution": 8192,
     "source": "approved turnaround projection",
     "maps": ["baseColor", "normal", "roughness", "ao", "mask"],
-    "runtimePolicy": "derive 4K/2K ASTC variants and keep only visually justified resolution in Android build"
+    "runtimePolicy": "derive 4K/2K ASTC variants and keep only visually justified resolution in Android build",
+    "rule": "An 8192 atlas alone is not native 8K detail. Source fidelity must come from the approved multi-view artwork and controlled rebaking."
   },
   "acceptance": [
     "front silhouette match",
+    "three-quarter silhouette match",
     "side silhouette match",
     "back silhouette match",
     "face identity preserved",
     "hair identity preserved",
     "winter outfit and gear layout preserved",
+    "premium stylized proportions preserved",
     "clean stress-pose deformation",
     "Unity Humanoid mapping valid",
     "shipping-camera visual approval",
