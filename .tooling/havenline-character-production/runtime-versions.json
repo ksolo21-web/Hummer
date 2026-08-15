@@ -1,5 +1,9 @@
 {
   "schemaVersion": 3,
+  "identityAuthority": "approved-2d-turnaround-sheets",
+  "generatorRole": "candidate-base-generation-only",
+  "customRemodelingAllowed": true,
+  "fabHeroReplacementAllowed": false,
   "blender": {
     "version": "4.5.12",
     "releaseLine": "4.5 LTS",
@@ -7,6 +11,7 @@
     "windowsArchive": "https://download.blender.org/release/Blender4.5/blender-4.5.12-windows-x64.zip",
     "runtimeGate": "bpy.app.version[:3] == (4, 5, 12)",
     "purpose": [
+      "custom mesh construction and remodeling",
       "mesh cleanup",
       "mobile reduction",
       "rigging and deterministic skinning",
@@ -33,13 +38,13 @@
     "license": "Stability AI Community License",
     "commercialRegistrationRequired": true,
     "huggingFaceAccessRequired": true,
-    "replaces": "VAST-AI-Research/TripoSR local CPU reconstruction"
+    "role": "optional image-to-3D starting candidate; never identity authority"
   },
   "reconstruction": {
     "Character1": {
       "generator": "Stability-AI/stable-fast-3d",
       "generatorCommit": "ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2",
-      "mode": "RTX GPU recovery from approved three-quarter turnaround view after TRELLIS seed 9101 human rejection",
+      "mode": "candidate-base recovery from approved turnaround after TRELLIS seed 9101 human rejection; remodel against full approved 2D identity before promotion",
       "singleView": true,
       "textureResolution": 2048,
       "remeshOption": "triangle",
@@ -57,7 +62,7 @@
     },
     "Character2": {
       "generator": "trellis-community/TRELLIS",
-      "mode": "recovered multi-view artifact accepted for Unity review",
+      "mode": "recovered multi-view candidate accepted only as a possible remodeling base; approved 2D turnaround remains identity authority",
       "singleView": false,
       "artifactId": 8973791027,
       "artifactDigest": "sha256:051ce24ea949227f3bec154529421e35bf53a1e8e8607ec5fa705a345dc6eb5c",
@@ -68,7 +73,7 @@
     "Character3": {
       "generator": "Stability-AI/stable-fast-3d",
       "generatorCommit": "ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2",
-      "mode": "RTX GPU single-view reconstruction from approved three-quarter turnaround view",
+      "mode": "optional candidate-base reconstruction from approved turnaround; custom remodeling required wherever fidelity differs",
       "singleView": true,
       "textureResolution": 2048,
       "remeshOption": "triangle",
@@ -77,13 +82,13 @@
     "Character4": {
       "generator": "Stability-AI/stable-fast-3d",
       "generatorCommit": "ff21fc491b4dc5314bf6734c7c0dabd86b5f5bb2",
-      "mode": "RTX GPU single-view reconstruction from approved three-quarter turnaround view",
+      "mode": "optional candidate-base reconstruction from approved turnaround; custom remodeling required wherever fidelity differs",
       "singleView": true,
       "textureResolution": 2048,
       "remeshOption": "triangle",
       "targetVertexCount": 42000
     }
   },
-  "qualityBoundary": "Blender processes and exports the reconstruction; it does not recover anatomy or unseen geometry missing from the reconstruction model.",
-  "promotionBoundary": "No generated character may enter the Unity production roster until the exact FBX and four-view Unity evidence are checksum-pinned to explicit human visual approval."
+  "qualityBoundary": "Image-to-3D output is never accepted merely because it generates or rigs. Blender/custom modeling must correct anatomy, clothing, silhouette, face and unseen geometry until the asset matches the approved 2D identity.",
+  "promotionBoundary": "No generated, marketplace, or remodeled character may enter the Unity production roster until the exact FBX and four-view Unity evidence match the approved 2D identity and are checksum-pinned to explicit human visual approval."
 }
