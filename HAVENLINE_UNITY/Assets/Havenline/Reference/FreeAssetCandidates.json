@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-intake-only",
+  "rules": {
+    "productionFloorFps": 60,
+    "highRefreshTargetsFps": [90, 120],
+    "heroCharactersUseApprovedHavenlineDesigns": true,
+    "directVisualApprovalRequired": true,
+    "licenseCaptureRequiredBeforePayloadCommit": true,
+    "thirdPartyAssetsMustBeRestyled": true
+  },
+  "candidates": [
+    {
+      "name": "Stylized Trees Pack",
+      "publisher": "Saitama Studio",
+      "source": "Unity Asset Store",
+      "url": "https://assetstore.unity.com/packages/3d/vegetation/trees/stylized-trees-pack-261728",
+      "role": ["trees", "forest"],
+      "priority": "high"
+    },
+    {
+      "name": "Fantasy Worlds: Forest FREE",
+      "publisher": "TriForge Assets",
+      "source": "Unity Marketplace",
+      "url": "https://marketplace.unity.com/packages/3d/environments/fantasy/fantasy-worlds-forest-free-stylized-forest-environment-open-worl-282610",
+      "role": ["forest", "vegetation", "rocks", "ground-clutter"],
+      "priority": "high"
+    },
+    {
+      "name": "NatureForge FREE: Stylized Meadow & Farm Kit",
+      "source": "Fab",
+      "url": "https://www.fab.com/listings/799b5927-d800-49b5-a866-45cdb5c002d7",
+      "role": ["vegetation", "rocks", "paths", "fences", "ground-clutter"],
+      "priority": "high"
+    },
+    {
+      "name": "Mountain - Stylized Fantasy Environment",
+      "publisher": "Holotna",
+      "source": "Fab",
+      "url": "https://www.fab.com/listings/60487a72-3f20-4bb2-aa78-247ed1582656",
+      "role": ["mountains", "cliffs", "rocks", "bridge", "vegetation"],
+      "priority": "high"
+    },
+    {
+      "name": "Stylized Cozy Camp",
+      "source": "Unity Asset Store",
+      "url": "https://assetstore.unity.com/packages/3d/environments/landscapes/stylized-cozy-camp-345778",
+      "role": ["camp", "props", "logs", "tools", "vegetation"],
+      "priority": "high"
+    },
+    {
+      "name": "Low Poly Winter Log Cabin Pack",
+      "source": "Unity Asset Store",
+      "url": "https://assetstore.unity.com/packages/3d/environments/low-poly-winter-log-cabin-pack-347838",
+      "role": ["cabins", "winter-structures"],
+      "priority": "high"
+    },
+    {
+      "name": "Slavic Medieval Village Free",
+      "source": "Unity Marketplace",
+      "url": "https://marketplace.unity.com/packages/3d/environments/fantasy/slavic-medieval-village-free-modular-environment-kit-167010",
+      "role": ["modular-structures", "wood-architecture", "props"],
+      "priority": "selective"
+    },
+    {
+      "name": "Free Vampiric PolyVania Town Pack",
+      "source": "Unity Asset Store",
+      "url": "https://assetstore.unity.com/packages/3d/environments/urban/free-vampiric-polyvania-massive-cartoon-low-poly-town-pack-154145",
+      "role": ["town-structures", "ruins", "cemetery", "props"],
+      "priority": "selective"
+    },
+    {
+      "name": "Stylized Nature MegaKit",
+      "publisher": "Quaternius",
+      "source": "Quaternius",
+      "url": "https://quaternius.com/packs/stylizednaturemegakit.html",
+      "license": "CC0 candidate - verify at intake",
+      "role": ["trees", "plants", "flowers", "rocks", "grass"],
+      "priority": "high"
+    },
+    {
+      "name": "Modular Fantasy Outfits",
+      "publisher": "Quaternius",
+      "source": "Quaternius",
+      "url": "https://quaternius.com/packs/modularcharacteroutfitsfantasy.html",
+      "license": "CC0 candidate - verify at intake",
+      "role": ["npc-outfits", "secondary-characters"],
+      "priority": "high"
+    },
+    {
+      "name": "Poly Haven",
+      "source": "Poly Haven",
+      "url": "https://polyhaven.com/",
+      "license": "CC0 candidate - verify at intake",
+      "role": ["source-materials", "hdris"],
+      "priority": "high"
+    },
+    {
+      "name": "ambientCG",
+      "source": "ambientCG",
+      "url": "https://ambientcg.com/",
+      "license": "CC0 candidate - verify at intake",
+      "role": ["source-materials", "textures"],
+      "priority": "high"
+    },
+    {
+      "name": "Free Pack - Water Shader URP",
+      "source": "Unity Marketplace",
+      "url": "https://marketplace.unity.com/packages/vfx/shaders/free-pack-water-shader-urp-352382",
+      "role": ["water-shader"],
+      "priority": "high"
+    },
+    {
+      "name": "Stylized Water Effect Pack",
+      "source": "Unity Marketplace",
+      "url": "https://marketplace.unity.com/packages/vfx/particles/stylized-water-effect-pack-270114",
+      "role": ["water-vfx"],
+      "priority": "high"
+    },
+    {
+      "name": "Stylized Skyboxes FREE",
+      "source": "Unity Asset Store",
+      "url": "https://assetstore.unity.com/packages/2d/textures-materials/sky/stylized-skyboxes-free-302248",
+      "role": ["sky", "environment-lighting"],
+      "priority": "high"
+    },
+    {
+      "name": "Unity Toon Shader / UTS3",
+      "publisher": "Unity Technologies",
+      "source": "GitHub",
+      "url": "https://github.com/Unity-Technologies/com.unity.toonshader",
+      "role": ["stylized-rendering", "toon-shading"],
+      "priority": "evaluate"
+    }
+  ]
+}
