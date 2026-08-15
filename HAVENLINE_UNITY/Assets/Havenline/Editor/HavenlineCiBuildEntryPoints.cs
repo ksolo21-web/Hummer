@@ -6,9 +6,9 @@ namespace Havenline.Editor
 {
     /// <summary>
     /// Clean-checkout CI entry points. HAVENLINE's deterministic world library is generated,
-    /// then the R31 authored production-art replacement pass is applied before the unchanged
-    /// premium content and scene gates are enforced. Build stage stays explicit so a device-test
-    /// character review path can never masquerade as verified release.
+    /// then the R31 structural source replacement and R32 human-review correction passes are
+    /// applied before the unchanged premium content and scene gates are enforced. Build stage
+    /// stays explicit so a device-test character review path can never masquerade as release.
     /// </summary>
     public static class HavenlineCiBuildEntryPoints
     {
@@ -25,17 +25,18 @@ namespace Havenline.Editor
 
             HavenlineProceduralArtStudio.GenerateForCi();
             HavenlineR31ProductionArtUpgrade.ApplyToGeneratedProduction();
+            HavenlineR32ProductionArtUpgrade.ApplyToGeneratedProduction();
 
             var prepared = HavenlinePremiumBuildGate.InspectProductionContent();
             if (!prepared.Passed)
             {
                 throw new BuildFailedException(
-                    "HAVENLINE deterministic R31 production preparation failed the unchanged premium content gate:\n - " +
+                    "HAVENLINE deterministic R32 production preparation failed the unchanged premium content gate:\n - " +
                     string.Join("\n - ", prepared.Failures));
             }
 
             preparedInCurrentEditorProcess = true;
-            Debug.Log("HAVENLINE deterministic R31 production content is prepared and premium-gate clean.");
+            Debug.Log("HAVENLINE deterministic R32 production content is prepared and premium-gate clean.");
         }
 
         public static void BuildAndroidDeviceTest()
