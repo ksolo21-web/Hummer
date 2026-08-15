@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 namespace Havenline.Editor
 {
@@ -15,9 +18,11 @@ namespace Havenline.Editor
     /// corresponding URP materials and binds them to the FBX material slots without altering the
     /// rig, mesh, UVs, skin weights or source pixels.
     ///
-    /// Verified release never enters this path; it continues to require human-approved production
-    /// assets through the normal character approval gate.
+    /// Device-test proof and generated gameplay prefabs use the same bindings. Verified release
+    /// never enters this path; it continues to require human-approved production assets through
+    /// the normal character approval gate.
     /// </summary>
+    [InitializeOnLoad]
     internal static class HavenlineDeviceTestCharacterMaterialRestorer
     {
         private const string UrpLitShader = "Universal Render Pipeline/Lit";
@@ -25,7 +30,82 @@ namespace Havenline.Editor
         private const string Character3FaceSlotName = "Character3_ApprovedFaceMaterial";
         private const string Character4FaceSlotName = "Character4_ApprovedFaceMaterial";
 
-        internal static void Apply(
+        private static readonly Dictionary<HavenlineCharacterId, Dictionary<string, Material>> MaterialCache = new();
+        private static bool preparedForProof;
+
+        static HavenlineDeviceTestCharacterMaterialRestorer()
+        {
+            // The proof preview must run first on scene-open so its transient C1-C4 instances
+            // exist before this handler binds the recovered surfaces.
+            RuntimeHelpers.RunClassConstructor(typeof(HavenlineApprovedCrewProofPreview).TypeHandle);
+            EditorSceneManager.sceneOpened -= OnSceneOpened;
+            EditorSceneManager.sceneOpened += OnSceneOpened;
+        }
+
+        internal static void PrepareForProof()
+        {
+            if (!HavenlineBuildStageContext.IsDeviceTest)
+                return;
+
+            MaterialCache.Clear();
+            foreach (var plan in HavenlineProductionCharacterAssetBuilder.Plans)
+                MaterialCache[plan.Id] = BuildBindings(plan);
+            AssetDatabase.SaveAssets();
+            preparedForProof = true;
+        }
+
+        internal static void ApplyToGameplayPrefabs()
+        {
+            if (!HavenlineBuildStageContext.IsDeviceTest)
+                return;
+            if (!preparedForProof)
+                PrepareForProof();
+
+            foreach (var plan in HavenlineProductionCharacterAssetBuilder.Plans)
+            {
+                var prefabRoot = PrefabUtility.LoadPrefabContents(plan.PrefabPath);
+                try
+                {
+                    var visual = prefabRoot.transform.Find("Visual");
+                    if (visual == null)
+                        throw new InvalidOperationException($"Generated {plan.Id} gameplay prefab has no Visual root.");
+                    Apply(plan, visual.gameObject);
+                    if (PrefabUtility.SaveAsPrefabAsset(prefabRoot, plan.PrefabPath) == null)
+                        throw new InvalidOperationException($"Unity failed to save restored device-test prefab: {plan.PrefabPath}");
+                }
+                finally
+                {
+                    PrefabUtility.UnloadPrefabContents(prefabRoot);
+                }
+            }
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
+        {
+            if (!preparedForProof || !HavenlineBuildStageContext.IsDeviceTest || !scene.IsValid() ||
+                !string.Equals(scene.path, Reference.ScenePath, StringComparison.Ordinal))
+                return;
+
+            var previewRoot = scene.GetRootGameObjects()
+                .FirstOrDefault(root => root.name == HavenlineApprovedCrewProofPreview.RootName);
+            if (previewRoot == null)
+                return;
+
+            foreach (var plan in HavenlineProductionCharacterAssetBuilder.Plans)
+            {
+                var proofName = plan.Id == HavenlineCharacterId.Character1
+                    ? HavenlineApprovedCrewProofPreview.LeadProofName
+                    : plan.Id + "_ProofCompanion";
+                var proof = previewRoot.GetComponentsInChildren<Transform>(true)
+                    .FirstOrDefault(item => string.Equals(item.name, proofName, StringComparison.Ordinal));
+                if (proof == null)
+                    throw new InvalidOperationException($"Device-test proof preview is missing {proofName} for exact material restoration.");
+                Apply(plan, proof.gameObject);
+            }
+        }
+
+        private static void Apply(
             HavenlineProductionCharacterAssetBuilder.CharacterPlan plan,
             GameObject instance)
         {
@@ -36,7 +116,12 @@ namespace Havenline.Editor
             if (!HavenlineBuildStageContext.IsDeviceTest)
                 return;
 
-            var bindings = BuildBindings(plan);
+            if (!MaterialCache.TryGetValue(plan.Id, out var bindings))
+            {
+                bindings = BuildBindings(plan);
+                MaterialCache[plan.Id] = bindings;
+            }
+
             var renderers = instance.GetComponentsInChildren<Renderer>(true);
             if (renderers.Length == 0)
                 throw new InvalidOperationException($"{plan.Id} has no renderers for device-test material restoration.");
