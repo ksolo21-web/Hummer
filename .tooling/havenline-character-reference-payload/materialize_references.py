@@ -25,21 +25,21 @@ SPECS = {
     },
     "Character2": {
         "parts": 2,
-        "output": "Character2.jpg",
+        "output": "Character2.webp",
         "bytes": 10762,
         "sha256": "a3b492768c5d0bf9fb8cfc9cc294500590987f51e9b4c0668b8125537e7d72b8",
         "format": "WEBP",
     },
     "Character3": {
         "parts": 2,
-        "output": "Character3.jpg",
+        "output": "Character3.webp",
         "bytes": 11506,
         "sha256": "f51c249f4a1a904c40edb0cd35d1bfed0fbdfeb64c4f17dd052cc9b8a27c3d85",
         "format": "WEBP",
     },
     "Character4": {
         "parts": 2,
-        "output": "Character4.jpg",
+        "output": "Character4.webp",
         "bytes": 11508,
         "sha256": "2341399aefa304670c90835dfb14e24e31997d51d5ba2ae90a755d6e1ffcb671",
         "format": "WEBP",
@@ -97,7 +97,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output-root",
-        default=".tooling/havenline-character-production/references",
+        default="HAVENLINE_UNITY/Reference/Characters/Approved",
         help="Directory where verified binary references are materialized",
     )
     args = parser.parse_args()
