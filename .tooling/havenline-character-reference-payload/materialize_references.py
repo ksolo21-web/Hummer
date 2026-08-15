@@ -97,7 +97,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output-root",
-        default="HAVENLINE_UNITY/Reference/Characters/Approved",
+        default=".tooling/havenline-character-production/references",
         help="Directory where verified binary references are materialized",
     )
     args = parser.parse_args()
