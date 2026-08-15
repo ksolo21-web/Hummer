@@ -6,6 +6,9 @@
 [Uu]ser[Ss]ettings/
 [Mm]emoryCaptures/
 Recordings/
+**/.utmp/
+**/.cxx/
+**/.externalNativeBuild/
 
 # Build outputs
 [Bb]uild/
