@@ -1,0 +1,1 @@
+Production asset gate: candidate -> licensed -> quarantined -> technically cleaned -> visually converted -> benchmarked -> directly visually reviewed -> promoted. Any unresolved step blocks promotion.
