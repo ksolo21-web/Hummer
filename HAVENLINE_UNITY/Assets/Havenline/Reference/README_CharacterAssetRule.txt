@@ -1,0 +1,1 @@
+Character asset rule: approved Havenline 2D character designs remain the hero-character visual source of truth. Free/Fab/marketplace characters may serve as rig, retargeting, topology, clothing, or secondary-character references only unless directly approved as final Havenline character art.
