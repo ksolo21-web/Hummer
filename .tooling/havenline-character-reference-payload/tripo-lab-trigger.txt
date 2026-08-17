@@ -1,0 +1,1 @@
+Trigger isolated Character 1 Tripo multiview reconstruction.
