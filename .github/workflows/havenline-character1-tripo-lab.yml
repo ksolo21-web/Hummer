@@ -1,0 +1,109 @@
+name: Havenline Character 1 - Tripo Lab
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-character1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout isolated lab branch
+        uses: actions/checkout@v4
+        with:
+          ref: havenline-character1-tripo-lab
+
+      - name: Verify Tripo API access
+        shell: bash
+        env:
+          TRIPO_API_KEY: ${{ secrets.TRIPO_API_KEY }}
+        run: |
+          if [ -z "$TRIPO_API_KEY" ]; then
+            echo "::error::TRIPO_API_KEY repository secret is not configured."
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Materialize approved Character 1 source
+        shell: bash
+        run: |
+          python .tooling/havenline-character-reference-payload/materialize_character_references.py
+          test -f .tooling/havenline-character-reference-payload/Character1.jpg
+
+      - name: Build clean multi-view inputs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          src = Path('.tooling/havenline-character-reference-payload/Character1.jpg')
+          out = Path('tripo-input')
+          out.mkdir(exist_ok=True)
+          img = Image.open(src).convert('RGB')
+          w, h = img.size
+
+          # Approved Character 1 sheet crops already established in the Havenline lab.
+          crops = {
+              'front.png': (0.0098, 0.0276, 0.2441, 0.6906),
+              'three_quarter.png': (0.2832, 0.0276, 0.5039, 0.6906),
+              'side.png': (0.5391, 0.0276, 0.7168, 0.6906),
+              'back.png': (0.7812, 0.0276, 0.9961, 0.6906),
+          }
+          for name, (x0,y0,x1,y1) in crops.items():
+              box = (round(x0*w), round(y0*h), round(x1*w), round(y1*h))
+              crop = img.crop(box)
+              # Preserve aspect ratio on a neutral square canvas; no generative edits.
+              crop.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+              canvas = Image.new('RGB', (1024, 1024), (16,16,16))
+              canvas.paste(crop, ((1024-crop.width)//2, (1024-crop.height)//2))
+              canvas.save(out/name, quality=98)
+          PY
+
+      - name: Install Tripo CLI
+        shell: bash
+        run: |
+          npm install -g tripo-cli
+          tripo --version
+
+      - name: Generate actual Character 1 3D model from approved views
+        shell: bash
+        env:
+          TRIPO_API_KEY: ${{ secrets.TRIPO_API_KEY }}
+        run: |
+          mkdir -p tripo-output
+          # Use the approved front/side/back views directly. No image-generation step.
+          # Tripo selects its multiview reconstruction workflow when multiple local images are supplied.
+          tripo make \
+            tripo-input/front.png \
+            tripo-input/side.png \
+            tripo-input/back.png \
+            --out tripo-output \
+            --yes \
+            --no-open
+
+      - name: Inventory generated model
+        shell: bash
+        run: |
+          find tripo-output -maxdepth 3 -type f -printf '%p\t%k KB\n' | sort
+          if ! find tripo-output -type f \( -iname '*.glb' -o -iname '*.gltf' -o -iname '*.fbx' -o -iname '*.obj' \) | grep -q .; then
+            echo "::error::Tripo completed without a downloadable 3D model file."
+            exit 1
+          fi
+
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: havenline-character1-tripo-model
+          path: |
+            tripo-input/
+            tripo-output/
+          if-no-files-found: error
+          retention-days: 14
