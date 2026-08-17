@@ -2,6 +2,12 @@ name: Havenline Character 1 - Tripo Lab
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - havenline-character1-tripo-lab
+    paths:
+      - '.tooling/havenline-character-reference-payload/tripo-lab-trigger.txt'
+      - '.github/workflows/havenline-character1-tripo-lab.yml'
 
 permissions:
   contents: read
@@ -31,6 +37,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Pillow
+        shell: bash
+        run: python -m pip install --quiet pillow
+
       - name: Materialize approved Character 1 source
         shell: bash
         run: |
@@ -50,7 +60,6 @@ jobs:
           img = Image.open(src).convert('RGB')
           w, h = img.size
 
-          # Approved Character 1 sheet crops already established in the Havenline lab.
           crops = {
               'front.png': (0.0098, 0.0276, 0.2441, 0.6906),
               'three_quarter.png': (0.2832, 0.0276, 0.5039, 0.6906),
@@ -60,7 +69,6 @@ jobs:
           for name, (x0,y0,x1,y1) in crops.items():
               box = (round(x0*w), round(y0*h), round(x1*w), round(y1*h))
               crop = img.crop(box)
-              # Preserve aspect ratio on a neutral square canvas; no generative edits.
               crop.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
               canvas = Image.new('RGB', (1024, 1024), (16,16,16))
               canvas.paste(crop, ((1024-crop.width)//2, (1024-crop.height)//2))
@@ -79,8 +87,6 @@ jobs:
           TRIPO_API_KEY: ${{ secrets.TRIPO_API_KEY }}
         run: |
           mkdir -p tripo-output
-          # Use the approved front/side/back views directly. No image-generation step.
-          # Tripo selects its multiview reconstruction workflow when multiple local images are supplied.
           tripo make \
             tripo-input/front.png \
             tripo-input/side.png \
