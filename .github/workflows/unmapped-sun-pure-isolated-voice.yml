@@ -1,0 +1,109 @@
+name: Unmapped Sun Pure Isolated Voice
+
+on:
+  push:
+    branches:
+      - tools/unmapped-sun-pure-dry-voice
+    paths:
+      - tools/unmapped_sun/**
+      - .github/workflows/unmapped-sun-pure-isolated-voice.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-pure-isolated-voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install system audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng ffmpeg libsndfile1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install synthesis dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "kokoro==0.9.4" "misaki[en]" numpy scipy soundfile
+
+      - name: Render all 47 lines from the zero-effects source path
+        run: python tools/unmapped_sun/generate_pure_isolated_voice.py
+
+      - name: Create review encodes without acoustic processing
+        run: |
+          ffmpeg -hide_banner -loglevel error -y \
+            -i out/The_Unmapped_Sun_Pure_Isolated_Voiceover_48k_PCM24.wav \
+            -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+            out/The_Unmapped_Sun_Pure_Isolated_Voiceover.mp3
+          ffmpeg -hide_banner -loglevel error -y \
+            -i out/The_Unmapped_Sun_Pure_Isolated_Voice_Approval_Sample.wav \
+            -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+            out/The_Unmapped_Sun_Pure_Isolated_Voice_Approval_Sample.mp3
+
+      - name: Verify channel count, sample rate, duration, clipping, and silence floor
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+
+          p = Path("out/The_Unmapped_Sun_Pure_Isolated_Voiceover_48k_PCM24.wav")
+          y, sr = sf.read(p, always_2d=True, dtype="float32")
+          duration = len(y) / sr
+          peak = float(np.max(np.abs(y)))
+          assert y.shape[1] == 1, f"Expected true mono, got {y.shape[1]} channels"
+          assert sr == 48000, f"Expected 48000 Hz, got {sr}"
+          assert abs(duration - 173.125) < 1 / sr + 1e-6, duration
+          assert peak < 1.0, f"Clipping detected: {peak}"
+
+          manifest = json.loads(Path("out/pure_isolated_voice_manifest.json").read_text())
+          forbidden = {
+              "reverb", "echo", "delay", "room_simulation", "stereo_widening",
+              "doubling", "chorus", "pitch_shift", "time_stretch", "eq",
+              "compression", "noise_reduction", "ambience"
+          }
+          for key in forbidden:
+              assert manifest["acoustic_processing"].get(key) is False, key
+          assert len(manifest["utterances"]) == 47
+          assert all(not u["post_effects"] for u in manifest["utterances"])
+
+          qa = {
+              "status": "passed",
+              "source": "fresh Kokoro synthesis; contaminated V2/V3 stems not used",
+              "channels": int(y.shape[1]),
+              "sample_rate_hz": int(sr),
+              "duration_seconds": round(duration, 6),
+              "peak_linear": round(peak, 8),
+              "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
+              "utterance_count": len(manifest["utterances"]),
+              "post_effects_per_utterance": 0,
+              "forbidden_acoustic_processing": {k: False for k in sorted(forbidden)},
+              "allowed_processing": manifest["allowed_processing"],
+          }
+          Path("out/pure_isolated_voice_qa.json").write_text(json.dumps(qa, indent=2))
+          print(json.dumps(qa, indent=2))
+          PY
+          ffprobe -v error -show_entries stream=codec_name,sample_rate,channels,channel_layout \
+            -show_entries format=duration -of json \
+            out/The_Unmapped_Sun_Pure_Isolated_Voiceover.mp3 \
+            > out/pure_isolated_voice_mp3_ffprobe.json
+
+      - name: Upload pure isolated voice masters
+        uses: actions/upload-artifact@v4
+        with:
+          name: unmapped-sun-pure-isolated-voice
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
