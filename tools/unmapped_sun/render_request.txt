@@ -1,0 +1,3 @@
+Render request: pure isolated voice V4
+Source policy: fresh synthesis only; do not reuse V2 or V3 narration audio.
+Acoustic processing policy: none.
