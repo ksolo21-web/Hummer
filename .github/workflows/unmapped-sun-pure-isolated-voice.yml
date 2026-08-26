@@ -41,7 +41,7 @@ jobs:
           p = Path("tools/unmapped_sun/generate_pure_isolated_voice.py")
           s = p.read_text(encoding="utf-8")
           anchor = 'pipeline=KPipeline(lang_code="a")'
-          patch = '''# Preserve every authored start time, but let a line use the existing silence\n# before the next utterance. No overlap, truncation, or time stretching.\nfor _i in range(len(UTTERANCES) - 1):\n    UTTERANCES[_i]["slot_end"] = max(\n        float(UTTERANCES[_i]["slot_end"]),\n        float(UTTERANCES[_i + 1]["start"]) - 0.08,\n    )\n\npipeline=KPipeline(lang_code="a")'''
+          patch = '''# Preserve every authored start time, but let a line use the existing silence\n# before the next utterance. No overlap, truncation, or time stretching.\nfor _i in range(len(UTTERANCES) - 1):\n    UTTERANCES[_i]["slot_end"] = max(\n        float(UTTERANCES[_i]["slot_end"]),\n        float(UTTERANCES[_i + 1]["start"]) - 0.08,\n    )\n# Let the final line use the remaining end-card time rather than rushing it.\nUTTERANCES[-1]["slot_end"] = MASTER_DURATION - 0.20\n\npipeline=KPipeline(lang_code="a")'''
           if anchor not in s:
               raise SystemExit("Patch anchor not found")
           p.write_text(s.replace(anchor, patch, 1), encoding="utf-8")
@@ -88,6 +88,7 @@ jobs:
               assert manifest["acoustic_processing"].get(key) is False, key
           assert len(manifest["utterances"]) == 47
           assert all(not u["post_effects"] for u in manifest["utterances"])
+          assert manifest["utterances"][-1]["native_speed_used"] <= 1.0
 
           qa = {
               "status": "passed",
@@ -99,6 +100,7 @@ jobs:
               "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
               "utterance_count": len(manifest["utterances"]),
               "post_effects_per_utterance": 0,
+              "final_line_native_speed": manifest["utterances"][-1]["native_speed_used"],
               "forbidden_acoustic_processing": {k: False for k in sorted(forbidden)},
               "allowed_processing": manifest["allowed_processing"],
           }
