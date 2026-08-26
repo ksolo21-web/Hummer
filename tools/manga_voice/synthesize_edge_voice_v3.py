@@ -35,9 +35,14 @@ class U:
 def load_utterances() -> list[U]:
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
     for node in tree.body:
+        value = None
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'UTTERANCES' for t in node.targets):
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == 'UTTERANCES':
+            value = node.value
+        if value is not None:
             result = []
-            for item in node.value.elts:
+            for item in value.elts:
                 vals = [ast.literal_eval(a) for a in item.args]
                 result.append(U(int(vals[0]), str(vals[1]), str(vals[2]), float(vals[4]), float(vals[5])))
             if len(result) != 47: raise RuntimeError(f'Expected 47 lines, found {len(result)}')
