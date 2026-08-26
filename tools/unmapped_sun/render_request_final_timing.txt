@@ -1,0 +1,2 @@
+Render request: pure isolated voice V4 final timing
+Use remaining end-card time for line 47. No acoustic effects.
