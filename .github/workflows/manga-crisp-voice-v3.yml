@@ -1,0 +1,74 @@
+name: Manga Crisp Natural Voice V3
+
+on:
+  push:
+    branches:
+      - manga-neural-voice-v2-20260826
+    paths:
+      - .github/workflows/manga-crisp-voice-v3.yml
+      - tools/manga_voice/synthesize_edge_voice_v3.py
+      - tools/manga_voice/synthesize_voice.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-dry-natural-female-voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out isolated manga voice branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install audio runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install "edge-tts==7.2.3" "pydub==0.25.1"
+
+      - name: Render dry isolated female performance
+        run: |
+          python tools/manga_voice/synthesize_edge_voice_v3.py
+
+      - name: Verify voice masters
+        run: |
+          test -s voice_output_v3/The_Unmapped_Sun_Crisp_Natural_Female_Voiceover_48k.wav
+          test -s voice_output_v3/The_Unmapped_Sun_Crisp_Natural_Female_Voiceover.mp3
+          test -s voice_output_v3/The_Unmapped_Sun_Crisp_Voice_Approval_Sample_Ava.mp3
+          test -s voice_output_v3/The_Unmapped_Sun_Crisp_Voice_Alternate_Emma.mp3
+          test -s voice_output_v3/voice_manifest_v3.json
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 voice_output_v3/The_Unmapped_Sun_Crisp_Natural_Female_Voiceover_48k.wav
+          ffprobe -v error -show_entries stream=sample_rate,channels -of default=nw=1 voice_output_v3/The_Unmapped_Sun_Crisp_Natural_Female_Voiceover_48k.wav
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('voice_output_v3/voice_manifest_v3.json').read_text())
+          assert m['utterance_count']==47
+          assert m['audio_policy']['dry_isolated_voice'] is True
+          for prohibited in ('reverb','echo','delay','room_ambience','post_pitch_shift','time_stretch','denoise'):
+              assert m['audio_policy'][prohibited] is False
+          print('Verified:',m['primary_voice'],m['utterance_count'],'dry lines')
+          PY
+
+      - name: Upload crisp natural voice package
+        uses: actions/upload-artifact@v4
+        with:
+          name: The-Unmapped-Sun-Crisp-Natural-Female-Voice-V3
+          path: |
+            voice_output_v3/The_Unmapped_Sun_Crisp_Natural_Female_Voiceover_48k.wav
+            voice_output_v3/The_Unmapped_Sun_Crisp_Natural_Female_Voiceover.mp3
+            voice_output_v3/The_Unmapped_Sun_Crisp_Voice_Approval_Sample_Ava.mp3
+            voice_output_v3/The_Unmapped_Sun_Crisp_Voice_Alternate_Emma.mp3
+            voice_output_v3/voice_manifest_v3.json
+            voice_output_v3/lines/*.wav
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
