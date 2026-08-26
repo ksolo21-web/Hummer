@@ -1,0 +1,73 @@
+name: Manga Neural Voice V2
+
+on:
+  push:
+    branches:
+      - manga-neural-voice-v2-20260826
+    paths:
+      - .github/workflows/manga-neural-voice-v2.yml
+      - tools/manga_voice/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthesize-natural-female-voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out isolated voice branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng ffmpeg libsndfile1
+
+      - name: Install neural voice runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "kokoro==0.9.4" "soundfile>=0.12" "librosa==0.10.2.post1"
+
+      - name: Render natural female performance
+        run: |
+          python tools/manga_voice/synthesize_voice.py
+
+      - name: Verify deliverables
+        run: |
+          test -s voice_output/The_Unmapped_Sun_Natural_Female_Voiceover_48k_stereo.wav
+          test -s voice_output/The_Unmapped_Sun_Natural_Female_Voiceover.mp3
+          test -s voice_output/The_Unmapped_Sun_Natural_Voice_Approval_Sample.mp3
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 voice_output/The_Unmapped_Sun_Natural_Female_Voiceover_48k_stereo.wav
+          ffprobe -v error -show_entries stream=sample_rate,channels -of default=nw=1 voice_output/The_Unmapped_Sun_Natural_Female_Voiceover_48k_stereo.wav
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('voice_output/voice_manifest.json').read_text())
+          assert manifest['utterance_count'] == 47
+          assert abs(manifest['duration'] - 173.089) < 0.001
+          print('Manifest verified:', manifest['engine'], manifest['voice'])
+          PY
+
+      - name: Upload natural voice package
+        uses: actions/upload-artifact@v4
+        with:
+          name: The-Unmapped-Sun-Natural-Female-Voice-V2
+          path: |
+            voice_output/The_Unmapped_Sun_Natural_Female_Voiceover_48k_stereo.wav
+            voice_output/The_Unmapped_Sun_Natural_Female_Voiceover.mp3
+            voice_output/The_Unmapped_Sun_Natural_Voice_Approval_Sample.wav
+            voice_output/The_Unmapped_Sun_Natural_Voice_Approval_Sample.mp3
+            voice_output/voice_manifest.json
+            voice_output/lines/*.wav
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
