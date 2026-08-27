@@ -1,0 +1,189 @@
+name: Ivy C2 Audition
+
+on:
+  push:
+    branches:
+      - media/ivy-c2-audition
+    paths:
+      - tools/beyond_the_panel/render_ivy_c2_audition.py
+      - tools/beyond_the_panel/ivy_c2_render_request.txt
+      - .github/workflows/ivy-c2-audition.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-ivy-c2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system audio and font tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1 fonts-dejavu-core
+
+      - name: Install CPU speech engines
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install \
+            "torch==2.6.0+cpu" "torchaudio==2.6.0+cpu" \
+            --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install \
+            "chatterbox-tts==0.1.7" \
+            "kokoro==0.9.4" "misaki[en]" \
+            "numpy<2" "scipy<2" "soundfile>=0.12" "librosa==0.11.0"
+
+      - name: Render Ivy C2 multi-take audition
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+        run: python tools/beyond_the_panel/render_ivy_c2_audition.py
+
+      - name: Encode review MP3s
+        run: |
+          for wav in out/Ivy_C2_1_Direct_Ivy_48k_PCM24.wav \
+                     out/Ivy_C2_2_Performance_Transfer_48k_PCM24.wav \
+                     out/Ivy_C2_3_Hybrid_Comp_48k_PCM24.wav \
+                     out/Ivy_C2_Audition_All_Three_48k_PCM24.wav; do
+            base="${wav%_48k_PCM24.wav}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "$wav" -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+              "${base}_320k_Mono.mp3"
+          done
+          ffmpeg -hide_banner -loglevel error -y \
+            -i out/Ivy_C2_af_heart_target_reference_48k_PCM16.wav \
+            -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+            out/Ivy_C2_Target_Reference_320k_Mono.mp3
+
+      - name: Create labeled review video
+        run: |
+          FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+          make_segment () {
+            WAV="$1"
+            TITLE="$2"
+            SUBTITLE="$3"
+            OUTFILE="$4"
+            DUR=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$WAV")
+            ffmpeg -hide_banner -loglevel error -y \
+              -f lavfi -i "color=c=0x070b12:s=1280x720:r=24:d=${DUR}" \
+              -i "$WAV" \
+              -vf "drawtext=fontfile=${FONT}:text='IVY C2 EXPRESSIVENESS AUDITION':fontcolor=0x62d9ff:fontsize=30:x=(w-text_w)/2:y=150,drawtext=fontfile=${FONT}:text='${TITLE}':fontcolor=white:fontsize=54:x=(w-text_w)/2:y=280,drawtext=fontfile=${FONT}:text='${SUBTITLE}':fontcolor=0xd7d9df:fontsize=24:x=(w-text_w)/2:y=375,drawtext=fontfile=${FONT}:text='Fictional non-canon performance test - no real viewer comment attributed':fontcolor=0x9ca3af:fontsize=18:x=(w-text_w)/2:y=620" \
+              -map 0:v:0 -map 1:a:0 -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p \
+              -c:a aac -b:a 256k -ar 48000 -ac 1 -shortest "$OUTFILE"
+          }
+          make_segment out/Ivy_C2_1_Direct_Ivy_48k_PCM24.wav \
+            "C2.1 - DIRECT IVY" "Best voice identity; expressive direct synthesis" out/review_1.mp4
+          make_segment out/Ivy_C2_2_Performance_Transfer_48k_PCM24.wav \
+            "C2.2 - PERFORMANCE TRANSFER" "Expressive guide performance converted into Ivy" out/review_2.mp4
+          make_segment out/Ivy_C2_3_Hybrid_Comp_48k_PCM24.wav \
+            "C2.3 - HYBRID COMP" "Scene-level comp using the strongest production path" out/review_3.mp4
+          printf "file 'review_1.mp4'\nfile 'review_2.mp4'\nfile 'review_3.mp4'\n" > out/review_concat.txt
+          ffmpeg -hide_banner -loglevel error -y \
+            -f concat -safe 0 -i out/review_concat.txt -c copy \
+            out/Ivy_C2_Audition_Labeled_Review_720p.mp4
+          rm -f out/review_1.mp4 out/review_2.mp4 out/review_3.mp4 out/review_concat.txt
+
+      - name: Verify dry mono deliverables and take selection
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+
+          manifest = json.loads(Path("out/Ivy_C2_Audition_Manifest.json").read_text())
+          forbidden = {
+              "reverb", "echo", "delay", "room_simulation", "stereo_widening",
+              "doubling", "chorus", "eq", "compression", "ambience",
+              "post_pitch_shift", "post_time_stretch"
+          }
+          for key in forbidden:
+              assert manifest["acoustic_processing"].get(key) is False, key
+          assert len(manifest["scenes"]) == 4
+          assert manifest["takes_per_scene_per_path"] == 3
+
+          qa = {
+              "status": "passed",
+              "audition": manifest["audition"],
+              "scenario_status": manifest["scenario_status"],
+              "sample_rate_hz": 48000,
+              "channels": 1,
+              "forbidden_acoustic_processing": {k: False for k in sorted(forbidden)},
+              "masters": {},
+              "take_counts": {},
+          }
+
+          for scene_name, scene in manifest["scenes"].items():
+              assert len(scene["direct_takes"]) == 3
+              assert len(scene["transfer_takes"]) == 3
+              assert scene["selected_hybrid"]["post_effects"] == []
+              qa["take_counts"][scene_name] = {
+                  "direct": len(scene["direct_takes"]),
+                  "transfer": len(scene["transfer_takes"]),
+                  "hybrid_path": scene["selected_hybrid"]["path"],
+                  "hybrid_take": scene["selected_hybrid"]["take"],
+              }
+
+          for name, info in manifest["masters"].items():
+              p = Path(info["wav"])
+              y, sr = sf.read(p, always_2d=True, dtype="float32")
+              duration = len(y) / sr
+              peak = float(np.max(np.abs(y)))
+              assert y.shape[1] == 1, f"{name}: expected true mono"
+              assert sr == 48000, f"{name}: expected 48 kHz"
+              assert 35.0 < duration < 90.0, f"{name}: unexpected duration {duration}"
+              assert peak < 1.0, f"{name}: clipping detected"
+              assert info["post_effects"] == []
+              qa["masters"][name] = {
+                  "duration_seconds": round(duration, 6),
+                  "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
+                  "features": info["features"],
+                  "post_effects": [],
+              }
+
+          Path("out/Ivy_C2_Audition_QA.json").write_text(json.dumps(qa, indent=2))
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Write FFprobe records
+        run: |
+          for media in out/Ivy_C2_*_320k_Mono.mp3 out/Ivy_C2_Audition_Labeled_Review_720p.mp4; do
+            ffprobe -v error \
+              -show_entries stream=codec_type,codec_name,sample_rate,channels,width,height,r_frame_rate \
+              -show_entries format=duration,size \
+              -of json "$media" > "${media%.*}_ffprobe.json"
+          done
+
+      - name: Create complete package ZIP
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path("out")
+          package = root / "Ivy_C2_Audition_Complete_Package.zip"
+          with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+              for p in sorted(root.rglob("*")):
+                  if p.is_file() and p != package:
+                      z.write(p, p.relative_to(root))
+          print(package)
+          PY
+
+      - name: Upload Ivy C2 audition package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivy-c2-audition
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
