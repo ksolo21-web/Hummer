@@ -1,0 +1,3 @@
+Render request: Ivy expressiveness audition.
+Create three clean, dry performances: natural conversational, more animated/reactive, and maximum believable expression.
+Use the approved af_heart voice identity reference and no acoustic effects.
