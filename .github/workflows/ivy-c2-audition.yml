@@ -42,6 +42,16 @@ jobs:
             "chatterbox-tts==0.1.7" \
             "kokoro==0.9.4" "misaki[en]" \
             "numpy<2" "scipy<2" "soundfile>=0.12" "librosa==0.11.0"
+          # Chatterbox 0.1.7 expects the callable Perth watermarker API exposed
+          # by 1.0.0. Perth 1.0.1 can resolve that symbol to None on CPU runners.
+          python -m pip install --force-reinstall --no-deps "resemble-perth==1.0.0"
+          python - <<'PY'
+          import perth
+          watermarker = getattr(perth, "PerthImplicitWatermarker", None)
+          if not callable(watermarker):
+              raise RuntimeError("PerthImplicitWatermarker is not callable after compatibility pin")
+          print("Perth compatibility check passed")
+          PY
 
       - name: Render Ivy C2 multi-take audition
         env:
