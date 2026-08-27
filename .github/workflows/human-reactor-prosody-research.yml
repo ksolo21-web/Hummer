@@ -41,6 +41,21 @@ jobs:
           yt-dlp --version
           ffmpeg -version | head -n 1
 
+      - name: Apply preflight correction and validate research script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("research/human_reactor_prosody_audit.py")
+          s = p.read_text(encoding="utf-8")
+          bad = 'RESTART_PATTERN = re.compile(r"(?:\\b\\w+\\b)[\\s,;:—-]+\\1\\b", re.I)'
+          good = 'RESTART_PATTERN = re.compile(r"(\\b\\w+\\b)[\\s,;:—-]+\\1\\b", re.I)'
+          if bad in s:
+              s = s.replace(bad, good)
+              p.write_text(s, encoding="utf-8")
+          compile(p.read_text(encoding="utf-8"), str(p), "exec")
+          print("Research script syntax validation passed")
+          PY
+
       - name: Run human reactor audio and prosody audit
         env:
           WHISPER_MODEL: base.en
@@ -52,7 +67,6 @@ jobs:
       - name: Verify privacy and output integrity
         run: |
           python - <<'PY'
-          import csv
           import json
           from pathlib import Path
 
@@ -68,7 +82,6 @@ jobs:
           assert not list((root / "raw").glob("*.wav")), "Full-length WAV files must be deleted"
           clips = list((root / "internal_review_clips").glob("*.wav"))
           assert clips, "Expected short internal review clips"
-          # Ensure no internal review clip exceeds 20 seconds.
           import soundfile as sf
           for clip in clips:
               info = sf.info(clip)
