@@ -1,0 +1,110 @@
+name: Human Reactor Prosody Research
+
+on:
+  push:
+    branches:
+      - research/human-reactor-prosody
+    paths:
+      - research/human_reactor_prosody_audit.py
+      - research/human_reactor_research_request.txt
+      - .github/workflows/human-reactor-prosody-research.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-human-reactors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install media and analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "yt-dlp>=2026.1.1" \
+            "faster-whisper>=1.1.1" \
+            "numpy<2" "scipy<2" \
+            "librosa==0.11.0" "soundfile>=0.12" \
+            "matplotlib>=3.8,<4"
+          yt-dlp --version
+          ffmpeg -version | head -n 1
+
+      - name: Run human reactor audio and prosody audit
+        env:
+          WHISPER_MODEL: base.en
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+        run: python research/human_reactor_prosody_audit.py
+
+      - name: Verify privacy and output integrity
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          root = Path("reactor_research")
+          summary = json.loads((root / "audit_summary.json").read_text())
+          metadata = json.loads((root / "source_metadata.json").read_text())
+          failures = json.loads((root / "failures.json").read_text())
+          assert summary["source_count"] >= 3, summary
+          assert summary["transcribed_segment_count"] > 50, summary
+          assert len(metadata) == summary["source_count"]
+          assert (root / "human_reactor_prosody_audit.md").exists()
+          assert (root / "top_reaction_moments.csv").exists()
+          assert not list((root / "raw").glob("*.wav")), "Full-length WAV files must be deleted"
+          clips = list((root / "internal_review_clips").glob("*.wav"))
+          assert clips, "Expected short internal review clips"
+          # Ensure no internal review clip exceeds 20 seconds.
+          import soundfile as sf
+          for clip in clips:
+              info = sf.info(clip)
+              assert info.duration <= 20.1, (clip, info.duration)
+          qa = {
+              "status": "passed",
+              "successful_sources": len(metadata),
+              "failures": failures,
+              "transcribed_segments": summary["transcribed_segment_count"],
+              "shortlisted_segments": summary["shortlisted_segment_count"],
+              "internal_review_clips": len(clips),
+              "full_length_audio_retained": False,
+          }
+          (root / "research_QA.json").write_text(json.dumps(qa, indent=2))
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Create compact research package
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path("reactor_research")
+          package = root / "Human_Reactor_Prosody_Research_Package.zip"
+          with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file() and path != package:
+                      archive.write(path, path.relative_to(root))
+          print(package)
+          PY
+
+      - name: Upload research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: human-reactor-prosody-research
+          path: reactor_research/
+          if-no-files-found: error
+          retention-days: 7
