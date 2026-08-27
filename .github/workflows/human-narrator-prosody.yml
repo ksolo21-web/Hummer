@@ -1,0 +1,91 @@
+name: Human Narrator Prosody Research
+
+on:
+  push:
+    branches:
+      - research/human-narrator-prosody
+    paths:
+      - research/human_narrator_prosody/**
+      - .github/workflows/human-narrator-prosody.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  analyze-human-readers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg curl unzip libsndfile1
+
+      - name: Install analysis dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            "numpy<2" "scipy<2" "pandas>=2.1" "soundfile>=0.12" \
+            "librosa==0.11.0" "faster-whisper==1.2.1"
+
+      - name: Retrieve the approved Ivy C2.3 lossless master
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ivy_input ivy_artifact
+          curl -L --fail --retry 5 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -o ivy-c2-artifact.zip \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/9663744386/zip"
+          unzip -q ivy-c2-artifact.zip -d ivy_artifact
+          IVY=$(find ivy_artifact -type f -name 'Ivy_C2_3_Hybrid_Comp_48k_PCM24.wav' -print -quit)
+          test -n "$IVY"
+          cp "$IVY" ivy_input/Ivy_C2_3_Hybrid_Comp_48k_PCM24.wav
+          ffprobe -v error -show_entries stream=sample_rate,channels -show_entries format=duration \
+            -of json ivy_input/Ivy_C2_3_Hybrid_Comp_48k_PCM24.wav
+
+      - name: Download and analyze public-domain human readings
+        env:
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+          TOKENIZERS_PARALLELISM: "false"
+          HF_HUB_DISABLE_XET: "1"
+        run: python research/human_narrator_prosody/analyze_human_readers.py
+
+      - name: Create compact report package
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path('human_reader_research')
+          package = root / 'Human_Narrator_Prosody_Research_Package.zip'
+          with zipfile.ZipFile(package, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+              for path in sorted((root / 'analysis').rglob('*')):
+                  if path.is_file():
+                      z.write(path, path.relative_to(root))
+              for path in sorted((root / 'clips').rglob('*.wav')):
+                  z.write(path, path.relative_to(root))
+          print(package)
+          PY
+
+      - name: Upload human-reader research artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: human-narrator-prosody-research
+          path: human_reader_research/
+          if-no-files-found: error
+          retention-days: 14
