@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
-"""Render a three-level Ivy expressiveness audition.
+"""Render three dry Ivy expressiveness auditions.
 
-The goal is to keep Ivy's approved clean vocal identity while replacing the
-flat, read-aloud delivery with emotionally changing performances.  A fresh
-Kokoro af_heart clip supplies Ivy's tone reference.  Chatterbox Nano/Turbo
-then performs the same host copy with different levels of reactivity and
-paralinguistic behavior.
+A fresh Kokoro af_heart clip supplies the approved Ivy vocal identity.
+Chatterbox Turbo then performs the same emotional journey at three intensity
+levels. The renderer works in short emotional beats so the delivery can change
+from excited, to playful, to sincere, to suspicious, and finally warm.
 
 No reverb, echo, room simulation, delay, widening, doubling, chorus, EQ,
-compression, ambience, or post-synthesis pitch/time effects are used.  The
-only post steps are trimming, sample-rate conversion, scalar gain, timeline
-placement, and 5 ms anti-click fades.
+compression, ambience, or post-synthesis pitch/time processing is used.
 """
 from __future__ import annotations
 
+import inspect
 import json
 import math
 import random
@@ -37,66 +35,58 @@ MASTER_SR = 48_000
 KOKORO_SR = 24_000
 VOICE = "af_heart"
 
-# A single audition script that intentionally moves through several emotional
-# states: excited -> warm -> playful/goofy -> sincere -> suspicious -> inviting.
-# Each model version receives equivalent content so the user can judge delivery,
-# not merely different writing.
+# Each version follows the same emotional arc. Text and punctuation vary only
+# where needed to invite a different performance rather than a different idea.
 VARIANTS: dict[str, dict[str, Any]] = {
     "A_natural_conversational": {
         "label": "Natural conversational",
-        "model": "nano",
-        "temperature": 0.64,
-        "top_p": 0.90,
-        "top_k": 650,
-        "min_p": 0.02,
-        "repetition_penalty": 1.22,
+        "temperature": 0.62,
+        "top_p": 0.88,
+        "top_k": 600,
+        "repetition_penalty": 1.24,
         "seed": 52010,
         "beats": [
             ("Hi! Okay... wait. This is actually happening.", 0.34, "excited but grounded"),
             ("I'm Ivy, and welcome to Beyond the Panel.", 0.30, "warm personal welcome"),
-            ("I'll be your host, your narrator, and somehow every character we meet along the way.", 0.30, "playful confidence; aside on somehow"),
-            ("So yes, I might be a fearless hero one minute, and somebody's very opinionated grandmother the next. [chuckle] We're going to have fun.", 0.42, "goofy and genuinely amused"),
-            ("But when a story hurts, I won't rush past it. I'll sit in that moment with you.", 0.42, "soft sincere emotional shift"),
-            ("And when somebody like Orin walks in acting innocent? Mm-mm. I have questions.", 0.40, "suspicious, dry playful disbelief"),
+            ("I'll be your host, your narrator, and somehow every character we meet along the way.", 0.30, "playful confidence; private aside on somehow"),
+            ("So yes, I might be a fearless hero one minute, and somebody's very opinionated grandmother the next. [chuckle] We're going to have fun.", 0.42, "genuinely amused, not cartoonish"),
+            ("But when a story hurts, I won't rush past it. I'll sit in that moment with you.", 0.44, "soft sincere emotional shift"),
+            ("And when somebody like Orin walks in acting innocent? Mm-mm. I have questions.", 0.42, "dry playful suspicion"),
             ("So take a breath, turn up the sound, and let's step beyond the panel... together.", 0.00, "warm cinematic invitation"),
         ],
     },
     "B_animated_reactive": {
         "label": "More animated and reactive",
-        "model": "nano",
-        "temperature": 0.82,
+        "temperature": 0.80,
         "top_p": 0.95,
         "top_k": 1000,
-        "min_p": 0.00,
-        "repetition_penalty": 1.17,
+        "repetition_penalty": 1.18,
         "seed": 52020,
         "beats": [
             ("Hi! Okay—wait. This is actually happening!", 0.30, "bright spontaneous launch excitement"),
             ("I'm Ivy... and welcome to the very first step Beyond the Panel.", 0.28, "warm, proud, intimate"),
             ("I'll be your host, your narrator, and—somehow—every character we meet along the way.", 0.26, "quick playful build; conspiratorial aside"),
-            ("So yes... I could be a fearless hero one minute, and somebody's very opinionated grandmother the next. [laugh] Oh, we're going to have fun.", 0.38, "goofy delight with a real laugh"),
-            ("But when a story hurts? I won't rush past it. I'll stay in that moment with you.", 0.44, "clear drop into tender sincerity"),
-            ("And when somebody like Orin walks in acting innocent? [chuckle] Mm-mm. No. I have questions.", 0.40, "amused suspicion, then firm side-eye"),
-            ("So take a breath... turn up the sound... and let's step beyond the panel—together.", 0.00, "slow warm invitation with lift at the end"),
+            ("So yes... I could be a fearless hero one minute, and somebody's very opinionated grandmother the next. [laugh] Oh, we're going to have fun.", 0.40, "goofy delight with a small real laugh"),
+            ("But when a story hurts? I won't rush past it. I'll stay in that moment with you.", 0.46, "clear drop into tender sincerity"),
+            ("And when somebody like Orin walks in acting innocent? [chuckle] Mm-mm. No. I have questions.", 0.42, "amused suspicion, then firm side-eye"),
+            ("So take a breath... turn up the sound... and let's step beyond the panel—together.", 0.00, "slow warm invitation with a lift at the end"),
         ],
     },
     "C_full_believable_performance": {
         "label": "Maximum believable expression",
-        "model": "turbo",
         "temperature": 0.92,
-        "top_p": 0.97,
+        "top_p": 0.98,
         "top_k": 1000,
-        "min_p": 0.00,
         "repetition_penalty": 1.14,
         "seed": 52030,
         "beats": [
             ("[gasp] Hi! Okay—wait... this is actually happening.", 0.34, "tiny breath of disbelief, then real excitement"),
-            ("I'm Ivy. And welcome to the very first step Beyond the Panel.", 0.32, "settle into warm direct connection"),
+            ("I'm Ivy. And welcome to the very first step Beyond the Panel.", 0.32, "settle into a warm direct connection"),
             ("I'll be your host, your narrator, and—somehow—every character we meet along the way.", 0.26, "charismatic build; playful private aside"),
-            ("So yes... I might be a fearless hero one minute, and somebody's very opinionated grandmother the next. [chuckle] Yeah... we're going to have fun.", 0.44, "organic amusement, not a performed joke"),
-            ("[sigh] But when a story hurts, I won't rush past it. I'll sit in that moment with you.", 0.48, "emotionally present, quiet and sincere"),
-            ("And when somebody like Orin walks in acting innocent? [chuckle] Mm-mm. I have questions... a lot of questions.", 0.44, "reactive suspicion with restrained humor"),
-            ("So take a breath. Turn up the sound. And let's step beyond the panel... together.", 0.00, "confident cinematic close, intimate final word"),
+            ("So yes... I might be a fearless hero one minute, and somebody's very opinionated grandmother the next. [chuckle] Yeah... we're going to have fun.", 0.44, "organic amusement, never a performed gag"),
+            ("[sigh] But when a story hurts, I won't rush past it. I'll sit in that moment with you.", 0.50, "emotionally present, quiet and sincere"),
+            ("And when somebody like Orin walks in acting innocent? [chuckle] Mm-mm. I have questions... a lot of questions.", 0.46, "reactive suspicion with restrained humor"),
+            ("So take a breath. Turn up the sound. And let's step beyond the panel... together.", 0.00, "confident cinematic close; intimate final word"),
         ],
     },
 }
@@ -110,7 +100,12 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def trim(y: np.ndarray, threshold: float = 1e-5, pad_seconds: float = 0.025, sr: int = MASTER_SR) -> np.ndarray:
+def trim(
+    y: np.ndarray,
+    threshold: float = 1e-5,
+    pad_seconds: float = 0.025,
+    sr: int = MASTER_SR,
+) -> np.ndarray:
     y = np.asarray(y, dtype=np.float32).reshape(-1)
     nz = np.flatnonzero(np.abs(y) > threshold)
     if not nz.size:
@@ -137,7 +132,7 @@ def scalar_peak(y: np.ndarray, ceiling_dbfs: float = -2.0) -> tuple[np.ndarray, 
 
 
 def build_ivy_reference() -> Path:
-    """Create a clean 10–12 second af_heart reference with mild natural range."""
+    """Create a clean, longer-than-five-seconds af_heart identity reference."""
     pipeline = KPipeline(lang_code="a")
     phrases = [
         ("I'm Ivy, and welcome to Beyond the Panel.", 0.95),
@@ -153,31 +148,32 @@ def build_ivy_reference() -> Path:
                 generated.append(a)
         if not generated:
             raise RuntimeError(f"Kokoro produced no reference audio for {text!r}")
-        y = np.concatenate(generated)
-        y = trim(y, sr=KOKORO_SR)
+        y = trim(np.concatenate(generated), sr=KOKORO_SR)
         y = resample_poly(y, MASTER_SR, KOKORO_SR).astype(np.float32)
         y = anti_click(y)
         chunks.append(y)
         if idx < len(phrases) - 1:
             chunks.append(np.zeros(int(round(0.18 * MASTER_SR)), dtype=np.float32))
-    ref = np.concatenate(chunks)
-    # Reference only: scalar gain; no dynamics or tonal processing.
-    ref, _ = scalar_peak(ref, -3.0)
+
+    reference = np.concatenate(chunks)
+    reference, _ = scalar_peak(reference, -3.0)
     path = OUT / "Ivy_af_heart_reference_48k_PCM16.wav"
-    sf.write(path, ref, MASTER_SR, subtype="PCM_16")
+    sf.write(path, reference, MASTER_SR, subtype="PCM_16")
+    if sf.info(path).duration <= 5.0:
+        raise RuntimeError("Ivy identity reference must be longer than five seconds")
     return path
 
 
-def load_models() -> tuple[ChatterboxTurboTTS, ChatterboxTurboTTS | None, str | None]:
-    torch.set_num_threads(max(1, min(8, (torch.get_num_threads() or 4))))
-    nano = ChatterboxTurboTTS.from_pretrained(device="cpu", nano=True)
-    turbo: ChatterboxTurboTTS | None = None
-    error: str | None = None
-    try:
-        turbo = ChatterboxTurboTTS.from_pretrained(device="cpu")
-    except Exception as exc:  # fallback is intentional so the audition still completes
-        error = f"{type(exc).__name__}: {exc}"
-    return nano, turbo, error
+def load_model() -> ChatterboxTurboTTS:
+    """Load the PyPI 0.1.7 Turbo model once and reuse it for all versions."""
+    torch.set_num_threads(max(1, min(8, torch.get_num_threads() or 4)))
+    return ChatterboxTurboTTS.from_pretrained(device="cpu")
+
+
+def supported_generate_kwargs(model: ChatterboxTurboTTS, requested: dict[str, Any]) -> dict[str, Any]:
+    """Filter controls against the installed package signature for resilience."""
+    supported = set(inspect.signature(model.generate).parameters)
+    return {key: value for key, value in requested.items() if key in supported}
 
 
 def generate_beat(
@@ -187,22 +183,28 @@ def generate_beat(
     settings: dict[str, Any],
     seed: int,
 ) -> tuple[np.ndarray, dict[str, Any]]:
-    set_seed(seed)
-    kwargs = {
+    requested_kwargs = {
         "audio_prompt_path": str(ref_path),
         "temperature": float(settings["temperature"]),
-        "min_p": float(settings["min_p"]),
+        "min_p": 0.0,
         "top_p": float(settings["top_p"]),
         "top_k": int(settings["top_k"]),
         "repetition_penalty": float(settings["repetition_penalty"]),
         "norm_loudness": False,
     }
+    kwargs = supported_generate_kwargs(model, requested_kwargs)
     last_error: Exception | None = None
+
     for attempt in range(1, 4):
+        attempt_seed = seed + (attempt - 1) * 101
+        set_seed(attempt_seed)
         try:
             with torch.inference_mode():
                 wav = model.generate(text, **kwargs)
-            y = wav.detach().cpu().float().numpy().reshape(-1)
+            if torch.is_tensor(wav):
+                y = wav.detach().cpu().float().numpy().reshape(-1)
+            else:
+                y = np.asarray(wav, dtype=np.float32).reshape(-1)
             if not np.isfinite(y).all() or y.size < int(0.25 * model.sr):
                 raise RuntimeError("invalid or implausibly short model output")
             y = trim(y, sr=int(model.sr))
@@ -211,27 +213,26 @@ def generate_beat(
             y, gain_db = scalar_peak(y, -2.8)
             return y, {
                 "attempt": attempt,
-                "seed": seed,
+                "seed": attempt_seed,
                 "source_sample_rate": int(model.sr),
                 "duration": round(len(y) / MASTER_SR, 6),
                 "gain_db": round(gain_db, 3),
+                "generate_kwargs": kwargs,
                 "post_effects": [],
             }
         except Exception as exc:
             last_error = exc
-            seed += 101
-            set_seed(seed)
-    assert last_error is not None
+
     raise RuntimeError(f"Failed to render beat after three attempts: {last_error}")
 
 
 def f0_metrics(path: Path) -> dict[str, float | None]:
-    """Measure variation for QA only; this does not alter audio."""
+    """Measure variation for QA only; never alter the rendered audio."""
     try:
         import librosa
 
         y, sr = librosa.load(path, sr=None, mono=True)
-        f0, voiced, _prob = librosa.pyin(
+        f0, _voiced, _prob = librosa.pyin(
             y,
             fmin=librosa.note_to_hz("C2"),
             fmax=librosa.note_to_hz("C7"),
@@ -246,16 +247,22 @@ def f0_metrics(path: Path) -> dict[str, float | None]:
             "rms_std": round(float(np.std(rms)), 8),
         }
     except Exception:
-        return {"f0_mean_hz": None, "f0_std_hz": None, "f0_range_hz": None, "rms_std": None}
+        return {
+            "f0_mean_hz": None,
+            "f0_std_hz": None,
+            "f0_range_hz": None,
+            "rms_std": None,
+        }
 
 
 def main() -> None:
     ref_path = build_ivy_reference()
-    nano, turbo, turbo_error = load_models()
+    model = load_model()
 
     manifest: dict[str, Any] = {
         "status": "ok",
         "voice_identity_source": "fresh Kokoro af_heart reference",
+        "performance_engine": "Chatterbox Turbo",
         "reference_file": str(ref_path),
         "sample_rate": MASTER_SR,
         "channels": 1,
@@ -280,7 +287,6 @@ def main() -> None:
             "timeline placement",
             "5 ms anti-click fades",
         ],
-        "turbo_load_error": turbo_error,
         "variants": {},
     }
 
@@ -289,17 +295,13 @@ def main() -> None:
     comparison_cursor = 0.0
 
     for variant_idx, (name, settings) in enumerate(VARIANTS.items(), start=1):
-        requested_model = settings["model"]
-        selected_model = turbo if requested_model == "turbo" and turbo is not None else nano
-        actual_model = "turbo" if selected_model is turbo and turbo is not None else "nano"
-
         assembled: list[np.ndarray] = []
         beat_manifest: list[dict[str, Any]] = []
         cursor = 0.0
 
         for beat_idx, (text, pause, direction) in enumerate(settings["beats"], start=1):
             y, meta = generate_beat(
-                selected_model,
+                model,
                 text,
                 ref_path,
                 settings,
@@ -307,6 +309,7 @@ def main() -> None:
             )
             beat_path = LINES / f"{name}_beat_{beat_idx:02d}.wav"
             sf.write(beat_path, y, MASTER_SR, subtype="PCM_24")
+
             start = cursor
             end = start + len(y) / MASTER_SR
             assembled.append(y)
@@ -329,24 +332,20 @@ def main() -> None:
         wav_path = OUT / f"Ivy_Expressiveness_{name}_48k_PCM24.wav"
         sf.write(wav_path, master, MASTER_SR, subtype="PCM_24")
 
-        metrics = f0_metrics(wav_path)
         manifest["variants"][name] = {
             "label": settings["label"],
-            "requested_model": requested_model,
-            "actual_model": actual_model,
+            "model": "turbo",
             "duration": round(len(master) / MASTER_SR, 6),
             "master_gain_db": round(master_gain_db, 3),
             "temperature": settings["temperature"],
             "top_p": settings["top_p"],
             "top_k": settings["top_k"],
-            "min_p": settings["min_p"],
             "repetition_penalty": settings["repetition_penalty"],
             "wav": str(wav_path),
-            "metrics": metrics,
+            "metrics": f0_metrics(wav_path),
             "beats": beat_manifest,
         }
 
-        # Comparison master: one second of silence between labeled variants.
         comparison_markers.append({
             "variant": name,
             "label": settings["label"],
@@ -363,7 +362,6 @@ def main() -> None:
     comparison, comparison_gain_db = scalar_peak(comparison, -1.8)
     comparison_path = OUT / "Ivy_Expressiveness_Audition_All_Three_48k_PCM24.wav"
     sf.write(comparison_path, comparison, MASTER_SR, subtype="PCM_24")
-
     manifest["comparison"] = {
         "wav": str(comparison_path),
         "duration": round(len(comparison) / MASTER_SR, 6),
@@ -376,13 +374,12 @@ def main() -> None:
     )
     (OUT / "Ivy_Expressiveness_Audition_Script.md").write_text(
         "# Ivy Expressiveness Audition\n\n"
-        + "The same emotional journey is rendered at three performance levels.\n\n"
-        + "## A — Natural conversational\n\n"
-        + "\n\n".join(x[0] for x in VARIANTS["A_natural_conversational"]["beats"])
-        + "\n\n## B — More animated and reactive\n\n"
-        + "\n\n".join(x[0] for x in VARIANTS["B_animated_reactive"]["beats"])
-        + "\n\n## C — Maximum believable expression\n\n"
-        + "\n\n".join(x[0] for x in VARIANTS["C_full_believable_performance"]["beats"])
+        "The same emotional journey is rendered at three believable intensity levels.\n\n"
+        + "\n\n".join(
+            f"## {settings['label']}\n\n"
+            + "\n\n".join(beat[0] for beat in settings["beats"])
+            for settings in VARIANTS.values()
+        )
         + "\n",
         encoding="utf-8",
     )
@@ -390,10 +387,8 @@ def main() -> None:
     print(json.dumps({
         "status": "ok",
         "reference_seconds": round(sf.info(ref_path).duration, 3),
-        "turbo_available": turbo is not None,
         "variants": {
             name: {
-                "model": manifest["variants"][name]["actual_model"],
                 "duration": manifest["variants"][name]["duration"],
                 "metrics": manifest["variants"][name]["metrics"],
             }
