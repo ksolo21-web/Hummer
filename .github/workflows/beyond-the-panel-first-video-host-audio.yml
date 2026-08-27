@@ -1,0 +1,107 @@
+name: Beyond the Panel First Video Host Audio
+
+on:
+  push:
+    branches:
+      - media/beyond-the-panel-first-video-demo
+    paths:
+      - tools/beyond_the_panel/**
+      - .github/workflows/beyond-the-panel-first-video-host-audio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-ivy-host-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install FFmpeg and CPU-only synthesis dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install "torch==2.8.0" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install "kokoro==0.9.4" "misaki[en]" numpy scipy soundfile
+
+      - name: Render Ivy's introduction and recap from a zero-effects signal path
+        run: python tools/beyond_the_panel/render_first_video_host_audio.py
+
+      - name: Create lossless-review and high-quality MP3 encodes
+        run: |
+          for stem in first_video_intro post_chapter_recap; do
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "out/Ivy_${stem}_48k_FLOAT.wav" \
+              -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+              "out/Ivy_${stem}_320k_Mono.mp3"
+          done
+
+      - name: Verify pure mono audio and manifest rules
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+
+          manifest_path = Path("out/Ivy_first_video_host_audio_manifest.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          forbidden = {
+              "reverb", "echo", "delay", "room_simulation", "stereo_widening",
+              "doubling", "chorus", "pitch_shift", "time_stretch", "eq",
+              "compression", "noise_reduction", "ambience"
+          }
+          assert manifest["voice"] == "af_heart"
+          for key in forbidden:
+              assert manifest["acoustic_processing"].get(key) is False, key
+
+          qa = {
+              "status": "passed",
+              "engine": manifest["engine"],
+              "voice": manifest["voice"],
+              "forbidden_acoustic_processing": {k: False for k in sorted(forbidden)},
+              "segments": {},
+          }
+          for name, info in manifest["segments"].items():
+              p = Path(info["wav"])
+              y, sr = sf.read(p, always_2d=True, dtype="float32")
+              peak = float(np.max(np.abs(y)))
+              assert y.shape[1] == 1, f"{name}: expected true mono"
+              assert sr == 48000, f"{name}: expected 48 kHz"
+              assert peak < 1.0, f"{name}: clipping detected"
+              assert all(not line["post_effects"] for line in info["lines"])
+              qa["segments"][name] = {
+                  "duration_seconds": round(len(y) / sr, 6),
+                  "sample_rate_hz": sr,
+                  "channels": int(y.shape[1]),
+                  "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
+                  "line_count": len(info["lines"]),
+                  "post_effects_per_line": 0,
+              }
+
+          Path("out/Ivy_first_video_host_audio_QA.json").write_text(
+              json.dumps(qa, indent=2), encoding="utf-8"
+          )
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Remove intermediate float files
+        run: rm -f out/*_48k_FLOAT.wav
+
+      - name: Upload Ivy host audio package
+        uses: actions/upload-artifact@v4
+        with:
+          name: beyond-the-panel-first-video-ivy-host-audio
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
