@@ -1,0 +1,129 @@
+name: Ivy Expressiveness Audition
+
+on:
+  push:
+    branches:
+      - media/ivy-expressiveness-audition
+    paths:
+      - tools/beyond_the_panel/render_ivy_expressiveness_audition.py
+      - tools/beyond_the_panel/ivy_expressiveness_render_request.txt
+      - .github/workflows/ivy-expressiveness-audition.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-audition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system audio tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1
+
+      - name: Install CPU speech engines
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install \
+            "torch==2.6.0+cpu" "torchaudio==2.6.0+cpu" \
+            --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install \
+            "chatterbox-tts==0.1.7" \
+            "kokoro==0.9.4" "misaki[en]" \
+            "numpy<2" "scipy<2" "soundfile>=0.12" "librosa==0.11.0"
+
+      - name: Render three expressive Ivy performances
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+        run: python tools/beyond_the_panel/render_ivy_expressiveness_audition.py
+
+      - name: Encode review MP3s
+        run: |
+          for wav in out/Ivy_Expressiveness_*_48k_PCM24.wav; do
+            base="${wav%_48k_PCM24.wav}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "$wav" -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+              "${base}_320k_Mono.mp3"
+          done
+
+      - name: Verify dry mono deliverables
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+
+          manifest = json.loads(Path("out/Ivy_Expressiveness_Audition_Manifest.json").read_text())
+          forbidden = {
+              "reverb", "echo", "delay", "room_simulation", "stereo_widening",
+              "doubling", "chorus", "eq", "compression", "ambience",
+              "post_pitch_shift", "post_time_stretch"
+          }
+          for key in forbidden:
+              assert manifest["acoustic_processing"].get(key) is False, key
+          assert len(manifest["variants"]) == 3
+
+          qa = {
+              "status": "passed",
+              "voice_identity_source": manifest["voice_identity_source"],
+              "sample_rate_hz": 48000,
+              "channels": 1,
+              "forbidden_acoustic_processing": {k: False for k in sorted(forbidden)},
+              "variants": {},
+          }
+          for name, info in manifest["variants"].items():
+              p = Path(info["wav"])
+              y, sr = sf.read(p, always_2d=True, dtype="float32")
+              peak = float(np.max(np.abs(y)))
+              duration = len(y) / sr
+              assert y.shape[1] == 1, f"{name}: expected mono"
+              assert sr == 48000, f"{name}: expected 48 kHz"
+              assert 20.0 < duration < 75.0, f"{name}: unexpected duration {duration}"
+              assert peak < 1.0, f"{name}: clipping"
+              assert len(info["beats"]) == 7
+              assert all(not beat["post_effects"] for beat in info["beats"])
+              qa["variants"][name] = {
+                  "label": info["label"],
+                  "model": info["actual_model"],
+                  "duration_seconds": round(duration, 6),
+                  "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
+                  "f0_metrics": info["metrics"],
+                  "beat_count": len(info["beats"]),
+                  "post_effects_per_beat": 0,
+              }
+
+          Path("out/Ivy_Expressiveness_Audition_QA.json").write_text(json.dumps(qa, indent=2))
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Write FFprobe records
+        run: |
+          for audio in out/Ivy_Expressiveness_*_320k_Mono.mp3; do
+            ffprobe -v error \
+              -show_entries stream=codec_name,sample_rate,channels,channel_layout \
+              -show_entries format=duration,size \
+              -of json "$audio" > "${audio%.mp3}_ffprobe.json"
+          done
+
+      - name: Upload audition package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivy-expressiveness-audition
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
