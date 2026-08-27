@@ -1,0 +1,200 @@
+name: Ivy C2 Human-Reader Pass
+
+on:
+  push:
+    branches:
+      - media/ivy-c2-human-reader-pass
+    paths:
+      - tools/beyond_the_panel/render_ivy_c2_human_reader_pass.py
+      - tools/beyond_the_panel/ivy_c2_human_reader_render_request.txt
+      - .github/workflows/ivy-c2-human-reader-pass.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-human-reader-pass:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system audio and font dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg libsndfile1 fonts-dejavu-core rubberband-cli sox
+
+      - name: Install CPU speech stack
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install \
+            "torch==2.6.0+cpu" "torchaudio==2.6.0+cpu" \
+            --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install \
+            "chatterbox-tts==0.1.7" \
+            "kokoro==0.9.4" "misaki[en]" \
+            "numpy<2" "scipy<2" "soundfile>=0.12" "librosa==0.11.0"
+          python -m pip install \
+            "resemble-perth==1.0.1" bitstring matplotlib praat-parselmouth \
+            pyrubberband PyWavelets sox tabulate tensorboard
+          python -m pip install --force-reinstall "setuptools==79.0.1"
+          python - <<'PY'
+          import pkg_resources
+          import perth
+          from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker
+          assert callable(PerthImplicitWatermarker)
+          assert callable(perth.PerthImplicitWatermarker)
+          print("Speech runtime compatibility checks passed")
+          PY
+
+      - name: Render the Ivy C2 Human-Reader Pass
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+          HF_HUB_DISABLE_XET: "1"
+        run: python tools/beyond_the_panel/render_ivy_c2_human_reader_pass.py
+
+      - name: Encode review MP3s
+        run: |
+          for wav in \
+            out/Ivy_C2_HR_A_Continuous_Baseline_48k_PCM24.wav \
+            out/Ivy_C2_HR_B_Natural_Thought_Unit_Pass_48k_PCM24.wav \
+            out/Ivy_C2_HR_C_Human_Reader_Director_Comp_48k_PCM24.wav \
+            out/Ivy_C2_HR_D_Wider_Tonal_Contrast_48k_PCM24.wav \
+            out/Ivy_C2_Human_Reader_Audition_All_Versions_48k_PCM24.wav; do
+            base="${wav%_48k_PCM24.wav}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "$wav" -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+              "${base}_320k_Mono.mp3"
+          done
+          ffmpeg -hide_banner -loglevel error -y \
+            -i out/Ivy_C2_HR_Base_Reference_48k_PCM16.wav \
+            -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+            out/Ivy_C2_HR_Base_Reference_320k_Mono.mp3
+
+      - name: Create labeled A-B-C-D review video
+        run: |
+          FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+          make_segment () {
+            local WAV="$1" TITLE="$2" SUBTITLE="$3" OUTFILE="$4"
+            local DUR
+            DUR=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$WAV")
+            ffmpeg -hide_banner -loglevel error -y \
+              -f lavfi -i "color=c=0x070b12:s=1280x720:r=24:d=${DUR}" \
+              -i "$WAV" \
+              -vf "drawtext=fontfile=${FONT}:text='IVY C2 - HUMAN-READER PASS':fontcolor=0x62d9ff:fontsize=30:x=(w-text_w)/2:y=125,drawtext=fontfile=${FONT}:text='${TITLE}':fontcolor=white:fontsize=50:x=(w-text_w)/2:y=260,drawtext=fontfile=${FONT}:text='${SUBTITLE}':fontcolor=0xd7d9df:fontsize=22:x=(w-text_w)/2:y=360,drawtext=fontfile=${FONT}:text='Fictional non-canon audition - no real viewer comment attributed':fontcolor=0x9ca3af:fontsize=18:x=(w-text_w)/2:y=620" \
+              -map 0:v:0 -map 1:a:0 -c:v libx264 -preset medium -crf 18 \
+              -pix_fmt yuv420p -c:a aac -b:a 256k -ar 48000 -ac 1 \
+              -shortest "$OUTFILE"
+          }
+          make_segment out/Ivy_C2_HR_A_Continuous_Baseline_48k_PCM24.wav \
+            "A - CONTINUOUS BASELINE" "One global posture, included only for comparison" out/review_a.mp4
+          make_segment out/Ivy_C2_HR_B_Natural_Thought_Unit_Pass_48k_PCM24.wav \
+            "B - NATURAL THOUGHT-UNIT PASS" "Meaning-driven pauses and restrained tonal changes" out/review_b.mp4
+          make_segment out/Ivy_C2_HR_C_Human_Reader_Director_Comp_48k_PCM24.wav \
+            "C - HUMAN-READER DIRECTOR COMP" "Director-selected tone, pitch, pace, breath, and silence" out/review_c.mp4
+          make_segment out/Ivy_C2_HR_D_Wider_Tonal_Contrast_48k_PCM24.wav \
+            "D - WIDER TONAL CONTRAST" "Stronger vocal-posture changes for comparison" out/review_d.mp4
+          printf "file 'review_a.mp4'\nfile 'review_b.mp4'\nfile 'review_c.mp4'\nfile 'review_d.mp4'\n" > out/review_concat.txt
+          ffmpeg -hide_banner -loglevel error -y \
+            -f concat -safe 0 -i out/review_concat.txt -c copy \
+            out/Ivy_C2_Human_Reader_Labeled_ABCD_Review_720p.mp4
+          rm -f out/review_a.mp4 out/review_b.mp4 out/review_c.mp4 out/review_d.mp4 out/review_concat.txt
+
+      - name: Verify human-reader timing, dry mono audio, and production map
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+
+          manifest = json.loads(Path("out/Ivy_C2_Human_Reader_Manifest.json").read_text())
+          forbidden = {
+              "reverb", "echo", "delay", "room_simulation", "stereo_widening",
+              "doubling", "chorus", "eq", "compression", "ambience",
+              "post_pitch_shift", "post_time_stretch"
+          }
+          for key in forbidden:
+              assert manifest["acoustic_processing"].get(key) is False, key
+          assert len(manifest["thought_units"]) == 19
+          assert len(manifest["mode_references"]) == 8
+          assert len(manifest["masters"]) == 4
+
+          qa = {
+              "status": "passed",
+              "audition": manifest["audition"],
+              "scenario_status": manifest["scenario_status"],
+              "sample_rate_hz": 48000,
+              "channels": 1,
+              "forbidden_acoustic_processing": {k: False for k in sorted(forbidden)},
+              "masters": {},
+              "mode_reference_features": {
+                  key: value["features"]
+                  for key, value in manifest["mode_references"].items()
+              },
+          }
+
+          for name, info in manifest["masters"].items():
+              y, sr = sf.read(info["wav"], always_2d=True, dtype="float32")
+              duration = len(y) / sr
+              peak = float(np.max(np.abs(y)))
+              assert y.shape[1] == 1, f"{name}: expected true mono"
+              assert sr == 48000, f"{name}: expected 48 kHz"
+              assert 45.0 < duration < 150.0, f"{name}: unexpected duration {duration}"
+              assert peak < 1.0, f"{name}: clipping"
+              assert info["post_effects"] == []
+              if name != "A_Continuous_Baseline":
+                  assert len(info["timeline"]) == 19
+              qa["masters"][name] = {
+                  "duration_seconds": round(duration, 6),
+                  "overall_wpm": info["overall_wpm"],
+                  "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
+                  "features": info["features"],
+              }
+
+          director = manifest["masters"]["C_Human_Reader_Director_Comp"]
+          assert director["overall_wpm"] < 155, director["overall_wpm"]
+          serious_units = [
+              item for item in director["timeline"]
+              if item["mode"] == "serious"
+          ]
+          assert serious_units
+          assert max(item["wpm"] for item in serious_units) < 175
+
+          Path("out/Ivy_C2_Human_Reader_QA.json").write_text(json.dumps(qa, indent=2))
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Create complete delivery package
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path("out")
+          package = root / "Ivy_C2_Human_Reader_Audition_Complete_Package.zip"
+          with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file() and path != package:
+                      archive.write(path, path.relative_to(root))
+          print(package)
+          PY
+
+      - name: Upload Human-Reader audition package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivy-c2-human-reader-pass
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
