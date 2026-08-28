@@ -1,0 +1,151 @@
+name: Beyond the Panel Full Demo Human-Reader Audio
+
+on:
+  push:
+    branches:
+      - media/ivy-c2-human-reader-pass
+    paths:
+      - tools/beyond_the_panel/render_full_demo_human_reader_audio.py
+      - tools/beyond_the_panel/full_demo_human_reader_render_request.txt
+      - .github/workflows/beyond-panel-full-demo-human-reader-audio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-full-demo-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg libsndfile1 rubberband-cli sox
+
+      - name: Install CPU speech stack
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install \
+            "torch==2.6.0+cpu" "torchaudio==2.6.0+cpu" \
+            --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install \
+            "chatterbox-tts==0.1.7" \
+            "kokoro==0.9.4" "misaki[en]" \
+            "numpy<2" "scipy<2" "soundfile>=0.12"
+          python -m pip install \
+            "resemble-perth==1.0.1" bitstring matplotlib praat-parselmouth \
+            pyrubberband PyWavelets sox tabulate tensorboard
+          python -m pip install --force-reinstall "setuptools==79.0.1"
+          python - <<'PY'
+          import pkg_resources
+          import perth
+          from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker
+          assert callable(PerthImplicitWatermarker)
+          assert callable(perth.PerthImplicitWatermarker)
+          print("Speech runtime compatibility checks passed")
+          PY
+
+      - name: Render full Human-Reader audio
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+          HF_HUB_DISABLE_XET: "1"
+        run: python tools/beyond_the_panel/render_full_demo_human_reader_audio.py
+
+      - name: Encode review MP3s
+        if: always()
+        run: |
+          shopt -s nullglob
+          for wav in out/Ivy_First_Video_Intro_Human_Reader_48k_PCM24.wav \
+                     out/Ivy_Post_Chapter_Recap_Human_Reader_48k_PCM24.wav; do
+            base="${wav%_48k_PCM24.wav}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -i "$wav" -map 0:a:0 -c:a libmp3lame -b:a 320k -ar 48000 -ac 1 \
+              "${base}_320k_Mono.mp3"
+          done
+
+      - name: Verify completed delivery
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          import soundfile as sf
+
+          manifest = json.loads(Path("out/Ivy_Full_Demo_Human_Reader_Manifest.json").read_text())
+          assert manifest["status"] == "passed"
+          assert len(manifest["story_lines"]) == 47
+          forbidden = {
+              "reverb", "echo", "delay", "room_simulation", "stereo_widening",
+              "doubling", "chorus", "eq", "compression", "ambience",
+              "post_pitch_shift", "post_time_stretch"
+          }
+          for key in forbidden:
+              assert manifest["acoustic_processing"][key] is False
+
+          qa = {
+              "status": "passed",
+              "project": manifest["project"],
+              "sample_rate_hz": 48000,
+              "channels": 1,
+              "story_line_count": len(manifest["story_lines"]),
+              "host_intro_duration_seconds": manifest["host_intro_duration_seconds"],
+              "recap_duration_seconds": manifest["recap_duration_seconds"],
+              "forbidden_acoustic_processing": {key: False for key in sorted(forbidden)},
+              "files": {},
+          }
+          files = [
+              Path(manifest["host_intro_master"]),
+              Path(manifest["recap_master"]),
+              *[Path(item["file"]) for item in manifest["story_lines"]],
+          ]
+          for path in files:
+              y, sr = sf.read(path, always_2d=True, dtype="float32")
+              peak = float(np.max(np.abs(y)))
+              assert sr == 48000
+              assert y.shape[1] == 1
+              assert peak < 1.0
+              qa["files"][str(path)] = {
+                  "duration_seconds": round(len(y) / sr, 6),
+                  "peak_dbfs": round(20 * np.log10(max(peak, 1e-12)), 3),
+              }
+          Path("out/Ivy_Full_Demo_Human_Reader_QA.json").write_text(json.dumps(qa, indent=2))
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Create artifact ZIP inside output
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path("out")
+          package = root / "Ivy_Full_Demo_Human_Reader_Audio_Package.zip"
+          with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+              for path in sorted(root.rglob("*")):
+                  if path.is_file() and path != package:
+                      archive.write(path, path.relative_to(root))
+          print(package)
+          PY
+
+      - name: Upload full Human-Reader audio package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beyond-panel-full-demo-human-reader-audio
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
