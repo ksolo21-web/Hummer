@@ -1,0 +1,88 @@
+name: ElevenLabs Ivy Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-elevenlabs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      ELEVENLABS_IVY_VOICE_ID: ${{ vars.ELEVENLABS_IVY_VOICE_ID }}
+
+    steps:
+      - name: Validate configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${ELEVENLABS_API_KEY:-}" ]] || { echo "Missing ELEVENLABS_API_KEY repository secret." >&2; exit 1; }
+          [[ -n "${ELEVENLABS_IVY_VOICE_ID:-}" ]] || { echo "Missing ELEVENLABS_IVY_VOICE_ID repository variable." >&2; exit 1; }
+
+      - name: Verify ElevenLabs account, Ivy voice, and speech-to-speech model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          HEADER=( -H "xi-api-key: ${ELEVENLABS_API_KEY}" -H 'Accept: application/json' )
+
+          curl --fail --silent --show-error --location \
+            "${HEADER[@]}" \
+            https://api.elevenlabs.io/v1/user \
+            -o out/user.json
+
+          curl --fail --silent --show-error --location \
+            "${HEADER[@]}" \
+            "https://api.elevenlabs.io/v1/voices/${ELEVENLABS_IVY_VOICE_ID}" \
+            -o out/voice.json
+
+          curl --fail --silent --show-error --location \
+            "${HEADER[@]}" \
+            https://api.elevenlabs.io/v1/models \
+            -o out/models.json
+
+          jq -e '.voice_id and .name' out/voice.json >/dev/null
+          jq -e '[.[] | select(.can_do_voice_conversion == true)] | length > 0' out/models.json >/dev/null
+
+          jq '{
+            voice_id,
+            name,
+            category,
+            labels,
+            description,
+            fine_tuning: {
+              is_allowed_to_fine_tune: .fine_tuning.is_allowed_to_fine_tune,
+              state: .fine_tuning.state
+            }
+          }' out/voice.json > out/ivy_voice_verified.json
+
+          jq '[.[] | select(.can_do_voice_conversion == true) | {
+            model_id,
+            name,
+            can_do_voice_conversion,
+            languages
+          }]' out/models.json > out/speech_to_speech_models.json
+
+          # Do not retain account details or any secret-bearing response.
+          rm -f out/user.json out/voice.json out/models.json
+
+          VOICE_NAME=$(jq -r '.name' out/ivy_voice_verified.json)
+          MODEL_IDS=$(jq -r '.[].model_id' out/speech_to_speech_models.json | paste -sd ', ' -)
+          {
+            echo "## ElevenLabs Ivy connection passed"
+            echo "- Voice: ${VOICE_NAME}"
+            echo "- Voice ID: ${ELEVENLABS_IVY_VOICE_ID}"
+            echo "- Voice Changer models: ${MODEL_IDS}"
+            echo "- API key value was never printed or stored in an artifact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: elevenlabs-ivy-smoke-test
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
