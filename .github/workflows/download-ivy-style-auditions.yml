@@ -1,0 +1,41 @@
+name: Download Ivy Style Auditions
+
+on:
+  push:
+    branches:
+      - media/ivy-ai-voice-generator-audition
+    paths:
+      - .github/workflows/download-ivy-style-auditions.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install audio tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Download playable previews
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl -L --fail --retry 4 -o out/Ivy_Delicate_Audition.mp3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/327924a1-8155-41fb-820e-e5028958e50e.mp3'
+          curl -L --fail --retry 4 -o out/Ivy_Fancy_Audition.mp3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/ed204905-0319-4db4-a91e-4ced2e2d98a6.mp3'
+          curl -L --fail --retry 4 -o out/Ivy_Clear_Audition.mp3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/5a6efbd7-ceb4-4998-a464-d05f3fc4fb66.mp3'
+          for f in out/*.mp3; do
+            ffprobe -v error -show_entries stream=codec_name,sample_rate,channels -show_entries format=duration,size -of json "$f" > "${f%.mp3}_QA.json"
+          done
+      - name: Upload auditions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivy-style-auditions
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
