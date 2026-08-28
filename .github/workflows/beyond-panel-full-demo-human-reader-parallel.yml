@@ -1,0 +1,276 @@
+name: Beyond the Panel Full Demo Human-Reader Parallel
+
+on:
+  push:
+    branches:
+      - media/ivy-c2-human-reader-pass
+    paths:
+      - tools/beyond_the_panel/render_full_demo_human_reader_audio.py
+      - tools/beyond_the_panel/render_full_demo_human_reader_chunk.py
+      - tools/beyond_the_panel/full_demo_parallel_render_request.txt
+      - .github/workflows/beyond-panel-full-demo-human-reader-parallel.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        include:
+          - name: host
+            section: host
+            start: 1
+            end: 1
+          - name: story-01-08
+            section: story
+            start: 1
+            end: 8
+          - name: story-09-16
+            section: story
+            start: 9
+            end: 16
+          - name: story-17-24
+            section: story
+            start: 17
+            end: 24
+          - name: story-25-32
+            section: story
+            start: 25
+            end: 32
+          - name: story-33-40
+            section: story
+            start: 33
+            end: 40
+          - name: story-41-47
+            section: story
+            start: 41
+            end: 47
+          - name: recap
+            section: recap
+            start: 1
+            end: 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install audio runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1 rubberband-cli sox
+          python -m pip install --upgrade pip wheel
+          python -m pip install \
+            "torch==2.6.0+cpu" "torchaudio==2.6.0+cpu" \
+            --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install \
+            "chatterbox-tts==0.1.7" \
+            "kokoro==0.9.4" "misaki[en]" \
+            "numpy<2" "scipy<2" "soundfile>=0.12"
+          python -m pip install \
+            "resemble-perth==1.0.1" bitstring matplotlib praat-parselmouth \
+            pyrubberband PyWavelets sox tabulate tensorboard
+          python -m pip install --force-reinstall "setuptools==79.0.1"
+          python - <<'PY'
+          import pkg_resources
+          import perth
+          from perth.perth_net.perth_net_implicit.perth_watermarker import PerthImplicitWatermarker
+          assert callable(PerthImplicitWatermarker)
+          assert callable(perth.PerthImplicitWatermarker)
+          print("Speech runtime compatibility checks passed")
+          PY
+
+      - name: Render ${{ matrix.name }}
+        working-directory: tools/beyond_the_panel
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+          HF_HUB_DISABLE_XET: "1"
+        run: |
+          python render_full_demo_human_reader_chunk.py \
+            --section "${{ matrix.section }}" \
+            --story-start "${{ matrix.start }}" \
+            --story-end "${{ matrix.end }}" \
+            --output-dir "$GITHUB_WORKSPACE/chunk_out"
+
+      - name: Upload ${{ matrix.name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivy-full-demo-${{ matrix.name }}
+          path: chunk_out/
+          if-no-files-found: error
+          retention-days: 14
+
+  merge:
+    needs: render
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all chunks
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ivy-full-demo-*
+          path: parts
+
+      - name: Merge audio package and manifests
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import json
+          import shutil
+          import zipfile
+          from pathlib import Path
+
+          parts = Path("parts")
+          out = Path("out")
+          (out / "host_intro_units").mkdir(parents=True, exist_ok=True)
+          (out / "story_lines").mkdir(parents=True, exist_ok=True)
+          (out / "recap_units").mkdir(parents=True, exist_ok=True)
+          (out / "mode_references").mkdir(parents=True, exist_ok=True)
+
+          manifests = []
+          for path in sorted(parts.rglob("chunk_manifest.json")):
+              manifests.append((path.parent, json.loads(path.read_text(encoding="utf-8"))))
+          assert len(manifests) == 8, len(manifests)
+
+          host = next((root, m) for root, m in manifests if m["section"] == "host")
+          recap = next((root, m) for root, m in manifests if m["section"] == "recap")
+          story_parts = sorted(
+              [(root, m) for root, m in manifests if m["section"] == "story"],
+              key=lambda item: item[1]["story_start"],
+          )
+
+          def copy_from(root: Path, path_string: str, destination: Path) -> str:
+              p = Path(path_string)
+              if p.is_absolute():
+                  # The runner wrote an absolute path rooted in its workspace.
+                  candidates = [root / p.name]
+                  if "story_lines" in p.parts:
+                      candidates.insert(0, root / "story_lines" / p.name)
+                  elif "host_intro_units" in p.parts:
+                      candidates.insert(0, root / "host_intro_units" / p.name)
+                  elif "recap_units" in p.parts:
+                      candidates.insert(0, root / "recap_units" / p.name)
+                  elif "mode_references" in p.parts:
+                      candidates.insert(0, root / "mode_references" / p.name)
+                  source = next((c for c in candidates if c.exists()), None)
+              else:
+                  source = root / p
+              if source is None or not source.exists():
+                  raise FileNotFoundError(path_string)
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(source, destination)
+              return f"out/{destination.relative_to(out).as_posix()}"
+
+          host_root, host_m = host
+          recap_root, recap_m = recap
+          host_master = copy_from(host_root, host_m["host_intro_master"], out / "Ivy_First_Video_Intro_Human_Reader_48k_PCM24.wav")
+          recap_master = copy_from(recap_root, recap_m["recap_master"], out / "Ivy_Post_Chapter_Recap_Human_Reader_48k_PCM24.wav")
+
+          host_units = []
+          for item in host_m["host_intro_units"]:
+              item = dict(item)
+              if "file" in item:
+                  item["file"] = copy_from(host_root, item["file"], out / "host_intro_units" / Path(item["file"]).name)
+              host_units.append(item)
+          recap_units = []
+          for item in recap_m["recap_units"]:
+              item = dict(item)
+              if "file" in item:
+                  item["file"] = copy_from(recap_root, item["file"], out / "recap_units" / Path(item["file"]).name)
+              recap_units.append(item)
+
+          story_lines = []
+          for root, manifest in story_parts:
+              for item in manifest["story_lines"]:
+                  item = dict(item)
+                  item["file"] = copy_from(root, item["file"], out / "story_lines" / Path(item["file"]).name)
+                  story_lines.append(item)
+          story_lines.sort(key=lambda x: x["index"])
+          assert [x["index"] for x in story_lines] == list(range(1, 48))
+
+          # Copy one complete set of voice-mode references and its manifest.
+          for source in sorted((host_root / "mode_references").glob("*")):
+              if source.is_file():
+                  shutil.copy2(source, out / "mode_references" / source.name)
+          ref_manifest = host_root / "mode_reference_manifest.json"
+          if ref_manifest.exists():
+              shutil.copy2(ref_manifest, out / ref_manifest.name)
+
+          merged = {
+              "status": "passed",
+              "project": "Beyond the Panel — First Video Full Demo — Ivy C2 Human-Reader Pass",
+              "sample_status": "The Unmapped Sun is a sample/proof-of-concept, not the official manga.",
+              "engine": "ChatterboxTTS conditioned on fresh Kokoro af_heart mode references; rendered in parallel chunks",
+              "voice_identity": "Ivy / af_heart",
+              "sample_rate_hz": 48000,
+              "channels": 1,
+              "acoustic_processing": {
+                  "reverb": False,
+                  "echo": False,
+                  "delay": False,
+                  "room_simulation": False,
+                  "stereo_widening": False,
+                  "doubling": False,
+                  "chorus": False,
+                  "eq": False,
+                  "compression": False,
+                  "ambience": False,
+                  "post_pitch_shift": False,
+                  "post_time_stretch": False,
+              },
+              "allowed_post_processing": [
+                  "silence trim",
+                  "48 kHz polyphase resampling",
+                  "scalar gain",
+                  "thought-unit timeline placement",
+                  "5 ms anti-click fades",
+              ],
+              "host_intro_master": host_master,
+              "host_intro_duration_seconds": host_m["host_intro_duration_seconds"],
+              "host_intro_units": host_units,
+              "story_lines": story_lines,
+              "recap_master": recap_master,
+              "recap_duration_seconds": recap_m["recap_duration_seconds"],
+              "recap_units": recap_units,
+          }
+          manifest_path = out / "Ivy_Full_Demo_Human_Reader_Manifest.json"
+          manifest_path.write_text(json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8")
+
+          qa = {
+              "status": "passed",
+              "chunk_count": len(manifests),
+              "host_unit_count": len([x for x in host_units if "text" in x]),
+              "story_line_count": len(story_lines),
+              "recap_unit_count": len([x for x in recap_units if "text" in x]),
+              "sections": [m["section"] for _, m in manifests],
+          }
+          (out / "Ivy_Full_Demo_Human_Reader_QA.json").write_text(json.dumps(qa, indent=2), encoding="utf-8")
+
+          package = out / "Ivy_Full_Demo_Human_Reader_Audio_Package.zip"
+          with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+              for path in sorted(out.rglob("*")):
+                  if path.is_file() and path != package:
+                      archive.write(path, path.relative_to(out))
+          print(json.dumps(qa, indent=2))
+          PY
+
+      - name: Upload merged Human-Reader audio package
+        uses: actions/upload-artifact@v4
+        with:
+          name: beyond-panel-full-demo-human-reader-audio-parallel
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
