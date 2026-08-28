@@ -1,0 +1,56 @@
+name: Beyond the Panel Full Demo Quality Patches
+
+on:
+  push:
+    branches:
+      - media/ivy-c2-human-reader-pass
+    paths:
+      - tools/beyond_the_panel/render_full_demo_quality_patch.py
+      - tools/beyond_the_panel/full_demo_quality_patch_request.txt
+      - .github/workflows/beyond-panel-full-demo-quality-patches.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch:
+    strategy:
+      fail-fast: false
+      max-parallel: 9
+      matrix:
+        patch_key: [story04, story23, story34, recap03, recap06, recap09, recap11, recap13, recap14]
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install speech runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1 rubberband-cli sox
+          python -m pip install --upgrade pip wheel
+          python -m pip install "torch==2.6.0+cpu" "torchaudio==2.6.0+cpu" --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install "chatterbox-tts==0.1.7" "kokoro==0.9.4" "misaki[en]" "numpy<2" "scipy<2" "soundfile>=0.12"
+          python -m pip install "resemble-perth==1.0.1" bitstring matplotlib praat-parselmouth pyrubberband PyWavelets sox tabulate tensorboard
+          python -m pip install --force-reinstall "setuptools==79.0.1"
+      - name: Render ${{ matrix.patch_key }}
+        working-directory: tools/beyond_the_panel
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+          OMP_NUM_THREADS: "4"
+          MKL_NUM_THREADS: "4"
+          HF_HUB_DISABLE_XET: "1"
+        run: |
+          python render_full_demo_quality_patch.py \
+            --patch-key "${{ matrix.patch_key }}" \
+            --output-dir "$GITHUB_WORKSPACE/patch_out"
+      - name: Upload ${{ matrix.patch_key }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ivy-quality-patch-${{ matrix.patch_key }}
+          path: patch_out/
+          if-no-files-found: error
+          retention-days: 14
