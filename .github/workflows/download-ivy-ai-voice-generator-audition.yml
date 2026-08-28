@@ -20,6 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install audio tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Download generated voiceover
         shell: bash
         run: |
@@ -29,17 +34,27 @@ jobs:
           FULL_URL='https://www.aidocmaker.com/g0/audio?name=bb898875154943398b7d6243bf162022'
           PREVIEW_URL='https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/ef16d00e-271d-4561-93b9-eadf1598104a.mp3'
           OUTPUT='out/Beyond_The_Panel_Ivy_Continuous_Audition.mp3'
+          TEMP='out/download.tmp'
 
-          if ! curl --fail --location --retry 4 --retry-delay 2 \
-              --user-agent 'Mozilla/5.0' \
-              --output "$OUTPUT" "$FULL_URL"; then
-            echo 'Full-audio endpoint failed; downloading the generated preview audio instead.'
+          download_and_validate () {
+            local url="$1"
+            rm -f "$TEMP"
             curl --fail --location --retry 4 --retry-delay 2 \
               --user-agent 'Mozilla/5.0' \
-              --output "$OUTPUT" "$PREVIEW_URL"
+              --output "$TEMP" "$url"
+            test -s "$TEMP"
+            ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$TEMP" | grep -qx audio
+          }
+
+          if download_and_validate "$FULL_URL"; then
+            mv "$TEMP" "$OUTPUT"
+            echo 'Downloaded the full generated audio.'
+          else
+            echo 'Full-audio endpoint did not return playable audio; using the generated preview file.'
+            download_and_validate "$PREVIEW_URL"
+            mv "$TEMP" "$OUTPUT"
           fi
 
-          test -s "$OUTPUT"
           file "$OUTPUT"
           ffprobe -v error \
             -show_entries stream=codec_name,sample_rate,channels,channel_layout \
