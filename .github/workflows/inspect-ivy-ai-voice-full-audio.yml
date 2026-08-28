@@ -1,0 +1,40 @@
+name: Inspect Ivy AI Voice Full Audio Page
+
+on:
+  push:
+    branches:
+      - media/ivy-ai-voice-generator-audition
+    paths:
+      - .github/workflows/inspect-ivy-ai-voice-full-audio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and inspect full-audio page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          URL='https://www.aidocmaker.com/g0/audio?name=bb898875154943398b7d6243bf162022'
+          curl --fail --location --retry 3 --user-agent 'Mozilla/5.0' \
+            --output out/full_audio_page.html "$URL"
+          echo '--- content type and size ---'
+          file out/full_audio_page.html
+          wc -c out/full_audio_page.html
+          echo '--- possible audio URLs ---'
+          grep -Eo 'https?[^"'"' <>]+(mp3|wav|m4a|audio)[^"'"' <>]*' out/full_audio_page.html | sort -u || true
+          echo '--- source/url/key hints ---'
+          grep -Eio '.{0,100}(audio_url|audioUrl|preview_url|previewUrl|download_url|downloadUrl|storage.googleapis.com|bb898875154943398b7d6243bf162022).{0,220}' out/full_audio_page.html | head -n 100 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ivy-ai-voice-full-audio-page
+          path: out/
+          if-no-files-found: error
+          retention-days: 3
