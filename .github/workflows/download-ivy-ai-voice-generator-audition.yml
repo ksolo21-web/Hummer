@@ -1,0 +1,56 @@
+name: Download Ivy AI Voice Generator Audition
+
+on:
+  push:
+    branches:
+      - media/ivy-ai-voice-generator-audition
+    paths:
+      - .github/workflows/download-ivy-ai-voice-generator-audition.yml
+      - tools/beyond_the_panel/ivy_ai_voice_generator_download_request.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download generated voiceover
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+
+          FULL_URL='https://www.aidocmaker.com/g0/audio?name=bb898875154943398b7d6243bf162022'
+          PREVIEW_URL='https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/ef16d00e-271d-4561-93b9-eadf1598104a.mp3'
+          OUTPUT='out/Beyond_The_Panel_Ivy_Continuous_Audition.mp3'
+
+          if ! curl --fail --location --retry 4 --retry-delay 2 \
+              --user-agent 'Mozilla/5.0' \
+              --output "$OUTPUT" "$FULL_URL"; then
+            echo 'Full-audio endpoint failed; downloading the generated preview audio instead.'
+            curl --fail --location --retry 4 --retry-delay 2 \
+              --user-agent 'Mozilla/5.0' \
+              --output "$OUTPUT" "$PREVIEW_URL"
+          fi
+
+          test -s "$OUTPUT"
+          file "$OUTPUT"
+          ffprobe -v error \
+            -show_entries stream=codec_name,sample_rate,channels,channel_layout \
+            -show_entries format=duration,size,format_name \
+            -of json "$OUTPUT" > out/Beyond_The_Panel_Ivy_Continuous_Audition_QA.json
+          cat out/Beyond_The_Panel_Ivy_Continuous_Audition_QA.json
+
+      - name: Upload audio file
+        uses: actions/upload-artifact@v4
+        with:
+          name: beyond-panel-ivy-ai-voice-generator-audition
+          path: out/
+          if-no-files-found: error
+          retention-days: 14
