@@ -1,0 +1,125 @@
+name: KREATIV 0.1.10 Source Verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/kreativ-auth-cloud-root-fix
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'firebase/**'
+      - 'scripts/kreativ_firebase_repair.py'
+      - '.github/workflows/kreativ-auth-cloud-root-fix-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kreativ-auth-cloud-root-fix-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KREATIV_GOOGLE_WEB_CLIENT_ID: 949620144971-saq0foq660pgd6r0fgu4adft55qr7t1b.apps.googleusercontent.com
+  KREATIV_FIREBASE_API_KEY: AIzaSyDze_icg2SIo2h-PV9SFAW1CBFcjMhp-MI
+  KREATIV_FIREBASE_APP_ID: 1:949620144971:android:63fec0446e8549d25946ce
+  KREATIV_FIREBASE_PROJECT_ID: my-study-companion-abc01
+  KREATIV_FIREBASE_STORAGE_BUCKET: my-study-companion-abc01.firebasestorage.app
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out root-fix source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Validate guarded Firebase repair utility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/kreativ_firebase_repair.py
+          python - <<'PY'
+          import importlib.util
+          import sys
+
+          path = "scripts/kreativ_firebase_repair.py"
+          spec = importlib.util.spec_from_file_location("repair", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["repair"] = module
+          spec.loader.exec_module(module)
+
+          source = """rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /users/{uid}/study/{doc} {
+                allow read: if request.auth.uid == uid;
+              }
+            }
+          }
+          """
+          fragment = (
+              "match /users/{uid}/kreativPrivate/{doc} { "
+              "allow read: if request.auth.uid == uid; }"
+          )
+          merged = module.merge_managed_rules(source, fragment, "cloud.firestore")
+          assert "study" in merged
+          assert "kreativPrivate" in merged
+          assert merged.count(module.BEGIN_MARKER) == 1
+          assert module.merge_managed_rules(merged, fragment, "cloud.firestore") == merged
+          PY
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Compile and test without publishing an APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace \
+            :app:testDebugUnitTest \
+            :app:assembleDebug \
+            -PKREATIV_GOOGLE_WEB_CLIENT_ID="$KREATIV_GOOGLE_WEB_CLIENT_ID" \
+            -PKREATIV_FIREBASE_API_KEY="$KREATIV_FIREBASE_API_KEY" \
+            -PKREATIV_FIREBASE_APP_ID="$KREATIV_FIREBASE_APP_ID" \
+            -PKREATIV_FIREBASE_PROJECT_ID="$KREATIV_FIREBASE_PROJECT_ID" \
+            -PKREATIV_FIREBASE_STORAGE_BUCKET="$KREATIV_FIREBASE_STORAGE_BUCKET"
+
+      - name: Record source-verification result
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cat > dist/SOURCE-VERIFICATION.txt <<EOF
+          Commit: $GITHUB_SHA
+          Package: com.kreativstudio.app
+          Version: 0.1.10-dev (versionCode 10)
+          Result: Firebase repair utility, Android compilation, and unit tests passed.
+          Distribution status: BLOCKED.
+          This job does not publish an APK and does not claim that live Firebase,
+          OAuth certificate registration, or cloud permissions are repaired.
+          EOF
+
+      - name: Upload verification evidence only
+        uses: actions/upload-artifact@v7
+        with:
+          name: kreativ-0.1.10-source-verification
+          path: dist/SOURCE-VERIFICATION.txt
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,11 @@
+// KREATIV Studio Cloud Storage rule fragment.
+//
+// IMPORTANT: This is intentionally NOT a standalone Storage ruleset.
+// Merge this match block inside the existing shared project's
+// `match /b/{bucket}/o` block. Never replace My Study Companion's canonical
+// Storage rules with a KREATIV-only ruleset.
+
+match /users/{userId}/kreativStudio/{allPaths=**} {
+  allow read, write: if request.auth != null
+    && request.auth.uid == userId;
+}

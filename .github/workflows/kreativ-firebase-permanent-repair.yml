@@ -1,0 +1,162 @@
+name: KREATIV Firebase Permanent Repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      auth_mode:
+        description: Google Cloud authentication source
+        required: true
+        type: choice
+        default: workload_identity
+        options:
+          - workload_identity
+          - service_account_json
+      apply_changes:
+        description: Register the signer and publish the merged live rules
+        required: true
+        type: boolean
+        default: false
+      confirm_project_id:
+        description: For apply mode, type my-study-companion-abc01
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: kreativ-firebase-permanent-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: my-study-companion-private
+
+    steps:
+      - name: Check out guarded repair source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Validate repair utility and merge behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/kreativ_firebase_repair.py
+          python - <<'PY'
+          import importlib.util
+          import sys
+
+          path = "scripts/kreativ_firebase_repair.py"
+          spec = importlib.util.spec_from_file_location("repair", path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules["repair"] = module
+          spec.loader.exec_module(module)
+
+          firestore = """rules_version = '2';
+          service cloud.firestore {
+            match /databases/{database}/documents {
+              match /users/{uid}/study/{doc} {
+                allow read: if request.auth.uid == uid;
+              }
+            }
+          }
+          """
+          fragment = (
+              "match /users/{uid}/kreativPrivate/{doc} { "
+              "allow read: if request.auth.uid == uid; }"
+          )
+          merged = module.merge_managed_rules(
+              firestore, fragment, "cloud.firestore"
+          )
+          assert "study" in merged
+          assert "kreativPrivate" in merged
+          assert merged.count(module.BEGIN_MARKER) == 1
+          assert module.merge_managed_rules(
+              merged, fragment, "cloud.firestore"
+          ) == merged
+          PY
+
+      - name: Require explicit production confirmation
+        if: ${{ inputs.apply_changes }}
+        shell: bash
+        env:
+          CONFIRMED_PROJECT: ${{ inputs.confirm_project_id }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMED_PROJECT" = "my-study-companion-abc01" || {
+            echo "Apply mode requires the exact project ID confirmation." >&2
+            exit 1
+          }
+
+      - name: Authenticate with Workload Identity Federation
+        id: auth_wif
+        if: ${{ inputs.auth_mode == 'workload_identity' }}
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Authenticate with service-account JSON
+        id: auth_json
+        if: ${{ inputs.auth_mode == 'service_account_json' }}
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MY_STUDY_COMPANION_ABC01 }}
+
+      - name: Merge live rules, validate, and optionally apply
+        shell: bash
+        env:
+          FIREBASE_ACCESS_TOKEN: ${{ steps.auth_wif.outputs.access_token || steps.auth_json.outputs.access_token }}
+          APPLY_CHANGES: ${{ inputs.apply_changes }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_ACCESS_TOKEN" || {
+            echo "Google authentication did not produce an access token." >&2
+            exit 1
+          }
+
+          project_id="$(jq -r '.project_id' firebase/kreativ-backend.json)"
+          android_app_id="$(jq -r '.android_app_id' firebase/kreativ-backend.json)"
+          package_name="$(jq -r '.package_name' firebase/kreativ-backend.json)"
+          storage_bucket="$(jq -r '.storage_bucket' firebase/kreativ-backend.json)"
+          expected_sha1="$(jq -r '.expected_sha1' firebase/kreativ-backend.json)"
+          expected_sha256="$(jq -r '.expected_sha256' firebase/kreativ-backend.json)"
+
+          apply_flag=()
+          if [ "$APPLY_CHANGES" = "true" ]; then
+            apply_flag=(--apply)
+          fi
+
+          python scripts/kreativ_firebase_repair.py \
+            --project-id "$project_id" \
+            --android-app-id "$android_app_id" \
+            --package-name "$package_name" \
+            --storage-bucket "$storage_bucket" \
+            --sha1 "$expected_sha1" \
+            --sha256 "$expected_sha256" \
+            --firestore-fragment firebase/firestore.rules \
+            --storage-fragment firebase/storage.rules \
+            --generated-firestore firebase/generated/shared-firestore.rules \
+            --generated-storage firebase/generated/shared-storage.rules \
+            --report dist/firebase-repair-report.json \
+            "${apply_flag[@]}"
+
+      - name: Upload non-secret repair evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: kreativ-firebase-repair-evidence
+          path: dist/firebase-repair-report.json
+          if-no-files-found: warn
+          retention-days: 14
