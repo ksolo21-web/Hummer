@@ -1,0 +1,77 @@
+name: Public Rochester mapping source fetch
+on:
+  push:
+    branches: [public-mapping-source-20260914]
+    paths: ['.github/workflows/public-mapping-source-20260914.yml']
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download public geographic data and municipal plans
+        shell: python
+        run: |
+          import concurrent.futures, hashlib, json, pathlib, time, urllib.parse, urllib.request
+          out=pathlib.Path('public-sources'); out.mkdir()
+          receipts=[]
+          def get(url, filename, data=None):
+              p=out/filename
+              req=urllib.request.Request(url,data=data,headers={'User-Agent':'PublicMappingSourceReview/1.0'})
+              for attempt in range(2):
+                  try:
+                      with urllib.request.urlopen(req,timeout=65) as r:
+                          b=r.read(); ct=r.headers.get('Content-Type','')
+                      p.write_bytes(b)
+                      receipts.append({'file':filename,'url':url,'retrieved_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'sha256':hashlib.sha256(b).hexdigest(),'bytes':len(b),'content_type':ct})
+                      return b
+                  except Exception as e:
+                      if attempt: 
+                          receipts.append({'file':filename,'url':url,'error':str(e)}); return None
+                      time.sleep(2)
+          areas={'east-rochester':[-83.124,42.686,-83.109,42.696], 'north-rochester-hills':[-83.137,42.694,-83.120,42.714]}
+          layers={
+             'roads':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0',
+             'parcels':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1',
+             'landuse':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenPlanningMapService/MapServer/4'
+          }
+          def gis_task(area, bbox, layer, base):
+              prefix=area+'-'+layer
+              get(base+'?f=pjson',prefix+'-metadata.json')
+              common={'f':'json','where':'1=1','geometry':','.join(map(str,bbox)),'geometryType':'esriGeometryEnvelope','inSR':'4326','spatialRel':'esriSpatialRelIntersects'}
+              b=get(base+'/query?'+urllib.parse.urlencode(dict(common,returnIdsOnly='true')),prefix+'-ids.json')
+              if not b:return
+              result=json.loads(b); ids=result.get('objectIds',[]); oid=result.get('objectIdFieldName')
+              if 'error' in result:
+                  print(prefix,'ERROR',result); return
+              features=[]
+              for n in range(0,len(ids),500):
+                  q={'f':'json','objectIds':','.join(map(str,ids[n:n+500])),'outFields':'*','returnGeometry':'true','outSR':'4326'}
+                  data=get(base+'/query?'+urllib.parse.urlencode(q),prefix+'-page-'+str(n//500)+'.json')
+                  if data: features.extend(json.loads(data).get('features',[]))
+              returned={f['attributes'].get(oid) for f in features}
+              merged={'source':base,'bbox':bbox,'spatialReference':{'wkid':4326},'objectIdFieldName':oid,'expected_count':len(ids),'returned_count':len(features),'complete':set(ids)==returned,'features':features}
+              (out/(prefix+'.json')).write_text(json.dumps(merged))
+              print(prefix,'expected',len(ids),'returned',len(features),'complete',merged['complete'])
+          urls={
+            'rochester-hills-sec2b-parcel-map.pdf':'https://atlas.rochesterhills.org/Sec2bSidwellPages.pdf',
+            'enclave-final-site-plans.pdf':'https://roch.legistar.com/View.ashx?GUID=7D5C2EC4-EA31-4F0C-AC98-1B677B70EDD1&ID=3703834&M=F',
+            'enclave-map-aerial.pdf':'https://roch.legistar.com/View.ashx?GUID=53E991BF-223C-4143-B61E-72EEDB1C3859&ID=3703824&M=F'
+          }
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+              tasks=[pool.submit(gis_task,a,b,l,u) for a,b in areas.items() for l,u in layers.items()]
+              tasks += [pool.submit(get,u,n) for n,u in urls.items()]
+              for task in concurrent.futures.as_completed(tasks):
+                  try: task.result()
+                  except Exception as e: print('TASK ERROR',str(e))
+          (out/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          print('Files',len(list(out.iterdir())))
+      - name: Upload public source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-rochester-geographic-sources-20260914
+          path: public-sources/
+          retention-days: 7
+          if-no-files-found: error
