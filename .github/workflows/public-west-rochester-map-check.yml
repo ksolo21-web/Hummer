@@ -1,0 +1,72 @@
+name: Public west Rochester geographic check
+on:
+  push:
+    branches: [public-west-rochester-map-check-20260914]
+    paths: [.github/workflows/public-west-rochester-map-check.yml]
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Retrieve public official geographic records
+        run: |
+          mkdir -p data
+          python - <<'PY'
+          import json,urllib.request,urllib.parse,hashlib,time,pathlib,concurrent.futures,re
+          D=pathlib.Path('data'); receipts=[]
+          bbox='-83.228,42.658,-83.171,42.708'
+          def get(name,url):
+              for attempt in range(4):
+                  try:
+                      req=urllib.request.Request(url,headers={'User-Agent':'Public-Geographic-Source-Verification/1.0'})
+                      with urllib.request.urlopen(req,timeout=100) as r: raw=r.read(); ct=r.headers.get('Content-Type')
+                      (D/name).write_bytes(raw)
+                      receipts.append(dict(file=name,url=url,retrieved_at_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),content_type=ct))
+                      return raw
+                  except Exception:
+                      if attempt==3: raise
+                      time.sleep(2*(attempt+1))
+          def layer(name,url):
+              try:
+                  metadata=json.loads(get(name+'-metadata.json',url+'?f=pjson'))
+                  q=dict(f='json',where='1=1',geometry=bbox,geometryType='esriGeometryEnvelope',inSR=4326,spatialRel='esriSpatialRelIntersects',returnIdsOnly='true')
+                  ids=json.loads(get(name+'-ids.json',url+'/query?'+urllib.parse.urlencode(q)))
+                  if 'error' in ids: raise RuntimeError(str(ids))
+                  allids=sorted(ids.get('objectIds') or []); features=[]
+                  for i in range(0,len(allids),400):
+                      q=dict(f='json',objectIds=','.join(map(str,allids[i:i+400])),outFields='*',returnGeometry='true',outSR=4326)
+                      page=json.loads(get(f'{name}-page-{i//400}.json',url+'/query?'+urllib.parse.urlencode(q)))
+                      if page.get('exceededTransferLimit') or 'error' in page: raise RuntimeError(str(page)[:500])
+                      features.extend(page.get('features',[]))
+                  field=ids.get('objectIdFieldName') or metadata.get('objectIdField') or 'OBJECTID'
+                  found=[f['attributes'][field] for f in features]
+                  assert sorted(found)==allids,(name,len(found),len(allids))
+                  (D/(name+'.json')).write_text(json.dumps(dict(spatialReference={'wkid':4326},features=features)))
+                  return dict(dataset=name,status='complete',bbox=bbox,expected=len(allids),returned=len(features),object_id_field=field,source=url)
+              except Exception as e:
+                  return dict(dataset=name,status='failed',error=str(e))
+          root='https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/'
+          layers=[('county-roads',root+'EnterpriseTransportationDataMapService/MapServer/0'),('county-parcels',root+'EnterpriseOpenParcelDataMapService/MapServer/1'),('county-landuse',root+'EnterpriseOpenPlanningMapService/MapServer/4'),('city-roads','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/8')]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex: status=list(ex.map(lambda p:layer(*p),layers))
+          try:
+              base='https://atlas.rochesterhills.org/IndexMapsofInterest/'
+              html=get('city-map-index.html',base).decode('utf-8','ignore')
+              urls=re.findall(r'''(?:href|src)\s*=\s*["']([^"']+)["']''',html,re.I)
+              for j,rel in enumerate(urls):
+                  if rel.lower().endswith('.js') and not rel.startswith('http'):
+                      try: get('city-index-script-'+str(j)+'.js',urllib.parse.urljoin(base,rel))
+                      except Exception: pass
+          except Exception as e: status.append(dict(dataset='city-map-index',status='failed',error=str(e)))
+          (D/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          (D/'COMPLETENESS.json').write_text(json.dumps(status,indent=2));print(json.dumps(status,indent=2))
+          if not any(s.get('dataset')=='county-roads' and s.get('status')=='complete' for s in status): raise SystemExit('County road retrieval failed')
+          PY
+      - name: Upload public source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-west-rochester-geography-20260914
+          path: data/
+          retention-days: 7
