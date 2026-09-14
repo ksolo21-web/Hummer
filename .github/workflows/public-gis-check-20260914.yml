@@ -1,0 +1,82 @@
+name: Public GIS source verification 20260914
+on:
+  push:
+    branches: [public-gis-check-20260914-278283]
+    paths: [.github/workflows/public-gis-check-20260914.yml]
+permissions:
+  contents: read
+jobs:
+  fetch-public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Fetch public records with count and ID completeness checks
+        shell: bash
+        run: |
+          mkdir -p public-data
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, json, pathlib, hashlib, datetime, time
+          from concurrent.futures import ThreadPoolExecutor
+          out=pathlib.Path('public-data')
+          receipts=[]; errors=[]
+          def fetch(url,name):
+              for attempt in range(3):
+                  try:
+                      req=urllib.request.Request(url,headers={'User-Agent':'Public-GIS-Source-Verification/1.0'})
+                      with urllib.request.urlopen(req,timeout=70) as r: data=r.read()
+                      (out/name).write_bytes(data)
+                      receipts.append({'name':name,'url':url,'retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+                      return data
+                  except Exception:
+                      if attempt==2: raise
+                      time.sleep(2)
+          def query(base,params,name):
+              data=json.loads(fetch(base+'/query?'+urllib.parse.urlencode({'f':'json',**params}),name))
+              if 'error' in data: raise RuntimeError(str(data['error']))
+              return data
+          # Deliberately broad: both residential areas, full intervening club land, and all immediate edges.
+          bbox='-83.176,42.680,-83.139,42.708'
+          services={
+            'roads':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0',
+            'parcels':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1',
+            'landuse':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenPlanningMapService/MapServer/4'}
+          common={'where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+          for name,base in services.items():
+              try:
+                  fetch(base+'?f=pjson',name+'-metadata.json')
+                  count=query(base,{**common,'returnCountOnly':'true'},name+'-count.json')['count']
+                  ids=query(base,{**common,'returnIdsOnly':'true'},name+'-ids.json')['objectIds']
+                  assert len(ids)==count and len(set(ids))==count
+                  batches=[ids[i:i+150] for i in range(0,len(ids),150)]
+                  def page(ij):
+                      i,group=ij
+                      return query(base,{'objectIds':','.join(map(str,group)),'outFields':'*','returnGeometry':'true','outSR':4326},f'{name}-page-{i:03}.json')
+                  with ThreadPoolExecutor(max_workers=3) as pool: pages=list(pool.map(page,enumerate(batches)))
+                  features=[f for p in pages for f in p['features']]
+                  got=[f['attributes'].get('OBJECTID') for f in features]
+                  assert len(features)==count and set(got)==set(ids), (name,count,len(features))
+                  (out/(name+'.json')).write_text(json.dumps({'source':base,'bbox':bbox,'expected_count':count,'complete':True,'features':features}))
+                  print(name,count,'complete',flush=True)
+              except Exception as e:
+                  errors.append({'source':name,'error':str(e)})
+                  print(name,'ERROR',str(e),flush=True)
+          for name,url in {
+            'Sec9SidwellPages.pdf':'https://atlas.rochesterhills.org/Sec9SidwellPages.pdf',
+            'Sec10bSidwellPages.pdf':'https://atlas.rochesterhills.org/Sec10bSidwellPages.pdf',
+            'osm-map.osm':'https://api.openstreetmap.org/api/0.6/map?bbox='+bbox
+          }.items():
+              try: fetch(url,name)
+              except Exception as e: errors.append({'source':name,'error':str(e)})
+          (out/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          (out/'ERRORS.json').write_text(json.dumps(errors,indent=2))
+          print('errors',errors,flush=True)
+          PY
+      - name: Upload public source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-gis-full-area-20260914
+          path: public-data/
+          compression-level: 6
+          if-no-files-found: error
+          retention-days: 7
