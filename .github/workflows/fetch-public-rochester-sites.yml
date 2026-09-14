@@ -1,0 +1,68 @@
+name: Fetch public Rochester site geometry
+on:
+  push:
+    branches: [public-map-source-20260914]
+    paths: [.github/workflows/fetch-public-rochester-sites.yml]
+permissions:
+  contents: read
+jobs:
+  public-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retrieve public source records and count receipts
+        shell: bash
+        run: |
+          mkdir -p public-sites
+          python - <<'PY'
+          import urllib.request, urllib.parse, json, pathlib, datetime, hashlib, traceback, concurrent.futures
+          out=pathlib.Path('public-sites'); receipts=[]; errors=[]
+          bbox='-83.153,42.681,-83.131,42.694'
+          def raw(url,name,params=None):
+              if params: url+='?'+urllib.parse.urlencode(params)
+              req=urllib.request.Request(url,headers={'User-Agent':'PublicGISMapReview/1.0'})
+              with urllib.request.urlopen(req,timeout=70) as r: data=r.read()
+              (out/name).write_bytes(data)
+              receipts.append({'file':name,'url':url,'retrieved_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+              return data
+          def obj(url,name,params=None):
+              value=json.loads(raw(url,name,params))
+              if isinstance(value,dict) and 'error' in value: raise RuntimeError(str(value['error']))
+              return value
+          def save(name,value): (out/name).write_text(json.dumps(value,ensure_ascii=False))
+          def gis(label,url,fields='*'):
+              meta=obj(url,label+'-metadata.json',{'f':'json'})
+              base={'f':'json','where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+              ids=obj(url+'/query',label+'-ids.json',dict(base,returnIdsOnly='true')); expected=sorted(ids.get('objectIds') or []); oid=ids['objectIdFieldName']
+              count=obj(url+'/query',label+'-count.json',dict(base,returnCountOnly='true')); assert count['count']==len(expected)
+              fs=[]
+              for i in range(0,len(expected),150):
+                  p=obj(url+'/query',label+'-page-'+str(i)+'.json',{'f':'json','objectIds':','.join(map(str,expected[i:i+150])),'outFields':fields,'returnGeometry':'true','outSR':4326})
+                  assert not p.get('exceededTransferLimit',False);fs+=p.get('features',[])
+              assert sorted(f['attributes'][oid] for f in fs)==expected
+              save(label+'.json',{'source':url,'bbox':bbox,'expected_count':len(expected),'complete':True,'features':fs});print(label,len(fs))
+          def run(label,fn):
+              try: fn()
+              except Exception as e: errors.append({'label':label,'error':str(e),'traceback':traceback.format_exc()});print('ERROR',label,str(e))
+          tasks={
+            'osm':lambda:raw('https://www.openstreetmap.org/api/0.6/map','osm-map.osm',{'bbox':bbox}),
+            'roads':lambda:gis('roads','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0'),
+            'parcels':lambda:gis('parcels','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1','OBJECTID_12,PIN,SITEADDRESS'),
+            'landuse':lambda:gis('landuse','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenPlanningMapService/MapServer/4'),
+            'service-directory':lambda:obj('https://gisservices.oakgov.com/arcgis/rest/services/Enterprise','county-services.json',{'f':'json'}),
+            'great-oaks-official':lambda:raw('https://www.slavikmanagement.com/property/great-oaks/','great-oaks-official.html'),
+            'semcog-footprints':lambda:raw('https://maps.semcog.org/buildingfootprints/','semcog-footprints.html')
+          }
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:list(ex.map(lambda item:run(*item),tasks.items()))
+          save('RECEIPTS.json',receipts);save('ERRORS.json',errors)
+          print('Saved',len(receipts),'source responses;',len(errors),'errors')
+          PY
+      - name: Retain public site sources
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-rochester-sites-20260914
+          path: public-sites/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 9
