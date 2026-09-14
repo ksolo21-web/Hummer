@@ -1,0 +1,62 @@
+name: Bounded public west Rochester data
+on:
+  push:
+    branches: [public-west-rochester-map-check-20260914]
+    paths: [.github/workflows/public-west-rochester-fast-check.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Retrieve public GIS layers with bounded retries
+        timeout-minutes: 5
+        run: |
+          mkdir -p data
+          python -u - <<'PY'
+          import json,urllib.request,urllib.parse,hashlib,time,pathlib,concurrent.futures,threading
+          D=pathlib.Path('data'); receipts=[]; lock=threading.Lock(); bbox='-83.228,42.658,-83.171,42.708'
+          def get(name,url):
+              for a in range(2):
+                  try:
+                      with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'PublicGISVerification/1.0'}),timeout=22) as r:raw=r.read()
+                      (D/name).write_bytes(raw)
+                      with lock:
+                          receipts.append(dict(file=name,url=url,retrieved_at_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),sha256=hashlib.sha256(raw).hexdigest(),bytes=len(raw)))
+                          (D/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+                      return json.loads(raw)
+                  except Exception:
+                      if a:raise
+                      time.sleep(1)
+          def layer(name,url):
+              try:
+                  meta=get(name+'-metadata.json',url+'?f=json')
+                  q=dict(f='json',where='1=1',geometry=bbox,geometryType='esriGeometryEnvelope',inSR=4326,spatialRel='esriSpatialRelIntersects',returnIdsOnly='true')
+                  ids=get(name+'-ids.json',url+'/query?'+urllib.parse.urlencode(q))
+                  if 'error' in ids:raise RuntimeError(str(ids))
+                  allids=sorted(ids.get('objectIds') or []); features=[]
+                  print(name,'expected',len(allids),flush=True)
+                  for i in range(0,len(allids),500):
+                      q=dict(f='json',objectIds=','.join(map(str,allids[i:i+500])),outFields='*',returnGeometry='true',outSR=4326)
+                      page=get(f'{name}-page-{i//500}.json',url+'/query?'+urllib.parse.urlencode(q))
+                      if 'error' in page or page.get('exceededTransferLimit'):raise RuntimeError(str(page)[:200])
+                      features.extend(page.get('features',[]))
+                  field=ids.get('objectIdFieldName') or meta.get('objectIdField') or 'OBJECTID'
+                  assert sorted(f['attributes'][field] for f in features)==allids
+                  (D/(name+'.json')).write_text(json.dumps(dict(spatialReference={'wkid':4326},features=features)))
+                  result=dict(dataset=name,status='complete',bbox=bbox,expected=len(allids),returned=len(features),source=url)
+              except Exception as e:result=dict(dataset=name,status='failed',error=str(e),bbox=bbox,source=url)
+              (D/(name+'-completeness.json')).write_text(json.dumps(result,indent=2));print(result,flush=True);return result
+          root='https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/'
+          layers=[('county-roads',root+'EnterpriseTransportationDataMapService/MapServer/0'),('county-parcels',root+'EnterpriseOpenParcelDataMapService/MapServer/1'),('county-landuse',root+'EnterpriseOpenPlanningMapService/MapServer/4'),('city-roads','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/8'),('building-points','https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34'),('footprints','https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints/FeatureServer/14')]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:status=list(ex.map(lambda p:layer(*p),layers))
+          (D/'COMPLETENESS.json').write_text(json.dumps(status,indent=2))
+          PY
+      - name: Retain retrieved evidence even when a service fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-west-rochester-bounded-20260914
+          path: data/
+          retention-days: 7
