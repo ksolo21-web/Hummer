@@ -1,0 +1,19 @@
+{
+  "artifact_id": 10357970707,
+  "run_id": 34867468465,
+  "status": "downloaded",
+  "summary": {
+    "bbox": "-83.147,42.681,-83.123,42.694",
+    "county_layers_complete": true,
+    "osm_nodes": 26244,
+    "osm_ways": 3647,
+    "osm_relations": 24,
+    "osm_bound": {
+      "minlat": "42.6810000",
+      "minlon": "-83.1470000",
+      "maxlat": "42.6940000",
+      "maxlon": "-83.1230000"
+    },
+    "data_scope": "Public map data only; no user territory assignments or private files."
+  }
+}
