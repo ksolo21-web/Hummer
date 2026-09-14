@@ -1,0 +1,86 @@
+name: Public Rochester source check
+on:
+  push:
+    branches: [public-rochester-source-check-20260914]
+    paths: ['.github/workflows/public-rochester-source-check.yml']
+permissions:
+  contents: write
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public municipal source data
+        shell: bash
+        run: |
+          mkdir -p public-rochester-snapshot
+          python3 - <<'PY'
+          import json, hashlib, datetime, pathlib, urllib.request, urllib.parse, time, concurrent.futures
+          O=pathlib.Path('public-rochester-snapshot'); receipts=[]
+          bbox='-83.147,42.681,-83.123,42.694'
+          roots={'roads':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0','parcels':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1','landuse':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenPlanningMapService/MapServer/4'}
+          def fetch(name,url,params,xml=False):
+              final=url+'?'+urllib.parse.urlencode(params)
+              for attempt in range(3):
+                  try:
+                      req=urllib.request.Request(final,headers={'User-Agent':'Public-Rochester-Geography-Verification/1.0'})
+                      with urllib.request.urlopen(req,timeout=65) as r: data=r.read()
+                      obj=None if xml else json.loads(data)
+                      if obj is not None and 'error' in obj: raise RuntimeError(obj['error'])
+                      (O/name).write_bytes(data)
+                      receipts.append({'file':name,'url':final,'retrieved_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+                      return data if xml else obj
+                  except Exception:
+                      if attempt==2: raise
+                      time.sleep(2+attempt*3)
+          def layer(pair):
+              name,url=pair
+              meta=fetch(name+'-metadata.json',url,{'f':'json'})
+              oid=next(x['name'] for x in meta['fields'] if x['type']=='esriFieldTypeOID')
+              params={'f':'json','where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+              ids=sorted(fetch(name+'-ids.json',url+'/query',{**params,'returnIdsOnly':'true'})['objectIds'])
+              count=fetch(name+'-count.json',url+'/query',{**params,'returnCountOnly':'true'})['count']
+              assert len(ids)==count
+              feats=[]
+              for start in range(0,len(ids),200):
+                  d=fetch(name+'-page-'+str(start)+'.json',url+'/query',{'f':'json','objectIds':','.join(map(str,ids[start:start+200])),'outFields':'*','outSR':4326,'returnGeometry':'true'})
+                  assert not d.get('exceededTransferLimit',False)
+                  feats.extend(d['features'])
+              assert sorted(f['attributes'][oid] for f in feats)==ids
+              out={'source':url,'bbox':bbox,'object_id':oid,'expected_count':count,'retrieved_count':len(feats),'complete':True,'features':feats}
+              (O/(name+'.json')).write_text(json.dumps(out))
+              print(name,count,flush=True)
+          try:
+              with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex: list(ex.map(layer,roots.items()))
+              raw=fetch('osm-map.osm','https://api.openstreetmap.org/api/0.6/map',{'bbox':bbox},True)
+              import xml.etree.ElementTree as ET
+              tree=ET.fromstring(raw)
+              (O/'SUMMARY.json').write_text(json.dumps({'bbox':bbox,'county_layers_complete':True,'osm_nodes':len(tree.findall('node')),'osm_ways':len(tree.findall('way')),'osm_relations':len(tree.findall('relation')),'osm_bound':tree.find('bounds').attrib,'data_scope':'Public map data only; no user territory assignments or private files.'},indent=2))
+          finally:
+              (O/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          PY
+      - name: Upload public source snapshot
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-rochester-complete-20260914
+          path: public-rochester-snapshot/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Save isolated-branch download receipt
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        shell: bash
+        run: |
+          mkdir -p public-data-receipts
+          python3 - <<'PY'
+          import json, os, pathlib
+          p=pathlib.Path('public-data-receipts/rochester-20260914.json')
+          p.write_text(json.dumps({'artifact_id':int(os.environ['ARTIFACT_ID']),'run_id':int(os.environ['GITHUB_RUN_ID']),'status':'downloaded','summary':json.loads(pathlib.Path('public-rochester-snapshot/SUMMARY.json').read_text())},indent=2))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public-data-receipts/rochester-20260914.json
+          git commit -m 'Record public Rochester source snapshot receipt'
+          git push origin HEAD:public-rochester-source-check-20260914
