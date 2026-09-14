@@ -1,0 +1,68 @@
+name: Public central Rochester geographic audit
+on:
+  push:
+    branches: [public-central-rochester-audit-20260914]
+    paths: [.github/workflows/public-central-rochester-audit.yml]
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Retrieve public county geography
+        run: |
+          mkdir -p data
+          python - <<'PY'
+          import json,urllib.request,urllib.parse,hashlib,time,pathlib,concurrent.futures
+          D=pathlib.Path('data'); receipts=[]
+          bbox='-83.149,42.680,-83.122,42.695'
+          def get(name,url):
+              for attempt in range(3):
+                  try:
+                      req=urllib.request.Request(url,headers={'User-Agent':'Public-Geographic-Source-Verification/1.0'})
+                      with urllib.request.urlopen(req,timeout=70) as r:
+                          raw=r.read(); ct=r.headers.get('Content-Type'); status=r.status
+                      (D/name).write_bytes(raw)
+                      receipts.append(dict(file=name,url=url,retrieved_at_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),content_type=ct,http_status=status))
+                      return raw
+                  except Exception:
+                      if attempt==2: raise
+                      time.sleep(2*(attempt+1))
+          def layer(name,url,fields):
+              try:
+                  metadata=json.loads(get(name+'-metadata.json',url+'?f=pjson'))
+                  q=dict(f='json',where='1=1',geometry=bbox,geometryType='esriGeometryEnvelope',inSR=4326,spatialRel='esriSpatialRelIntersects')
+                  ids=json.loads(get(name+'-ids.json',url+'/query?'+urllib.parse.urlencode(dict(q,returnIdsOnly='true'))))
+                  count=json.loads(get(name+'-count.json',url+'/query?'+urllib.parse.urlencode(dict(q,returnCountOnly='true'))))
+                  if 'error' in ids or 'error' in count: raise RuntimeError(str((ids,count)))
+                  allids=sorted(ids.get('objectIds') or []); features=[]
+                  if len(allids)!=count['count']: raise RuntimeError('Count/ID mismatch')
+                  for i in range(0,len(allids),400):
+                      query=dict(f='json',objectIds=','.join(map(str,allids[i:i+400])),outFields=fields,returnGeometry='true',outSR=4326)
+                      page=json.loads(get(f'{name}-page-{i}.json',url+'/query?'+urllib.parse.urlencode(query)))
+                      if page.get('exceededTransferLimit') or 'error' in page: raise RuntimeError(str(page)[:500])
+                      features.extend(page.get('features',[]))
+                  field=ids.get('objectIdFieldName') or metadata.get('objectIdField') or 'OBJECTID'
+                  found=[f['attributes'][field] for f in features]
+                  assert sorted(found)==allids,(name,len(found),len(allids))
+                  (D/(name+'.json')).write_text(json.dumps(dict(spatialReference={'wkid':4326},features=features)))
+                  return dict(dataset=name,status='complete',bbox=bbox,expected=len(allids),returned=len(features),object_id_field=field,source=url,requested_fields=fields)
+              except Exception as e:
+                  return dict(dataset=name,status='failed',bbox=bbox,error=str(e))
+          root='https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/'
+          layers=[('county-roads',root+'EnterpriseTransportationDataMapService/MapServer/0','*'),('county-parcels',root+'EnterpriseOpenParcelDataMapService/MapServer/1','OBJECTID_12,PIN,KEYPIN,REVISIONDATE,CLASSCODE,SITEADDRESS,STRUCTURE_DESC'),('county-landuse',root+'EnterpriseOpenPlanningMapService/MapServer/4','*')]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex: status=list(ex.map(lambda p:layer(*p),layers))
+          (D/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          (D/'COMPLETENESS.json').write_text(json.dumps(status,indent=2))
+          (D/'PROVENANCE.json').write_text(json.dumps(dict(bbox=bbox,scope='Public road, parcel geometry/situs and published land-use records only. No owner names, financial assessments, private assignments, or secret values requested.',landuse_vintage_note='Consult source metadata; retrieval date is not the land-use survey date.'),indent=2))
+          print(json.dumps(status,indent=2))
+          if not all(s.get('status')=='complete' for s in status): raise SystemExit('Incomplete mandatory county source')
+          PY
+      - name: Retain public source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-central-rochester-audit-20260914
+          path: data/
+          retention-days: 30
