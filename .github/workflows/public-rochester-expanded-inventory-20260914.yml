@@ -1,0 +1,61 @@
+name: Public Rochester expanded inventory
+on:
+  push:
+    branches: [public-rochester-source-check-20260914]
+    paths: ['.github/workflows/public-rochester-expanded-inventory-20260914.yml']
+permissions:
+  contents: read
+jobs:
+  public-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retrieve full public site extent with count and ID checks
+        shell: bash
+        run: |
+          mkdir -p expanded-public-inventory
+          python3 - <<'PY'
+          import json,hashlib,datetime,pathlib,urllib.request,urllib.parse,time,concurrent.futures
+          O=pathlib.Path('expanded-public-inventory');receipts=[]
+          bbox='-83.1483,42.6825,-83.1425,42.6935'
+          roots={'footprints':'https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints/FeatureServer/14','building-points':'https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34','roads':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0','parcels':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1'}
+          def fetch(name,url,params,raw=False):
+              final=url+'?'+urllib.parse.urlencode(params)
+              for attempt in range(3):
+                  try:
+                      req=urllib.request.Request(final,headers={'User-Agent':'Public-Geography-Inventory-Verification/1.0'})
+                      with urllib.request.urlopen(req,timeout=60) as r:data=r.read()
+                      obj=None if raw else json.loads(data)
+                      if obj is not None and 'error' in obj:raise RuntimeError(obj['error'])
+                      (O/name).write_bytes(data)
+                      receipts.append({'file':name,'url':final,'retrieved_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+                      return data if raw else obj
+                  except Exception:
+                      if attempt==2:raise
+                      time.sleep(2+3*attempt)
+          def layer(item):
+              name,url=item;meta=fetch(name+'-metadata.json',url,{'f':'json'})
+              oid=next(x['name'] for x in meta['fields'] if x['type']=='esriFieldTypeOID')
+              p={'f':'json','where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+              ids=sorted(fetch(name+'-ids.json',url+'/query',{**p,'returnIdsOnly':'true'})['objectIds'])
+              count=fetch(name+'-count.json',url+'/query',{**p,'returnCountOnly':'true'})['count'];assert count==len(ids)
+              feats=[]
+              for start in range(0,len(ids),150):
+                  d=fetch(name+'-page-'+str(start)+'.json',url+'/query',{'f':'json','objectIds':','.join(map(str,ids[start:start+150])),'outFields':'*','outSR':4326,'returnGeometry':'true'})
+                  assert not d.get('exceededTransferLimit',False);feats.extend(d['features'])
+              assert sorted(f['attributes'][oid] for f in feats)==ids
+              result={'source':url,'bbox':bbox,'object_id':oid,'expected_count':count,'retrieved_count':len(feats),'complete':True,'features':feats}
+              (O/(name+'.json')).write_text(json.dumps(result));print(name,count,flush=True)
+              return {'name':name,'count':count,'ids_match':True}
+          try:
+              with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:results=list(ex.map(layer,roots.items()))
+              fetch('osm-map.osm','https://api.openstreetmap.org/api/0.6/map',{'bbox':bbox},True)
+              (O/'SUMMARY.json').write_text(json.dumps({'bbox':bbox,'layers':results,'scope':'Public geography only. No private assignment files, screenshots, or user data.'},indent=2))
+          finally:(O/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-rochester-expanded-inventory-20260914
+          path: expanded-public-inventory/
+          retention-days: 7
+          if-no-files-found: error
