@@ -1,0 +1,62 @@
+name: Public bounded map-source verification
+on:
+  push:
+    branches: [public-territory-source-280-282-20260914]
+    paths: [.github/workflows/public-territory-source-280-282.yml]
+permissions:
+  contents: read
+jobs:
+  retrieve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download bounded public sources
+        run: |
+          mkdir -p data
+          python - <<'PY'
+          import json,urllib.request,urllib.parse,hashlib,time,pathlib,concurrent.futures
+          D=pathlib.Path('data'); receipts=[]; bbox='-83.177,42.678,-83.130,42.704'
+          def get(name,url):
+              req=urllib.request.Request(url,headers={'User-Agent':'Public-Map-Verification/1.0'})
+              with urllib.request.urlopen(req,timeout=50) as r: raw=r.read(); ct=r.headers.get('Content-Type'); status=r.status
+              (D/name).write_bytes(raw)
+              receipts.append(dict(file=name,url=url,retrieved_at_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),content_type=ct,http_status=status))
+              return raw
+          def layer(name,url,fields):
+              try:
+                  md=json.loads(get(name+'-metadata.json',url+'?f=pjson'))
+                  q=dict(f='json',where='1=1',geometry=bbox,geometryType='esriGeometryEnvelope',inSR=4326,spatialRel='esriSpatialRelIntersects')
+                  ids=json.loads(get(name+'-ids.json',url+'/query?'+urllib.parse.urlencode(dict(q,returnIdsOnly='true'))))
+                  count=json.loads(get(name+'-count.json',url+'/query?'+urllib.parse.urlencode(dict(q,returnCountOnly='true'))))
+                  allids=sorted(ids.get('objectIds') or []); features=[]
+                  assert len(allids)==count['count']
+                  for i in range(0,len(allids),400):
+                      query=dict(f='json',objectIds=','.join(map(str,allids[i:i+400])),outFields=fields,returnGeometry='true',outSR=4326)
+                      page=json.loads(get(f'{name}-page-{i}.json',url+'/query?'+urllib.parse.urlencode(query)))
+                      assert not page.get('exceededTransferLimit') and 'error' not in page
+                      features.extend(page.get('features',[]))
+                  field=ids.get('objectIdFieldName') or md.get('objectIdField') or 'OBJECTID'
+                  assert sorted(f['attributes'][field] for f in features)==allids
+                  (D/(name+'.json')).write_text(json.dumps(dict(spatialReference={'wkid':4326},features=features)))
+                  return dict(dataset=name,status='complete',bbox=bbox,expected=len(allids),returned=len(features),object_id_field=field,source=url)
+              except Exception as e:return dict(dataset=name,status='failed',bbox=bbox,error=str(e))
+          def file(name,url):
+              try:get(name,url);return dict(dataset=name,status='complete')
+              except Exception as e:return dict(dataset=name,status='failed',error=str(e))
+          root='https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/'
+          jobs=[('layer',('county-roads',root+'EnterpriseTransportationDataMapService/MapServer/0','*')),('layer',('county-parcels',root+'EnterpriseOpenParcelDataMapService/MapServer/1','OBJECTID_12,PIN,KEYPIN,REVISIONDATE,CLASSCODE,SITEADDRESS,STRUCTURE_DESC')),('layer',('county-landuse',root+'EnterpriseOpenPlanningMapService/MapServer/4','*')),('file',('Sec9SidwellPages.pdf','https://atlas.rochesterhills.org/Sec9SidwellPages.pdf')),('file',('Sec10bSidwellPages.pdf','https://atlas.rochesterhills.org/Sec10bSidwellPages.pdf'))]
+          for i,(w,s,e,n) in enumerate([(-83.177,42.678,-83.153,42.691),(-83.177,42.691,-83.153,42.704),(-83.153,42.678,-83.130,42.691),(-83.153,42.691,-83.130,42.704)]):
+              jobs.append(('file',(f'osm-{i}.osm',f'https://api.openstreetmap.org/api/0.6/map?bbox={w},{s},{e},{n}')))
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+              results=list(ex.map(lambda j: layer(*j[1]) if j[0]=='layer' else file(*j[1]),jobs))
+          (D/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2)); (D/'COMPLETENESS.json').write_text(json.dumps(results,indent=2))
+          (D/'PROVENANCE.json').write_text(json.dumps(dict(bbox=bbox,scope='Public road geometry, parcel situs/geometry, public land-use, OSM and city parcel maps. No private assignment images, owner names, finances or credentials.'),indent=2))
+          print(json.dumps(results,indent=2))
+          PY
+      - name: Retain public source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-territory-source-280-282-20260914
+          path: data/
+          retention-days: 7
