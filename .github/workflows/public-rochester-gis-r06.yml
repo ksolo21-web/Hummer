@@ -1,0 +1,91 @@
+name: Public Rochester GIS reference R06
+on:
+  push:
+    branches: [public-rochester-gis-20260915-r06]
+    paths: ['.github/workflows/public-rochester-gis-r06.yml']
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Retrieve public datasets only
+        shell: bash
+        run: |
+          mkdir -p public-data
+          cat > /tmp/fetch_public.py <<'PY'
+          import json, time, hashlib, urllib.request, urllib.parse, pathlib, concurrent.futures, threading, datetime
+          OUT=pathlib.Path('public-data'); lock=threading.Lock(); receipts=[]
+          bbox='-83.177,42.682,-83.115,42.735'
+          datasets={
+            'county-roads':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0',
+            'county-parcels':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1',
+            'county-landuse':'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenPlanningMapService/MapServer/4',
+            'building-points':'https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34',
+            'building-footprints':'https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints/FeatureServer/14',
+            'building-2020':'https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints__2020/FeatureServer/60',
+            'county-footprints':'https://gisservices.oakgov.com/arcgisds/rest/services/Hosted/Building_Outline/FeatureServer/30'
+          }
+          # This job collects publicly published reference geometry only. No private files or assignment data are inputs.
+          def request(name, url, params=None, parse=True):
+            full=url+('?' + urllib.parse.urlencode(params) if params else '')
+            for attempt in range(4):
+              try:
+                req=urllib.request.Request(full, headers={'User-Agent':'PublicGISReference/1.0','Accept':'application/json,*/*'})
+                with urllib.request.urlopen(req, timeout=65) as res: raw=res.read()
+                data=json.loads(raw) if parse else None
+                if parse and isinstance(data,dict) and 'error' in data: raise RuntimeError(str(data['error']))
+                (OUT/name).write_bytes(raw)
+                receipt={'file':name,'url':full,'retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw)}
+                with lock: receipts.append(receipt)
+                return data if parse else raw
+              except Exception:
+                if attempt==3: raise
+                time.sleep(2*(attempt+1))
+          def get_dataset(item):
+            name,url=item
+            try:
+              meta=request(name+'-metadata.json',url,{'f':'json'})
+              oid=meta.get('objectIdField') or meta.get('objectIdFieldName') or next(f['name'] for f in meta['fields'] if f['type']=='esriFieldTypeOID')
+              base={'f':'json','where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+              ids=request(name+'-ids.json',url+'/query',dict(base,returnIdsOnly='true')).get('objectIds') or []
+              count=request(name+'-count.json',url+'/query',dict(base,returnCountOnly='true'))['count']
+              # Avoid resident/owner information. Select public location, classification and geometry fields only.
+              allfields=[f['name'] for f in meta['fields']]
+              if name=='county-parcels':
+                fields=[f for f in allfields if not any(w in f.lower() for w in ['owner','taxpayer','mail','deed','seller','buyer'])]
+              else: fields=allfields
+              features=[]
+              for start in range(0,len(ids),400):
+                d=request(name+'-page-'+str(start)+'.json',url+'/query',{'f':'json','objectIds':','.join(map(str,ids[start:start+400])),'outFields':','.join(fields),'returnGeometry':'true','outSR':4326})
+                if d.get('exceededTransferLimit'): raise RuntimeError('transfer limit reached')
+                features.extend(d.get('features',[]))
+              actual=[f['attributes'][oid] for f in features]
+              if len(features)!=count or len(actual)!=len(set(actual)) or set(actual)!=set(ids): raise RuntimeError('ID/count/page mismatch')
+              (OUT/(name+'.json')).write_text(json.dumps({'spatialReference':{'wkid':4326},'features':features}))
+              result={'dataset':name,'status':'complete','bbox':bbox,'source':url,'object_id_field':oid,'expected':count,'returned':len(features),'requested_fields':fields}
+            except Exception as exc: result={'dataset':name,'status':'failed','bbox':bbox,'source':url,'error':repr(exc)}
+            (OUT/(name+'-completeness.json')).write_text(json.dumps(result,indent=2));print(json.dumps(result),flush=True)
+            return result
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool: results=list(pool.map(get_dataset,datasets.items()))
+          # Small adjacent public OSM map extracts capture private roads and recent additions.
+          boxes=[(-83.151,42.692,-83.136,42.704),(-83.170,42.704,-83.142,42.719),(-83.170,42.719,-83.142,42.734)]
+          for i,b in enumerate(boxes):
+            try:
+              request('osm-'+str(i)+'.osm','https://www.openstreetmap.org/api/0.6/map',{'bbox':','.join(map(str,b))},False)
+              results.append({'dataset':'osm-'+str(i),'status':'complete','bbox':b})
+            except Exception as exc: results.append({'dataset':'osm-'+str(i),'status':'failed','error':repr(exc),'bbox':b})
+          (OUT/'COMPLETENESS.json').write_text(json.dumps(results,indent=2))
+          (OUT/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+          (OUT/'README.txt').write_text('Public GIS reference data. Retrieval dates are not imagery or survey dates. Original provider metadata and complete ID/count/page receipts are retained. No private assignment boundaries or card files are included.\n')
+          if not any(r['dataset']=='building-points' and r['status']=='complete' for r in results): raise SystemExit('building-points retrieval failed')
+          PY
+          python /tmp/fetch_public.py
+      - name: Retain public reference data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-rochester-gis-20260915-r06
+          path: public-data/
+          retention-days: 7
