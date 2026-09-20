@@ -1,0 +1,79 @@
+name: Territory A267 source check
+on:
+  push:
+    branches: [territory-a267-source-20260920]
+    paths: [.github/workflows/a267-source-check.yml]
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retrieve A267 public GIS evidence
+        timeout-minutes: 7
+        run: |
+          mkdir -p data
+          python -u - <<'PY'
+          import json, urllib.request, urllib.parse, hashlib, time, pathlib, concurrent.futures, threading
+          D=pathlib.Path('data'); receipts=[]; lock=threading.Lock()
+          bbox='-83.1826,42.6764,-83.1768,42.6807'
+          def get(name,url):
+              last=None
+              for a in range(3):
+                  try:
+                      req=urllib.request.Request(url,headers={'User-Agent':'A267TerritoryVerification/1.0'})
+                      with urllib.request.urlopen(req,timeout=30) as r: raw=r.read()
+                      (D/name).write_bytes(raw)
+                      with lock:
+                          receipts.append(dict(file=name,url=url,retrieved_at_utc=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),sha256=hashlib.sha256(raw).hexdigest(),bytes=len(raw)))
+                          (D/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+                      return json.loads(raw)
+                  except Exception as e:
+                      last=e
+                      time.sleep(1+a)
+              raise last
+          def layer(name,url,outfields='*'):
+              try:
+                  meta=get(name+'-metadata.json',url+'?f=json')
+                  q=dict(f='json',where='1=1',geometry=bbox,geometryType='esriGeometryEnvelope',inSR=4326,spatialRel='esriSpatialRelIntersects',returnIdsOnly='true')
+                  ids=get(name+'-ids.json',url+'/query?'+urllib.parse.urlencode(q))
+                  if 'error' in ids: raise RuntimeError(str(ids))
+                  allids=sorted(ids.get('objectIds') or []); features=[]
+                  field=ids.get('objectIdFieldName') or meta.get('objectIdField') or 'OBJECTID'
+                  print(name,'expected',len(allids),'oid',field,flush=True)
+                  for i in range(0,len(allids),300):
+                      q=dict(f='json',objectIds=','.join(map(str,allids[i:i+300])),outFields=outfields,returnGeometry='true',outSR=4326)
+                      page=get(f'{name}-page-{i//300}.json',url+'/query?'+urllib.parse.urlencode(q))
+                      if 'error' in page: raise RuntimeError(str(page))
+                      features.extend(page.get('features',[]))
+                  got=sorted(f['attributes'].get(field) for f in features if f.get('attributes',{}).get(field) is not None)
+                  if allids and got!=allids: raise RuntimeError(f'id mismatch expected {len(allids)} got {len(got)}')
+                  out=dict(spatialReference={'wkid':4326},features=features)
+                  (D/(name+'.json')).write_text(json.dumps(out))
+                  result=dict(dataset=name,status='complete',bbox=bbox,expected=len(allids),returned=len(features),source=url,object_id_field=field)
+              except Exception as e:
+                  result=dict(dataset=name,status='failed',error=str(e),bbox=bbox,source=url)
+              (D/(name+'-completeness.json')).write_text(json.dumps(result,indent=2))
+              print(result,flush=True)
+              return result
+          layers=[
+            ('semcog-points','https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34','objectid,building_id,parcel_id,build_type,city_id,apn,year_built,housing_units,stories,loadd1,hiadd1,street1,loadd2,hiadd2,street2,zipcode,aka'),
+            ('semcog-footprints','https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints/FeatureServer/14','objectid,building_id,median_hgt,source'),
+            ('semcog-2020','https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints__2020/FeatureServer/60','gid,building_id,parcel_id,apn,city_id,build_type,year_built,stories,median_hgt,housing_units,source,address,zipcode'),
+            ('county-footprints','https://gisservices.oakgov.com/arcgisds/rest/services/Hosted/Building_Outline/FeatureServer/30','objectid,keypin'),
+            ('county-roads','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0','*'),
+            ('county-parcels','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1','*'),
+            ('city-roads','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/8','*')
+          ]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=7) as ex:
+              status=list(ex.map(lambda p: layer(*p), layers))
+          (D/'COMPLETENESS.json').write_text(json.dumps(status,indent=2))
+          PY
+      - name: Upload A267 source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: territory-a267-source-20260920
+          path: data/
+          retention-days: 7
