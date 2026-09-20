@@ -1,0 +1,79 @@
+name: Rochester public GIS retrieval
+on:
+  push:
+    branches: ['data/rochester-public-gis-20260920']
+    paths: ['.github/workflows/rochester-public-gis.yml']
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fetch public records only
+        shell: bash
+        run: |
+          mkdir -p public-gis
+          cat > /tmp/fetch_public_gis.py <<'PY'
+          import urllib.request,urllib.parse,json,time,hashlib,datetime,concurrent.futures
+          from pathlib import Path
+          O=Path('public-gis'); NOW=lambda:datetime.datetime.now(datetime.timezone.utc).isoformat()
+          HEAD={'User-Agent':'PublicGIS-DataAudit/1.0','Accept':'application/json'}
+          def request(url,params=None,timeout=55):
+              if params:url+='?'+urllib.parse.urlencode(params)
+              raw=urllib.request.urlopen(urllib.request.Request(url,headers=HEAD),timeout=timeout).read()
+              return raw,url
+          def save(name,raw):
+              (O/name).write_bytes(raw)
+              return {'file':name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+          def layer(key,url):
+              r={'key':key,'url':url,'started':NOW(),'complete':False}
+              try:
+                  raw,metaurl=request(url,{'f':'pjson'});r['metadata']=save(key+'-metadata.json',raw)
+                  base={'f':'json','where':'1=1','geometry':'-83.21,42.635,-83.075,42.705','geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+                  raw,u=request(url+'/query',{**base,'returnIdsOnly':'true'});r['ids_raw']=save(key+'-ids.json',raw);ids=json.loads(raw).get('objectIds')
+                  if ids is None:raise ValueError('ID response lacks objectIds: '+raw[:300].decode())
+                  ids=sorted(set(ids));r['requested_count']=len(ids);fs=[];r['pages']=[]
+                  for i in range(0,len(ids),400):
+                      ps={'f':'json','objectIds':','.join(map(str,ids[i:i+400])),'outFields':'*','returnGeometry':'true','outSR':3857}
+                      raw,u=request(url+'/query',ps);r['pages'].append({**save(key+'-page-%03d.json'%(i//400),raw),'url':u,'retrieved_at':NOW()})
+                      obj=json.loads(raw)
+                      if 'error' in obj:raise ValueError(str(obj['error']))
+                      if obj.get('exceededTransferLimit'):raise ValueError('Unexpected transfer limit')
+                      fs.extend(obj.get('features',[]))
+                  field=json.loads((O/(key+'-ids.json')).read_text()).get('objectIdFieldName','OBJECTID')
+                  returned=[f['attributes'][field] for f in fs]
+                  r['returned_count']=len(returned);r['missing_ids']=sorted(set(ids)-set(returned));r['extra_ids']=sorted(set(returned)-set(ids));r['duplicate_ids_count']=len(returned)-len(set(returned));r['complete']=set(returned)==set(ids) and len(returned)==len(ids)
+                  data={'retrieved_at':NOW(),'url':url,'query':base,'objectIdField':field,'ids':ids,'complete':r['complete'],'returned_count':len(fs),'pages':len(r['pages']),'features':fs}
+                  r['combined']=save(key+'-complete.json',json.dumps(data).encode())
+              except Exception as e:r['error']=repr(e)
+              r['finished']=NOW();(O/(key+'-receipt.json')).write_text(json.dumps(r,indent=2));return r
+          def osm(key,bbox):
+              q='[out:json][timeout:150];(way[highway]('+bbox+');nwr[building]('+bbox+');nwr["addr:housenumber"]('+bbox+');way[landuse]('+bbox+'););out body;>;out skel qt;'
+              r={'key':key,'query':q,'started':NOW(),'complete':False,'attempts':[]}
+              for host in ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']:
+                  try:
+                      raw,u=request(host,{'data':q},timeout=190);obj=json.loads(raw);rec=save(key+'-raw.json',raw);r.update(rec);r['url']=u;r['count']=len(obj.get('elements',[]));r['osm3s']=obj.get('osm3s');r['remark']=obj.get('remark');r['complete']='elements' in obj and not obj.get('remark');break
+                  except Exception as e:r['attempts'].append({'url':host,'error':repr(e),'at':NOW()})
+              r['finished']=NOW();(O/(key+'-receipt.json')).write_text(json.dumps(r,indent=2));return r
+          def catalog():
+              r={'key':'county-service-catalog','started':NOW()}
+              try:
+                  raw,u=request('https://gisservices.oakgov.com/arcgis/rest/services/Enterprise',{'f':'pjson'});r.update(save('county-services.json',raw));r['url']=u
+              except Exception as e:r['error']=repr(e)
+              return r
+          tasks=[lambda:layer('roads','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0'),lambda:layer('landuse','https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenPlanningMapService/MapServer/4'),lambda:osm('osm-east','42.666,-83.132,42.695,-83.09'),lambda:osm('osm-central','42.65,-83.162,42.682,-83.129'),lambda:osm('osm-west','42.642,-83.2,42.68,-83.16'),catalog]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+              results=list(ex.map(lambda fn:fn(),tasks))
+          (O/'FETCH-RECEIPT.json').write_text(json.dumps({'retrieved_at':NOW(),'scope':'Public government and OpenStreetMap records only. No private assignment maps or user records.','results':results,'note':'Workflow success is NOT source completeness or territory-release approval; inspect each receipt.'},indent=2))
+          print(json.dumps([{k:v for k,v in r.items() if k in ['key','complete','requested_count','returned_count','count','error']} for r in results],indent=2))
+          PY
+          python /tmp/fetch_public_gis.py
+      - name: Preserve public data and receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rochester-public-gis-${{ github.run_id }}
+          path: public-gis/
+          if-no-files-found: error
+          retention-days: 7
