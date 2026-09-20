@@ -1,0 +1,35 @@
+name: Meadowfield 2025 imagery check
+on:
+  push:
+    branches: ['data/meadowfield-public-source-20260920']
+    paths: ['.github/workflows/meadowfield-2025-imagery-check.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Read public imagery and source metadata
+        run: |
+          mkdir -p imagery
+          python - <<'PY'
+          from pathlib import Path
+          import urllib.request,urllib.parse,json,hashlib,datetime
+          out=Path('imagery');url='https://gisservices.oakgov.com/arcgis/rest/services/ImageServices/EnterpriseOrthoTC2025ImageService/ImageServer';receipt=[]
+          jobs=[('metadata.json',url+'?f=pjson'),('winchester.png',url+'/exportImage?'+urllib.parse.urlencode({'f':'image','bbox':'-9255250,5260000,-9254780,5260310','bboxSR':3857,'imageSR':3857,'size':'1880,1240','format':'png','interpolation':'RSP_BilinearInterpolation'})),('meadowfield.png',url+'/exportImage?'+urllib.parse.urlencode({'f':'image','bbox':'-9255320,5260280,-9254290,5260640','bboxSR':3857,'imageSR':3857,'size':'2575,900','format':'png','interpolation':'RSP_BilinearInterpolation'}))]
+          for name,u in jobs:
+            r={'file':name,'url':u,'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+            try:
+              raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'PublicMapVerification/1.0'}),timeout=65).read();(out/name).write_bytes(raw);r.update(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),complete=True)
+            except Exception as e:r.update(complete=False,error=repr(e))
+            receipt.append(r)
+          (out/'receipt.json').write_text(json.dumps(receipt,indent=2));print(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meadowfield-imagery-${{ github.run_id }}
+          path: imagery/
+          retention-days: 7
+          if-no-files-found: error
