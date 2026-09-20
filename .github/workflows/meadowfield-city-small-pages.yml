@@ -1,0 +1,52 @@
+name: Meadowfield city small-page recovery
+on:
+  push:
+    branches: ['data/meadowfield-public-source-20260920']
+    paths: ['.github/workflows/meadowfield-city-small-pages.yml']
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retrieve bounded public city map fields
+        run: |
+          mkdir -p city-recovery
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,datetime,hashlib,concurrent.futures
+          from pathlib import Path
+          root=Path('city-recovery');bbox='-83.145,42.653,-83.130,42.664'
+          endpoints=[('buildings','https://atlas.rochesterhills.org/arcgis/rest/services/FacilitiesStructures/Building/FeatureServer/0','OBJECTID,ID,DATE_ENTER,SOURCE,BuildingType,STATUS,ChangeDate,KEYPIN,ParcelID,PELNUMBER,Note,last_edited_date,BuildingUse'),('addresses','https://atlas.rochesterhills.org/arcgis/rest/services/Addresses/MasterAddresses_PublicDataset/FeatureServer/1','OBJECTID,PARCELID,PELNUMBER,BUILDING,UNIT,SITEADDRESS,SITECITY,SITESTATE,HOUSENUMBER,ApartmentNo,SITEZIP5,Subdivision,DateModified,HouseNumberNumb,created_date,last_edited_date,AddressType')]
+          def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+          def fetch(item):
+            key,url,fields=item;o=root/key;o.mkdir();r={'key':key,'url':url,'bbox':bbox,'started':now(),'complete':False,'batch_size':75,'pages':[]}
+            def get(path,params,name):
+              u=url+path+'?'+urllib.parse.urlencode(params)
+              if len(u)>1900:raise ValueError('URL length guard '+str(len(u)))
+              raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'PublicMapSourceVerification/1.1'}),timeout=65).read();(o/name).write_bytes(raw)
+              r['pages'].append({'file':name,'sha256':hashlib.sha256(raw).hexdigest(),'url':u,'bytes':len(raw)})
+              d=json.loads(raw)
+              if 'error'in d:raise ValueError(str(d['error']))
+              return d
+            try:
+              meta=get('',{'f':'pjson'},'metadata.json');available={f['name'] for f in meta.get('fields',[])};fields=','.join(f for f in fields.split(',') if f in available);r['out_fields']=fields
+              base={'f':'json','where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'};q=get('/query',{**base,'returnIdsOnly':'true'},'ids.json');ids=sorted(set(q['objectIds'] or []));oid=q['objectIdFieldName'];fs=[]
+              for i in range(0,len(ids),75):
+                d=get('/query',{'f':'json','objectIds':','.join(map(str,ids[i:i+75])),'outFields':fields,'returnGeometry':'true','outSR':3857},'page-%03d.json'%(i//75))
+                if d.get('exceededTransferLimit'):raise ValueError('transfer limit exceeded')
+                fs.extend(d['features'])
+              got=[f['attributes'][oid] for f in fs];r.update({'object_id_field':oid,'requested_count':len(ids),'returned_count':len(got),'missing_ids':sorted(set(ids)-set(got)),'duplicate_ids':len(got)-len(set(got)),'complete':len(got)==len(ids) and set(got)==set(ids)})
+              out={k:v for k,v in r.items() if k!='pages'};out['retrieved_at']=now();out['features']=fs;(o/'complete.json').write_text(json.dumps(out))
+            except Exception as e:r['error']=repr(e)
+            r['finished']=now();(o/'receipt.json').write_text(json.dumps(r,indent=2));print(json.dumps({k:v for k,v in r.items() if k!='pages'}),flush=True);return r
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:r=list(pool.map(fetch,endpoints))
+          (root/'RECEIPT.json').write_text(json.dumps(r,indent=2));(root/'SCOPE.txt').write_text('Public building and site-address attributes only. No names of owners or occupants. No user files or private assignment boundaries.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meadowfield-city-recovery-${{ github.run_id }}
+          path: city-recovery/
+          retention-days: 7
+          if-no-files-found: error
