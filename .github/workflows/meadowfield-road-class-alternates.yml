@@ -1,0 +1,44 @@
+name: Meadowfield alternate road classification sources
+on:
+  push:
+    branches: ['data/meadowfield-public-source-20260920']
+    paths: ['.github/workflows/meadowfield-road-class-alternates.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read alternate public road classification services
+        run: |
+          mkdir -p road-class-alternates
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,hashlib,datetime,concurrent.futures
+          from pathlib import Path
+          root=Path('road-class-alternates')
+          tasks=[('jurisdiction-feature','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/FeatureServer/1'),('jurisdiction-standalone','https://atlas.rochesterhills.org/arcgis/rest/services/StreetJurisdiction/MapServer/0'),('major-road-annotation','https://atlas.rochesterhills.org/arcgis/rest/services/MajorRoadAnnotation/MapServer/8'),('plow-routes','https://atlas.rochesterhills.org/arcgis/rest/services/SnowPlowRoutes/FeatureServer/0')]
+          def task(t):
+            name,url=t;o=root/name;o.mkdir();r={'url':url,'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'complete':False,'pages':[]}
+            def get(path,params,fn):
+              u=url+path+'?'+urllib.parse.urlencode({'f':'json',**params});raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'Public-Road-Class-Verification/1.1'}),timeout=45).read();(o/fn).write_bytes(raw);r['pages'].append({'url':u,'file':fn,'sha256':hashlib.sha256(raw).hexdigest()});d=json.loads(raw)
+              if 'error'in d:raise ValueError(d['error'])
+              return d
+            try:
+              m=get('',{},'metadata.json');fields={f['name'] for f in m.get('fields',[])}
+              if 'ROUTE'in fields:where='ROUTE IN (10298,11498,12368)'
+              elif 'STREETNAME'in fields:where="STREETNAME LIKE '%Hamlin%' OR STREETNAME LIKE '%Rochester%' OR STREETNAME LIKE '%Drexelgate%'"
+              elif 'TextString'in fields:where="UPPER(TextString) LIKE '%HAMLIN%' OR UPPER(TextString) LIKE '%ROCHESTER%' OR UPPER(TextString) LIKE '%DREXELGATE%'"
+              else:where='1=1'
+              d=get('/query',{'where':where,'outFields':'*','returnGeometry':'true','outSR':3857},'features.json');r.update(where=where,features=len(d.get('features',[])),complete=not d.get('exceededTransferLimit',False),exceededTransferLimit=d.get('exceededTransferLimit',False))
+            except Exception as e:r['error']=repr(e)
+            (o/'receipt.json').write_text(json.dumps(r,indent=2));print(json.dumps({k:v for k,v in r.items()if k!='pages'}));return r
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4)as pool:rs=list(pool.map(task,tasks))
+          (root/'RECEIPT.json').write_text(json.dumps(rs,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meadowfield-road-class-alternates-${{ github.run_id }}
+          path: road-class-alternates/
+          retention-days: 7
