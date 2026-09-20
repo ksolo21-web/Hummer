@@ -1,0 +1,42 @@
+name: Meadowfield public road classification
+on:
+  push:
+    branches: ['data/meadowfield-public-source-20260920']
+    paths: ['.github/workflows/meadowfield-road-classification.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Retrieve public road classes only
+        run: |
+          mkdir -p public-roads
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,hashlib,datetime
+          from pathlib import Path
+          root=Path('public-roads');receipts=[]
+          for key,layer in [('jurisdiction',1),('roads',8)]:
+            o=root/key;o.mkdir();url='https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/'+str(layer);r={'url':url,'complete':False,'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'pages':[]}
+            def get(params,path,name):
+              u=url+path+'?'+urllib.parse.urlencode(params);raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'Public-Road-Verification/1.0'}),timeout=45).read();(o/name).write_bytes(raw);r['pages'].append({'name':name,'url':u,'sha256':hashlib.sha256(raw).hexdigest()});d=json.loads(raw)
+              if 'error'in d:raise ValueError(d['error'])
+              return d
+            try:
+              m=get({'f':'pjson'},'','metadata.json');base={'f':'json','where':'1=1','geometry':'-83.150,42.648,-83.130,42.665','geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'};q=get({**base,'returnIdsOnly':'true'},'/query','ids.json');ids=q['objectIds']or[];oid=q['objectIdFieldName'];fs=[]
+              for i in range(0,len(ids),75):
+                d=get({'f':'json','objectIds':','.join(map(str,ids[i:i+75])),'outFields':'*','returnGeometry':'true','outSR':3857},'/query','page-%03d.json'%(i//75))
+                if d.get('exceededTransferLimit'):raise ValueError('transfer limit')
+                fs.extend(d['features'])
+              got=[f['attributes'][oid]for f in fs];r.update(requested_count=len(ids),returned_count=len(got),complete=set(ids)==set(got)and len(ids)==len(got));(o/'complete.json').write_text(json.dumps({'features':fs,**r}))
+            except Exception as e:r['error']=repr(e)
+            (o/'receipt.json').write_text(json.dumps(r,indent=2));receipts.append(r);print(json.dumps({k:v for k,v in r.items()if k!='pages'}))
+          (root/'RECEIPT.json').write_text(json.dumps(receipts,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meadowfield-road-classification-${{ github.run_id }}
+          path: public-roads/
+          retention-days: 7
