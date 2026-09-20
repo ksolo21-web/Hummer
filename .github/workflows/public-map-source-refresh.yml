@@ -1,0 +1,87 @@
+name: Bounded public map source refresh
+on:
+  push:
+    branches: [data/rochester-map-source-refresh-20260920]
+    paths: [.github/workflows/public-map-source-refresh.yml]
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Retrieve bounded public GIS and OpenStreetMap records
+        timeout-minutes: 8
+        run: |
+          mkdir -p evidence
+          python -u - <<'PY'
+          import json,urllib.request,urllib.parse,hashlib,time,pathlib,concurrent.futures,threading
+          D=pathlib.Path('evidence');receipts=[];lock=threading.Lock()
+          sites={'stratford':[-83.1825,42.6770,-83.1768,42.6815],'rochester-square':[-83.1350,42.6838,-83.1298,42.6865]}
+          (D/'SCOPE.json').write_text(json.dumps({'sites':sites,'purpose':'Public building geometry, roads and address records only. No private user maps, assignments or user files are uploaded.'},indent=2))
+          def get(name,url):
+            err=None
+            for attempt in range(2):
+              try:
+                with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Public-Map-Source-Verification/1.0'}),timeout=35) as r:raw=r.read();ct=r.headers.get('Content-Type','')
+                p=D/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(raw)
+                with lock:
+                  receipts.append({'file':name,'url':url,'retrieved_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'content_type':ct})
+                  (D/'RECEIPTS.json').write_text(json.dumps(receipts,indent=2))
+                return raw
+              except Exception as e:err=e;time.sleep(1)
+            raise err
+          layers={
+            'county-footprints':('https://gisservices.oakgov.com/arcgisds/rest/services/Hosted/Building_Outline/FeatureServer/30','*'),
+            'semcog-footprints':('https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints/FeatureServer/14','*'),
+            'semcog-points':('https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34','*'),
+            'county-roads':('https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseTransportationDataMapService/MapServer/0','*'),
+            'county-parcels':('https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1','OBJECTID_12,PIN,SITEADDRESS'),
+            'county-addresses':('https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/0','OBJECTID,TYPE,PIN,SITEPREFIXONE,SITESTREETNUMBER,SITESTREETNAME,SITESTREETTYPE,SITESUFFIXONE,SITESTREETADDRESS,SITECITY')}
+          def layer(task):
+            site,name=task;url,fields=layers[name];prefix=site+'/'+name;bbox=sites[site];result={'site':site,'dataset':name,'source':url,'bbox':bbox,'complete':False}
+            try:
+              meta=json.loads(get(prefix+'-metadata.json',url+'?f=pjson'))
+              q={'f':'json','where':'1=1','geometry':','.join(map(str,bbox)),'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects','returnIdsOnly':'true'}
+              obj=json.loads(get(prefix+'-ids.json',url+'/query?'+urllib.parse.urlencode(q)))
+              if 'error' in obj:raise ValueError(str(obj))
+              ids=sorted(obj['objectIds'] or []);fs=[]
+              for i in range(0,len(ids),300):
+                q={'f':'json','objectIds':','.join(map(str,ids[i:i+300])),'outFields':fields,'returnGeometry':'true','outSR':4326}
+                page=json.loads(get(prefix+'-page-'+str(i//300)+'.json',url+'/query?'+urllib.parse.urlencode(q)))
+                if 'error' in page or page.get('exceededTransferLimit'):raise ValueError(str(page)[:500])
+                fs.extend(page.get('features',[]))
+              oid=obj.get('objectIdFieldName') or meta.get('objectIdField') or 'OBJECTID'
+              got=[f['attributes'][oid] for f in fs]
+              if len(got)!=len(ids) or set(got)!=set(ids):raise ValueError('ID completeness mismatch')
+              (D/(prefix+'.json')).write_text(json.dumps({'spatialReference':{'wkid':4326},'features':fs}))
+              result.update(complete=True,requested_count=len(ids),returned_count=len(fs),oid_field=oid)
+            except Exception as e:result['error']=repr(e)
+            (D/(prefix+'-completeness.json')).write_text(json.dumps(result,indent=2));print(result,flush=True);return result
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:results=list(ex.map(layer,[(s,l) for s in sites for l in layers]))
+          for site,bbox in sites.items():
+            try:
+              url='https://api.openstreetmap.org/api/0.6/map?bbox='+','.join(map(str,bbox));raw=get(site+'/osm-map.osm',url)
+              import xml.etree.ElementTree as ET
+              root=ET.fromstring(raw);nodes={n.attrib['id'] for n in root.findall('node')};ways=root.findall('way');missing=sorted({n.attrib['ref'] for w in ways for n in w.findall('nd') if n.attrib['ref'] not in nodes})
+              results.append({'site':site,'dataset':'osm','complete':not missing,'node_count':len(nodes),'way_count':len(ways),'missing_node_ids':missing})
+            except Exception as e:results.append({'site':site,'dataset':'osm','complete':False,'error':repr(e)})
+          (D/'COMPLETENESS.json').write_text(json.dumps(results,indent=2))
+          PY
+      - name: Retrieve independent open building release
+        timeout-minutes: 3
+        continue-on-error: true
+        run: |
+          python -m pip install overturemaps > evidence/overture-install.txt
+          python -m pip freeze > evidence/package-versions.txt
+          curl --fail --location --max-time 35 https://stac.overturemaps.org/catalog.json -o evidence/overture-catalog.json
+          overturemaps download --bbox=-83.1825,42.6770,-83.1768,42.6815 -f geojson --type=building -o evidence/stratford/overture-buildings.geojson
+          overturemaps download --bbox=-83.1350,42.6838,-83.1298,42.6865 -f geojson --type=building -o evidence/rochester-square/overture-buildings.geojson
+          date --utc --iso-8601=seconds > evidence/overture-retrieved-at.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-map-source-refresh-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 7
