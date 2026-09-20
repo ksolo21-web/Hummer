@@ -1,0 +1,40 @@
+name: Rochester public site addresses
+on:
+  push:
+    branches: ['data/rochester-public-gis-20260920']
+    paths: ['.github/workflows/rochester-public-site-addresses.yml']
+permissions:
+  contents: read
+jobs:
+  public-addresses:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch public location fields only
+        run: |
+          mkdir -p site-addresses
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,datetime,hashlib
+          from pathlib import Path
+          o=Path('site-addresses');url='https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/0';r={'complete':False,'url':url,'warning':'Points are approximate parcel centers. Stacked multiple addresses are not building-level locations.'}
+          def get(path,params):
+            u=url+path+'?'+urllib.parse.urlencode(params);raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'PublicGIS-Audit/1.0'}),timeout=60).read();return raw,u
+          try:
+            raw,u=get('',{'f':'pjson'});(o/'metadata.json').write_bytes(raw)
+            base={'f':'json','where':'1=1','geometry':'-83.18,42.648,-83.095,42.686','geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+            raw,u=get('/query',{**base,'returnIdsOnly':'true'});(o/'ids.json').write_bytes(raw);d=json.loads(raw);ids=sorted(set(d['objectIds']));fs=[];pages=[]
+            for i in range(0,len(ids),800):
+              raw,u=get('/query',{'f':'json','objectIds':','.join(map(str,ids[i:i+800])),'outFields':'OBJECTID,TYPE,PIN,SITEPREFIXONE,SITESTREETNUMBER,SITESTREETNAME,SITESTREETTYPE,SITESUFFIXONE,SITESTREETADDRESS,SITECITY','returnGeometry':'true','outSR':3857});d=json.loads(raw)
+              if 'error' in d or d.get('exceededTransferLimit'):raise ValueError(str(d)[:500])
+              name='page-%03d.json'%(i//800);(o/name).write_bytes(raw);pages.append({'file':name,'sha256':hashlib.sha256(raw).hexdigest(),'url':u});fs.extend(d['features'])
+            got=[f['attributes']['OBJECTID'] for f in fs];complete=set(got)==set(ids) and len(got)==len(ids);out={'url':url,'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'query':base,'complete':complete,'requested_count':len(ids),'returned_count':len(got),'missing_ids':sorted(set(ids)-set(got)),'features':fs};(o/'site-addresses-complete.json').write_text(json.dumps(out));r.update({k:v for k,v in out.items() if k!='features'});r['pages']=pages
+          except Exception as e:r['error']=repr(e)
+          (o/'receipt.json').write_text(json.dumps(r,indent=2));print(json.dumps({k:v for k,v in r.items() if k!='pages'},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-addresses-${{ github.run_id }}
+          path: site-addresses/
+          retention-days: 7
+          if-no-files-found: error
