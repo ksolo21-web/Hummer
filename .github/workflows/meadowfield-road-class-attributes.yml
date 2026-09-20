@@ -1,0 +1,34 @@
+name: Meadowfield public road class attribute recovery
+on:
+  push:
+    branches: ['data/meadowfield-public-source-20260920']
+    paths: ['.github/workflows/meadowfield-road-class-attributes.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Retrieve public road classification records
+        run: |
+          mkdir -p road-classes
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,hashlib,datetime
+          from pathlib import Path
+          p=Path('road-classes');receipts=[]
+          tasks=[('jurisdiction','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/1',{'where':'ROUTE IN (10298,11498,12368)','outFields':'OBJECTID,ROUTE,FMEAS,TMEAS,JURISDICTI,STATUS,LENGTH','returnGeometry':'false'}),('jurisdiction-table','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/1',{'where':'1=1','outFields':'OBJECTID,ROUTE,FMEAS,TMEAS,JURISDICTI,STATUS,LENGTH','returnGeometry':'false','resultRecordCount':2000})]
+          for name,url,params in tasks:
+            u=url+'/query?'+urllib.parse.urlencode({'f':'json',**params});r={'url':u,'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'complete':False}
+            try:
+              raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'Public-Road-Class-Verification/1.0'}),timeout=45).read();(p/(name+'.json')).write_bytes(raw);d=json.loads(raw);r.update(sha256=hashlib.sha256(raw).hexdigest(),features=len(d.get('features',[])),exceededTransferLimit=d.get('exceededTransferLimit',False),error=d.get('error'),complete='error'not in d and not d.get('exceededTransferLimit',False))
+            except Exception as e:r['error']=repr(e)
+            receipts.append(r);print(json.dumps(r))
+          (p/'RECEIPT.json').write_text(json.dumps(receipts,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meadowfield-road-class-attributes-${{ github.run_id }}
+          path: road-classes/
+          retention-days: 7
