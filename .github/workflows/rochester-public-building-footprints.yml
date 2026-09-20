@@ -1,0 +1,36 @@
+name: Rochester open building footprints
+on:
+  push:
+    branches: ['data/rochester-public-gis-20260920']
+    paths: ['.github/workflows/rochester-public-building-footprints.yml']
+permissions:
+  contents: read
+jobs:
+  public-buildings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Install official open-data client
+        run: |
+          mkdir -p open-buildings
+          python -m pip install overturemaps > open-buildings/install-log.txt
+          python -m pip freeze > open-buildings/package-versions.txt
+      - name: Save raw release catalog and area query
+        run: |
+          curl --fail --location --max-time 40 https://stac.overturemaps.org/catalog.json -o open-buildings/catalog.json
+          printf '%s\n' 'Public building footprints only; no private user maps, assignment boundaries or user files are uploaded.' 'bbox=-83.1745,42.6505,-83.1330,42.6675' 'Client resolves latest release using saved STAC catalog.' > open-buildings/SCOPE.txt
+          date --utc --iso-8601=seconds > open-buildings/retrieval-start.txt
+          overturemaps download --bbox=-83.1745,42.6505,-83.1330,42.6675 -f geojson --type=building -o open-buildings/buildings.geojson 2>&1 | tee open-buildings/client-log.txt
+          test -s open-buildings/buildings.geojson
+          python - <<'PY'
+          import json,hashlib,datetime
+          from pathlib import Path
+          p=Path('open-buildings/buildings.geojson');d=json.loads(p.read_text());f=d['features'];ids=[q.get('id',q.get('properties',{}).get('id')) for q in f];r={'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'returned_features':len(f),'unique_ids':len(set(ids)),'duplicate_ids':len(ids)-len(set(ids)),'all_geometry_present':all(bool(q.get('geometry')) for q in f),'query_success':True,'note':'Query success does not certify every structure exists, its occupancy/use, address binding, or any private territory assignment.'};Path('open-buildings/receipt.json').write_text(json.dumps(r,indent=2));print(json.dumps(r,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: open-buildings-${{ github.run_id }}
+          path: open-buildings/
+          if-no-files-found: error
+          retention-days: 7
