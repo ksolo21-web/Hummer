@@ -1,0 +1,51 @@
+name: Streamwood public building source check
+on:
+  push:
+    branches: ['data/streamwood-public-buildings-20260920']
+permissions:
+  contents: read
+jobs:
+  public-read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Read public GIS inventory
+        shell: bash
+        run: |
+          mkdir -p public-buildings
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,datetime,hashlib,time
+          from pathlib import Path
+          O=Path('public-buildings');receipts=[];results=[]
+          def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+          def get(url,name):
+              r={'url':url,'file':name,'started':now()}
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Public-GIS-Inventory-Check/1.0'})
+                  with urllib.request.urlopen(req,timeout=45) as x:raw=x.read();r['http_status']=x.status
+                  (O/name).write_bytes(raw);r.update(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),success=True);obj=json.loads(raw)
+              except Exception as e:obj={};r.update(success=False,error=repr(e))
+              r['finished']=now();receipts.append(r);return obj
+          sources=[('current-footprints','https://gis.semcog.org/server/rest/services/terra_buildings/MapServer/0'),('2020-footprints','https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints__2020/FeatureServer/60'),('building-points','https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34')]
+          for tag,base in sources:
+              meta=get(base+'?f=pjson',tag+'-metadata.json')
+              q={'f':'json','where':'1=1','geometry':'-83.1746,42.6505,-83.1600,42.6575','geometryType':'esriGeometryEnvelope','inSR':'4326','spatialRel':'esriSpatialRelIntersects','returnIdsOnly':'true'}
+              ids=get(base+'/query?'+urllib.parse.urlencode(q),tag+'-ids.json');allids=ids.get('objectIds');features=[];ok=isinstance(allids,list)
+              if ok:
+                  for i in range(0,len(allids),300):
+                      q2={'f':'json','objectIds':','.join(map(str,allids[i:i+300])),'outFields':'*','returnGeometry':'true','outSR':'3857'}
+                      page=get(base+'/query?'+urllib.parse.urlencode(q2),tag+'-page-%s.json'%(i//300));features.extend(page.get('features',[]));ok=ok and bool('features' in page) and not page.get('exceededTransferLimit',False)
+                  field=ids.get('objectIdFieldName',meta.get('objectIdField'));actual=[x.get('attributes',{}).get(field) for x in features];ok=ok and len(features)==len(allids) and set(actual)==set(allids)
+                  (O/(tag+'-complete.json')).write_text(json.dumps({'source':base,'retrieved_at':now(),'complete':ok,'feature_count':len(features),'object_id_field':field,'features':features}))
+              results.append({'source':base,'tag':tag,'complete':ok,'ids_count':len(allids) if isinstance(allids,list) else None,'feature_count':len(features)})
+          get('https://rochesterhills.maps.arcgis.com/sharing/rest/content/items/67cd083119f04829a0e340079328b685/data?f=pjson','municipal-map-app.json')
+          (O/'RECEIPTS.json').write_text(json.dumps({'scope':'Public building inventory only. No private assignment or user files.','results':results,'requests':receipts},indent=2));print(json.dumps(results,indent=2))
+          PY
+      - name: Preserve public raw responses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamwood-public-buildings-${{ github.run_id }}
+          path: public-buildings/
+          retention-days: 7
+          if-no-files-found: error
