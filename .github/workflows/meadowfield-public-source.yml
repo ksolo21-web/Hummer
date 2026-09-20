@@ -1,0 +1,60 @@
+name: Meadowfield public source verification
+on:
+  push:
+    branches: ['data/meadowfield-public-source-20260920']
+    paths: ['.github/workflows/meadowfield-public-source.yml']
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retrieve public map fields only
+        run: |
+          mkdir -p public-sources
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,datetime,hashlib,concurrent.futures
+          from pathlib import Path
+          root=Path('public-sources')
+          bbox='-83.145,42.653,-83.130,42.664'
+          endpoints=[
+            ('city-roads','https://atlas.rochesterhills.org/arcgis/rest/services/Roads/Roads_PublicDataset/MapServer/8','OBJECTID,ROUTE,STREETNAME,created_date,last_edited_date'),
+            ('city-buildings','https://atlas.rochesterhills.org/arcgis/rest/services/FacilitiesStructures/Building/FeatureServer/0','OBJECTID,ID,DATE_ENTER,SOURCE,BuildingType,STATUS,ChangeDate,KEYPIN,ParcelID,PELNUMBER,Note,last_edited_date,BuildingUse'),
+            ('city-addresses','https://atlas.rochesterhills.org/arcgis/rest/services/Addresses/MasterAddresses_PublicDataset/FeatureServer/1','OBJECTID,PARCELID,PELNUMBER,BUILDING,UNIT,SITEADDRESS,SITECITY,SITESTATE,HOUSENUMBER,ApartmentNo,SITEZIP5,Subdivision,DateModified,HouseNumberNumb,created_date,last_edited_date,AddressType'),
+            ('semcog-points','https://gis.semcog.org/server/rest/services/Hosted/Building_Points/FeatureServer/34','objectid,building_id,parcel_id,build_type,city_id,apn,year_built,housing_units,stories,loadd1,hiadd1,street1,loadd2,hiadd2,street2,zipcode,aka'),
+            ('semcog-footprints','https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints/FeatureServer/14','objectid,building_id,median_hgt,source'),
+            ('semcog-2020','https://gis.semcog.org/server/rest/services/Hosted/Building_Footprints__2020/FeatureServer/60','gid,building_id,parcel_id,apn,city_id,build_type,year_built,stories,median_hgt,housing_units,source,address,zipcode')]
+          def now(): return datetime.datetime.now(datetime.timezone.utc).isoformat()
+          def fetch(item):
+            key,url,fields=item;o=root/key;o.mkdir();r={'key':key,'url':url,'bbox':bbox,'started':now(),'complete':False,'pages':[]}
+            def get(path,params,name):
+              u=url+path+'?'+urllib.parse.urlencode(params)
+              raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'PublicMapSourceVerification/1.0'}),timeout=65).read();(o/name).write_bytes(raw)
+              r['pages'].append({'file':name,'sha256':hashlib.sha256(raw).hexdigest(),'url':u,'bytes':len(raw)})
+              d=json.loads(raw)
+              if 'error' in d: raise ValueError(str(d['error']))
+              return d
+            try:
+              meta=get('',{'f':'pjson'},'metadata.json');available={f['name'] for f in meta.get('fields',[])}
+              fields=','.join(f for f in fields.split(',') if f in available);r['out_fields']=fields
+              base={'f':'json','where':'1=1','geometry':bbox,'geometryType':'esriGeometryEnvelope','inSR':4326,'spatialRel':'esriSpatialRelIntersects'}
+              idsraw=get('/query',{**base,'returnIdsOnly':'true'},'ids.json');ids=sorted(set(idsraw['objectIds'] or []));oid=idsraw['objectIdFieldName'];r['object_id_field']=oid;fs=[]
+              for i in range(0,len(ids),500):
+                d=get('/query',{'f':'json','objectIds':','.join(map(str,ids[i:i+500])),'outFields':fields,'returnGeometry':'true','outSR':3857},'page-%03d.json'%(i//500))
+                if d.get('exceededTransferLimit'):raise ValueError('transfer limit exceeded')
+                fs.extend(d['features'])
+              got=[f['attributes'][oid] for f in fs];r.update({'requested_count':len(ids),'returned_count':len(got),'missing_ids':sorted(set(ids)-set(got)),'duplicate_ids':len(got)-len(set(got)),'complete':len(got)==len(ids) and set(got)==set(ids)})
+              out={k:v for k,v in r.items() if k!='pages'};out['retrieved_at']=now();out['features']=fs;(o/'complete.json').write_text(json.dumps(out))
+            except Exception as e:r['error']=repr(e)
+            r['finished']=now();(o/'receipt.json').write_text(json.dumps(r,indent=2));print(json.dumps({k:v for k,v in r.items() if k!='pages'}),flush=True);return r
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(fetch,endpoints))
+          (root/'RECEIPT.json').write_text(json.dumps(results,indent=2));(root/'SCOPE.txt').write_text('Public building, street and site-address attributes only. No owner names, occupant names, user files or private assignment boundaries are uploaded. Retrieval completeness does not by itself certify source currency or building-to-address matching.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: meadowfield-public-sources-${{ github.run_id }}
+          path: public-sources/
+          retention-days: 7
+          if-no-files-found: error
