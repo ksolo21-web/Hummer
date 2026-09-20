@@ -1,0 +1,33 @@
+name: Recover Streamwood public map data
+on:
+  push:
+    branches: ['data/rochester-public-gis-20260920']
+    paths: ['.github/workflows/rochester-streamwood-public.yml']
+permissions:
+  contents: read
+jobs:
+  public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch small public extent
+        run: |
+          mkdir -p streamwood-public
+          python - <<'PY'
+          import urllib.request,urllib.parse,json,datetime,hashlib,time
+          from pathlib import Path
+          o=Path('streamwood-public');q='[out:json][timeout:100];(way[highway](42.648,-83.178,42.658,-83.160);nwr[building](42.648,-83.178,42.658,-83.160);nwr["addr:housenumber"](42.648,-83.178,42.658,-83.160);way[waterway](42.648,-83.178,42.658,-83.160););out body;>;out skel qt;'
+          r={'query':q,'complete':False,'attempts':[]}
+          for host in ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']:
+            try:
+              u=host+'?'+urllib.parse.urlencode({'data':q});raw=urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'PublicGIS-Audit/1.0'}),timeout=130).read();d=json.loads(raw);(o/'osm-streamwood-raw.json').write_bytes(raw);r.update({'url':u,'retrieved_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sha256':hashlib.sha256(raw).hexdigest(),'count':len(d.get('elements',[])),'osm3s':d.get('osm3s'),'remark':d.get('remark'),'complete':'elements' in d and not d.get('remark')});break
+            except Exception as e:r['attempts'].append({'url':host,'error':repr(e)})
+          (o/'receipt.json').write_text(json.dumps(r,indent=2));print(json.dumps(r,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: streamwood-public-${{ github.run_id }}
+          path: streamwood-public/
+          retention-days: 7
+          if-no-files-found: error
