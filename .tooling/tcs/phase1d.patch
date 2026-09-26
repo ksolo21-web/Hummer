@@ -1,0 +1,423 @@
+--- a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+@@ -0,0 +1,348 @@
++package com.koenterprises.territorycardstudio.core
++
++import java.io.ByteArrayOutputStream
++import java.security.MessageDigest
++import java.util.Locale
++import kotlin.math.ceil
++import kotlin.math.floor
++
++/** Canonical page roles for a newly generated territory-card document. */
++enum class TerritoryPdfPageRole {
++    FRONT_MAP,
++    BACK_ADDRESS_LIST
++}
++
++data class CanonicalAddressEntry(
++    val sourceId: String,
++    val addressLine: String
++)
++
++data class CanonicalAddressBackSpec(
++    val identity: TerritoryIdentity,
++    val locality: String,
++    val updated: String,
++    val sourceInventorySha256: String,
++    val sourceInventoryVerified: Boolean,
++    val entries: List<CanonicalAddressEntry>,
++    val nonFieldFixture: Boolean = false
++) {
++    fun canonicalSha256(): String = sha256(buildString {
++        append("display_id=").append(identity.displayId).append('\n')
++        append("canonical_filename=").append(identity.canonicalFilename).append('\n')
++        append("locality=").append(locality).append('\n')
++        append("source_inventory_sha256=").append(sourceInventorySha256).append('\n')
++        append("source_inventory_verified=").append(sourceInventoryVerified).append('\n')
++        append("non_field_fixture=").append(nonFieldFixture).append('\n')
++        entries.forEachIndexed { index, entry ->
++            append("entry[").append(index).append("]=")
++                .append(entry.sourceId).append('|').append(entry.addressLine).append('\n')
++        }
++    }.toByteArray(Charsets.UTF_8))
++}
++
++data class CanonicalFrontBackPdfArtifactReceipt(
++    val displayId: String,
++    val canonicalFilename: String,
++    val frontPdfSha256: String,
++    val backSpecSha256: String,
++    val combinedPdfSha256: String,
++    val pageRoles: List<TerritoryPdfPageRole>
++)
++
++data class CanonicalFrontBackPdfValidation(
++    val passed: Boolean,
++    val errors: List<String>,
++    val pageCount: Int,
++    val pageRoles: List<TerritoryPdfPageRole>
++)
++
++data class CanonicalFrontBackPdfResult(
++    val pdfBytes: ByteArray,
++    val pdfSha256: String,
++    val backSpecSha256: String,
++    val validation: CanonicalFrontBackPdfValidation
++)
++
++/**
++ * Adds one canonical address-list back page to an already validated one-page R48 front.
++ *
++ * The front bytes remain an exact prefix of the combined artifact. The second page reuses only the
++ * locked template's embedded font resources and is added as a deterministic incremental revision.
++ * Exact-approved legacy artifacts are intentionally outside this path and remain byte-for-byte passthrough.
++ */
++object CanonicalFrontBackPdfAssembler {
++    private const val PAGE_W = 768.0
++    private const val PAGE_H = 480.5
++    private const val INFO_OBJECT = 18
++    private const val PAGES_OBJECT = 19
++    private const val BACK_PAGE_OBJECT = 21
++    private const val BACK_CONTENT_OBJECT = 22
++    private const val ROOT_OBJECT = 17
++    private const val PDF_SIZE = 23
++    private const val MAX_SIDE_BYTES = 300 * 1024
++    private const val MAX_COMBINED_BYTES = 2 * MAX_SIDE_BYTES
++    private val sha256Pattern = Regex("^[0-9a-f]{64}$")
++
++    fun assembleCandidate(
++        frontPdf: ByteArray,
++        frontArtifact: CandidatePdfArtifactReceipt,
++        spec: CanonicalAddressBackSpec
++    ): CanonicalFrontBackPdfResult {
++        require(!spec.nonFieldFixture) { "Production canonical front/back assembly cannot use fixture-only back semantics" }
++        require(frontArtifact.displayId == spec.identity.displayId) { "Front/back territory identity mismatch" }
++        require(frontArtifact.canonicalFilename == spec.identity.canonicalFilename) { "Front/back canonical filename mismatch" }
++        require(frontArtifact.pdfSha256 == sha256(frontPdf)) { "Front artifact receipt hash does not match supplied PDF bytes" }
++        require(spec.sourceInventoryVerified) { "Production address back requires verified authoritative address inventory" }
++        return assembleInternal(frontPdf, spec)
++    }
++
++    fun assembleNonFieldFixture(
++        frontPdf: ByteArray,
++        spec: CanonicalAddressBackSpec
++    ): CanonicalFrontBackPdfResult {
++        require(spec.nonFieldFixture) { "Non-field front/back assembler requires nonFieldFixture=true" }
++        return assembleInternal(frontPdf, spec)
++    }
++
++    private fun assembleInternal(frontPdf: ByteArray, spec: CanonicalAddressBackSpec): CanonicalFrontBackPdfResult {
++        validateBackSpec(spec)
++        require(frontPdf.size <= MAX_SIDE_BYTES) { "Canonical front side exceeds 300 KB" }
++        val frontSha = sha256(frontPdf)
++        val frontText = frontPdf.toString(Charsets.ISO_8859_1)
++        validateOnePageFront(frontText, spec)
++        val backSpecSha = spec.canonicalSha256()
++        val backContent = buildBackContent(spec, backSpecSha).toByteArray(Charsets.ISO_8859_1)
++        val combined = appendBackPage(frontPdf, backContent, spec, frontSha, backSpecSha)
++        val backContribution = combined.size - frontPdf.size
++        require(backContribution <= MAX_SIDE_BYTES) { "Canonical back side exceeds 300 KB contribution" }
++        require(combined.size <= MAX_COMBINED_BYTES) { "Canonical combined front/back PDF exceeds 600 KB" }
++        val combinedSha = sha256(combined)
++        val validation = CanonicalFrontBackPdfExactValidator.validate(combined, spec, frontSha, backSpecSha)
++        require(validation.passed) { "Canonical front/back exact validation failed: ${validation.errors.joinToString()}" }
++        return CanonicalFrontBackPdfResult(combined, combinedSha, backSpecSha, validation)
++    }
++
++    private fun validateBackSpec(spec: CanonicalAddressBackSpec) {
++        require(spec.locality.isNotBlank()) { "Back page locality is required" }
++        require(spec.updated.isNotBlank()) { "Back page updated date is required" }
++        require(sha256Pattern.matches(spec.sourceInventorySha256)) { "Address source inventory SHA-256 is invalid" }
++        require(spec.entries.isNotEmpty()) { "Canonical address back requires at least one address" }
++        require(spec.entries.size <= 240) { "Address list exceeds one canonical back-page capacity; split or resolve pagination before release" }
++        require(spec.entries.map { it.sourceId }.all { it.isNotBlank() }) { "Address source IDs must be nonblank" }
++        require(spec.entries.map { it.sourceId }.distinct().size == spec.entries.size) { "Duplicate address source IDs are forbidden" }
++        val normalized = spec.entries.map { it.addressLine.trim().lowercase(Locale.US) }
++        require(normalized.all { it.isNotBlank() }) { "Address lines must be nonblank" }
++        require(normalized.distinct().size == normalized.size) { "Duplicate canonical address lines are forbidden" }
++        buildList {
++            add(spec.identity.displayId)
++            add(spec.identity.canonicalFilename)
++            add(spec.locality)
++            add(spec.updated)
++            spec.entries.forEach { add(it.sourceId); add(it.addressLine) }
++        }.forEach { value ->
++            require(value.all { it.code in 32..126 }) { "Canonical front/back embedded font subset supports printable ASCII only: $value" }
++        }
++    }
++
++    private fun validateOnePageFront(frontText: String, spec: CanonicalAddressBackSpec) {
++        require(frontText.startsWith("%PDF-")) { "Front artifact is not a PDF" }
++        require(frontText.contains("/MediaBox [ 0 0 768 480.5 ]")) { "Front page size is not canonical R48" }
++        require(frontText.contains("/Root 17 0 R") && frontText.contains("/Info 18 0 R")) { "Front PDF root/info structure drift" }
++        require(!frontText.contains("% TCS_CANONICAL_FRONT_BACK_V1")) { "Front artifact already contains canonical back semantics" }
++        require(frontText.contains("card-display-id:${spec.identity.displayId}") || frontText.contains("display_id=${spec.identity.displayId}")) {
++            "Front PDF metadata identity does not match canonical back identity"
++        }
++        require(frontText.contains("canonical-filename:${spec.identity.canonicalFilename}") || frontText.contains("canonical_filename=${spec.identity.canonicalFilename}")) {
++            "Front PDF metadata filename does not match canonical back filename"
++        }
++        val latestPages = requireNotNull(Regex("19 0 obj\\s*<<\\s*/Count (\\d+) /Kids \\[ ([^]]+) ] /Type /Pages", RegexOption.DOT_MATCHES_ALL)
++            .findAll(frontText).lastOrNull()) { "Canonical front page tree unavailable" }
++        require(latestPages.groupValues[1] == "1") { "Canonical front input must contain exactly one page" }
++        require(latestPages.groupValues[2].trim() == "4 0 R") { "Canonical front page ordering/root drift" }
++    }
++
++    private data class BackLayout(val fontSize: Double, val lineHeight: Double, val columns: Int, val columnWidth: Double, val maxRows: Int)
++
++    private fun chooseBackLayout(entries: List<CanonicalAddressEntry>): BackLayout {
++        val left = 180.0
++        val right = 747.0
++        val usableWidth = right - left
++        val usableHeight = 360.0
++        val gap = 9.0
++        for (font in listOf(9.0, 8.5, 8.0, 7.5, 7.0, 6.8)) {
++            val lineHeight = font + 1.6
++            val maxRows = floor(usableHeight / lineHeight).toInt()
++            for (columns in 1..6) {
++                val columnWidth = (usableWidth - gap * (columns - 1)) / columns
++                val capacityChars = floor((columnWidth - 5.0) / (font * 0.56)).toInt().coerceAtLeast(8)
++                val requiredLines = entries.sumOf { wrapAddress(it.addressLine, capacityChars).size }
++                if (requiredLines <= maxRows * columns) return BackLayout(font, lineHeight, columns, columnWidth, maxRows)
++            }
++        }
++        error("Address lines cannot fit canonical back page at the locked minimum legibility floor")
++    }
++
++    private fun wrapAddress(raw: String, maxChars: Int): List<String> {
++        val words = raw.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
++        require(words.none { it.length > maxChars }) { "Address contains an unbreakable token too wide for canonical back page: $raw" }
++        val out = mutableListOf<String>()
++        var current = ""
++        words.forEach { word ->
++            val candidate = if (current.isEmpty()) word else "$current $word"
++            if (candidate.length <= maxChars) current = candidate else {
++                out += current
++                current = word
++            }
++        }
++        if (current.isNotEmpty()) out += current
++        return out
++    }
++
++    private fun buildBackContent(spec: CanonicalAddressBackSpec, specSha: String): String {
++        val b = StringBuilder(12000)
++        b.append("% TCS_CANONICAL_FRONT_BACK_V1\n")
++        b.append("% TCS_PAGE_ROLE BACK_ADDRESS_LIST\n")
++        b.append("% TCS_BACK_SPEC_SHA256 ").append(specSha).append('\n')
++        b.append("% TCS_ADDRESS_SOURCE_SHA256 ").append(spec.sourceInventorySha256).append('\n')
++        fillColor(b, "#FFFFFF"); rect(b, 0.0, 0.0, PAGE_W, PAGE_H, true, false)
++        roundedRect(b, 9.0, topToY(9.0, 463.0), 146.0, 463.0, 11.0, "#10212B", null, 0.0)
++        roundedRect(b, 164.0, topToY(9.0, 463.0), 595.0, 463.0, 10.0, "#FFFFFF", "#D6E0E4", 0.6)
++        fillColor(b, "#FFFFFF")
++        text(b, "F2+0", 12.0, 28.0, PAGE_H - 55.0, "TERRITORY")
++        var idSize = 40.0
++        while (idSize > 28.0 && spec.identity.displayId.length * idSize * 0.56 > 117.0) idSize -= 0.5
++        text(b, "F3+0", idSize, 28.0, PAGE_H - 119.0, spec.identity.displayId)
++        val locality = if (spec.locality.length <= 18) listOf(spec.locality) else spec.locality.split(' ', limit = 2)
++        locality.take(2).forEachIndexed { index, line -> text(b, "F2+0", 12.0, 28.0, PAGE_H - (147.0 + index * 15.0), line) }
++        strokeColor(b, "#70818A"); lineWidth(b, 0.6); line(b, 28.0, PAGE_H - 180.0, 136.0, PAGE_H - 180.0)
++        text(b, "F4+0", 11.0, 28.0, PAGE_H - 205.0, "ADDRESS LIST")
++        text(b, "F4+0", 10.0, 28.0, PAGE_H - 439.0, "UPDATED")
++        text(b, "F2+0", 11.0, 28.0, PAGE_H - 457.0, spec.updated)
++
++        fillColor(b, "#536D7D")
++        text(b, "F4+0", 12.0, 180.0, PAGE_H - 43.0, "ADDRESSES")
++        if (spec.nonFieldFixture) text(b, "F4+0", 10.0, 620.0, PAGE_H - 43.0, "NOT FOR FIELD USE")
++        strokeColor(b, "#D6E0E4"); lineWidth(b, 0.7); line(b, 180.0, PAGE_H - 54.0, 747.0, PAGE_H - 54.0)
++
++        val layout = chooseBackLayout(spec.entries)
++        val gap = 9.0
++        var column = 0
++        var row = 0
++        spec.entries.forEach { entry ->
++            val capacityChars = floor((layout.columnWidth - 5.0) / (layout.fontSize * 0.56)).toInt().coerceAtLeast(8)
++            val lines = wrapAddress(entry.addressLine, capacityChars)
++            if (row + lines.size > layout.maxRows) { column += 1; row = 0 }
++            require(column < layout.columns) { "Canonical back layout overflow" }
++            val x = 180.0 + column * (layout.columnWidth + gap)
++            lines.forEachIndexed { index, line ->
++                val yTop = 70.0 + (row + index) * layout.lineHeight
++                fillColor(b, "#27343C")
++                text(b, "F2+0", layout.fontSize, x, PAGE_H - yTop, line)
++            }
++            row += lines.size
++        }
++        return b.toString()
++    }
++
++    private fun appendBackPage(
++        front: ByteArray,
++        backContent: ByteArray,
++        spec: CanonicalAddressBackSpec,
++        frontSha: String,
++        backSpecSha: String
++    ): ByteArray {
++        val frontText = front.toString(Charsets.ISO_8859_1)
++        val prev = Regex("startxref\\s+(\\d+)\\s+%%EOF", RegexOption.DOT_MATCHES_ALL)
++            .findAll(frontText).lastOrNull()?.groupValues?.get(1)?.toLong()
++            ?: error("Front PDF startxref unavailable")
++        val out = ByteArrayOutputStream(front.size + backContent.size + 4096)
++        out.write(front)
++        if (front.lastOrNull()?.toInt() != '\n'.code) out.write('\n'.code)
++
++        val infoOffset = out.size().toLong()
++        writeAscii(out, "$INFO_OBJECT 0 obj\n")
++        val subject = "R48 canonical front/back territory; display_id=${spec.identity.displayId}; canonical_filename=${spec.identity.canonicalFilename}; front_sha256=$frontSha; back_spec_sha256=$backSpecSha; address_source_sha256=${spec.sourceInventorySha256}; page_roles=FRONT_MAP,BACK_ADDRESS_LIST"
++        val keywords = "R48;territory-card;canonical-front-back;card-display-id:${spec.identity.displayId};canonical-filename:${spec.identity.canonicalFilename};front-sha256:$frontSha;back-spec-sha256:$backSpecSha;address-source-sha256:${spec.sourceInventorySha256};page1:FRONT_MAP;page2:BACK_ADDRESS_LIST"
++        writeAscii(out, "<< /Creator (Territory Card Studio Android R48 Renderer) /Producer (R48 Canonical Front Back Assembler) /Title (${pdfEscape("Territory ${spec.identity.displayId} - Canonical Front Back")}) /Subject (${pdfEscape(subject)}) /Keywords (${pdfEscape(keywords)}) /Trapped /False >>\nendobj\n")
++
++        val pagesOffset = out.size().toLong()
++        writeAscii(out, "$PAGES_OBJECT 0 obj\n<< /Count 2 /Kids [ 4 0 R $BACK_PAGE_OBJECT 0 R ] /Type /Pages >>\nendobj\n")
++
++        val pageOffset = out.size().toLong()
++        writeAscii(out, "$BACK_PAGE_OBJECT 0 obj\n<< /Contents $BACK_CONTENT_OBJECT 0 R /MediaBox [ 0 0 768 480.5 ] /Parent $PAGES_OBJECT 0 R /Resources << /Font 1 0 R /ProcSet [ /PDF /Text ] >> /Rotate 0 /Type /Page >>\nendobj\n")
++
++        val contentOffset = out.size().toLong()
++        writeAscii(out, "$BACK_CONTENT_OBJECT 0 obj\n<< /Length ${backContent.size} >>\nstream\n")
++        out.write(backContent)
++        if (backContent.lastOrNull()?.toInt() != '\n'.code) out.write('\n'.code)
++        writeAscii(out, "endstream\nendobj\n")
++
++        val xrefOffset = out.size().toLong()
++        writeAscii(out, "xref\n$INFO_OBJECT 2\n${xrefEntry(infoOffset)}\n${xrefEntry(pagesOffset)}\n$BACK_PAGE_OBJECT 2\n${xrefEntry(pageOffset)}\n${xrefEntry(contentOffset)}\n")
++        val id = sha256((frontSha + backSpecSha).toByteArray(Charsets.US_ASCII)).take(32)
++        writeAscii(out, "trailer\n<< /Size $PDF_SIZE /Root $ROOT_OBJECT 0 R /Info $INFO_OBJECT 0 R /Prev $prev /ID [<$id><$id>] >>\nstartxref\n$xrefOffset\n%%EOF\n")
++        return out.toByteArray()
++    }
++
++    private fun xrefEntry(offset: Long): String = String.format(Locale.US, "%010d 00000 n ", offset)
++    private fun writeAscii(out: ByteArrayOutputStream, value: String) = out.write(value.toByteArray(Charsets.ISO_8859_1))
++    private fun topToY(top: Double, height: Double = 0.0): Double = PAGE_H - top - height
++    private fun text(b: StringBuilder, font: String, size: Double, x: Double, y: Double, value: String) {
++        b.append("BT /").append(font).append(' ').append(num(size)).append(" Tf 1 0 0 1 ")
++            .append(num(x)).append(' ').append(num(y)).append(" Tm (").append(pdfEscape(value)).append(") Tj ET\n")
++    }
++    private fun line(b: StringBuilder, x1: Double, y1: Double, x2: Double, y2: Double) = b.append(num(x1)).append(' ').append(num(y1)).append(" m ").append(num(x2)).append(' ').append(num(y2)).append(" l S\n")
++    private fun lineWidth(b: StringBuilder, w: Double) { b.append(num(w)).append(" w\n") }
++    private fun fillColor(b: StringBuilder, hex: String) { val c = rgb(hex); b.append(num(c[0])).append(' ').append(num(c[1])).append(' ').append(num(c[2])).append(" rg\n") }
++    private fun strokeColor(b: StringBuilder, hex: String) { val c = rgb(hex); b.append(num(c[0])).append(' ').append(num(c[1])).append(' ').append(num(c[2])).append(" RG\n") }
++    private fun rgb(hex: String): DoubleArray { val h = hex.removePrefix("#"); return doubleArrayOf(h.substring(0,2).toInt(16)/255.0, h.substring(2,4).toInt(16)/255.0, h.substring(4,6).toInt(16)/255.0) }
++    private fun rect(b: StringBuilder, x: Double, y: Double, w: Double, h: Double, fill: Boolean, stroke: Boolean) {
++        b.append(num(x)).append(' ').append(num(y)).append(' ').append(num(w)).append(' ').append(num(h)).append(" re ")
++            .append(if (fill && stroke) "B" else if (fill) "f" else "S").append('\n')
++    }
++    private fun roundedRect(b: StringBuilder, x: Double, y: Double, w: Double, h: Double, r: Double, fillHex: String?, strokeHex: String?, strokeWidth: Double) {
++        fillHex?.let { fillColor(b, it) }; strokeHex?.let { strokeColor(b, it); lineWidth(b, strokeWidth) }
++        val k = 0.5522847498307936 * r
++        b.append(num(x+r)).append(' ').append(num(y)).append(" m ")
++            .append(num(x+w-r)).append(' ').append(num(y)).append(" l ")
++            .append(num(x+w-r+k)).append(' ').append(num(y)).append(' ').append(num(x+w)).append(' ').append(num(y+r-k)).append(' ').append(num(x+w)).append(' ').append(num(y+r)).append(" c ")
++            .append(num(x+w)).append(' ').append(num(y+h-r)).append(" l ")
++            .append(num(x+w)).append(' ').append(num(y+h-r+k)).append(' ').append(num(x+w-r+k)).append(' ').append(num(y+h)).append(' ').append(num(x+w-r)).append(' ').append(num(y+h)).append(" c ")
++            .append(num(x+r)).append(' ').append(num(y+h)).append(" l ")
++            .append(num(x+r-k)).append(' ').append(num(y+h)).append(' ').append(num(x)).append(' ').append(num(y+h-r+k)).append(' ').append(num(x)).append(' ').append(num(y+h-r)).append(" c ")
++            .append(num(x)).append(' ').append(num(y+r)).append(" l ")
++            .append(num(x)).append(' ').append(num(y+r-k)).append(' ').append(num(x+r-k)).append(' ').append(num(y)).append(' ').append(num(x+r)).append(' ').append(num(y)).append(" c h ")
++            .append(if (fillHex != null && strokeHex != null) "B" else if (fillHex != null) "f" else "S").append('\n')
++    }
++    private fun num(v: Double): String = String.format(Locale.US, "%.4f", v).trimEnd('0').trimEnd('.').ifEmpty { "0" }
++    private fun pdfEscape(value: String): String = value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
++}
++
++object CanonicalFrontBackPdfExactValidator {
++    fun validate(
++        pdf: ByteArray,
++        spec: CanonicalAddressBackSpec,
++        expectedFrontSha256: String,
++        expectedBackSpecSha256: String
++    ): CanonicalFrontBackPdfValidation {
++        val errors = mutableListOf<String>()
++        val raw = pdf.toString(Charsets.ISO_8859_1)
++        if (!raw.startsWith("%PDF-")) errors += "Not a PDF"
++        if (!raw.contains("% TCS_CANONICAL_FRONT_BACK_V1")) errors += "Canonical front/back marker missing"
++        if (!raw.contains("% TCS_PAGE_ROLE BACK_ADDRESS_LIST")) errors += "Back page role marker missing"
++        if (!raw.contains("/Count 2 /Kids [ 4 0 R 21 0 R ] /Type /Pages")) errors += "Canonical page count/order is not FRONT_MAP then BACK_ADDRESS_LIST"
++        if (!raw.contains("21 0 obj") || !raw.contains("/Contents 22 0 R") || !raw.contains("/Parent 19 0 R")) errors += "Canonical back-page object binding missing"
++        if (!raw.contains("page_roles=FRONT_MAP,BACK_ADDRESS_LIST")) errors += "Canonical page-role metadata missing"
++        if (!raw.contains("front_sha256=$expectedFrontSha256")) errors += "Front hash binding missing"
++        if (!raw.contains("back_spec_sha256=$expectedBackSpecSha256")) errors += "Back spec hash binding missing"
++        if (!raw.contains("address_source_sha256=${spec.sourceInventorySha256}")) errors += "Address-source hash binding missing"
++        if (!raw.contains("card-display-id:${spec.identity.displayId}")) errors += "Combined metadata display ID mismatch"
++        if (!raw.contains("canonical-filename:${spec.identity.canonicalFilename}")) errors += "Combined metadata canonical filename mismatch"
++        if (Regex("% TCS_PAGE_ROLE FRONT_MAP").findAll(raw).count() > 1) errors += "Duplicate FRONT_MAP page-role marker"
++        if (Regex("% TCS_PAGE_ROLE BACK_ADDRESS_LIST").findAll(raw).count() != 1) errors += "BACK_ADDRESS_LIST page-role cardinality mismatch"
++        return CanonicalFrontBackPdfValidation(errors.isEmpty(), errors, if (errors.any { it.contains("page count/order") }) 0 else 2, listOf(TerritoryPdfPageRole.FRONT_MAP, TerritoryPdfPageRole.BACK_ADDRESS_LIST))
++    }
++}
++
++private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+--- a/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreContractSmokeTest.kt
++++ b/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreContractSmokeTest.kt
+@@ -121,6 +121,7 @@
+     PdfArtifactBoundaryTest.run(kb, assets, exactApprovedFixture)
+     CandidatePdfRendererTest.run(assets)
+     ProductionRenderModelAdapterTest.run(kb, assets)
++    CanonicalFrontBackPdfTest.run(assets)
+ 
+     println("PASS core contract smoke test")
+     println("identity cases=${identityCases.size}")
+--- a/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
++++ b/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
+@@ -0,0 +1,82 @@
++package com.koenterprises.territorycardstudio.core
++
++import java.io.File
++import java.security.MessageDigest
++
++object CanonicalFrontBackPdfTest {
++    fun run(assets: File) {
++        val template = File(assets, "render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
++        val frontSpec = CandidatePdfRendererTest.fullPlusDetailFixtureSpec()
++        val front = CandidatePdfRenderer.renderNonFieldFixture(template, frontSpec)
++        val addressPayload = (1..24).joinToString("\n") { "source-$it|${100 + it} Example Way Apt $it" }
++        val sourceSha = sha256(addressPayload.toByteArray())
++        val back = CanonicalAddressBackSpec(
++            identity = frontSpec.identity,
++            locality = frontSpec.locality,
++            updated = frontSpec.updated,
++            sourceInventorySha256 = sourceSha,
++            sourceInventoryVerified = true,
++            entries = (1..24).map { CanonicalAddressEntry("source-$it", "${100 + it} Example Way Apt $it") },
++            nonFieldFixture = true
++        )
++        val first = CanonicalFrontBackPdfAssembler.assembleNonFieldFixture(front.pdfBytes, back)
++        val second = CanonicalFrontBackPdfAssembler.assembleNonFieldFixture(front.pdfBytes, back)
++        check(first.pdfBytes.contentEquals(second.pdfBytes)) { "Canonical front/back assembly is not byte deterministic" }
++        check(first.validation.passed)
++        check(first.validation.pageCount == 2)
++        check(first.validation.pageRoles == listOf(TerritoryPdfPageRole.FRONT_MAP, TerritoryPdfPageRole.BACK_ADDRESS_LIST))
++        check(first.pdfBytes.copyOfRange(0, front.pdfBytes.size).contentEquals(front.pdfBytes)) { "Front page bytes were not preserved as exact prefix" }
++        val raw = first.pdfBytes.toString(Charsets.ISO_8859_1)
++        check(raw.contains("% TCS_CANONICAL_FRONT_BACK_V1"))
++        check(raw.contains("page_roles=FRONT_MAP,BACK_ADDRESS_LIST"))
++        check(raw.contains("(101 Example Way Apt 1) Tj"))
++        check(raw.contains("(124 Example Way Apt 24) Tj"))
++        check(first.pdfBytes.size - front.pdfBytes.size <= 300 * 1024)
++
++        val receipt = CandidatePdfArtifactReceipt(
++            displayId = frontSpec.identity.displayId,
++            canonicalFilename = frontSpec.identity.canonicalFilename,
++            pdfSha256 = front.pdfSha256,
++            renderValidation = CandidateRenderValidationReceipt(
++                displayId = frontSpec.identity.displayId,
++                canonicalFilename = frontSpec.identity.canonicalFilename,
++                knowledgeBaseRevision = "fixture",
++                assignmentAuthorityRole = "current_authoritative_assignment",
++                assignmentAuthoritySha256 = "a".repeat(64),
++                sourceTruthPassed = true,
++                liveGeometryVerificationPassed = true,
++                topologyOverlapPassed = true,
++                buildingValidationPassed = true,
++                labelValidationPassed = true,
++                styleTokenSha256 = LockedPdfRendererAuthorityHashes.STYLE_TOKENS_SHA256,
++                templatePdfSha256 = LockedPdfRendererAuthorityHashes.TEMPLATE_PDF_SHA256,
++                rendererSha256 = LockedPdfRendererAuthorityHashes.RENDERER_SHA256,
++                rendererContractSha256 = LockedPdfRendererAuthorityHashes.CONTRACT_SHA256,
++                directionsBadgeSha256 = LockedPdfRenderAuthorityHashes.DIRECTIONS_BADGE_SHA256
++            )
++        )
++        val productionBack = back.copy(nonFieldFixture = false)
++        check(CanonicalFrontBackPdfAssembler.assembleCandidate(front.pdfBytes, receipt, productionBack).validation.passed)
++        check(runCatching { CanonicalFront
