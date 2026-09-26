@@ -1,0 +1,15 @@
+TCS Phase 1B-2 freeze harness specification
+Required source archive SHA-256: 795d120db0685238f68f834a65f4cd44682b4cddb291ec1826e3fd1b80f2ef1e
+Required source manifest SHA-256: 607880c99091c1923c0668402267c82fa1911b690bc65c11a68b0f48b81fa1cd
+Required environment: JDK 17; Gradle 9.6.0; Android platform 37; Build Tools 36.0.0.
+Required Gradle gates, in order:
+1. gradle --no-daemon :core:test
+2. gradle --no-daemon :app:compileDebugKotlin
+3. gradle --no-daemon :app:assembleDebug
+4. gradle --no-daemon :app:bundleDebug
+Required artifact gates:
+- APK exists, SHA-256 recorded, ZIP integrity passes, apksigner v2 passes.
+- AAB exists, SHA-256 recorded, ZIP integrity passes, jarsigner verification passes.
+- APK reports versionCode 17, versionName 0.1.17, targetSdkVersion 37.
+- Reserved territory PDF sweep remains zero for 250T, 257A, 297, 298A, 299, 347TA.
+No Phase 1B-3 work is permitted in this freeze package.
