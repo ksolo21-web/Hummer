@@ -1,0 +1,155 @@
+}
+
+@Composable
+private fun ProductionRouteContent(
+    modifier: Modifier,
+    route: ProductionRoute,
+    dashboard: TerritoryDashboardModel,
+    selected: TerritoryDashboardItem?,
+    onOpenTerritory: (TerritoryDashboardItem) -> Unit,
+    onBackToDashboard: () -> Unit
+) {
+    when (route) {
+        ProductionRoute.TERRITORIES -> TerritoriesDashboard(
+            modifier = modifier,
+            model = dashboard,
+            onOpenTerritory = onOpenTerritory
+        )
+        ProductionRoute.WORKSPACE -> {
+            if (selected == null) {
+                EmptyWorkspace(modifier, onBackToDashboard)
+            } else {
+                TerritoryWorkspace(modifier, selected, dashboard.revision, onBackToDashboard)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TerritoriesDashboard(
+    modifier: Modifier,
+    model: TerritoryDashboardModel,
+    onOpenTerritory: (TerritoryDashboardItem) -> Unit
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val normalizedQuery = query.trim().lowercase()
+    val filtered = remember(model.items, normalizedQuery) {
+        if (normalizedQuery.isEmpty()) model.items else model.items.filter { item ->
+            item.assignment.displayId.lowercase().contains(normalizedQuery) ||
+                item.assignment.canonicalFilename.lowercase().contains(normalizedQuery) ||
+                item.modeLabel.lowercase().contains(normalizedQuery) ||
+                item.status.label.lowercase().contains(normalizedQuery)
+        }
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize().testTag("territories-dashboard"),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Text("Territories", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Production workspace backed by the frozen Phase 1 engine • KB " + model.revision,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        item { PhaseOneLockedBanner() }
+        item { DashboardStats(model) }
+        item {
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth().testTag("territory-search"),
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                label = { Text("Search territories") },
+                supportingText = { Text(filtered.size.toString() + " of " + model.items.size + " territories") }
+            )
+        }
+        items(filtered, key = { it.assignment.displayId }) { item ->
+            TerritoryListCard(item = item, onClick = { onOpenTerritory(item) })
+        }
+    }
+}
+
+@Composable
+private fun PhaseOneLockedBanner() {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("✓", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Phase 1 engine locked", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "UI reads the proven territory engine; Compose does not reimplement assignment, color, building, label, packet, or approval rules.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardStats(model: TerritoryDashboardModel) {
+    val cards = listOf(
+        Triple("Approved", model.approvedCount, TerritoryUiStatus.APPROVED),
+        Triple("Re-audit", model.reAuditCount, TerritoryUiStatus.REAUDIT_REQUIRED),
+        Triple("Needs new", model.needsNewCount, TerritoryUiStatus.NEEDS_NEW_CARD),
+        Triple("Conflicts", model.conflictCount, TerritoryUiStatus.CONFLICT),
+        Triple("Screening", model.screeningCount, TerritoryUiStatus.SCREENING)
+    )
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth >= 700.dp) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                cards.forEach { (label, value, status) ->
+                    StatCard(label, value, status, Modifier.weight(1f))
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                cards.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { (label, value, status) ->
+                            StatCard(label, value, status, Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatCard(label: String, value: Int, status: TerritoryUiStatus, modifier: Modifier = Modifier) {
+    val pair = statusColors(status)
+    Surface(modifier = modifier, shape = RoundedCornerShape(16.dp), color = pair.first, contentColor = pair.second) {
+        Column(Modifier.padding(14.dp)) {
+            Text(value.toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+@Composable
+private fun TerritoryListCard(item: TerritoryDashboardItem, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().testTag("territory-row-" + item.assignment.displayId),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
