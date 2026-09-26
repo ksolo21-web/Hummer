@@ -87,6 +87,13 @@
       36253840144
     ],
     "ci_current_state": "PASS",
-    "status": "PASSED"
+    "status": "PASSED",
+    "independent_artifact_hash_inspection": "PASS",
+    "independent_apk_sha256": "d948bf76152d38fcc2c38f942d9835dd0f9454391dff633ee176b49930a689a3",
+    "independent_aab_sha256": "311208db1e2c248bb65db06f383c94c195cacf60e55f9fc1b8c2b32a99c1c36a",
+    "independent_artifact_zip_sha256": "029d24f7a7e54192400ce637004c8b7799f140e6a9ea76d32aaedd2ec0c8ed2d",
+    "confirmatory_ci_run_id": 36254345730,
+    "confirmatory_ci_run": "PASS_SAME_SOURCE_NO_DEPENDENCY_CHANGE",
+    "quality_score": 10
   }
 }
