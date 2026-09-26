@@ -1,24 +1,26 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.1.17-full-plus-detail-renderer",
-  "milestone": "phase-1b2-full-plus-detail-passed",
-  "status": "PHASE_1B2_PASSED_READY_1B3",
-  "phase_milestone_before": "Phase 1B-2 OPEN_BUILD_FREEZE_ENVIRONMENT_BLOCKED",
-  "phase_milestone_after": "Phase 1B-2 PASSED",
+  "version": "0.1.18-site-building-assignment-candidate",
+  "milestone": "phase-1b3-site-building-assignment-functional-pass-ci-freeze-pending",
+  "status": "PHASE_1B3_FUNCTIONAL_VALIDATION_PASSED_CI_FREEZE_PENDING",
+  "phase_milestone_before": "Phase 1B-3 OPEN",
+  "phase_milestone_after": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
   "scope_completed": [
-    "preserved all prior 0.1.17 full_plus_detail functional/geometry/validator evidence unchanged",
-    "recovered and trusted the newer durable GitHub checkpoint/ledger over the older Library mirror",
-    "verified the exact 0.1.17 candidate source package SHA-256 and ZIP integrity",
-    "created and verified a deterministic 79-file build-source archive from source/config/test/assets only",
-    "pinned the deterministic source manifest/archive hashes and four part hashes in the durable build-freeze route",
-    "pinned a non-executable build-freeze harness specification with the exact required Gradle and artifact gates",
-    "recovered durable evidence that prior real Android builds used JDK 17, Gradle 9.6.0, Android API 37 and Build Tools 36.0.0 from ephemeral runtime paths",
-    "confirmed the current runtime still lacks that toolchain and cannot materialize official external toolchain downloads here",
-    "confirmed six reserved commissioning territories remain untouched/unapproved and no reserved candidate PDFs were generated"
+    "implemented explicit site/building assignment diagram region inside the locked R48 map panel",
+    "implemented optional verified access inset with explicit source bounds to destination bounds mapping",
+    "preserved declared source segment/building/label ownership and explicit building member/label bindings",
+    "kept multi-label single-footprint rendering fail-closed for Phase 1C rather than flattening or guessing",
+    "kept ordinary-residential individual footprint leakage fail-closed",
+    "added synthetic NOT-FOR-FIELD-USE site/building regression only; no reserved commissioning territory was generated or modified",
+    "passed strict Kotlin -Werror compile and full core smoke under -Xmx192m after metadata correction",
+    "passed targeted R48/R51/R52/identity/hard-override validators and 1x/4x visual review",
+    "staged exact Phase 1B-3 overlay on isolated GitHub branch and disabled automatic reruns of immutable Phase 1B-2 workflow",
+    "identified two CI transport failures before compilation and switched from raw split-base64 decoding to exact decoded-patch hash recovery"
   ],
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
-    "1B_1_split_detail"
+    "1B_1_split_detail",
+    "1B_2_full_plus_detail"
   ],
   "validation": {
     "system_kotlin_full_werror_jvm17": "PASS",
@@ -64,7 +66,7 @@
     "ci_freeze_route_blob_sha": "885e4ff7e27895d05bc82e726c7a03465287134b",
     "ci_freeze_harness_blob_sha": "fa319e5ced5e66aad0e43d6ac2a3020ec683dc25",
     "prior_verified_android_toolchain": "JDK17 + Gradle9.6.0 + android-37.0 + BuildTools36.0.0 PASS in 0.1.13/0.1.14 durable logs",
-    "current_android_toolchain_preflight": "BLOCKED_GRADLE_9_6_AND_ANDROID_SDK_ROOT_MISSING",
+    "current_android_toolchain_preflight": "PASS_JDK17_GRADLE9_6_ANDROID37_BUILD_TOOLS36",
     "source_handoff_state": "DETERMINISTIC_PAYLOAD_PINNED_EXECUTION_SURFACE_NOT_MATERIALIZED",
     "build_execution": "PASS",
     "phase1b2_build_freeze": "PASS",
@@ -87,7 +89,6 @@
     "compile_sdk": 37,
     "target_sdk": 37,
     "min_sdk": 29,
-    "current_android_toolchain_preflight": "PASS_JDK17_GRADLE9_6_ANDROID37_BUILD_TOOLS36",
     "ci_materialized_source_transport_sha256": "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442",
     "ci_materialized_source_manifest_sha256": "4d40d412aca614f031fcb1c89e165eb5f1c2b5250c3dc7efe68605b7c4725caa",
     "core_test_log_sha256": "83e93d19f706950feebd46e0f7bfd55728d275288a4816db98bc82d23e0398dd",
@@ -95,22 +96,61 @@
     "assemble_debug_log_sha256": "6dab0a797b289056db899a69f8916454fc8decaf629287bbce44b0bca736e964",
     "bundle_debug_log_sha256": "03151dc6385232906e26859ca05fcd9cf0f4a551c7b406ffcd60795456fc16ee",
     "toolchain_preflight_log_sha256": "b343e5bf5e5ebac61650339b19b2759d38ea366d250303f0d0168e2bdb1f86f2",
-    "validation_report_sha256": "19e92d2f2e4f457b1217816d82365fbf338a172567ed8d1cd6a5f1739c93195c"
+    "validation_report_sha256": "19e92d2f2e4f457b1217816d82365fbf338a172567ed8d1cd6a5f1739c93195c",
+    "phase1b3_local_kotlin_werror_compile": "PASS",
+    "phase1b3_core_smoke_runtime_xmx192": "PASS",
+    "phase1b3_adapter_fail_closed_mutations": 28,
+    "phase1b3_style_token_validator": "PASS",
+    "phase1b3_pdf_identity_validator": "PASS",
+    "phase1b3_label_metrics_validator": "PASS",
+    "phase1b3_label_navigation_validator": "PASS",
+    "phase1b3_visual_hard_override_validator": "PASS",
+    "phase1b3_visual_1x": "PASS",
+    "phase1b3_visual_4x": "PASS",
+    "phase1b3_renderer_parity": "PASS_WITH_RENDERER_ANTIALIAS_DIFF",
+    "phase1b3_renderer_parity_changed_pct": 0.03705,
+    "phase1b3_overlay_patch_sha256": "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946",
+    "phase1b3_modified_file_sha256": {
+      "CandidatePdfRenderer.kt": "122ab6c3dee4906c7e07048a7201796d52869f3f9f0906c7c6ff3360b254f547",
+      "ProductionRenderModelAdapter.kt": "c537d7da1ff4eb5308c5e006eb84e51b5d8eec19b0be6da7f56a95d438fddc46",
+      "CandidatePdfRendererTest.kt": "db77c1eac1da955621f290be7e5d3e1712aad6a1357c3c2468c73f9b2ebb8c6f",
+      "ProductionRenderModelAdapterTest.kt": "30d6fc40bbd2c1b7671fde428bb4a17d25d30c17292e492d1d280edd3bb567d0",
+      "SiteBuildingAssignmentFixtureGenerator.kt": "296964daffa06a85d1a7e1406544ae3ab70b20523a93121744ac85916cda2f53"
+    },
+    "phase1b3_ci_attempts": [
+      {
+        "run_id": 36250282037,
+        "head_sha": "5facd262d6341cc460537cbf3115f574dfbbca5f",
+        "result": "FAIL_PRECOMPILE_TRANSPORT_HASH"
+      },
+      {
+        "run_id": 36253392502,
+        "head_sha": "48b1fc5603d16bf296c52a2cb23a188357bbf11e",
+        "result": "FAIL_PRECOMPILE_BASE64_INVALID_INPUT"
+      },
+      {
+        "run_id": 36253519124,
+        "head_sha": "c2aaac4c3f43ac9e834e93b52ae4c9e08454a014",
+        "result": "QUEUED_EXACT_PATCH_RECOVERY"
+      }
+    ],
+    "phase1b3_android_build_freeze": "PENDING",
+    "phase1b3_reserved_candidate_pdfs_generated": 0
   },
   "reopened_defects": [],
-  "blocker_fingerprint": null,
-  "blocker_route_attempts": 0,
+  "blocker_fingerprint": "phase1b3_freeze__part06_transport_plus2chars__exact_patch_recovery_queued__source_semantics_unchanged",
+  "blocker_route_attempts": 2,
   "internal_review": {
     "type": "internal",
-    "score": 9.8,
-    "milestone_approval": true,
+    "score": 9,
+    "milestone_approval": false,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 1B-2 renderer evidence and real Android build-freeze gates are all green; later app phases remain open."
+    "reason": "Phase 1B-3 implementation, targeted validators and visual evidence are green locally; mandatory real Android 0.1.18 APK/AAB freeze evidence is still pending. CI failures so far are transport-only and occurred before compilation."
   },
-  "last_completed_package": "0.1.17-phase1b2-android-build-freeze-pass",
-  "next_open_gate": "Phase 1B-3 - site_building_assignment",
-  "next_bounded_task": "Phase 1B-3 only: implement explicit site/building assignment rendering with a dedicated site/building diagram region plus optional verified access inset, preserve 300/301 member and label bindings, reject ordinary-residential footprint leakage, use only synthetic NOT-FOR-FIELD-USE or already-approved fixtures, run targeted geometry/R48/R51/R52/hard-override checks and 1x/4x inspection, then freeze 1B-3 if every mandatory gate passes. Do not touch the six reserved commissioning territories.",
+  "last_completed_package": "0.1.18-phase1b3-functional-validation-and-ci-handoff",
+  "next_open_gate": "Phase 1B-3 - Android build freeze for site_building_assignment",
+  "next_bounded_task": "Phase 1B-3 only: inspect queued run 36253519124. The run may proceed only if deterministic two-character transport repair reconstructs the exact locked overlay SHA-256 85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946 and all five modified file hashes match. Then require :core:test, :app:compileDebugKotlin, :app:assembleDebug, :app:bundleDebug, APK v2, AAB JAR, ZIP, versionCode 18/versionName 0.1.18/targetSdk37 and artifact SHA-256 checks. Freeze 1B-3 as PASSED only if every mandatory gate passes; otherwise record the exact new blocker and switch route. Do not start 1C early.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "source_package": "TerritoryCardStudio-Android-0.1.17-full-plus-detail-renderer-CANDIDATE.zip",
   "source_package_sha256": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7"
