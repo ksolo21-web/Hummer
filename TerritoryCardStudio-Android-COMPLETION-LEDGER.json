@@ -25,13 +25,14 @@
     "1D_D_cross_mode_validation": "PASSED",
     "2A_theme_dashboard_workspace_foundation": "PASSED",
     "2B_mode_aware_workspace_tabs_verification": "PASSED",
-    "2C_import_map_verification_ui": "OPEN"
+    "2C_import_map_verification_ui": "OPEN",
+    "2C_import_map_verification_workflow": "IN_PROGRESS"
   },
-  "phase_milestone_before": "Phase 2B IN PROGRESS",
-  "phase_milestone_after": "Phase 2B PASSED / Phase 2C OPEN",
-  "last_completed_package": "0.2.1-phase2b-mode-aware-workspace-pass",
+  "phase_milestone_before": "Phase 2C OPEN",
+  "phase_milestone_after": "Phase 2C IN_PROGRESS",
+  "last_completed_package": "phase2c-import-verification-source-staged",
   "next_open_gate": "Phase 2C - Import Map + Verification workflow surfaces",
-  "next_bounded_task": "Phase 2C only: implement source-map intake tied to the selected territory identity and authoritative evidence, then build the Verification UI over the proven engine with source-truth, geometry, overlap, label, building, color/template, and address/phone-inventory readiness categories as applicable. Preserve fail-closed behavior and provenance. Do not implement Build/Generate Page 2, vector-PDF Preview, Approval/Export, or editing/commissioning in the same bounded package.",
+  "next_bounded_task": "Phase 2C only: compile and validate the staged source-map intake and Verification workflow. Require PDF/JPG/PNG document-picker intake copied to app-private storage, MIME+magic validation, SHA-256/provenance binding to the selected territory, imported-map authority=false, verification categories driven by frozen KB/online-policy state, fail-closed source/geometry/overlap/building/address/phone states, connected instrumentation, actual Import and Verification screenshots, and Android 0.2.2 freeze. Do not start Build/Generate Page 2, vector-PDF Preview, Approval/Export, or editing/commissioning.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -260,7 +261,7 @@
     "2A": "PASSED",
     "2B": "PASSED",
     "status": "IN_PROGRESS_2C",
-    "2C": "OPEN"
+    "2C": "IN_PROGRESS"
   },
   "phase2a_freeze_evidence": {
     "full_build_run_id": 36273476116,
