@@ -553,7 +553,7 @@ startxref
 82222
 %%EOF
 18 0 obj
-<< /Creator (Territory Card Studio Android R48 Renderer) /Producer (R48 Canonical Front Back Assembler) /Title (Territory 995a - Canonical Front Back) /Subject (R48 canonical front/back territory; display_id=995a; canonical_filename=Territory - 995a.pdf; front_sha256=d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133; back_spec_sha256=d7a181395d896bb7ccc1203bff7e205c52835cb7de498889b3865049e510b88a; address_source_sha256=4d03576de7c7065ff57d3a5e7ad49046922de96d1cf12911ed47d13b623152d6; page_roles=FRONT_MAP,BACK_ADDRESS_LIST) /Keywords (R48;territory-card;canonical-front-back;card-display-id:995a;canonical-filename:Territory - 995a.pdf;front-sha256:d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133;back-spec-sha256:d7a181395d896bb7ccc1203bff7e205c52835cb7de498889b3865049e510b88a;address-source-sha256:4d03576de7c7065ff57d3a5e7ad49046922de96d1cf12911ed47d13b623152d6;page1:FRONT_MAP;page2:BACK_ADDRESS_LIST) /Trapped /False >>
+<< /Creator (Territory Card Studio Android R48 Renderer) /Producer (R48 Canonical Front Back Assembler) /Title (Territory 995a - Canonical Front Back) /Subject (R48 canonical front/back territory; display_id=995a; canonical_filename=Territory - 995a.pdf; front_sha256=d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133; back_spec_sha256=b52ee5136e97626bf0b53655137d840b4afb7ad5771666788b1259eee6f634f2; address_source_sha256=4d03576de7c7065ff57d3a5e7ad49046922de96d1cf12911ed47d13b623152d6; page_roles=FRONT_MAP,BACK_ADDRESS_LIST) /Keywords (R48;territory-card;canonical-front-back;card-display-id:995a;canonical-filename:Territory - 995a.pdf;front-sha256:d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133;back-spec-sha256:b52ee5136e97626bf0b53655137d840b4afb7ad5771666788b1259eee6f634f2;address-source-sha256:4d03576de7c7065ff57d3a5e7ad49046922de96d1cf12911ed47d13b623152d6;page1:FRONT_MAP;page2:BACK_ADDRESS_LIST) /Trapped /False >>
 endobj
 19 0 obj
 << /Count 2 /Kids [ 4 0 R 21 0 R ] /Type /Pages >>
@@ -566,7 +566,7 @@ endobj
 stream
 % TCS_CANONICAL_FRONT_BACK_V1
 % TCS_PAGE_ROLE BACK_ADDRESS_LIST
-% TCS_BACK_SPEC_SHA256 d7a181395d896bb7ccc1203bff7e205c52835cb7de498889b3865049e510b88a
+% TCS_BACK_SPEC_SHA256 b52ee5136e97626bf0b53655137d840b4afb7ad5771666788b1259eee6f634f2
 % TCS_ADDRESS_SOURCE_SHA256 4d03576de7c7065ff57d3a5e7ad49046922de96d1cf12911ed47d13b623152d6
 1 1 1 rg
 0 0 768 480.5 re f
@@ -605,17 +605,17 @@ BT /F2+0 9 Tf 1 0 0 1 180 368.1 Tm (300 Example Way, Apt 5, Rochester Hills, MI 
 0.1529 0.2039 0.2353 rg
 BT /F2+0 9 Tf 1 0 0 1 180 357.5 Tm (300 Example Way, Apt 6, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
-BT /F2+0 9 Tf 1 0 0 1 180 346.9 Tm (301 Example Way, Apt 10, Rochester Hills, MI 48309) Tj ET
+BT /F2+0 9 Tf 1 0 0 1 180 346.9 Tm (301 Example Way, Apt 7, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
-BT /F2+0 9 Tf 1 0 0 1 180 336.3 Tm (301 Example Way, Apt 11, Rochester Hills, MI 48309) Tj ET
+BT /F2+0 9 Tf 1 0 0 1 180 336.3 Tm (301 Example Way, Apt 8, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
-BT /F2+0 9 Tf 1 0 0 1 180 325.7 Tm (301 Example Way, Apt 12, Rochester Hills, MI 48309) Tj ET
+BT /F2+0 9 Tf 1 0 0 1 180 325.7 Tm (301 Example Way, Apt 9, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
-BT /F2+0 9 Tf 1 0 0 1 180 315.1 Tm (301 Example Way, Apt 7, Rochester Hills, MI 48309) Tj ET
+BT /F2+0 9 Tf 1 0 0 1 180 315.1 Tm (301 Example Way, Apt 10, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
-BT /F2+0 9 Tf 1 0 0 1 180 304.5 Tm (301 Example Way, Apt 8, Rochester Hills, MI 48309) Tj ET
+BT /F2+0 9 Tf 1 0 0 1 180 304.5 Tm (301 Example Way, Apt 11, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
-BT /F2+0 9 Tf 1 0 0 1 180 293.9 Tm (301 Example Way, Apt 9, Rochester Hills, MI 48309) Tj ET
+BT /F2+0 9 Tf 1 0 0 1 180 293.9 Tm (301 Example Way, Apt 12, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
 BT /F2+0 9 Tf 1 0 0 1 180 283.3 Tm (302 Example Way, Apt 13, Rochester Hills, MI 48309) Tj ET
 0.1529 0.2039 0.2353 rg
@@ -638,7 +638,7 @@ xref
 0000083482 00000 n 
 0000083639 00000 n 
 trailer
-<< /Size 23 /Root 17 0 R /Info 18 0 R /Prev 82222 /ID [<31e529b8a134212ab19a40b305a5449d><31e529b8a134212ab19a40b305a5449d>] >>
+<< /Size 23 /Root 17 0 R /Info 18 0 R /Prev 82222 /ID [<f28d7b3e7d0c8d500893e0f280d2f35a><f28d7b3e7d0c8d500893e0f280d2f35a>] >>
 startxref
 87128
 %%EOF
