@@ -20,13 +20,15 @@ jobs:
           mkdir -p evidence tcs-src
           echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
           echo "da517f5e13a985e3385ecdc6f795186f64d52f53cd3b5c4b8e1c5c7d8bb3b0a1  .tooling/tcs/phase1b2-app-build.gradle.kts" | sha256sum -c -
-          echo "21b9cda7228b9f75c0e2481c27786794c7241ed66e123d5ff088932236d180d3  .tooling/tcs/phase1b2-core-build.gradle.kts" | sha256sum -c -
+          echo "9b95757aa87bb719d70a47002e58cfa0fc16cc6f824b8fc76cc1596d4df1db85  .tooling/tcs/phase1b2-core-build.gradle.kts" | sha256sum -c -
+          echo "a084ec58016020a092e020d1f900b867256334e8c3bada84ac679bf238c39594  .tooling/tcs/phase1b2-CoreGradleTestBridge.kt" | sha256sum -c -
           tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
           test "$(find tcs-src -type f | wc -l)" -eq 79
           cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
-          test "$(find tcs-src -type f | wc -l)" -eq 81
-          sha256sum tcs-src/app/build.gradle.kts tcs-src/core/build.gradle.kts > evidence/module-build-files.sha256
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+          test "$(find tcs-src -type f | wc -l)" -eq 82
+          sha256sum tcs-src/app/build.gradle.kts tcs-src/core/build.gradle.kts tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt > evidence/module-build-files.sha256
           find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files.txt
           if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files.txt > evidence/reserved-territory-pdf-sweep.txt; then
             echo "Reserved territory PDF detected" >&2
