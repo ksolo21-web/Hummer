@@ -3,8 +3,8 @@
   "version": "0.1.23-phase1d-d-cross-mode",
   "milestone": "phase-1d-d-cross-mode-passed",
   "status": "PHASE_1D_D_PASSED_READY_1E",
-  "phase_milestone_before": "Phase 1D-D IN_PROGRESS",
-  "phase_milestone_after": "Phase 1D-D PASSED / Phase 1D COMPLETE / Phase 1E OPEN",
+  "phase_milestone_before": "Phase 1D-D IN_PROGRESS_PRINT_READINESS_ASSERTION",
+  "phase_milestone_after": "Phase 1D-D PASSED / Aggregate Phase 1D COMPLETE / Phase 1E OPEN",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -186,7 +186,7 @@
     "phase1d_d_overflow_gate": "PASS",
     "phase1d_d_page_order_gate": "PASS",
     "phase1d_d_print_readiness": "PASS_STANDARD14_AWARE",
-    "phase1d_d_standard14_helvetica_nonembedded": "ALLOWED_PDF_STANDARD14",
+    "phase1d_d_standard14_helvetica_nonembedded": "PASS_ALLOWED",
     "phase1d_d_custom_fonts_embedded": "PASS",
     "phase1d_d_regression_fixtures": "PASS",
     "phase1d_d_closeout_run_id": 36269250879,
@@ -207,7 +207,11 @@
     "phase1d_d_version_code": 23,
     "phase1d_d_version_name": "0.1.23",
     "phase1d_d_target_sdk": 37,
-    "phase1d_d_evidence_push_race": "RECOVERED_AND_PERSISTED"
+    "phase1d_d_evidence_push_race": "RECOVERED_AND_PERSISTED",
+    "phase1d_d_app_compile": "PASS",
+    "phase1d_d_assemble_debug": "PASS",
+    "phase1d_d_bundle_debug": "PASS",
+    "phase1d_status": "PASS_AGGREGATE"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -218,11 +222,11 @@
     "milestone_approval": true,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 1D-D passed shared Regular/Letter Writing/Telephone packet validation, exact approval binding, duplicate/overlap, overflow, page-order, Standard-14-aware print readiness, regression fixtures, Android 0.1.23 build/signature/integrity and reserved-territory gates. Phase 1E and later phases remain open."
+    "reason": "Phase 1D-D passed the shared Regular/Letter Writing/Telephone packet contract, exact-approval binding, 12 fail-closed mutations, Standard-14-aware print readiness, Android 0.1.23 build/signature/integrity gates, and reserved-territory sweep. Aggregate Phase 1D is complete; Phase 1E remains open."
   },
   "last_completed_package": "0.1.23-phase1d-d-cross-mode-pass",
-  "next_open_gate": "Phase 1E - final all-mode renderer parity",
-  "next_bounded_task": "Phase 1E only: verify final parity across normal residential, dedicated detail, split/detail, full-plus-detail, site/building, multi-label 300/301, Letter Writing and Telephone modes using the frozen regression corpus. Compare Android outputs/semantics to the shared Python/reference contracts, verify exact-approved passthrough and no cross-mode regression, and reopen an earlier milestone only if a touched dependency or exact defect proves it necessary. Do not start Phase 2 UI until 1E passes.",
+  "next_open_gate": "Phase 1E - Final all-mode renderer parity",
+  "next_bounded_task": "Phase 1E only: verify final parity across normal residential, dedicated detail, split/detail, full-plus detail, site/building assignment, multi-label 300/301, Letter Writing and Telephone modes using the frozen regression corpus. Compare deterministic hashes, identity/filename semantics, road/building/label rules, page roles, print readiness and renderer behavior across modes; do not regenerate or visually re-review unchanged fixtures unless a touched dependency or exact defect requires it.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -251,7 +255,13 @@
     "identified and corrected a print-review false positive that treated legal Base-14 Helvetica as a missing custom font; no real PDF defect was found",
     "passed Android 0.1.23 app compile, APK/AAB build, APK v2 signature, AAB JAR verification and ZIP integrity on the exact source that passed cross-mode core validation",
     "recovered the successful closeout artifact after a non-fast-forward CI evidence-push race and persisted compact evidence against the newest branch head",
-    "kept all six reserved commissioning territories untouched; reserved PDF sweep remained zero"
+    "kept all six reserved commissioning territories untouched; reserved PDF sweep remained zero",
+    "completed cross-mode validation for Regular, Letter Writing and Telephone packet modes under one deterministic identity/version/hash/page-role/print-readiness/approval contract",
+    "proved exact approval remains explicit and hash-bound; stale-version, wrong-PDF, wrong-manifest, invalidated and cross-mode approval reuse all fail closed",
+    "proved duplicate/overlap, Letter Writing overflow, Telephone overflow, invalid regular geometry and blank-version mutations fail closed",
+    "corrected the print-readiness reviewer route to recognize PDF Standard 14 Helvetica while still requiring all custom fonts embedded, canonical 768x480.5 geometry, openable unencrypted PDFs and frozen artifact hashes",
+    "passed Android 0.1.23 compile, APK/AAB build, signature and ZIP-integrity closeout without changing the frozen Regular, Letter Writing or Telephone PDFs",
+    "kept all six reserved commissioning territories untouched; reserved territory PDF sweep remained zero"
   ],
   "source_package": "TerritoryCardStudio-Android-0.1.23-phase1dd-source.tar.xz",
   "source_package_sha256": "4fffebf6354fe97b14e117c3fb5fdaba18322241ba31b200697181481e5aa619"
