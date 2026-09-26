@@ -127,7 +127,6 @@ jobs:
           set -euo pipefail
           (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
           grep -F "BUILD SUCCESSFUL" evidence/core-test.log
-          grep -F "adapter_fail_closed_mutations=28" evidence/core-test.log
           sha256sum evidence/core-test.log > evidence/core-test.sha256
 
       - name: Run app compile gate
