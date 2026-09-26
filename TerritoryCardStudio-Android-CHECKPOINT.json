@@ -2,9 +2,9 @@
   "project": "Territory Card Studio Android",
   "version": "0.1.21-phase1d-b-letter-writing-page2",
   "milestone": "phase-1d-b-letter-writing-page2-passed",
-  "status": "PHASE_1D_B_PASSED_READY_1D_C",
-  "phase_milestone_before": "Phase 1D-B OPEN",
-  "phase_milestone_after": "Phase 1D-B PASSED / Phase 1D-C OPEN",
+  "status": "PHASE_1D_C_IN_PROGRESS",
+  "phase_milestone_before": "Phase 1D-C OPEN",
+  "phase_milestone_after": "Phase 1D-C IN_PROGRESS",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -99,7 +99,9 @@
     "phase1d_b_version_code": 21,
     "phase1d_b_version_name": "0.1.21",
     "phase1d_b_target_sdk": 37,
-    "phase1d_b_reserved_territory_pdf_sweep": 0
+    "phase1d_b_reserved_territory_pdf_sweep": 0,
+    "phase1d_c_status": "IN_PROGRESS",
+    "phase1d_c_renderer_strategy": "SAME_CANONICAL_ASSEMBLER_WITH_BACK_PHONE_LIST_MODE_AND_1D_B_BYTE_REGRESSION"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -112,9 +114,9 @@
     "independent_critic_runtime_available": false,
     "reason": "Phase 1D-B Letter Writing inventory and Page 2 passed provenance, verification, boundary, neighbor-conflict, deduplication, deterministic hash/change tracking, canonical packet, visual, Android build and integrity gates. Phase 1D-C and later phases remain open."
   },
-  "last_completed_package": "0.1.21-phase1d-b-letter-writing-page2-pass",
+  "last_completed_package": "phase1dc-telephone-contract-design-locked",
   "next_open_gate": "Phase 1D-C - Telephone Territory address + authorized/verified phone inventory + Page 2",
-  "next_bounded_task": "Phase 1D-C only: implement a parallel Telephone Territory inventory contract carrying address, authorized/verified phone number or explicit missing/unavailable status, verification status/date, source/provenance, territory assignment, boundary/neighbor evidence, deduplication, deterministic inventory hash and change tracking; fail closed on ambiguous assignment, conflicting duplicate records, unverified ownership/source binding or Page-2 rendering failure. Then wire it to the same canonical two-page Android PDF path. Do not mass-scrape or infer private resident contact data.",
+  "next_bounded_task": "Phase 1D-C only: implement and validate the authorized Telephone inventory contract, explicit verified-number/unavailable states, phone/source authorization, boundary/neighbor evidence, duplicate address/phone conflict checks, deterministic hash/change tracking, BACK_PHONE_LIST presentation through the same canonical assembler, 1D-B byte-regression protection, synthetic Telephone Page 2 visual evidence, and 0.1.22 Android freeze.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
