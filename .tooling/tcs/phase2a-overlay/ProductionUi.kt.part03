@@ -1,0 +1,146 @@
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
+                    Text(item.assignment.displayId, fontWeight = FontWeight.Bold)
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Territory " + item.assignment.displayId,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    TerritoryStatusBadge(item.status)
+                }
+                Text(
+                    item.modeLabel + " • " + item.assignment.roadCount + " roads • " + item.assignment.buildingCount + " buildings",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    item.assignment.canonicalFilename,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text("Open", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun TerritoryStatusBadge(status: TerritoryUiStatus) {
+    val pair = statusColors(status)
+    Surface(shape = RoundedCornerShape(100.dp), color = pair.first, contentColor = pair.second) {
+        Text(status.label, modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun statusColors(status: TerritoryUiStatus): Pair<Color, Color> {
+    val colors = LocalTerritoryStatusColors.current
+    return when (status) {
+        TerritoryUiStatus.APPROVED -> colors.approvedContainer to colors.approvedContent
+        TerritoryUiStatus.NEEDS_NEW_CARD -> colors.needsNewContainer to colors.needsNewContent
+        TerritoryUiStatus.REAUDIT_REQUIRED -> colors.reAuditContainer to colors.reAuditContent
+        TerritoryUiStatus.CONFLICT -> colors.conflictContainer to colors.conflictContent
+        TerritoryUiStatus.SCREENING -> colors.screeningContainer to colors.screeningContent
+    }
+}
+
+@Composable
+private fun TerritoryWorkspace(
+    modifier: Modifier,
+    item: TerritoryDashboardItem,
+    knowledgeBaseRevision: String,
+    onBack: () -> Unit
+) {
+    val assignment = item.assignment
+    LazyColumn(
+        modifier = modifier.fillMaxSize().testTag("territory-workspace"),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            TextButton(onClick = onBack) { Text("← Back to territories") }
+            Text(
+                "Territory " + assignment.displayId,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TerritoryStatusBadge(item.status)
+                Text(item.modeLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Workspace foundation", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "The map/card preview, verification surfaces, and mode-specific tabs will attach here through the proven Phase 1 engine in subsequent Phase 2 packages.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HorizontalDivider()
+                    WorkspaceFact("Canonical file", assignment.canonicalFilename)
+                    WorkspaceFact("Knowledge Base", knowledgeBaseRevision)
+                    WorkspaceFact("Roads", assignment.roadCount.toString())
+                    WorkspaceFact("Buildings", assignment.buildingCount.toString())
+                    WorkspaceFact("Road authority", assignment.roadAssignmentStatus)
+                    WorkspaceFact("Building authority", assignment.buildingAssignmentStatus)
+                }
+            }
+        }
+        item {
+            SourceTruthCard(item)
+        }
+    }
+}
+
+@Composable
+private fun SourceTruthCard(item: TerritoryDashboardItem) {
+    val assignment = item.assignment
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Source truth", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                "UI state is derived from the Territory Knowledge Base. Unknown assignments, unresolved conflicts, and needs-new-card states remain fail-closed.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            WorkspaceFact("Assignment status", assignment.status)
+            WorkspaceFact("Source class", assignment.sourceClass)
+            WorkspaceFact("Field release (exact artifact)", assignment.fieldReleaseAllowedForExactArtifact.toString())
+            WorkspaceFact("Reference hash", assignment.referenceSha256.take(16) + "…")
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceFact(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(18.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 2)
+    }
+}
+
+@Composable
+private fun EmptyWorkspace(modifier: Modifier, onBack: () -> Unit) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Select a territory first", style = MaterialTheme.typography.titleLarge)
+            TextButton(onClick = onBack) { Text("Go to territories") }
+        }
+    }
+}
