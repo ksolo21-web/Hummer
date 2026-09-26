@@ -1,7 +1,7 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.1.22-phase1d-c-telephone-page2",
-  "milestone": "phase-1d-c-telephone-page2-passed",
+  "version": "0.1.22-phase1d-c",
+  "milestone": "phase-1d-c-passed",
   "status": "PHASE_1D_C_PASSED_READY_1D_D",
   "phase_milestone_before": "Phase 1D-C IN_PROGRESS",
   "phase_milestone_after": "Phase 1D-C PASSED / Phase 1D-D OPEN",
@@ -143,7 +143,11 @@
     "phase1d_c_version_code": 22,
     "phase1d_c_version_name": "0.1.22",
     "phase1d_c_target_sdk": 37,
-    "phase1d_c_reserved_territory_pdf_sweep": 0
+    "phase1d_c_reserved_territory_pdf_sweep": 0,
+    "phase1d_c_status_close_commit": "bcae710e3af2a6f39f0c993b0fd782e90f5f4813",
+    "phase1d_c_visual_1x": "PASS",
+    "phase1d_c_visual_4x": "PASS",
+    "phase1d_c_renderer_parity": "PASS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -154,11 +158,11 @@
     "milestone_approval": true,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 1D-C Telephone inventory and Page 2 passed authorization, verification, boundary, duplicate, change-tracking, canonical packet, Letter Writing byte-regression, visual, Android build and integrity gates. Phase 1D-D and later phases remain open."
+    "reason": "Phase 1D-C passed all mandatory contract, regression, visual, Android build and artifact-integrity gates; later milestones remain open."
   },
-  "last_completed_package": "0.1.22-phase1d-c-telephone-page2-pass",
-  "next_open_gate": "Phase 1D-D - Regular / Letter Writing / Telephone cross-mode packet validation",
-  "next_bounded_task": "Phase 1D-D only: prove Regular, Letter Writing and Telephone packet modes all pass deterministic generation, identity/version/hash linkage, duplicate/overlap and overflow handling, page order, print readiness, exact approval binding, and cross-mode regression parity. No packet mode may bypass canonical validation; keep Phase 1E locked until 1D-D passes.",
+  "last_completed_package": "0.1.22-phase1d-c-pass",
+  "next_open_gate": "Phase 1D-D - cross-mode packet validation",
+  "next_bounded_task": "Phase 1D-D only: prove Regular, Letter Writing, and Telephone packet modes together for deterministic generation, identity/version/hash linkage, duplicate/overlap handling, overflow behavior, page order, print readiness, exact approval binding, and regression protection. No mode may bypass canonical validation. Keep Phase 1E locked.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
