@@ -97,6 +97,8 @@ jobs:
           cat .tooling/tcs/phase2a-overlay/ProductionUi.kt.part00               .tooling/tcs/phase2a-overlay/ProductionUi.kt.part01               .tooling/tcs/phase2a-overlay/ProductionUi.kt.part02               .tooling/tcs/phase2a-overlay/ProductionUi.kt.part03               > "$APP/ProductionUi.kt"
           cp .tooling/tcs/phase2a-overlay/UiFoundationInstrumentationTest.kt "$TEST/UiFoundationInstrumentationTest.kt"
           cp .tooling/tcs/phase2a-overlay/Phase2AppBuild.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
 
           grep -F 'versionCode = 25' tcs-src/app/build.gradle.kts
           grep -F 'versionName = "0.2.0"' tcs-src/app/build.gradle.kts
