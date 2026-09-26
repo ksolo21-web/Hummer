@@ -1,0 +1,155 @@
+                            route = route,
+                            workspaceEnabled = selected != null,
+                            onRoute = { routeName = it.name }
+                        )
+                    }
+                }
+            }
+        ) { outerPadding ->
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize().padding(outerPadding)
+            ) {
+                if (maxWidth >= 840.dp) {
+                    Row(Modifier.fillMaxSize()) {
+                        ProductionNavigationRail(
+                            route = route,
+                            workspaceEnabled = selected != null,
+                            onRoute = { routeName = it.name }
+                        )
+                        VerticalDivider(modifier = Modifier.fillMaxHeight().width(1.dp))
+                        ProductionRouteContent(
+                            modifier = Modifier.weight(1f),
+                            route = route,
+                            dashboard = dashboard,
+                            selected = selected,
+                            onOpenTerritory = { item ->
+                                selectedId = item.assignment.displayId
+                                routeName = ProductionRoute.WORKSPACE.name
+                            },
+                            onBackToDashboard = { routeName = ProductionRoute.TERRITORIES.name }
+                        )
+                    }
+                } else {
+                    ProductionRouteContent(
+                        modifier = Modifier.fillMaxSize(),
+                        route = route,
+                        dashboard = dashboard,
+                        selected = selected,
+                        onOpenTerritory = { item ->
+                            selectedId = item.assignment.displayId
+                            routeName = ProductionRoute.WORKSPACE.name
+                        },
+                        onBackToDashboard = { routeName = ProductionRoute.TERRITORIES.name }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProductionTopBar(
+    route: ProductionRoute,
+    appearanceMode: AppearanceMode,
+    onAppearanceMode: (AppearanceMode) -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    TopAppBar(
+        title = {
+            Column {
+                Text("Territory Card Studio", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (route == ProductionRoute.TERRITORIES) "Territories" else "Territory Workspace",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        actions = {
+            Box {
+                TextButton(
+                    modifier = Modifier.testTag("appearance-menu-button"),
+                    onClick = { menuExpanded = true }
+                ) {
+                    Text("Appearance: " + appearanceMode.label)
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    AppearanceMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (mode == appearanceMode) mode.label + "  •" else mode.label)
+                            },
+                            onClick = {
+                                onAppearanceMode(mode)
+                                menuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun ProductionNavigationRail(
+    route: ProductionRoute,
+    workspaceEnabled: Boolean,
+    onRoute: (ProductionRoute) -> Unit
+) {
+    NavigationRail(modifier = Modifier.fillMaxHeight()) {
+        Spacer(Modifier.height(16.dp))
+        NavigationRailItem(
+            selected = route == ProductionRoute.TERRITORIES,
+            onClick = { onRoute(ProductionRoute.TERRITORIES) },
+            icon = { NavGlyph("T", selected = route == ProductionRoute.TERRITORIES) },
+            label = { Text("Territories") }
+        )
+        NavigationRailItem(
+            selected = route == ProductionRoute.WORKSPACE,
+            onClick = { if (workspaceEnabled) onRoute(ProductionRoute.WORKSPACE) },
+            enabled = workspaceEnabled,
+            icon = { NavGlyph("W", selected = route == ProductionRoute.WORKSPACE) },
+            label = { Text("Workspace") }
+        )
+    }
+}
+
+@Composable
+private fun ProductionBottomNavigation(
+    route: ProductionRoute,
+    workspaceEnabled: Boolean,
+    onRoute: (ProductionRoute) -> Unit
+) {
+    NavigationBar {
+        NavigationBarItem(
+            selected = route == ProductionRoute.TERRITORIES,
+            onClick = { onRoute(ProductionRoute.TERRITORIES) },
+            icon = { NavGlyph("T", selected = route == ProductionRoute.TERRITORIES) },
+            label = { Text("Territories") }
+        )
+        NavigationBarItem(
+            selected = route == ProductionRoute.WORKSPACE,
+            onClick = { if (workspaceEnabled) onRoute(ProductionRoute.WORKSPACE) },
+            enabled = workspaceEnabled,
+            icon = { NavGlyph("W", selected = route == ProductionRoute.WORKSPACE) },
+            label = { Text("Workspace") }
+        )
+    }
+}
+
+@Composable
+private fun NavGlyph(text: String, selected: Boolean) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+    }
