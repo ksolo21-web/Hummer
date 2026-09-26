@@ -1,0 +1,25 @@
+{
+  "project": "Territory Card Studio Android",
+  "phase": "1B-2",
+  "purpose": "authorized CI build freeze staging",
+  "repository": "ksolo21-web/Hummer",
+  "branch": "tcs-phase1b2-017-build-freeze",
+  "base_main_sha": "1f8fbad51db29a0c7b0d8382cd850f28d9ae584b",
+  "candidate_source_package_sha256": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7",
+  "build_source_tar_xz_sha256": "f3d0ede6da0b7e5c358988321cd374a69672fc4a38861d1f22f1dff132154484",
+  "build_source_tar_xz_size_bytes": 634784,
+  "expected_toolchain": {
+    "jdk": "17",
+    "gradle": "9.6.0",
+    "compileSdk": 37,
+    "targetSdk": 37,
+    "buildTools": "36.0.0"
+  },
+  "required_commands": [
+    ":core:test",
+    ":app:compileDebugKotlin",
+    ":app:assembleDebug",
+    ":app:bundleDebug"
+  ],
+  "reserved_territories_touched": false
+}
