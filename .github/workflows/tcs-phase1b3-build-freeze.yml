@@ -120,6 +120,7 @@ jobs:
           (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
           sha256sum evidence/toolchain-preflight.log > evidence/toolchain-preflight.sha256
 
+      # Core test config enables standard-stream capture so the locked mutation marker is evidence-visible.
       - name: Run core test gate
         shell: bash
         run: |
