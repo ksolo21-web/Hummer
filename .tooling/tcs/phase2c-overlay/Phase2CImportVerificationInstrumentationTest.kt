@@ -58,7 +58,11 @@ class Phase2CImportVerificationInstrumentationTest {
             assignment = item.assignment,
             sourceFilename = "territory-1-map.png",
             mimeType = "image/png",
-            input = ByteArrayInputStream(byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 1, 2, 3, 4)),
+            input = ByteArrayInputStream(byteArrayOf(
+                0x89.toByte(), 0x50, 0x4E, 0x47,
+                0x0D, 0x0A, 0x1A, 0x0A,
+                1, 2, 3, 4
+            )),
             importedAtUtc = "2026-09-26T23:00:00Z"
         )
 
@@ -112,6 +116,26 @@ class Phase2CImportVerificationInstrumentationTest {
             VerificationUiState.BLOCKED,
             telephone.categories.first { it.key == "inventory" }.state
         )
+    }
+
+    @Test
+    fun intakeRejectsMimeSignatureMismatch() {
+        val app = ApplicationProvider.getApplicationContext<TerritoryCardStudioApplication>()
+        val item = TerritoryDashboardModel.from(app.services.knowledgeBase).items.first {
+            it.assignment.displayId == "1"
+        }
+        val store = SourceMapIntakeStore(app)
+        val failure = runCatching {
+            store.importFromStream(
+                assignment = item.assignment,
+                sourceFilename = "not-really-a-pdf.pdf",
+                mimeType = "application/pdf",
+                input = ByteArrayInputStream("not a pdf".toByteArray()),
+                importedAtUtc = "2026-09-26T23:00:30Z"
+            )
+        }
+        assertTrue(failure.isFailure)
+        assertTrue(failure.exceptionOrNull()?.message?.contains("signature") == true)
     }
 
     @Test
