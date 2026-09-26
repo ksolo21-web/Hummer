@@ -1,9 +1,7 @@
 name: TCS Phase 1B-2 Build Freeze
 
 on:
-  push:
-    branches:
-      - tcs-phase1b2-017-build-freeze
+  workflow_dispatch:
 
 permissions:
   contents: read
