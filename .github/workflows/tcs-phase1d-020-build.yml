@@ -77,14 +77,15 @@ jobs:
           echo "46e8c425af6b3bb8790201bd8c7633d1b49548671c36a5f07c03d1f0cafc91ad  .tooling/tcs/phase1d.patch.b64.part02a" | sha256sum -c -
           echo "cf0d2e862e119f5f9887a789ef5219c9dc7ef1af5dfb51c74d497e8b1bbcc5b8  .tooling/tcs/phase1d.patch.b64.part02b" | sha256sum -c -
           echo "63bbc05ceb0140922c2250863d4f849a4e7d283412ec8d684fa20fd4d13ff04e  .tooling/tcs/phase1d.patch.b64.part02c" | sha256sum -c -
-          echo "d6c79e64f84771e99ff9d4503348e5ed1c4db4dfc5986057ce447b040cebe550  .tooling/tcs/phase1d.patch.b64.part02d1" | sha256sum -c -\n          echo "7806cb0fed7bad1e142e5d9c7aea54dcf688c82a245ee0cf7d5faea4f9001e46  .tooling/tcs/phase1d.patch.b64.part02d2" | sha256sum -c -
+          echo "d6c79e64f84771e99ff9d4503348e5ed1c4db4dfc5986057ce447b040cebe550  .tooling/tcs/phase1d.patch.b64.part02d1" | sha256sum -c -
+          echo "7806cb0fed7bad1e142e5d9c7aea54dcf688c82a245ee0cf7d5faea4f9001e46  .tooling/tcs/phase1d.patch.b64.part02d2" | sha256sum -c -
           echo "4936e1761ba51f5214ce070dd2040fa90ebc663d5605559e5b5b03a749e63e25  .tooling/tcs/phase1d.patch.b64.part03a" | sha256sum -c -
           echo "14aed65aeb21e1d84ee7654987b644be2d6664ffaa245b449233c391c7a6eba9  .tooling/tcs/phase1d.patch.b64.part03b" | sha256sum -c -
           echo "97f52182001f9c5daff070090e533d76f38d9ccc99ff5eba520ff43dfc2ac22f  .tooling/tcs/phase1d.patch.b64.part03c" | sha256sum -c -
           echo "e84455c53fe5cd03b7a1afcc881607b4df4e770dad2ddd1176ea718d9a1343b0  .tooling/tcs/phase1d.patch.b64.part03d" | sha256sum -c -
           echo "9348b25e800cfaa015433138f06eef7a7570bcc395ade2e71be5a93394f45ccc  .tooling/tcs/phase1d.patch.b64.part04" | sha256sum -c -
 
-          cat             .tooling/tcs/phase1d.patch.b64.part00a1             .tooling/tcs/phase1d.patch.b64.part00a2             .tooling/tcs/phase1d.patch.b64.part00b             .tooling/tcs/phase1d.patch.b64.part00c             .tooling/tcs/phase1d.patch.b64.part00d             .tooling/tcs/phase1d.patch.b64.part01a             .tooling/tcs/phase1d.patch.b64.part01b             .tooling/tcs/phase1d.patch.b64.part01c             .tooling/tcs/phase1d.patch.b64.part01d             .tooling/tcs/phase1d.patch.b64.part02a             .tooling/tcs/phase1d.patch.b64.part02b             .tooling/tcs/phase1d.patch.b64.part02c             .tooling/tcs/phase1d.patch.b64.part02d             .tooling/tcs/phase1d.patch.b64.part03a             .tooling/tcs/phase1d.patch.b64.part03b             .tooling/tcs/phase1d.patch.b64.part03c             .tooling/tcs/phase1d.patch.b64.part03d             .tooling/tcs/phase1d.patch.b64.part04 > /tmp/phase1d.patch.b64
+          cat             .tooling/tcs/phase1d.patch.b64.part00a1             .tooling/tcs/phase1d.patch.b64.part00a2             .tooling/tcs/phase1d.patch.b64.part00b             .tooling/tcs/phase1d.patch.b64.part00c             .tooling/tcs/phase1d.patch.b64.part00d             .tooling/tcs/phase1d.patch.b64.part01a             .tooling/tcs/phase1d.patch.b64.part01b             .tooling/tcs/phase1d.patch.b64.part01c             .tooling/tcs/phase1d.patch.b64.part01d             .tooling/tcs/phase1d.patch.b64.part02a             .tooling/tcs/phase1d.patch.b64.part02b             .tooling/tcs/phase1d.patch.b64.part02c             .tooling/tcs/phase1d.patch.b64.part02d1             .tooling/tcs/phase1d.patch.b64.part02d2             .tooling/tcs/phase1d.patch.b64.part03a             .tooling/tcs/phase1d.patch.b64.part03b             .tooling/tcs/phase1d.patch.b64.part03c             .tooling/tcs/phase1d.patch.b64.part03d             .tooling/tcs/phase1d.patch.b64.part04 > /tmp/phase1d.patch.b64
           echo "f18c32f4f4c3308275347245d0d323ba2ed663646847cce1bd82202dbe10f86d  /tmp/phase1d.patch.b64" | sha256sum -c -
           base64 -d /tmp/phase1d.patch.b64 > /tmp/phase1d.patch
           echo "9bf60ea0a8f7cd4df7a41f681cc2b50196232ef44875118093981fc75d797f19  /tmp/phase1d.patch" | sha256sum -c -
@@ -289,8 +290,12 @@ jobs:
           mkdir -p phase1d-evidence
           cp "evidence/phase1d-0.1.20/Territory - 995a - FRONT - NOT FOR FIELD USE.pdf" phase1d-evidence/
           cp "evidence/phase1d-0.1.20/Territory - 995a - NOT FOR FIELD USE.pdf" phase1d-evidence/
-          cp evidence/phase1d-0.1.20/poppler-1x/*.png phase1d-evidence/
-          cp evidence/phase1d-0.1.20/poppler-4x/*.png phase1d-evidence/
+          cp evidence/phase1d-0.1.20/poppler-1x/page-1.png phase1d-evidence/front-1x.png
+          cp evidence/phase1d-0.1.20/poppler-1x/page-2.png phase1d-evidence/back-1x.png
+          cp evidence/phase1d-0.1.20/poppler-4x/page-1.png phase1d-evidence/front-4x.png
+          cp evidence/phase1d-0.1.20/poppler-4x/page-2.png phase1d-evidence/back-4x.png
+          cp evidence/phase1d-0.1.20/mupdf-1x/page-1.png phase1d-evidence/front-mupdf-1x.png
+          cp evidence/phase1d-0.1.20/mupdf-1x/page-2.png phase1d-evidence/back-mupdf-1x.png
           cp evidence/phase1d-0.1.20/*.b64.txt phase1d-evidence/
           cp evidence/phase1d-0.1.20/pdf-sha256.txt phase1d-evidence/
           cp evidence/phase1d-0.1.20/semantic-check.txt phase1d-evidence/
