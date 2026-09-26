@@ -9,7 +9,7 @@
     "1B_2_full_plus_detail": "PASSED",
     "1B_3_site_building_assignment": "PASSED",
     "1C_multi_label_300_301": "PASSED",
-    "1D_front_back_pdf_semantics": "OPEN",
+    "1D_front_back_pdf_semantics": "IN_PROGRESS",
     "1E_final_renderer_parity": "OPEN_DEPENDS_1D",
     "2_production_ui": "NOT_STARTED_DEPENDS_PHASE1",
     "3_editing_commissioning_workflow": "NOT_STARTED_DEPENDS_PHASE2",
@@ -43,9 +43,9 @@
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
-  "last_completed_package": "0.1.19-phase1c-multi-label-300-301-freeze-pass",
+  "last_completed_package": "phase1d-recovery-and-semantics-lock",
   "next_open_gate": "Phase 1D - canonical front/back PDF semantics",
-  "next_bounded_task": "Phase 1D only: implement canonical front/back PDF semantics and fail-closed page-role/pairing/ordering validation using safe regression evidence; do not start Phase 1E early and do not touch the six reserved commissioning territories.",
+  "next_bounded_task": "Phase 1D only: build and validate exact two-page front/back candidate semantics and Android storage; keep Phase 1E closed and reserved commissioning territories untouched.",
   "reserved_commissioning_territories": [
     "250T",
     "257A",
@@ -55,8 +55,8 @@
     "347TA"
   ],
   "reserved_commissioning_status": "UNTOUCHED_UNAPPROVED",
-  "phase_milestone_before": "Phase 1C IN_PROGRESS",
-  "phase_milestone_after": "Phase 1C PASSED",
+  "phase_milestone_before": "Phase 1D OPEN",
+  "phase_milestone_after": "Phase 1D IN_PROGRESS",
   "freeze_evidence": {
     "run_id": 36247248703,
     "head_sha": "50bd9cb6c27bfb56cec49135a92a0730343b81e9",
@@ -165,5 +165,19 @@
     "reserved_territory_pdf_sweep": 0,
     "internal_review_score": 10,
     "status": "PASS"
+  },
+  "phase1d_in_progress": {
+    "branch": "tcs-phase1d-020-work",
+    "recovered_from": "tcs-phase1c-019-work@0a1a2d49d03dd404145aab050e7f047ae89018ac",
+    "page_order": [
+      "FRONT_MAP",
+      "BACK_ADDRESS_LIST"
+    ],
+    "exact_front_prefix_required": true,
+    "back_address_inventory_hash_required": true,
+    "canonical_filename_shared": true,
+    "exact_approved_passthrough_unchanged": true,
+    "reserved_territory_pdf_sweep": 0,
+    "status": "IN_PROGRESS"
   }
 }
