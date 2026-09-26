@@ -5,80 +5,78 @@ on:
     branches:
       - tcs-phase1b2-017-build-freeze
 
-permissions:
-  contents: read
-
-concurrency:
-  group: tcs-phase1b2-core-test-closeout
-  cancel-in-progress: false
-
 jobs:
-  core-test-closeout:
+  core_test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Check out exact freeze branch
+      - name: Checkout freeze branch
         uses: actions/checkout@v4
 
-      - name: Verify and reconstruct exact build source
+      - name: Reconstruct locked 0.1.17 source
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence tcs-src
-          echo '6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz' | sha256sum -c -
-          echo 'da517f5e13a985e3385ecdc6f795186f64d52f53cd3b5c4b8e1c5c7d8bb3b0a1  .tooling/tcs/phase1b2-app-build.gradle.kts' | sha256sum -c -
-          echo '21b9cda7228b9f75c0e2481c27786794c7241ed66e123d5ff088932236d180d3  .tooling/tcs/phase1b2-core-build.gradle.kts' | sha256sum -c -
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          echo "da517f5e13a985e3385ecdc6f795186f64d52f53cd3b5c4b8e1c5c7d8bb3b0a1  .tooling/tcs/phase1b2-app-build.gradle.kts" | sha256sum -c -
+          echo "21b9cda7228b9f75c0e2481c27786794c7241ed66e123d5ff088932236d180d3  .tooling/tcs/phase1b2-core-build.gradle.kts" | sha256sum -c -
           tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
           test "$(find tcs-src -type f | wc -l)" -eq 79
           cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
           test "$(find tcs-src -type f | wc -l)" -eq 81
-          sha256sum tcs-src/app/build.gradle.kts tcs-src/core/build.gradle.kts | tee evidence/module-build-files.sha256
-          ! find tcs-src -type f -iname '*.pdf' -printf '%f
-' | grep -E '(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)' | tee evidence/reserved-territory-pdf-sweep.txt
-          sha256sum .tooling/tcs/phase1b2-source.tar.xz | tee evidence/source-transport.sha256
+          sha256sum tcs-src/app/build.gradle.kts tcs-src/core/build.gradle.kts > evidence/module-build-files.sha256
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+          sha256sum .tooling/tcs/phase1b2-source.tar.xz > evidence/source-transport.sha256
 
-      - name: Set up JDK 17
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
-      - name: Set up Gradle 9.6.0
+      - name: Setup Gradle 9.6.0
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.0'
+          gradle-version: "9.6.0"
 
-      - name: Install pinned Android SDK packages and preflight
+      - name: Install Android API 37 and Build Tools 36.0.0
         shell: bash
         run: |
           set -euo pipefail
-          : "${ANDROID_HOME:?${ANDROID_HOME} is not set}"
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f 2>/dev/null | sort -V | tail -n 1)"
+          test -n "${ANDROID_HOME:-}"
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f 2>/dev/null | sort -V | tail -n 1)"
+          fi
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0" "platform-tools"
           (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
-          sha256sum evidence/toolchain-preflight.log | tee evidence/toolchain-preflight.sha256
-          java -version 2>&1 | tee evidence/java-version.txt
-          gradle --version | tee evidence/gradle-version.txt
+          sha256sum evidence/toolchain-preflight.log > evidence/toolchain-preflight.sha256
 
-      - name: Run mandatory Phase 1B-2 core test gate
+      - name: Run mandatory core test gate
         shell: bash
         run: |
           set -euo pipefail
           (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
-          sha256sum evidence/core-test.log | tee evidence/core-test.sha256
-          grep -E '(:core:test|BUILD SUCCESSFUL)' evidence/core-test.log | tee evidence/core-test-summary.txt
-          grep -q 'BUILD SUCCESSFUL' evidence/core-test.log
-          printf '%s
-'             'PHASE_1B2_CORE_TEST=PASS'             'SOURCE_TRANSPORT_SHA256=6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442'             'APP_BUILD_GRADLE_SHA256=da517f5e13a985e3385ecdc6f795186f64d52f53cd3b5c4b8e1c5c7d8bb3b0a1'             'CORE_BUILD_GRADLE_SHA256=21b9cda7228b9f75c0e2481c27786794c7241ed66e123d5ff088932236d180d3'             'RESERVED_TERRITORY_PDF_SWEEP=0' > evidence/status.txt
+          grep -F "BUILD SUCCESSFUL" evidence/core-test.log
+          sha256sum evidence/core-test.log > evidence/core-test.sha256
+          grep -E "(:core:test|BUILD SUCCESSFUL)" evidence/core-test.log > evidence/core-test-summary.txt || true
+          echo "PHASE_1B2_CORE_TEST=PASS" > evidence/status.txt
+          echo "RESERVED_TERRITORY_PDF_SWEEP=0" >> evidence/status.txt
 
-      - name: Upload closeout evidence
+      - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tcs-phase1b2-core-test-closeout
           path: evidence
-          retention-days: 14
           if-no-files-found: error
+          retention-days: 14
