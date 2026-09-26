@@ -23,16 +23,16 @@
     "1D_B_letter_writing_page2": "PASSED",
     "1D_C_telephone_page2": "PASSED",
     "1D_D_cross_mode_validation": "PASSED",
-    "2A_theme_dashboard_workspace_foundation": "IN_PROGRESS"
+    "2A_theme_dashboard_workspace_foundation": "IN_PROGRESS_HARNESS_REPAIR"
   },
   "phase_milestone_before": "Phase 2 OPEN",
   "phase_milestone_after": "Phase 2A UI foundation IN PROGRESS",
-  "last_completed_package": "phase2a-ui-foundation-source-staged",
+  "last_completed_package": "phase2a-ui-source-staged-freeze-blocked-before-compile",
   "next_open_gate": "Phase 2A - theme system + Dashboard / Workspace production shell",
-  "next_bounded_task": "Phase 2A only: compile and validate the staged production UI foundation against the frozen Phase 1 engine; run real-device/emulator instrumentation for 225-territory Knowledge Base binding, Dashboard-to-Workspace navigation, and persistent System/Light/Dark preference; capture actual light/dark dashboard screenshots; then freeze Android 0.2.0 if all gates pass. Do not start mode-specific Letter Writing/Telephone tabs or vector-PDF preview yet.",
+  "next_bounded_task": "Phase 2A only: repair the freeze harness by restoring .tooling/tcs/phase1b2-core-build.gradle.kts into tcs-src/core/build.gradle.kts before :core:test; rerun the same UI freeze. Do not change the staged UI unless compile/instrumentation proves an exact defect.",
   "reopened_defects": [],
-  "blocker_fingerprint": null,
-  "blocker_route_attempts": 0,
+  "blocker_fingerprint": "phase2a-freeze-missing-core-test-build-script",
+  "blocker_route_attempts": 1,
   "phase1d_in_progress": {
     "branch": "tcs-phase1d-020-work",
     "page_order": [
