@@ -220,7 +220,7 @@ jobs:
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-dash.xml evidence/ui/tcs-dash.xml "Territories" "Search territories"
 
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory 1"
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-regular.xml evidence/ui/tcs-regular.xml "Verification & readiness" "Streets" "Exact artifact release"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-regular.xml evidence/ui/tcs-regular.xml "Verification" "Streets" "Exact artifact release"
             adb exec-out screencap -p > evidence/ui/workspace-regular-dark.png
 
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Letter Writing"
@@ -237,7 +237,7 @@ jobs:
             adb shell input keyevent 4
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-search.xml evidence/ui/tcs-search.xml "Territory T14"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory T14"
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel-tabs.xml evidence/ui/tcs-tel-tabs.xml "Telephone workspace" "Phone List" "Verification & readiness"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel-tabs.xml evidence/ui/tcs-tel-tabs.xml "Telephone workspace" "Phone List" "Verification"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Phone List"
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel.xml evidence/ui/tcs-tel.xml "Authorized phone inventory not attached" "Phase 1D-C verified"
             adb exec-out screencap -p > evidence/ui/workspace-telephone-dark.png
