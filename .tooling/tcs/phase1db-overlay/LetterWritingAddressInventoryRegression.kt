@@ -74,6 +74,16 @@ object LetterWritingAddressInventoryRegression {
     check(back.entries.first().addressLine.contains("300 Example Way"))
     check(back.nonFieldFixture)
 
+    val orderProbe = base.copy(records = listOf(
+        record("order-10", "500 Sort Test Way", "Apt 10"),
+        record("order-2", "500 Sort Test Way", "Apt 2"),
+        record("order-7", "500 Sort Test Way", "Apt 7")
+    ))
+    val ordered = LetterWritingAddressInventoryValidator.toCanonicalBackSpec(orderProbe, "Rochester Hills", "9/26/2026")
+    check(ordered.entries.map { it.addressLine.substringAfter("Apt ").substringBefore(",") } == listOf("2", "7", "10")) {
+        "Letter Writing Page 2 unit ordering is not natural numeric order"
+    }
+
     fun blocked(candidate: LetterWritingAddressInventory, expected: String) {
         val result = LetterWritingAddressInventoryValidator.validateForPage2(candidate)
         check(!result.passed) { "Expected blocked inventory: " + expected }
@@ -118,6 +128,7 @@ object LetterWritingAddressInventoryRegression {
     println("phase1d_b_verified_records=" + first.verifiedRecordCount)
     println("phase1d_b_fail_closed_mutations=11")
     println("phase1d_b_change_tracking=PASS")
+    println("phase1d_b_natural_address_ordering=PASS")
     println("phase1d_b_inventory_sha256=" + first.inventorySha256)
     }
 }
