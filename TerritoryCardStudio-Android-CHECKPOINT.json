@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
   "version": "0.1.19-multi-label-300-301",
-  "milestone": "phase-1c-multi-label-300-301-passed",
-  "status": "PHASE_1C_PASSED_READY_1D",
-  "phase_milestone_before": "Phase 1C IN_PROGRESS",
-  "phase_milestone_after": "Phase 1C PASSED",
+  "milestone": "phase-1d-canonical-front-back-in-progress",
+  "status": "PHASE_1D_IN_PROGRESS",
+  "phase_milestone_before": "Phase 1D OPEN",
+  "phase_milestone_after": "Phase 1D IN_PROGRESS",
   "scope_completed": [
     "implemented explicit site/building assignment diagram region inside the locked R48 map panel",
     "implemented optional verified access inset with explicit source bounds to destination bounds mapping",
@@ -206,7 +206,10 @@
     "phase1c_freeze_branch": "tcs-phase1c-019-work",
     "phase1c_evidence_commit": "2b66143fcc0aa10583af982bf4e83622316e551b",
     "phase1c_validation_record_commit": "1436ccf3a5a1a6b3858300b3b6804053cdc992f7",
-    "phase1c_reserved_territory_pdf_sweep": 0
+    "phase1c_reserved_territory_pdf_sweep": 0,
+    "phase1d_work_branch": "tcs-phase1d-020-work",
+    "phase1d_semantics_locked": "PASS",
+    "phase1d_status": "IN_PROGRESS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -219,9 +222,9 @@
     "independent_critic_runtime_available": false,
     "reason": "Phase 1C exact multi-label single-footprint preservation passed source, fail-closed, targeted validator, 1x/4x visual, renderer-parity semantic, Android build, signature, integrity and reserved-territory gates. Phase 1D and later phases remain open."
   },
-  "last_completed_package": "0.1.19-phase1c-multi-label-300-301-freeze-pass",
+  "last_completed_package": "phase1d-recovery-and-semantics-lock",
   "next_open_gate": "Phase 1D - canonical front/back PDF semantics",
-  "next_bounded_task": "Phase 1D only: define and validate canonical front/back PDF semantics, page ordering, identity/territory binding, exact front/back pairing, back-page address semantics where applicable, and fail-closed rejection of wrong/missing/duplicate/reordered page roles; use synthetic NOT-FOR-FIELD-USE or approved regression evidence only and keep the six reserved commissioning territories untouched.",
+  "next_bounded_task": "Phase 1D only: implement exact two-page FRONT_MAP -> BACK_ADDRESS_LIST candidate assembly with same identity/canonical filename, authoritative address-inventory hash binding, deterministic page ordering, exact front-byte prefix preservation, Android app-private storage, overflow/duplicate/mismatch/reorder fail-closed tests, synthetic NOT-FOR-FIELD-USE visual evidence, and 0.1.20 milestone freeze. Do not start 1E.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "source_package": "TerritoryCardStudio-Android-0.1.19-phase1c-source.tar.xz",
   "source_package_sha256": "47d25b73b60bf4bcce8d6282690c18c62af5c466ba378f863d3ffcb19a7e6698"
