@@ -226,6 +226,9 @@ jobs:
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Letter Writing"
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-letter-tabs.xml evidence/ui/tcs-letter-tabs.xml "Addresses" "Buildings" "Details"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Addresses"
+            adb shell input swipe 540 1900 540 900 350
+            sleep 1
+            adb shell input swipe 540 1900 540 1050 300
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-letter.xml evidence/ui/tcs-letter.xml "Verified address inventory not attached" "Phase 1D-B verified"
             adb exec-out screencap -p > evidence/ui/workspace-letter-writing-dark.png
 
@@ -239,6 +242,9 @@ jobs:
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory T14"
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel-tabs.xml evidence/ui/tcs-tel-tabs.xml "Telephone workspace" "Phone List" "Verification"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Phone List"
+            adb shell input swipe 540 1900 540 900 350
+            sleep 1
+            adb shell input swipe 540 1900 540 1050 300
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel.xml evidence/ui/tcs-tel.xml "Authorized phone inventory not attached" "Phase 1D-C verified"
             adb exec-out screencap -p > evidence/ui/workspace-telephone-dark.png
 
