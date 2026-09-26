@@ -1,9 +1,11 @@
 package com.koenterprises.territorycardstudio
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -31,6 +33,7 @@ class UiFoundationInstrumentationTest {
         )
 
         composeRule.onNodeWithTag("territories-dashboard").assertIsDisplayed()
+        composeRule.onNodeWithTag("territories-dashboard").performScrollToNode(hasTestTag("territory-row-1"))
         composeRule.onNodeWithTag("territory-row-1").performClick()
         composeRule.onNodeWithTag("territory-workspace").assertIsDisplayed()
     }
