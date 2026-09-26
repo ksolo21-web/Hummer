@@ -203,8 +203,7 @@ jobs:
             cat evidence/connected-android-test.log
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
 
-            APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
-            adb install -r "$APK" >/dev/null
+            adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
 
             adb shell pm clear com.koenterprises.territorycardstudio >/dev/null
             adb shell cmd uimode night no
