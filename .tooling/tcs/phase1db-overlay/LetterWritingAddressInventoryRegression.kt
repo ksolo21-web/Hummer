@@ -1,6 +1,7 @@
 package com.koenterprises.territorycardstudio.core
 
-fun main() {
+object LetterWritingAddressInventoryRegression {
+    fun run() {
     val identity = TerritoryIdentity(993, TerritoryClass.Apartment, 'b')
     val provenance = listOf(
         LetterWritingAddressProvenance(
@@ -118,4 +119,7 @@ fun main() {
     println("phase1d_b_fail_closed_mutations=11")
     println("phase1d_b_change_tracking=PASS")
     println("phase1d_b_inventory_sha256=" + first.inventorySha256)
+    }
 }
+
+fun main() = LetterWritingAddressInventoryRegression.run()
