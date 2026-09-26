@@ -87,6 +87,38 @@
       36253840144
     ],
     "ci_current_state": "PASS",
-    "status": "PASSED"
+    "status": "PASSED",
+    "ci_run_id": 36253840144,
+    "ci_head_sha": "7018f50252b20ab4d63c954bbc1831deaa47cf33",
+    "ci_artifact_id": 10909568411,
+    "artifact_zip_sha256": "029d24f7a7e54192400ce637004c8b7799f140e6a9ea76d32aaedd2ec0c8ed2d",
+    "apk_sha256": "d948bf76152d38fcc2c38f942d9835dd0f9454391dff633ee176b49930a689a3",
+    "aab_sha256": "311208db1e2c248bb65db06f383c94c195cacf60e55f9fc1b8c2b32a99c1c36a",
+    "extracted_source_manifest_sha256": "903f58cab7984d18dfc51d37e9553b4aa2ab581a042139e5e82d50d6ef36cf57",
+    "core_test_log_sha256": "49e7d09d64c091361012b65ac22f40260fc855cead69a4d0259979f37d2a2e8f",
+    "app_compile_log_sha256": "e75a4c42022569b8f8c79a1e4178930c32b0fc3845658dc0b4540ba48ca5bd3f",
+    "assemble_debug_log_sha256": "0b2c674010c529e3d98cc5031f66f6ec121dcaee90f64776d116f40d780f7cad",
+    "bundle_debug_log_sha256": "0b7198dfd2b13e62be59b6f614339e54178ec224e139fef01d6732ad6bd1564f",
+    "version_code": 18,
+    "version_name": "0.1.18",
+    "target_sdk": 37
+  },
+  "phase1b3_freeze_evidence": {
+    "run_id": 36253840144,
+    "head_sha": "7018f50252b20ab4d63c954bbc1831deaa47cf33",
+    "artifact_id": 10909568411,
+    "artifact_zip_sha256": "029d24f7a7e54192400ce637004c8b7799f140e6a9ea76d32aaedd2ec0c8ed2d",
+    "apk_sha256": "d948bf76152d38fcc2c38f942d9835dd0f9454391dff633ee176b49930a689a3",
+    "aab_sha256": "311208db1e2c248bb65db06f383c94c195cacf60e55f9fc1b8c2b32a99c1c36a",
+    "core_test": "PASS",
+    "app_compile": "PASS",
+    "assemble_debug": "PASS",
+    "bundle_debug": "PASS",
+    "apk_v2_signature": "PASS",
+    "aab_jar_verify": "PASS",
+    "apk_zip_integrity": "PASS",
+    "aab_zip_integrity": "PASS",
+    "reserved_territory_pdf_sweep": 0,
+    "status": "PASS"
   }
 }

@@ -15,7 +15,10 @@
     "passed strict Kotlin -Werror compile and full core smoke under -Xmx192m after metadata correction",
     "passed targeted R48/R51/R52/identity/hard-override validators and 1x/4x visual review",
     "staged exact Phase 1B-3 overlay on isolated GitHub branch and disabled automatic reruns of immutable Phase 1B-2 workflow",
-    "identified two CI transport failures before compilation and switched from raw split-base64 decoding to exact decoded-patch hash recovery"
+    "identified two CI transport failures before compilation and switched from raw split-base64 decoding to exact decoded-patch hash recovery",
+    "recovered the exact locked Phase 1B-3 overlay from the two-character transport insertion without changing the locked patch hash",
+    "passed the real Android 0.1.18 freeze through core test, app compile, APK assemble, AAB bundle, signature, ZIP, version and targetSdk gates",
+    "inspected the uploaded freeze artifact digest plus exact APK and AAB SHA-256 values before milestone approval"
   ],
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
@@ -64,11 +67,11 @@
       "294a6e734994c8937e070107bcce3f25744d1b6a2325c5ce1e65660dd73a94a1",
       "c623561846b710827c7d30d9f3b8f891bfccda48f28c56bfcf44dbd95036c157"
     ],
-    "ci_freeze_route_blob_sha": "885e4ff7e27895d05bc82e726c7a03465287134b",
+    "ci_freeze_route_blob_sha": "b7a7b7ce64498b019ab31ecbd113ec1258a3eeed",
     "ci_freeze_harness_blob_sha": "fa319e5ced5e66aad0e43d6ac2a3020ec683dc25",
     "prior_verified_android_toolchain": "JDK17 + Gradle9.6.0 + android-37.0 + BuildTools36.0.0 PASS in 0.1.13/0.1.14 durable logs",
     "current_android_toolchain_preflight": "PASS_JDK17_GRADLE9_6_ANDROID37_BUILD_TOOLS36",
-    "source_handoff_state": "DETERMINISTIC_PAYLOAD_PINNED_EXECUTION_SURFACE_NOT_MATERIALIZED",
+    "source_handoff_state": "DETERMINISTIC_PAYLOAD_MATERIALIZED_AND_ANDROID_FROZEN",
     "build_execution": "PASS",
     "phase1b2_build_freeze": "PASS",
     "ci_workflow_run_id": 36247248703,
