@@ -1,0 +1,175 @@
+name: TCS Phase 1B-3 Build Freeze
+
+on:
+  push:
+    branches:
+      - tcs-phase1b2-017-build-freeze
+    paths:
+      - .github/workflows/tcs-phase1b3-build-freeze.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tcs-phase1b3-build-freeze
+  cancel-in-progress: false
+
+jobs:
+  build_freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout freeze branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct locked source and apply exact Phase 1B-3 overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          test "$(find tcs-src -type f | wc -l)" -eq 79
+
+          cat .tooling/tcs/phase1b3-overlay.b64.part* > /tmp/phase1b3-overlay.b64
+          echo "8633c9921853c6ba86c0ec9b3e621ba6e2c8a565701da990498a1745832aa5c5  /tmp/phase1b3-overlay.b64" | sha256sum -c -
+          base64 -d /tmp/phase1b3-overlay.b64 > /tmp/phase1b3-overlay.patch
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3-overlay.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3-overlay.patch)
+
+          echo "122ab6c3dee4906c7e07048a7201796d52869f3f9f0906c7c6ff3360b254f547  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt" | sha256sum -c -
+          echo "c537d7da1ff4eb5308c5e006eb84e51b5d8eec19b0be6da7f56a95d438fddc46  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt" | sha256sum -c -
+          echo "db77c1eac1da955621f290be7e5d3e1712aad6a1357c3c2468c73f9b2ebb8c6f  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt" | sha256sum -c -
+          echo "30d6fc40bbd2c1b7671fde428bb4a17d25d30c17292e492d1d280edd3bb567d0  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt" | sha256sum -c -
+          echo "296964daffa06a85d1a7e1406544ae3ab70b20523a93121744ac85916cda2f53  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/SiteBuildingAssignmentFixtureGenerator.kt" | sha256sum -c -
+
+          cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+          sed -i 's/versionCode = 17/versionCode = 18/' tcs-src/app/build.gradle.kts
+          sed -i 's/versionName = "0.1.17"/versionName = "0.1.18"/' tcs-src/app/build.gradle.kts
+          grep -F 'versionCode = 18' tcs-src/app/build.gradle.kts
+          grep -F 'versionName = "0.1.18"' tcs-src/app/build.gradle.kts
+          test "$(find tcs-src -type f | wc -l)" -eq 83
+
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
+          sha256sum /tmp/phase1b3-overlay.patch > evidence/phase1b3-overlay.sha256
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android API 37 and Build Tools 36.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f 2>/dev/null | sort -V | tail -n 1)"
+          fi
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
+          sha256sum evidence/toolchain-preflight.log > evidence/toolchain-preflight.sha256
+
+      - name: Run core test gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
+          grep -F "BUILD SUCCESSFUL" evidence/core-test.log
+          grep -F "adapter_fail_closed_mutations=28" evidence/core-test.log
+          sha256sum evidence/core-test.log > evidence/core-test.sha256
+
+      - name: Run app compile gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin) 2>&1 | tee evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+          sha256sum evidence/app-compile.log > evidence/app-compile.sha256
+
+      - name: Assemble debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug) 2>&1 | tee evidence/assemble-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/assemble-debug.log
+          sha256sum evidence/assemble-debug.log > evidence/assemble-debug.sha256
+
+      - name: Bundle debug AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:bundleDebug) 2>&1 | tee evidence/bundle-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/bundle-debug.log
+          sha256sum evidence/bundle-debug.log > evidence/bundle-debug.sha256
+
+      - name: Verify APK and AAB freeze artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name "*.apk" | head -n 1)"
+          AAB="$(find tcs-src/app/build/outputs/bundle/debug -type f -name "*.aab" | head -n 1)"
+          test -s "$APK"
+          test -s "$AAB"
+          printf "%s\n%s\n" "$APK" "$AAB" > evidence/artifact-paths.txt
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          test -x "$APKSIGNER"
+          test -x "$AAPT2"
+          "$APKSIGNER" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\." evidence/aab-jar-verify.txt
+          "$AAPT2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='18'.*versionName='0.1.18'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+          cp "$APK" evidence/TerritoryCardStudio-0.1.18-debug.apk
+          cp "$AAB" evidence/TerritoryCardStudio-0.1.18-debug.aab
+          {
+            echo "PHASE_1B3_BUILD_FREEZE=PASS"
+            echo "CORE_TEST=PASS"
+            echo "APP_COMPILE=PASS"
+            echo "ASSEMBLE_DEBUG=PASS"
+            echo "BUNDLE_DEBUG=PASS"
+            echo "APK_V2_SIGNATURE=PASS"
+            echo "AAB_JAR_VERIFY=PASS"
+            echo "APK_ZIP_INTEGRITY=PASS"
+            echo "AAB_ZIP_INTEGRITY=PASS"
+            echo "VERSION_CODE=18"
+            echo "VERSION_NAME=0.1.18"
+            echo "TARGET_SDK=37"
+            echo "RESERVED_TERRITORY_PDF_SWEEP=0"
+            echo "ADAPTER_FAIL_CLOSED_MUTATIONS=28"
+          } > evidence/status.txt
+
+      - name: Upload Phase 1B-3 freeze evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1b3-build-freeze
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
