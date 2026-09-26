@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -147,7 +148,9 @@ fun ModeAwareTerritoryWorkspace(
     modifier: Modifier,
     item: TerritoryDashboardItem,
     knowledgeBaseRevision: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onImportMap: (WorkspaceMode) -> Unit = {},
+    onVerification: (WorkspaceMode) -> Unit = {}
 ) {
     val assignment = item.assignment
     val allowedModes = WorkspaceModePolicy.allowedModes(assignment)
@@ -190,6 +193,26 @@ fun ModeAwareTerritoryWorkspace(
 
         item {
             WorkspaceReadinessSummary(readiness)
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f).testTag("workspace-import-map"),
+                    onClick = { onImportMap(mode) }
+                ) {
+                    Text("Import Map")
+                }
+                Button(
+                    modifier = Modifier.weight(1f).testTag("workspace-verification"),
+                    onClick = { onVerification(mode) }
+                ) {
+                    Text("Verification")
+                }
+            }
         }
 
         if (allowedModes.size > 1) {
