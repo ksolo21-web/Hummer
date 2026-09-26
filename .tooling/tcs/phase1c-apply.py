@@ -250,9 +250,9 @@ rep(adapter,
 "adapter split building conversion")
 
 rep(adapter,
-'''                        val base = requireNotNull(buildingByIdForFullPlus[b.buildingId]) { "Full-plus-detail panel references unknown building @@{b.buildingId}" }
+'''                        val base = requireNotNull(buildingById[b.buildingId]) { "Full-plus-detail panel references unknown building @@{b.buildingId}" }
                         PdfBuildingShape(base.buildingId, base.label, b.polygon.map { it.x to it.y })''',
-'''                        requireNotNull(buildingByIdForFullPlus[b.buildingId]) { "Full-plus-detail panel references unknown building @@{b.buildingId}" }
+'''                        requireNotNull(buildingById[b.buildingId]) { "Full-plus-detail panel references unknown building @@{b.buildingId}" }
                         toPdfBuildingShape(b)''',
 "adapter full-plus building conversion")
 
