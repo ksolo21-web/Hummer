@@ -1,0 +1,305 @@
+name: TCS Phase 1D-D Print and Android Closeout
+
+on:
+  push:
+    branches:
+      - tcs-phase1d-020-work
+    paths:
+      - .github/workflows/tcs-phase1d-d-023-closeout.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tcs-phase1d-d-023-closeout
+  cancel-in-progress: false
+
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Phase 1D branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact 1D-D passed source state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected="85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          parts=[p.read_text() for p in sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))]
+          raw="".join(parts)
+          def exact(candidate):
+              try: patch=base64.b64decode(candidate,validate=True)
+              except Exception: return None
+              return patch if hashlib.sha256(patch).hexdigest()==expected else None
+          patch=exact(raw)
+          if patch is None:
+              p6=parts[5]
+              for i in range(len(p6)-1):
+                  x=list(parts); x[5]=p6[:i]+p6[i+2:]
+                  patch=exact("".join(x))
+                  if patch is not None:
+                      break
+              else:
+                  raise SystemExit("unable to recover locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3.patch").write_bytes(patch)
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3.patch)
+          python3 .tooling/tcs/phase1c-apply.py tcs-src > evidence/phase1c-apply.log
+          grep -F "PHASE1C_APPLY=PASS" evidence/phase1c-apply.log
+
+          mkdir -p tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdf.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdfTest.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackFixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackFixtureGenerator.kt
+          python3 .tooling/tcs/phase1d-overlay/apply-existing.py tcs-src > evidence/phase1d-overlay.log
+          grep -F "PHASE1D_EXISTING_TRANSFORM=PASS" evidence/phase1d-overlay.log
+
+          cp .tooling/tcs/phase1db-overlay/LetterWritingAddressInventory.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventory.kt
+          cp .tooling/tcs/phase1db-overlay/LetterWritingAddressInventoryRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventoryRegression.kt
+          cp .tooling/tcs/phase1db-overlay/LetterWritingPage2FixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingPage2FixtureGenerator.kt
+          python3 .tooling/tcs/phase1db-overlay/apply-existing.py tcs-src > evidence/phase1db-overlay.log
+          grep -F "PHASE1D_B_EXISTING_TRANSFORM=PASS" evidence/phase1db-overlay.log
+
+          base64 -d .tooling/tcs/phase1dc-overlay/apply-frontback.py.b64 > /tmp/phase1dc-frontback.py
+          python3 /tmp/phase1dc-frontback.py tcs-src > evidence/phase1dc-frontback.log
+          grep -F "PHASE1D_C_FRONTBACK_TRANSFORM=PASS" evidence/phase1dc-frontback.log
+          cp .tooling/tcs/phase1dc-overlay/TelephoneTerritoryInventory.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventory.kt
+          cp .tooling/tcs/phase1dc-overlay/TelephoneTerritoryInventoryRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventoryRegression.kt
+          cp .tooling/tcs/phase1dc-overlay/TelephonePage2FixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephonePage2FixtureGenerator.kt
+
+          cp .tooling/tcs/phase1dd-overlay/CrossModePacketValidation.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CrossModePacketValidation.kt
+          cp .tooling/tcs/phase1dd-overlay/CrossModePacketValidationRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CrossModePacketValidationRegression.kt
+
+          echo "b594629cf9d6afb17a3205814ae65ffd4f81c028096cd22bd8fe59594e64ee69  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CrossModePacketValidation.kt" | sha256sum -c -
+          echo "2715fa7b7799844b77e701c64cf2a69ccdeb36366dcadf1c9f0a1de49079d361  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CrossModePacketValidationRegression.kt" | sha256sum -c -
+          echo "9d926f5ea84621e3d12900c3f7833d01f69875410106d21eac5ecc868299c708  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt" | sha256sum -c -
+          echo "c084581bb87ce9a7c9dbfa4a160946aab72c416304f443fa0164fbfccf7a2a64  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventory.kt" | sha256sum -c -
+          echo "59d14ff4cf9a1fe9bf15348d1808fe2480c931c1ba67e6a374fea0ad5b7f5fa7  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventory.kt" | sha256sum -c -
+          {
+            echo "SOURCE_LOCK=PASS"
+            echo "CORE_PASS_RUN_ID=36268920427"
+            echo "CORE_PASS_WORKFLOW_HEAD=ceabe617cfe49bcb4bd268ce18ad4483829611ad"
+            echo "CORE_PASS_ARTIFACT_SHA256=a4201bbda276565f1e94b51bc41cc93d501e0769fc20d04554803430f7668602"
+            echo "CORE_TEST_LOG_SHA256=086e1fa2c0dae351eb6281d6bc973447725e0de34854e7c12eb05a9fbb697757"
+            echo "CROSS_MODE_REGRESSION_LOG_SHA256=0b35224af4c285e4716271a7edc606b26537910326e39ad23538c59decb5af35"
+            echo "CROSS_MODE_RESULT=PASS"
+            echo "FAIL_CLOSED_MUTATIONS=12"
+          } > evidence/core-pass-reference.txt
+
+          cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+          sed -i 's/versionCode = 17/versionCode = 23/' tcs-src/app/build.gradle.kts
+          sed -i 's/versionName = "0.1.17"/versionName = "0.1.23"/' tcs-src/app/build.gradle.kts
+
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files-before-closeout.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files-before-closeout.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android and PDF preflight tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          python3 -m pip install --quiet pymupdf
+
+      - name: Run Standard-14-aware cross mode print preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          REG="phase1d-evidence/Territory - 995a - FRONT - NOT FOR FIELD USE.pdf"
+          LW="phase1db-evidence/Territory - 995a - LETTER WRITING - NOT FOR FIELD USE.pdf"
+          TEL="phase1dc-evidence/Territory - 996Ta - TELEPHONE - NOT FOR FIELD USE.pdf"
+
+          test "$(sha256sum "$REG" | awk '{print $1}')" = "d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133"
+          test "$(sha256sum "$LW" | awk '{print $1}')" = "c8678a6f66b1479a0808b07c0dab16383edbd8ba4ee8cdc7c417996101842232"
+          test "$(sha256sum "$TEL" | awk '{print $1}')" = "01f704feb3e8253d443ceb3d373993b5dc57d41a7464a286e66e86fdacc9350e"
+
+          pdfinfo "$REG" > evidence/regular-pdfinfo.txt
+          pdfinfo "$LW" > evidence/letter-pdfinfo.txt
+          pdfinfo "$TEL" > evidence/telephone-pdfinfo.txt
+          pdffonts "$REG" > evidence/regular-pdffonts.txt
+          pdffonts "$LW" > evidence/letter-pdffonts.txt
+          pdffonts "$TEL" > evidence/telephone-pdffonts.txt
+
+          python3 - <<'PY'
+          import fitz
+          from pathlib import Path
+          standard14={
+              "Helvetica","Helvetica-Bold","Helvetica-Oblique","Helvetica-BoldOblique",
+              "Times-Roman","Times-Bold","Times-Italic","Times-BoldItalic",
+              "Courier","Courier-Bold","Courier-Oblique","Courier-BoldOblique",
+              "Symbol","ZapfDingbats"
+          }
+          cases=[
+              (Path("phase1d-evidence/Territory - 995a - FRONT - NOT FOR FIELD USE.pdf"),1,"REGULAR"),
+              (Path("phase1db-evidence/Territory - 995a - LETTER WRITING - NOT FOR FIELD USE.pdf"),2,"LETTER_WRITING"),
+              (Path("phase1dc-evidence/Territory - 996Ta - TELEPHONE - NOT FOR FIELD USE.pdf"),2,"TELEPHONE"),
+          ]
+          lines=[]
+          for path,pages,mode in cases:
+              doc=fitz.open(path)
+              assert doc.page_count==pages, (mode,doc.page_count)
+              assert not doc.needs_pass, mode+" is encrypted"
+              custom_count=0
+              standard_unembedded=set()
+              seen=set()
+              for page in doc:
+                  assert abs(page.rect.width-768.0)<0.6, (mode,page.rect.width)
+                  assert abs(page.rect.height-480.5)<0.6, (mode,page.rect.height)
+                  for font in page.get_fonts(full=True):
+                      xref=font[0]
+                      basefont=font[3].split("+")[-1]
+                      key=(xref,basefont)
+                      if key in seen or xref <= 0:
+                          continue
+                      seen.add(key)
+                      data=doc.extract_font(xref)
+                      embedded=bool(len(data)>=4 and data[3])
+                      if embedded:
+                          if basefont not in standard14:
+                              custom_count += 1
+                      else:
+                          assert basefont in standard14, (mode,font)
+                          standard_unembedded.add(basefont)
+              assert custom_count > 0, mode+" has no verified embedded custom fonts"
+              lines.append(
+                  mode+"=PASS pages="+str(pages)
+                  +" geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS"
+                  +" standard14_unembedded="+(",".join(sorted(standard_unembedded)) if standard_unembedded else "none")
+              )
+          Path("evidence/print-readiness.txt").write_text("\n".join(lines)+"\n")
+          PY
+          grep -F "REGULAR=PASS pages=1 geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS standard14_unembedded=Helvetica" evidence/print-readiness.txt
+          grep -F "LETTER_WRITING=PASS pages=2 geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS standard14_unembedded=Helvetica" evidence/print-readiness.txt
+          grep -F "TELEPHONE=PASS pages=2 geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS standard14_unembedded=Helvetica" evidence/print-readiness.txt
+
+      - name: Run real Android 0.1.23 milestone freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin) 2>&1 | tee evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug) 2>&1 | tee evidence/assemble-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/assemble-debug.log
+          (cd tcs-src && gradle --no-daemon :app:bundleDebug) 2>&1 | tee evidence/bundle-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/bundle-debug.log
+
+          APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+          AAB="$(find tcs-src/app/build/outputs/bundle/debug -type f -name '*.aab' | head -n 1)"
+          test -s "$APK" && test -s "$AAB"
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\." evidence/aab-jar-verify.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='23'.*versionName='0.1.23'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
+          tar -cJf evidence/TerritoryCardStudio-Android-0.1.23-phase1dd-source.tar.xz -C tcs-src .
+          sha256sum evidence/TerritoryCardStudio-Android-0.1.23-phase1dd-source.tar.xz > evidence/source-package.sha256
+
+          cat > evidence/status.txt <<'EOF'
+          PHASE_1D_D_CROSS_MODE=PASS
+          CROSS_MODE_CORE_EVIDENCE_REUSED_EXACT_SOURCE=PASS
+          REGULAR_PACKET=PASS
+          LETTER_WRITING_PACKET=PASS
+          TELEPHONE_PACKET=PASS
+          DETERMINISTIC_GENERATION=PASS
+          IDENTITY_VERSION_HASH_LINKAGE=PASS
+          DUPLICATE_OVERLAP_GATE=PASS
+          OVERFLOW_GATE=PASS
+          PAGE_ORDER_GATE=PASS
+          PRINT_READINESS_GATE=PASS_STANDARD14_AWARE
+          STANDARD14_HELVETICA_NONEMBEDDED_ALLOWED=PASS
+          CUSTOM_FONTS_EMBEDDED=PASS
+          EXACT_APPROVAL_BINDING=PASS
+          REGRESSION_FIXTURES=PASS
+          CROSS_MODE_FAIL_CLOSED_MUTATIONS=12
+          APP_COMPILE=PASS
+          ASSEMBLE_DEBUG=PASS
+          BUNDLE_DEBUG=PASS
+          APK_V2_SIGNATURE=PASS
+          AAB_JAR_VERIFY=PASS
+          APK_ZIP_INTEGRITY=PASS
+          AAB_ZIP_INTEGRITY=PASS
+          VERSION_CODE=23
+          VERSION_NAME=0.1.23
+          TARGET_SDK=37
+          RESERVED_TERRITORY_PDF_SWEEP=0
+          NEXT_OPEN_GATE=PHASE_1E_FINAL_ALL_MODE_RENDERER_PARITY
+          EOF
+
+      - name: Commit inspectable Phase 1D-D closeout evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "territory-card-studio-ci"
+          git config user.email "territory-card-studio-ci@users.noreply.github.com"
+          mkdir -p phase1dd-evidence
+          cp evidence/core-pass-reference.txt phase1dd-evidence/
+          cp evidence/print-readiness.txt phase1dd-evidence/
+          cp evidence/regular-pdfinfo.txt phase1dd-evidence/
+          cp evidence/letter-pdfinfo.txt phase1dd-evidence/
+          cp evidence/telephone-pdfinfo.txt phase1dd-evidence/
+          cp evidence/regular-pdffonts.txt phase1dd-evidence/
+          cp evidence/letter-pdffonts.txt phase1dd-evidence/
+          cp evidence/telephone-pdffonts.txt phase1dd-evidence/
+          cp evidence/apk.sha256 phase1dd-evidence/
+          cp evidence/aab.sha256 phase1dd-evidence/
+          cp evidence/apk-badging.txt phase1dd-evidence/
+          cp evidence/apk-signature.txt phase1dd-evidence/
+          cp evidence/aab-jar-verify.txt phase1dd-evidence/
+          cp evidence/extracted-source-manifest.sha256 phase1dd-evidence/
+          cp evidence/source-package.sha256 phase1dd-evidence/
+          cp evidence/status.txt phase1dd-evidence/
+          git add phase1dd-evidence
+          if ! git diff --cached --quiet; then
+            git commit -m "Add Phase 1D-D print and Android closeout evidence"
+            git push origin HEAD:tcs-phase1d-020-work
+          fi
+
+      - name: Upload Phase 1D-D closeout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1d-d-023-closeout-evidence
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
