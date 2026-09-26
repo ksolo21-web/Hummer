@@ -37,6 +37,7 @@ data class LetterWritingAddressRecord(
     val verificationStatus: LetterWritingVerificationStatus,
     val verifiedAtUtc: String? = null,
     val boundaryStatus: LetterWritingBoundaryStatus,
+    val boundaryEvidenceSha256: String,
     val neighborTerritoryConflicts: List<String> = emptyList(),
     val provenanceIds: List<String>
 ) {
@@ -108,6 +109,7 @@ data class LetterWritingAddressInventory(
                 .append(r.verificationStatus.name).append('|')
                 .append(r.verifiedAtUtc ?: "").append('|')
                 .append(r.boundaryStatus.name).append('|')
+                .append(r.boundaryEvidenceSha256).append('|')
             r.neighborTerritoryConflicts.sorted().forEach { append("neighbor:").append(it).append('|') }
             r.provenanceIds.sorted().forEach { append("source:").append(it).append('|') }
             append('\n')
@@ -166,6 +168,7 @@ object LetterWritingAddressInventoryValidator {
             if (r.verificationStatus != LetterWritingVerificationStatus.VERIFIED) errors += r.recordId + ": address is not verified"
             if (r.verifiedAtUtc.isNullOrBlank()) errors += r.recordId + ": verified timestamp is required"
             if (r.boundaryStatus != LetterWritingBoundaryStatus.INSIDE_LOCKED_WORKING_AREA) errors += r.recordId + ": address is not confirmed inside locked working area"
+            if (!sha256Pattern.matches(r.boundaryEvidenceSha256)) errors += r.recordId + ": boundary/neighbor evidence SHA-256 is invalid"
             if (r.neighborTerritoryConflicts.isNotEmpty()) errors += r.recordId + ": unresolved neighboring-territory conflict"
             if (r.provenanceIds.isEmpty()) errors += r.recordId + ": provenance is required"
             if (r.provenanceIds.distinct().size != r.provenanceIds.size) errors += r.recordId + ": duplicate provenance bindings"
@@ -183,6 +186,9 @@ object LetterWritingAddressInventoryValidator {
         }
 
         val recordIds = inventory.records.mapTo(linkedSetOf()) { it.recordId }
+        if (inventory.changes.isNotEmpty() && inventory.previousInventorySha256 == null) {
+            errors += "Change tracking requires previous inventory SHA-256"
+        }
         inventory.changes.forEach { c ->
             if (c.type !in setOf("ADDED", "REMOVED", "CHANGED")) errors += c.recordId + ": invalid change type " + c.type
             if (c.type != "REMOVED" && c.recordId !in recordIds) errors += c.recordId + ": change record is not present in current inventory"
