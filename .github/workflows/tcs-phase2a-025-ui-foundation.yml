@@ -196,9 +196,10 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -euo pipefail
+            set -eu
             mkdir -p evidence/ui
-            (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) 2>&1 | tee evidence/connected-android-test.log
+            (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1
+            cat evidence/connected-android-test.log
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
 
             APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
