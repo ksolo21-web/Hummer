@@ -1,14 +1,21 @@
-name: TCS Phase 1B-2 Core Test Closeout
+name: TCS Phase 1B-2 Build Freeze
 
 on:
   push:
     branches:
       - tcs-phase1b2-017-build-freeze
 
+permissions:
+  contents: read
+
+concurrency:
+  group: tcs-phase1b2-build-freeze
+  cancel-in-progress: false
+
 jobs:
-  core_test:
+  build_freeze:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout freeze branch
         uses: actions/checkout@v4
@@ -20,15 +27,17 @@ jobs:
           mkdir -p evidence tcs-src
           echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
           echo "da517f5e13a985e3385ecdc6f795186f64d52f53cd3b5c4b8e1c5c7d8bb3b0a1  .tooling/tcs/phase1b2-app-build.gradle.kts" | sha256sum -c -
-          echo "9b95757aa87bb719d70a47002e58cfa0fc16cc6f824b8fc76cc1596d4df1db85  .tooling/tcs/phase1b2-core-build.gradle.kts" | sha256sum -c -
+          echo "d0482ad30411f9b4c3becef549c9ade6361eaf9452980654773fa1152050e9b6  .tooling/tcs/phase1b2-core-build.gradle.kts" | sha256sum -c -
           echo "a084ec58016020a092e020d1f900b867256334e8c3bada84ac679bf238c39594  .tooling/tcs/phase1b2-CoreGradleTestBridge.kt" | sha256sum -c -
           tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
           test "$(find tcs-src -type f | wc -l)" -eq 79
           cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
           cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
           test "$(find tcs-src -type f | wc -l)" -eq 82
-          sha256sum tcs-src/app/build.gradle.kts tcs-src/core/build.gradle.kts tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt > evidence/module-build-files.sha256
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
           find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files.txt
           if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files.txt > evidence/reserved-territory-pdf-sweep.txt; then
             echo "Reserved territory PDF detected" >&2
@@ -36,6 +45,7 @@ jobs:
           fi
           : > evidence/reserved-territory-pdf-sweep.txt
           sha256sum .tooling/tcs/phase1b2-source.tar.xz > evidence/source-transport.sha256
+          sha256sum tcs-src/app/build.gradle.kts tcs-src/core/build.gradle.kts tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt > evidence/module-build-files.sha256
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -63,22 +73,86 @@ jobs:
           (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
           sha256sum evidence/toolchain-preflight.log > evidence/toolchain-preflight.sha256
 
-      - name: Run mandatory core test gate
+      - name: Run core test gate
         shell: bash
         run: |
           set -euo pipefail
           (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
           grep -F "BUILD SUCCESSFUL" evidence/core-test.log
           sha256sum evidence/core-test.log > evidence/core-test.sha256
-          grep -E "(:core:test|BUILD SUCCESSFUL)" evidence/core-test.log > evidence/core-test-summary.txt || true
-          echo "PHASE_1B2_CORE_TEST=PASS" > evidence/status.txt
-          echo "RESERVED_TERRITORY_PDF_SWEEP=0" >> evidence/status.txt
 
-      - name: Upload evidence
+      - name: Run app compile gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin) 2>&1 | tee evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+          sha256sum evidence/app-compile.log > evidence/app-compile.sha256
+
+      - name: Assemble debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug) 2>&1 | tee evidence/assemble-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/assemble-debug.log
+          sha256sum evidence/assemble-debug.log > evidence/assemble-debug.sha256
+
+      - name: Bundle debug AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:bundleDebug) 2>&1 | tee evidence/bundle-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/bundle-debug.log
+          sha256sum evidence/bundle-debug.log > evidence/bundle-debug.sha256
+
+      - name: Verify APK and AAB freeze artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name "*.apk" | head -n 1)"
+          AAB="$(find tcs-src/app/build/outputs/bundle/debug -type f -name "*.aab" | head -n 1)"
+          test -s "$APK"
+          test -s "$AAB"
+          printf "%s\n%s\n" "$APK" "$AAB" > evidence/artifact-paths.txt
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          test -x "$APKSIGNER"
+          test -x "$AAPT2"
+          "$APKSIGNER" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\." evidence/aab-jar-verify.txt
+          "$AAPT2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='17'.*versionName='0.1.17'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+          grep -F "sdkVersion:'29'" evidence/apk-badging.txt
+          cp "$APK" evidence/TerritoryCardStudio-0.1.17-debug.apk
+          cp "$AAB" evidence/TerritoryCardStudio-0.1.17-debug.aab
+          {
+            echo "PHASE_1B2_BUILD_FREEZE=PASS"
+            echo "CORE_TEST=PASS"
+            echo "APP_COMPILE=PASS"
+            echo "ASSEMBLE_DEBUG=PASS"
+            echo "BUNDLE_DEBUG=PASS"
+            echo "APK_V2_SIGNATURE=PASS"
+            echo "AAB_JAR_VERIFY=PASS"
+            echo "APK_ZIP_INTEGRITY=PASS"
+            echo "AAB_ZIP_INTEGRITY=PASS"
+            echo "VERSION_CODE=17"
+            echo "VERSION_NAME=0.1.17"
+            echo "TARGET_SDK=37"
+            echo "RESERVED_TERRITORY_PDF_SWEEP=0"
+          } > evidence/status.txt
+
+      - name: Upload freeze evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tcs-phase1b2-core-test-closeout
+          name: tcs-phase1b2-build-freeze
           path: evidence
           if-no-files-found: error
           retention-days: 14
