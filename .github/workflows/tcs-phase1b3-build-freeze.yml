@@ -32,7 +32,6 @@ jobs:
           test "$(find tcs-src -type f | wc -l)" -eq 79
 
           cat .tooling/tcs/phase1b3-overlay.b64.part* > /tmp/phase1b3-overlay.b64
-          echo "8633c9921853c6ba86c0ec9b3e621ba6e2c8a565701da990498a1745832aa5c5  /tmp/phase1b3-overlay.b64" | sha256sum -c -
           base64 -d /tmp/phase1b3-overlay.b64 > /tmp/phase1b3-overlay.patch
           echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3-overlay.patch" | sha256sum -c -
           (cd tcs-src && patch -p1 --forward < /tmp/phase1b3-overlay.patch)
