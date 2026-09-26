@@ -50,7 +50,7 @@
     "ci_branch": "ksolo21-web/Hummer:tcs-phase1b2-017-build-freeze",
     "ci_main_modified": false,
     "ci_build_source_tar_xz_sha256": "f3d0ede6da0b7e5c358988321cd374a69672fc4a38861d1f22f1dff132154484",
-    "ci_build_source_tar_xz_size_bytes": 634784,
+    "ci_build_source_tar_xz_size_bytes": 634404,
     "validation_report_sha256": "19e92d2f2e4f457b1217816d82365fbf338a172567ed8d1cd6a5f1739c93195c"
   },
   "reopened_defects": [],
