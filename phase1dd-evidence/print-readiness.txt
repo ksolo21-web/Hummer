@@ -1,0 +1,3 @@
+REGULAR=PASS pages=1 geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS standard14_unembedded=Helvetica
+LETTER_WRITING=PASS pages=2 geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS standard14_unembedded=Helvetica
+TELEPHONE=PASS pages=2 geometry=768x480.5 encrypted=false custom_fonts_embedded=PASS standard14_unembedded=Helvetica
