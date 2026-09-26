@@ -1,0 +1,333 @@
+name: TCS Phase 1D-C Telephone Freeze
+
+on:
+  push:
+    branches:
+      - tcs-phase1d-020-work
+    paths:
+      - .github/workflows/tcs-phase1d-c-022-build.yml
+      - .tooling/tcs/phase1dc-overlay/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tcs-phase1d-c-022-build
+  cancel-in-progress: false
+
+jobs:
+  phase1dc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Phase 1D branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact Phase 1C source baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected="85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          parts=[p.read_text() for p in sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))]
+          raw="".join(parts)
+          def exact(candidate):
+              try: patch=base64.b64decode(candidate,validate=True)
+              except Exception: return None
+              return patch if hashlib.sha256(patch).hexdigest()==expected else None
+          patch=exact(raw)
+          repair="none"
+          if patch is None:
+              p6=parts[5]
+              for i in range(len(p6)-1):
+                  x=list(parts); x[5]=p6[:i]+p6[i+2:]
+                  patch=exact("".join(x))
+                  if patch is not None:
+                      repair=f"part06-remove-adjacent-pair@{i}"; break
+              else: raise SystemExit("unable to recover locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3.patch").write_bytes(patch)
+          Path("evidence/phase1b3-recovery.txt").write_text(repair+"\n")
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3.patch)
+          python3 .tooling/tcs/phase1c-apply.py tcs-src | tee evidence/phase1c-apply.log
+          grep -F "PHASE1C_APPLY=PASS" evidence/phase1c-apply.log
+
+      - name: Apply Phase 1D-A and 1D-B frozen overlays
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdf.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdfTest.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackFixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackFixtureGenerator.kt
+          python3 .tooling/tcs/phase1d-overlay/apply-existing.py tcs-src | tee evidence/phase1d-overlay.log
+          grep -F "PHASE1D_EXISTING_TRANSFORM=PASS" evidence/phase1d-overlay.log
+
+          cp .tooling/tcs/phase1db-overlay/LetterWritingAddressInventory.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventory.kt
+          cp .tooling/tcs/phase1db-overlay/LetterWritingAddressInventoryRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventoryRegression.kt
+          cp .tooling/tcs/phase1db-overlay/LetterWritingPage2FixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingPage2FixtureGenerator.kt
+          python3 .tooling/tcs/phase1db-overlay/apply-existing.py tcs-src | tee evidence/phase1db-overlay.log
+          grep -F "PHASE1D_B_EXISTING_TRANSFORM=PASS" evidence/phase1db-overlay.log
+
+      - name: Apply Phase 1D-C Telephone overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .tooling/tcs/phase1dc-overlay/apply-frontback.py.b64 > /tmp/phase1dc-frontback.py
+          python3 /tmp/phase1dc-frontback.py tcs-src | tee evidence/phase1dc-frontback.log
+          grep -F "PHASE1D_C_FRONTBACK_TRANSFORM=PASS" evidence/phase1dc-frontback.log
+
+          cp .tooling/tcs/phase1dc-overlay/TelephoneTerritoryInventory.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventory.kt
+          cp .tooling/tcs/phase1dc-overlay/TelephoneTerritoryInventoryRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventoryRegression.kt
+          cp .tooling/tcs/phase1dc-overlay/TelephonePage2FixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephonePage2FixtureGenerator.kt
+
+          sha256sum /tmp/phase1dc-frontback.py             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventory.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventoryRegression.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephonePage2FixtureGenerator.kt             > evidence/phase1dc-source-sha256.txt
+
+          cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+          sed -i 's/versionCode = 17/versionCode = 22/' tcs-src/app/build.gradle.kts
+          sed -i 's/versionName = "0.1.17"/versionName = "0.1.22"/' tcs-src/app/build.gradle.kts
+          grep -F 'versionCode = 22' tcs-src/app/build.gradle.kts
+          grep -F 'versionName = "0.1.22"' tcs-src/app/build.gradle.kts
+
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files-before-fixture.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files-before-fixture.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android and PDF review tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          python3 -m pip install --quiet pymupdf pillow
+
+      - name: Run frozen core plus Telephone regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
+          grep -F "BUILD SUCCESSFUL" evidence/core-test.log
+          TEST_CP="tcs-src/core/build/classes/kotlin/test:tcs-src/core/build/classes/kotlin/main"
+          KLIB="$(find ~/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib -name '*.jar' | head -n 1)"
+          java -Xmx192m -cp "$TEST_CP:$KLIB" com.koenterprises.territorycardstudio.core.TelephoneTerritoryInventoryRegressionKt             2>&1 | tee evidence/telephone-regression.log
+          grep -Fx "phase1d_c_telephone_inventory_contract=PASS" evidence/telephone-regression.log
+          grep -Fx "phase1d_c_fail_closed_mutations=19" evidence/telephone-regression.log
+          grep -Fx "phase1d_c_change_tracking=PASS" evidence/telephone-regression.log
+          sha256sum evidence/core-test.log > evidence/core-test.sha256
+          sha256sum evidence/telephone-regression.log > evidence/telephone-regression.sha256
+
+      - name: Prove frozen Letter Writing bytes unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="evidence/phase1db-regression"
+          mkdir -p "$OUT"
+          TEST_CP="tcs-src/core/build/classes/kotlin/test:tcs-src/core/build/classes/kotlin/main"
+          KLIB="$(find ~/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib -name '*.jar' | head -n 1)"
+          java -Xmx192m -cp "$TEST_CP:$KLIB" com.koenterprises.territorycardstudio.core.LetterWritingPage2FixtureGeneratorKt             tcs-src/app/src/main/assets/territory "$OUT/front.pdf" "$OUT/letter-writing.pdf" > "$OUT/generator.log"
+          echo "c8678a6f66b1479a0808b07c0dab16383edbd8ba4ee8cdc7c417996101842232  $OUT/letter-writing.pdf" | sha256sum -c -
+          cmp "$OUT/letter-writing.pdf" "phase1db-evidence/Territory - 995a - LETTER WRITING - NOT FOR FIELD USE.pdf"
+          echo "PHASE_1D_B_BYTE_REGRESSION=PASS" > evidence/phase1db-byte-regression.txt
+
+      - name: Generate deterministic Telephone Page 2 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="evidence/phase1dc-0.1.22"
+          mkdir -p "$OUT/poppler-1x" "$OUT/poppler-4x" "$OUT/mupdf-1x"
+          FRONT="$OUT/Territory - 996Ta - FRONT - NOT FOR FIELD USE.pdf"
+          COMBINED="$OUT/Territory - 996Ta - TELEPHONE - NOT FOR FIELD USE.pdf"
+          COMBINED2="$OUT/Territory - 996Ta - TELEPHONE - SECOND.pdf"
+
+          TEST_CP="tcs-src/core/build/classes/kotlin/test:tcs-src/core/build/classes/kotlin/main"
+          KLIB="$(find ~/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib -name '*.jar' | head -n 1)"
+          java -Xmx192m -cp "$TEST_CP:$KLIB" com.koenterprises.territorycardstudio.core.TelephonePage2FixtureGeneratorKt             tcs-src/app/src/main/assets/territory "$FRONT" "$COMBINED" 2>&1 | tee "$OUT/generator.log"
+          java -Xmx192m -cp "$TEST_CP:$KLIB" com.koenterprises.territorycardstudio.core.TelephonePage2FixtureGeneratorKt             tcs-src/app/src/main/assets/territory "$OUT/front-second.pdf" "$COMBINED2" > "$OUT/generator-second.log"
+          cmp "$COMBINED" "$COMBINED2"
+          grep -Fx "phase1d_c_telephone_fixture=PASS" "$OUT/generator.log"
+          grep -Fx "inventory_count=15" "$OUT/generator.log"
+          grep -Fx "page_count=2" "$OUT/generator.log"
+          grep -Fx "page_roles=FRONT_MAP,BACK_PHONE_LIST" "$OUT/generator.log"
+
+          INV_SHA="$(grep '^inventory_sha256=' "$OUT/generator.log" | cut -d= -f2)"
+          test "$(printf %s "$INV_SHA" | wc -c)" -eq 64
+          grep -a -F "% TCS_PAGE_ROLE BACK_PHONE_LIST" "$COMBINED"
+          grep -a -F "% TCS_TELEPHONE_SOURCE_SHA256 $INV_SHA" "$COMBINED"
+          grep -a -F "telephone_source_sha256=$INV_SHA" "$COMBINED"
+          grep -a -F "page_roles=FRONT_MAP,BACK_PHONE_LIST" "$COMBINED"
+          sha256sum "$FRONT" "$COMBINED" > "$OUT/pdf-sha256.txt"
+          pdfinfo "$COMBINED" > "$OUT/combined-pdfinfo.txt"
+          grep -F "Pages:           2" "$OUT/combined-pdfinfo.txt"
+          pdftotext -f 2 -l 2 "$COMBINED" "$OUT/back-text.txt"
+          grep -F "ADDRESS + PHONE" "$OUT/back-text.txt"
+          grep -F "PHONE LIST" "$OUT/back-text.txt"
+          grep -F "(248) 555-0101" "$OUT/back-text.txt"
+          grep -F "UNAVAILABLE" "$OUT/back-text.txt"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import fitz, hashlib
+          base=Path("evidence/phase1dc-0.1.22")
+          front=(base/"Territory - 996Ta - FRONT - NOT FOR FIELD USE.pdf").read_bytes()
+          combined=(base/"Territory - 996Ta - TELEPHONE - NOT FOR FIELD USE.pdf").read_bytes()
+          assert combined[:len(front)] == front
+          doc=fitz.open(stream=combined,filetype="pdf")
+          assert doc.page_count == 2
+          text=doc[1].get_text()
+          assert "ADDRESS + PHONE" in text and "PHONE LIST" in text
+          assert "(248) 555-0101" in text and "UNAVAILABLE" in text
+          (base/"semantic-check.txt").write_text(
+              "mode=TELEPHONE\npage_count=2\npage1_role=FRONT_MAP\npage2_role=BACK_PHONE_LIST\nfront_prefix_exact=true\n"
+              + "front_sha256=" + hashlib.sha256(front).hexdigest() + "\n"
+              + "combined_sha256=" + hashlib.sha256(combined).hexdigest() + "\n"
+          )
+          for page in range(2):
+              pix=doc[page].get_pixmap(matrix=fitz.Matrix(1,1),alpha=False)
+              pix.save(base/"mupdf-1x"/f"page-{page+1}.png")
+          PY
+
+          for page in 1 2; do
+            pdftoppm -png -f "$page" -l "$page" -singlefile -r 72 "$COMBINED" "$OUT/poppler-1x/page-$page" >/dev/null 2>&1
+            pdftoppm -png -f "$page" -l "$page" -singlefile -r 288 "$COMBINED" "$OUT/poppler-4x/page-$page" >/dev/null 2>&1
+          done
+          sha256sum "$OUT"/poppler-1x/*.png "$OUT"/poppler-4x/*.png "$OUT"/mupdf-1x/*.png > "$OUT/render-sha256.txt"
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          base=Path("evidence/phase1dc-0.1.22")
+          for name in ["poppler-1x/page-1.png","poppler-1x/page-2.png","poppler-4x/page-1.png","poppler-4x/page-2.png","mupdf-1x/page-2.png"]:
+              src=base/name
+              (base/(name.replace("/","-")+".b64.txt")).write_text(base64.b64encode(src.read_bytes()).decode("ascii"))
+          PY
+
+      - name: Run real Android 0.1.22 freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin) 2>&1 | tee evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug) 2>&1 | tee evidence/assemble-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/assemble-debug.log
+          (cd tcs-src && gradle --no-daemon :app:bundleDebug) 2>&1 | tee evidence/bundle-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/bundle-debug.log
+
+          APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+          AAB="$(find tcs-src/app/build/outputs/bundle/debug -type f -name '*.aab' | head -n 1)"
+          test -s "$APK" && test -s "$AAB"
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\." evidence/aab-jar-verify.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='22'.*versionName='0.1.22'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
+          tar -cJf evidence/TerritoryCardStudio-Android-0.1.22-phase1dc-source.tar.xz -C tcs-src .
+          sha256sum evidence/TerritoryCardStudio-Android-0.1.22-phase1dc-source.tar.xz > evidence/source-package.sha256
+
+          cat > evidence/status.txt <<'EOF'
+          PHASE_1D_C_BUILD_FREEZE=PASS_PENDING_MODEL_VISUAL_REVIEW
+          TELEPHONE_INVENTORY_CONTRACT=PASS
+          TELEPHONE_FAIL_CLOSED_MUTATIONS=19
+          TELEPHONE_CHANGE_TRACKING=PASS
+          VERIFIED_AND_UNAVAILABLE_PHONE_STATES=PASS
+          AUTHORIZED_SOURCE_GATE=PASS
+          ADDRESS_PHONE_BINDING_GATE=PASS
+          DUPLICATE_ADDRESS_PHONE_GATE=PASS
+          TELEPHONE_PAGE2_DETERMINISTIC=PASS
+          PAGE_COUNT=2
+          PAGE_ORDER=FRONT_MAP,BACK_PHONE_LIST
+          FRONT_PREFIX_EXACT=PASS
+          PHASE_1D_B_BYTE_REGRESSION=PASS
+          CORE_GRADLE_TEST=PASS
+          APP_COMPILE=PASS
+          ASSEMBLE_DEBUG=PASS
+          BUNDLE_DEBUG=PASS
+          APK_V2_SIGNATURE=PASS
+          AAB_JAR_VERIFY=PASS
+          APK_ZIP_INTEGRITY=PASS
+          AAB_ZIP_INTEGRITY=PASS
+          VERSION_CODE=22
+          VERSION_NAME=0.1.22
+          TARGET_SDK=37
+          RESERVED_TERRITORY_PDF_SWEEP=0
+          NEXT_REQUIRED_GATE=ACTUAL_TELEPHONE_PAGE2_1X_4X_MODEL_VISUAL_REVIEW
+          EOF
+
+      - name: Commit inspectable Phase 1D-C evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "territory-card-studio-ci"
+          git config user.email "territory-card-studio-ci@users.noreply.github.com"
+          mkdir -p phase1dc-evidence
+          cp "evidence/phase1dc-0.1.22/Territory - 996Ta - TELEPHONE - NOT FOR FIELD USE.pdf" phase1dc-evidence/
+          cp evidence/phase1dc-0.1.22/poppler-1x/page-1.png phase1dc-evidence/front-1x.png
+          cp evidence/phase1dc-0.1.22/poppler-1x/page-2.png phase1dc-evidence/back-1x.png
+          cp evidence/phase1dc-0.1.22/poppler-4x/page-1.png phase1dc-evidence/front-4x.png
+          cp evidence/phase1dc-0.1.22/poppler-4x/page-2.png phase1dc-evidence/back-4x.png
+          cp evidence/phase1dc-0.1.22/mupdf-1x/page-2.png phase1dc-evidence/back-mupdf-1x.png
+          cp evidence/phase1dc-0.1.22/*.b64.txt phase1dc-evidence/
+          cp evidence/phase1dc-0.1.22/pdf-sha256.txt phase1dc-evidence/
+          cp evidence/phase1dc-0.1.22/semantic-check.txt phase1dc-evidence/
+          cp evidence/phase1dc-0.1.22/generator.log phase1dc-evidence/
+          cp evidence/phase1dc-source-sha256.txt phase1dc-evidence/
+          cp evidence/telephone-regression.sha256 phase1dc-evidence/
+          cp evidence/phase1db-byte-regression.txt phase1dc-evidence/
+          cp evidence/core-test.sha256 phase1dc-evidence/
+          cp evidence/apk.sha256 phase1dc-evidence/
+          cp evidence/aab.sha256 phase1dc-evidence/
+          cp evidence/apk-badging.txt phase1dc-evidence/
+          cp evidence/apk-signature.txt phase1dc-evidence/
+          cp evidence/aab-jar-verify.txt phase1dc-evidence/
+          cp evidence/extracted-source-manifest.sha256 phase1dc-evidence/
+          cp evidence/source-package.sha256 phase1dc-evidence/
+          cp evidence/status.txt phase1dc-evidence/
+          git add phase1dc-evidence
+          if ! git diff --cached --quiet; then
+            git commit -m "Add Phase 1D-C Telephone Page 2 evidence"
+            git push origin HEAD:tcs-phase1d-020-work
+          fi
+
+      - name: Upload Phase 1D-C freeze evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1d-c-022-build-evidence
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
