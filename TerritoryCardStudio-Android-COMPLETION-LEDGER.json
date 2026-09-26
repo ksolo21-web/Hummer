@@ -8,7 +8,7 @@
     "1B_1_split_detail": "PASSED",
     "1B_2_full_plus_detail": "PASSED",
     "1B_3_site_building_assignment": "PASSED",
-    "1C_multi_label_300_301": "OPEN",
+    "1C_multi_label_300_301": "IN_PROGRESS",
     "1D_front_back_pdf_semantics": "OPEN_DEPENDS_1C",
     "1E_final_renderer_parity": "OPEN_DEPENDS_1D",
     "2_production_ui": "NOT_STARTED_DEPENDS_PHASE1",
@@ -43,9 +43,9 @@
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
-  "last_completed_package": "0.1.18-phase1b3-android-build-freeze-pass",
+  "last_completed_package": "phase1c-recovery-and-gap-isolation",
   "next_open_gate": "Phase 1C - multi-label single-footprint 300/301 preservation",
-  "next_bounded_task": "Phase 1C only: implement and validate multi-label 300/301 preservation with safe regression fixtures and keep reserved commissioning territories untouched.",
+  "next_bounded_task": "Phase 1C only: preserve multiple verified 300/301 labels on one physical footprint through adapter -> render spec -> PDF without flattening, guessed placement, ambiguity, or residential-footprint leakage; use synthetic regression only and run targeted validation before freeze.",
   "reserved_commissioning_territories": [
     "250T",
     "257A",
@@ -55,8 +55,8 @@
     "347TA"
   ],
   "reserved_commissioning_status": "UNTOUCHED_UNAPPROVED",
-  "phase_milestone_before": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
-  "phase_milestone_after": "Phase 1B-3 PASSED",
+  "phase_milestone_before": "Phase 1C OPEN",
+  "phase_milestone_after": "Phase 1C IN_PROGRESS",
   "freeze_evidence": {
     "run_id": 36247248703,
     "head_sha": "50bd9cb6c27bfb56cec49135a92a0730343b81e9",
@@ -120,5 +120,13 @@
     "aab_zip_integrity": "PASS",
     "reserved_territory_pdf_sweep": 0,
     "status": "PASS"
+  },
+  "phase1c_in_progress": {
+    "branch": "tcs-phase1c-019-work",
+    "recovered_from": "tcs-phase1b3-018-state-freeze@68073f0d77067d6c8688e330c9f65b9712473f9f",
+    "isolated_gap": "single-footprint multi-label rendering is still blocked by explicit Phase 1C guards in ProductionRenderModelAdapter and CandidatePdfRenderer",
+    "authoritative_data_available": "BuildingGeometry.sourceMembers + BuildingGeometry.labelItems with explicit centers/origins",
+    "reserved_territory_pdf_sweep": 0,
+    "status": "IN_PROGRESS_NOT_PASSED"
   }
 }
