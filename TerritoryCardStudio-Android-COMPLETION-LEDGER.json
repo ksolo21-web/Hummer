@@ -2,13 +2,13 @@
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
   "current_phase": 1,
-  "current_checkpoint": "0.1.18-site-building-assignment-candidate",
+  "current_checkpoint": "0.1.18-site-building-assignment",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
     "1B_2_full_plus_detail": "PASSED",
-    "1B_3_site_building_assignment": "OPEN_FREEZE_PENDING",
-    "1C_multi_label_300_301": "OPEN_DEPENDS_1B",
+    "1B_3_site_building_assignment": "PASSED",
+    "1C_multi_label_300_301": "OPEN",
     "1D_front_back_pdf_semantics": "OPEN_DEPENDS_1C",
     "1E_final_renderer_parity": "OPEN_DEPENDS_1D",
     "2_production_ui": "NOT_STARTED_DEPENDS_PHASE1",
@@ -41,11 +41,11 @@
     "build_freeze_run_id": 36247248703
   },
   "reopened_defects": [],
-  "blocker_fingerprint": "phase1b3_freeze__part06_transport_plus2chars__exact_patch_recovery_queued__source_semantics_unchanged",
-  "blocker_route_attempts": 2,
-  "last_completed_package": "0.1.18-phase1b3-functional-validation-and-ci-handoff",
-  "next_open_gate": "Phase 1B-3 - Android build freeze for site_building_assignment",
-  "next_bounded_task": "Inspect run 36253519124 and complete only the Phase 1B-3 real Android freeze. Do not start Phase 1C until 1B-3 is durably PASSED.",
+  "blocker_fingerprint": null,
+  "blocker_route_attempts": 0,
+  "last_completed_package": "0.1.18-phase1b3-android-build-freeze-pass",
+  "next_open_gate": "Phase 1C - multi-label single-footprint 300/301 preservation",
+  "next_bounded_task": "Phase 1C only: implement and validate multi-label 300/301 preservation with safe regression fixtures and keep reserved commissioning territories untouched.",
   "reserved_commissioning_territories": [
     "250T",
     "257A",
@@ -55,8 +55,8 @@
     "347TA"
   ],
   "reserved_commissioning_status": "UNTOUCHED_UNAPPROVED",
-  "phase_milestone_before": "Phase 1B-3 OPEN",
-  "phase_milestone_after": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
+  "phase_milestone_before": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
+  "phase_milestone_after": "Phase 1B-3 PASSED",
   "freeze_evidence": {
     "run_id": 36247248703,
     "head_sha": "50bd9cb6c27bfb56cec49135a92a0730343b81e9",
@@ -83,8 +83,10 @@
     "ci_attempts": [
       36250282037,
       36253392502,
-      36253519124
+      36253519124,
+      36253840144
     ],
-    "ci_current_state": "QUEUED_EXACT_PATCH_RECOVERY"
+    "ci_current_state": "PASS",
+    "status": "PASSED"
   }
 }

@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.1.18-site-building-assignment-candidate",
-  "milestone": "phase-1b3-site-building-assignment-functional-pass-ci-freeze-pending",
-  "status": "PHASE_1B3_FUNCTIONAL_VALIDATION_PASSED_CI_FREEZE_PENDING",
-  "phase_milestone_before": "Phase 1B-3 OPEN",
-  "phase_milestone_after": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
+  "version": "0.1.18-site-building-assignment",
+  "milestone": "phase-1b3-site-building-assignment-passed",
+  "status": "PHASE_1B3_PASSED_READY_1C",
+  "phase_milestone_before": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
+  "phase_milestone_after": "Phase 1B-3 PASSED",
   "scope_completed": [
     "implemented explicit site/building assignment diagram region inside the locked R48 map panel",
     "implemented optional verified access inset with explicit source bounds to destination bounds mapping",
@@ -20,7 +20,8 @@
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
-    "1B_2_full_plus_detail"
+    "1B_2_full_plus_detail",
+    "1B_3_site_building_assignment"
   ],
   "validation": {
     "system_kotlin_full_werror_jvm17": "PASS",
@@ -131,26 +132,54 @@
       {
         "run_id": 36253519124,
         "head_sha": "c2aaac4c3f43ac9e834e93b52ae4c9e08454a014",
-        "result": "QUEUED_EXACT_PATCH_RECOVERY"
+        "result": "CORE_TEST_BUILD_SUCCESSFUL_EVIDENCE_MARKER_NOT_VISIBLE"
+      },
+      {
+        "run_id": 36253840144,
+        "head_sha": "7018f50252b20ab4d63c954bbc1831deaa47cf33",
+        "result": "PASS"
       }
     ],
-    "phase1b3_android_build_freeze": "PENDING",
-    "phase1b3_reserved_candidate_pdfs_generated": 0
+    "phase1b3_android_build_freeze": "PASS",
+    "phase1b3_reserved_candidate_pdfs_generated": 0,
+    "phase1b3_ci_workflow_run_id": 36253840144,
+    "phase1b3_ci_head_sha": "7018f50252b20ab4d63c954bbc1831deaa47cf33",
+    "phase1b3_ci_artifact_id": 10909568411,
+    "phase1b3_ci_artifact_zip_sha256": "029d24f7a7e54192400ce637004c8b7799f140e6a9ea76d32aaedd2ec0c8ed2d",
+    "phase1b3_apk_sha256": "d948bf76152d38fcc2c38f942d9835dd0f9454391dff633ee176b49930a689a3",
+    "phase1b3_aab_sha256": "311208db1e2c248bb65db06f383c94c195cacf60e55f9fc1b8c2b32a99c1c36a",
+    "phase1b3_extracted_source_manifest_sha256": "903f58cab7984d18dfc51d37e9553b4aa2ab581a042139e5e82d50d6ef36cf57",
+    "phase1b3_core_test_log_sha256": "49e7d09d64c091361012b65ac22f40260fc855cead69a4d0259979f37d2a2e8f",
+    "phase1b3_app_compile_log_sha256": "e75a4c42022569b8f8c79a1e4178930c32b0fc3845658dc0b4540ba48ca5bd3f",
+    "phase1b3_assemble_debug_log_sha256": "0b2c674010c529e3d98cc5031f66f6ec121dcaee90f64776d116f40d780f7cad",
+    "phase1b3_bundle_debug_log_sha256": "0b7198dfd2b13e62be59b6f614339e54178ec224e139fef01d6732ad6bd1564f",
+    "phase1b3_core_gradle_test": "PASS",
+    "phase1b3_app_compile_debug_kotlin": "PASS",
+    "phase1b3_assemble_debug": "PASS",
+    "phase1b3_bundle_debug": "PASS",
+    "phase1b3_apk_v2_signature": "PASS",
+    "phase1b3_aab_jar_verify": "PASS",
+    "phase1b3_apk_zip_integrity": "PASS",
+    "phase1b3_aab_zip_integrity": "PASS",
+    "phase1b3_version_code": 18,
+    "phase1b3_version_name": "0.1.18",
+    "phase1b3_target_sdk": 37,
+    "phase1b3_overlay_transport_repair": "part06-remove-adjacent-pair@12000"
   },
   "reopened_defects": [],
-  "blocker_fingerprint": "phase1b3_freeze__part06_transport_plus2chars__exact_patch_recovery_queued__source_semantics_unchanged",
-  "blocker_route_attempts": 2,
+  "blocker_fingerprint": null,
+  "blocker_route_attempts": 0,
   "internal_review": {
     "type": "internal",
-    "score": 9,
-    "milestone_approval": false,
+    "score": 9.8,
+    "milestone_approval": true,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 1B-3 implementation, targeted validators and visual evidence are green locally; mandatory real Android 0.1.18 APK/AAB freeze evidence is still pending. CI failures so far are transport-only and occurred before compilation."
+    "reason": "Phase 1B-3 geometry/rendering and real Android 0.1.18 freeze gates are all green; later app phases remain open."
   },
-  "last_completed_package": "0.1.18-phase1b3-functional-validation-and-ci-handoff",
-  "next_open_gate": "Phase 1B-3 - Android build freeze for site_building_assignment",
-  "next_bounded_task": "Phase 1B-3 only: inspect queued run 36253519124. The run may proceed only if deterministic two-character transport repair reconstructs the exact locked overlay SHA-256 85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946 and all five modified file hashes match. Then require :core:test, :app:compileDebugKotlin, :app:assembleDebug, :app:bundleDebug, APK v2, AAB JAR, ZIP, versionCode 18/versionName 0.1.18/targetSdk37 and artifact SHA-256 checks. Freeze 1B-3 as PASSED only if every mandatory gate passes; otherwise record the exact new blocker and switch route. Do not start 1C early.",
+  "last_completed_package": "0.1.18-phase1b3-android-build-freeze-pass",
+  "next_open_gate": "Phase 1C - multi-label single-footprint 300/301 preservation",
+  "next_bounded_task": "Phase 1C only: preserve authoritative multi-label 300/301 single-footprint bindings, fail closed on ambiguity or residential leakage, use safe regression fixtures only, run targeted validators and 1x/4x review, and do not touch the six reserved commissioning territories.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "source_package": "TerritoryCardStudio-Android-0.1.17-full-plus-detail-renderer-CANDIDATE.zip",
   "source_package_sha256": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7"

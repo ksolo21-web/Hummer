@@ -1,7 +1,7 @@
 {
   "project": "Territory Card Studio Android",
-  "phase": "1B-2",
-  "purpose": "authorized CI build freeze staging",
+  "phase": "1B-3",
+  "purpose": "completed Android build freeze for site_building_assignment",
   "repository": "ksolo21-web/Hummer",
   "branch": "tcs-phase1b2-017-build-freeze",
   "base_main_sha": "1f8fbad51db29a0c7b0d8382cd850f28d9ae584b",
@@ -12,10 +12,26 @@
   "build_source_tar_xz_sha256": "795d120db0685238f68f834a65f4cd44682b4cddb291ec1826e3fd1b80f2ef1e",
   "build_source_tar_xz_size_bytes": 772588,
   "build_source_parts": [
-    {"name":"part-01.bin","size_bytes":193147,"sha256":"2c321e8a228d812310439f18f4b440096c1a096baf0fadab80bff02db21f2366"},
-    {"name":"part-02.bin","size_bytes":193147,"sha256":"9cc8066c2e9115177c33f4e5bee3c90396778af3b285c52dfcf3f837f45d7d4e"},
-    {"name":"part-03.bin","size_bytes":193147,"sha256":"294a6e734994c8937e070107bcce3f25744d1b6a2325c5ce1e65660dd73a94a1"},
-    {"name":"part-04.bin","size_bytes":193147,"sha256":"c623561846b710827c7d30d9f3b8f891bfccda48f28c56bfcf44dbd95036c157"}
+    {
+      "name": "part-01.bin",
+      "size_bytes": 193147,
+      "sha256": "2c321e8a228d812310439f18f4b440096c1a096baf0fadab80bff02db21f2366"
+    },
+    {
+      "name": "part-02.bin",
+      "size_bytes": 193147,
+      "sha256": "9cc8066c2e9115177c33f4e5bee3c90396778af3b285c52dfcf3f837f45d7d4e"
+    },
+    {
+      "name": "part-03.bin",
+      "size_bytes": 193147,
+      "sha256": "294a6e734994c8937e070107bcce3f25744d1b6a2325c5ce1e65660dd73a94a1"
+    },
+    {
+      "name": "part-04.bin",
+      "size_bytes": 193147,
+      "sha256": "c623561846b710827c7d30d9f3b8f891bfccda48f28c56bfcf44dbd95036c157"
+    }
   ],
   "expected_toolchain": {
     "jdk": "17",
@@ -30,5 +46,17 @@
     ":app:assembleDebug",
     ":app:bundleDebug"
   ],
-  "reserved_territories_touched": false
+  "reserved_territories_touched": false,
+  "status": "PASS",
+  "overlay_patch_sha256": "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946",
+  "overlay_transport_repair": "part06-remove-adjacent-pair@12000",
+  "run_id": 36253840144,
+  "head_sha": "7018f50252b20ab4d63c954bbc1831deaa47cf33",
+  "artifact_id": 10909568411,
+  "artifact_zip_sha256": "029d24f7a7e54192400ce637004c8b7799f140e6a9ea76d32aaedd2ec0c8ed2d",
+  "apk_sha256": "d948bf76152d38fcc2c38f942d9835dd0f9454391dff633ee176b49930a689a3",
+  "aab_sha256": "311208db1e2c248bb65db06f383c94c195cacf60e55f9fc1b8c2b32a99c1c36a",
+  "version_code": 18,
+  "version_name": "0.1.18",
+  "target_sdk": 37
 }
