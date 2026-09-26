@@ -6,7 +6,7 @@
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
-    "1B_2_full_plus_detail": "OPEN_CI_FREEZE_ROUTE_STAGED",
+    "1B_2_full_plus_detail": "OPEN_FREEZE_PENDING",
     "1B_3_site_building_assignment": "OPEN_DEPENDS_1B2",
     "1C_multi_label_300_301": "OPEN_DEPENDS_1B",
     "1D_front_back_pdf_semantics": "OPEN_DEPENDS_1C",
@@ -32,22 +32,15 @@
     "render_1x": "e4d71bd930a4f88b8291fcb4129cd8f740d553f97b92495db9bc55a6d3106d4d",
     "render_4x": "53a544b768d0382eba417782828014e06ae671049e5433318526c72b37727844",
     "source_package": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7",
-    "ci_build_source_tar_xz": "f3d0ede6da0b7e5c358988321cd374a69672fc4a38861d1f22f1dff132154484"
+    "ci_build_source_tar_xz": "795d120db0685238f68f834a65f4cd44682b4cddb291ec1826e3fd1b80f2ef1e"
   },
   "reopened_defects": [],
-  "blocker_fingerprint": "phase1b2_freeze__local_toolchain_route_exhausted__authorized_ci_route_staged__source_0.1.17_unchanged",
-  "blocker_route_attempts": 2,
-  "last_completed_package": "0.1.17-phase1b2-authorized-ci-freeze-route-staging",
+  "blocker_fingerprint": "phase1b2_freeze__deterministic_source_pinned__environment_pending__source_0.1.17_unchanged",
+  "blocker_route_attempts": 3,
+  "last_completed_package": "0.1.17-phase1b2-build-freeze-source-manifest-and-handoff-hardening",
   "next_open_gate": "Phase 1B-2 - Android build freeze for full_plus_detail",
-  "next_bounded_task": "Finish deterministic source handoff to the dedicated CI branch and run pinned JDK17/Gradle9.6/API37/BuildTools36.0.0 core test, app compile, APK/AAB builds, signatures, ZIP integrity, version checks and hashes. Do not start 1B-3 in the same run.",
-  "reserved_commissioning_territories": [
-    "250T",
-    "257A",
-    "297",
-    "298A",
-    "299",
-    "347TA"
-  ],
+  "next_bounded_task": "Run the exact pinned Android build freeze when the required toolchain is materialized. Do not start 1B-3 before 1B-2 passes.",
+  "reserved_commissioning_territories": ["250T","257A","297","298A","299","347TA"],
   "reserved_commissioning_status": "UNTOUCHED_UNAPPROVED",
   "ci_freeze_route": {
     "repository": "ksolo21-web/Hummer",
