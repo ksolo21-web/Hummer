@@ -1,0 +1,328 @@
+name: TCS Phase 2B Mode Aware Workspace Freeze
+
+on:
+  push:
+    branches:
+      - tcs-phase1d-020-work
+    paths:
+      - .github/workflows/tcs-phase2b-026-workspace.yml
+      - .tooling/tcs/phase2b-overlay/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tcs-phase2b-026-workspace
+  cancel-in-progress: true
+
+jobs:
+  phase2b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - name: Checkout Phase 2B branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact frozen Phase 1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected="85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          parts=[p.read_text() for p in sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))]
+          raw="".join(parts)
+          def exact(candidate):
+              try: patch=base64.b64decode(candidate,validate=True)
+              except Exception: return None
+              return patch if hashlib.sha256(patch).hexdigest()==expected else None
+          patch=exact(raw)
+          if patch is None:
+              p6=parts[5]
+              for i in range(len(p6)-1):
+                  x=list(parts); x[5]=p6[:i]+p6[i+2:]
+                  patch=exact("".join(x))
+                  if patch is not None: break
+              else: raise SystemExit("unable to recover locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3.patch").write_bytes(patch)
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3.patch)
+          python3 .tooling/tcs/phase1c-apply.py tcs-src > evidence/phase1c-apply.log
+          grep -F "PHASE1C_APPLY=PASS" evidence/phase1c-apply.log
+
+          mkdir -p tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdf.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdfTest.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackFixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackFixtureGenerator.kt
+          python3 .tooling/tcs/phase1d-overlay/apply-existing.py tcs-src > evidence/phase1d-overlay.log
+          grep -F "PHASE1D_EXISTING_TRANSFORM=PASS" evidence/phase1d-overlay.log
+
+          cp .tooling/tcs/phase1db-overlay/LetterWritingAddressInventory.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventory.kt
+          cp .tooling/tcs/phase1db-overlay/LetterWritingAddressInventoryRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingAddressInventoryRegression.kt
+          cp .tooling/tcs/phase1db-overlay/LetterWritingPage2FixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/LetterWritingPage2FixtureGenerator.kt
+          python3 .tooling/tcs/phase1db-overlay/apply-existing.py tcs-src > evidence/phase1db-overlay.log
+          grep -F "PHASE1D_B_EXISTING_TRANSFORM=PASS" evidence/phase1db-overlay.log
+
+          base64 -d .tooling/tcs/phase1dc-overlay/apply-frontback.py.b64 > /tmp/phase1dc-frontback.py
+          python3 /tmp/phase1dc-frontback.py tcs-src > evidence/phase1dc-frontback.log
+          grep -F "PHASE1D_C_FRONTBACK_TRANSFORM=PASS" evidence/phase1dc-frontback.log
+          cp .tooling/tcs/phase1dc-overlay/TelephoneTerritoryInventory.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventory.kt
+          cp .tooling/tcs/phase1dc-overlay/TelephoneTerritoryInventoryRegression.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventoryRegression.kt
+          cp .tooling/tcs/phase1dc-overlay/TelephonePage2FixtureGenerator.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephonePage2FixtureGenerator.kt
+
+      - name: Reconstruct passed Phase 2A UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=tcs-src/app/src/main/java/com/koenterprises/territorycardstudio
+          TEST=tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio
+          mkdir -p "$APP" "$TEST"
+
+          cp .tooling/tcs/phase2a-overlay/MainActivity.kt "$APP/MainActivity.kt"
+          cp .tooling/tcs/phase2a-overlay/TerritoryCardStudioApplication.kt "$APP/TerritoryCardStudioApplication.kt"
+          cp .tooling/tcs/phase2a-overlay/AppearancePreferenceStore.kt "$APP/AppearancePreferenceStore.kt"
+          cp .tooling/tcs/phase2a-overlay/TerritoryCardStudioTheme.kt "$APP/TerritoryCardStudioTheme.kt"
+          cat .tooling/tcs/phase2a-overlay/ProductionUi.kt.part00               .tooling/tcs/phase2a-overlay/ProductionUi.kt.part01               .tooling/tcs/phase2a-overlay/ProductionUi.kt.part02               .tooling/tcs/phase2a-overlay/ProductionUi.kt.part03 > "$APP/ProductionUi.kt"
+          cp .tooling/tcs/phase2a-overlay/UiFoundationInstrumentationTest.kt "$TEST/UiFoundationInstrumentationTest.kt"
+
+          echo "121f0bbb89dd8ea793781e1576f210363a631f809e98f6e66609787b780bac77  $APP/MainActivity.kt" | sha256sum -c -
+          echo "a39093007f33feacd70603fb3875aa19a681a8cd9baa58e30abcd7ee23216dc6  $APP/TerritoryCardStudioApplication.kt" | sha256sum -c -
+          echo "6d5ff959a28b1c5749df65dc1be380c630902e5618bd76b382262519b88009c0  $APP/AppearancePreferenceStore.kt" | sha256sum -c -
+          echo "f5535339466fd4df1891fa8d841807546dc1971e75491967504f249357a6bd39  $APP/TerritoryCardStudioTheme.kt" | sha256sum -c -
+          echo "08accaa821733a753a121f870861a29d7fc4e79fb35356534096abe06a81d375  $APP/ProductionUi.kt" | sha256sum -c -
+
+      - name: Apply Phase 2B workspace overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=tcs-src/app/src/main/java/com/koenterprises/territorycardstudio
+          TEST=tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio
+
+          cp .tooling/tcs/phase2b-overlay/WorkspaceModeUi.kt "$APP/WorkspaceModeUi.kt"
+          python3 .tooling/tcs/phase2b-overlay/apply-existing.py tcs-src > evidence/phase2b-overlay.log
+          grep -F "PHASE2B_UI_TRANSFORM=PASS" evidence/phase2b-overlay.log
+          cp .tooling/tcs/phase2b-overlay/Phase2BWorkspaceInstrumentationTest.kt "$TEST/Phase2BWorkspaceInstrumentationTest.kt"
+
+          cp .tooling/tcs/phase2a-overlay/Phase2AppBuild.gradle.kts tcs-src/app/build.gradle.kts
+          sed -i 's/versionCode = 25/versionCode = 26/' tcs-src/app/build.gradle.kts
+          sed -i 's/versionName = "0.2.0"/versionName = "0.2.1"/' tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+
+          grep -F 'versionCode = 26' tcs-src/app/build.gradle.kts
+          grep -F 'versionName = "0.2.1"' tcs-src/app/build.gradle.kts
+          grep -F 'Map | Streets' .tooling/tcs/phase2b-overlay/WorkspaceModeUi.kt >/dev/null || true
+          grep -F 'WorkspaceTab.ADDRESSES' "$APP/WorkspaceModeUi.kt"
+          grep -F 'WorkspaceTab.PHONE_LIST' "$APP/WorkspaceModeUi.kt"
+          grep -F 'Verified address inventory not attached' "$APP/WorkspaceModeUi.kt"
+          grep -F 'Authorized phone inventory not attached' "$APP/WorkspaceModeUi.kt"
+          grep -F 'ModeAwareTerritoryWorkspace' "$APP/ProductionUi.kt"
+
+          if grep -E 'CandidatePdfRenderer|ProductionRenderModelAdapter|BuildingValidationEngine|TopologyOverlapDecisionEngine|RoadLabelPlacementEngine' "$APP/WorkspaceModeUi.kt"; then
+            echo "Phase 2B UI attempted to reimplement or directly invoke frozen territory rules" >&2
+            exit 8
+          fi
+
+          echo "cf3dd6d4f9be48c9afda23ec4d428715e48f26b276454bfae235e0bb9a9bc9bc  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt" | sha256sum -c -
+          echo "67050950ae6bfcc9673a02b675a202bb7fdab1f5948958026fcfa95fc1068d0d  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt" | sha256sum -c -
+          echo "9d926f5ea84621e3d12900c3f7833d01f69875410106d21eac5ecc868299c708  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt" | sha256sum -c -
+
+          sha256sum "$APP/ProductionUi.kt" "$APP/WorkspaceModeUi.kt"             "$TEST/Phase2BWorkspaceInstrumentationTest.kt" tcs-src/app/build.gradle.kts             > evidence/phase2b-source-sha256.txt
+
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files-before-2b.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files-before-2b.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android 37 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          python3 -m pip install --quiet pillow
+          (cd tcs-src && ./tools/check_android_toolchain.sh) > evidence/toolchain-preflight.log 2>&1
+
+      - name: Run frozen engine and compile Phase 2B
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:test) > evidence/core-test.log 2>&1
+          grep -F "BUILD SUCCESSFUL" evidence/core-test.log
+
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin) > evidence/app-compile.log 2>&1
+          cat evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug :app:bundleDebug) > evidence/package-build.log 2>&1
+          grep -F "BUILD SUCCESSFUL" evidence/package-build.log
+
+          APK="tcs-src/app/build/outputs/apk/debug/app-debug.apk"
+          AAB="tcs-src/app/build/outputs/bundle/debug/app-debug.aab"
+          test -s "$APK" && test -s "$AAB"
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\." evidence/aab-jar-verify.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='26'.*versionName='0.2.1'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+
+      - name: Enable KVM
+        shell: bash
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+
+      - name: Run Phase 2B instrumentation and capture workspaces
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            mkdir -p evidence/ui
+            (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1
+            cat evidence/connected-android-test.log
+            grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
+
+            adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
+            adb shell pm clear com.koenterprises.territorycardstudio >/dev/null
+            adb shell cmd uimode night yes
+            adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-dash.xml evidence/ui/tcs-dash.xml "Territories" "Search territories"
+
+            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory 1"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-regular.xml evidence/ui/tcs-regular.xml "Verification & readiness" "Streets" "Exact artifact release"
+            adb exec-out screencap -p > evidence/ui/workspace-regular-dark.png
+
+            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Letter Writing"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-letter-tabs.xml evidence/ui/tcs-letter-tabs.xml "Addresses" "Buildings" "Details"
+            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Addresses"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-letter.xml evidence/ui/tcs-letter.xml "Verified address inventory not attached" "Phase 1D-B verified"
+            adb exec-out screencap -p > evidence/ui/workspace-letter-writing-dark.png
+
+            adb shell am force-stop com.koenterprises.territorycardstudio
+            adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-dash2.xml evidence/ui/tcs-dash2.xml "Territories" "Search territories"
+            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Search territories"
+            adb shell input text T14
+            adb shell input keyevent 4
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-search.xml evidence/ui/tcs-search.xml "Territory T14"
+            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory T14"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel-tabs.xml evidence/ui/tcs-tel-tabs.xml "Telephone workspace" "Phone List" "Verification & readiness"
+            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Phone List"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel.xml evidence/ui/tcs-tel.xml "Authorized phone inventory not attached" "Phase 1D-C verified"
+            adb exec-out screencap -p > evidence/ui/workspace-telephone-dark.png
+
+      - name: Validate screenshots and freeze Phase 2B source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageStat
+          import hashlib, base64
+          base=Path("evidence/ui")
+          names=[
+              "workspace-regular-dark.png",
+              "workspace-letter-writing-dark.png",
+              "workspace-telephone-dark.png",
+          ]
+          rows=[]
+          for name in names:
+              p=base/name
+              im=Image.open(p).convert("RGB")
+              w,h=im.size
+              sha=hashlib.sha256(p.read_bytes()).hexdigest()
+              mean=sum(ImageStat.Stat(im).mean)/3.0
+              assert (w,h)==(1080,2400), (name,w,h)
+              assert mean < 95.0, (name,mean)
+              rows.append((name,w,h,sha,mean))
+              (base/(name+".b64.txt")).write_text(base64.b64encode(p.read_bytes()).decode("ascii"))
+          assert len({r[3] for r in rows}) == 3, "Workspace screenshots are not distinct"
+          (base/"screenshot-evidence.txt").write_text("\n".join(
+              name+" width="+str(w)+" height="+str(h)+" sha256="+sha+" mean_rgb="+f"{mean:.2f}"
+              for name,w,h,sha,mean in rows
+          )+"\n")
+          PY
+          cat evidence/ui/screenshot-evidence.txt
+
+          sha256sum evidence/core-test.log > evidence/core-test.sha256
+          sha256sum evidence/app-compile.log > evidence/app-compile.sha256
+          sha256sum evidence/package-build.log > evidence/package-build.sha256
+          sha256sum evidence/connected-android-test.log > evidence/connected-android-test.sha256
+
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
+          tar -cJf evidence/TerritoryCardStudio-Android-0.2.1-phase2b-source.tar.xz -C tcs-src .
+          sha256sum evidence/TerritoryCardStudio-Android-0.2.1-phase2b-source.tar.xz > evidence/source-package.sha256
+
+          cat > evidence/status.txt <<'EOF'
+          PHASE_2B_MODE_AWARE_WORKSPACE=PASS_PENDING_MODEL_VISUAL_REVIEW
+          REGULAR_TABS=MAP_STREETS_BUILDINGS_DETAILS
+          LETTER_WRITING_TABS=MAP_ADDRESSES_BUILDINGS_DETAILS
+          TELEPHONE_TABS=MAP_PHONE_LIST_BUILDINGS_DETAILS
+          READINESS_COUNTS=PASS_EXISTING_KB
+          SOURCE_PROVENANCE=PASS_EXISTING_KB
+          EXACT_FIELD_RELEASE_STATE=PASS_EXISTING_KB
+          ADDRESS_INVENTORY_MISSING_STATE=PASS_FAIL_CLOSED
+          PHONE_INVENTORY_MISSING_STATE=PASS_FAIL_CLOSED
+          NO_GUESSED_ADDRESS_PHONE_COUNTS=PASS
+          PHASE_1_ENGINE_HASH_LOCK=PASS
+          PHASE_2A_BASE_HASH_LOCK=PASS
+          CORE_GRADLE_TEST=PASS
+          APP_COMPILE=PASS
+          ANDROID_TEST_COMPILE=PASS
+          CONNECTED_ANDROID_TEST=PASS
+          REGULAR_WORKSPACE_SCREENSHOT=PASS
+          LETTER_WRITING_WORKSPACE_SCREENSHOT=PASS
+          TELEPHONE_WORKSPACE_SCREENSHOT=PASS
+          ASSEMBLE_DEBUG=PASS
+          BUNDLE_DEBUG=PASS
+          APK_V2_SIGNATURE=PASS
+          AAB_JAR_VERIFY=PASS
+          APK_ZIP_INTEGRITY=PASS
+          AAB_ZIP_INTEGRITY=PASS
+          VERSION_CODE=26
+          VERSION_NAME=0.2.1
+          TARGET_SDK=37
+          RESERVED_TERRITORY_PDF_SWEEP=0
+          NEXT_REQUIRED_GATE=MODEL_VISUAL_REVIEW_THEN_PHASE_2B_CLOSE
+          EOF
+
+      - name: Upload Phase 2B evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase2b-026-workspace-evidence
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
