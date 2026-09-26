@@ -1,16 +1,17 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.1.20-phase1d-build-freeze-pending-overflow-runtime",
-  "milestone": "phase-1d-canonical-front-back-in-progress",
-  "status": "PHASE_1D_IN_PROGRESS_RUNTIME_OVERFLOW_EVIDENCE_REQUIRED",
-  "phase_milestone_before": "Phase 1D IN_PROGRESS",
-  "phase_milestone_after": "Phase 1D IN_PROGRESS",
+  "version": "0.1.20-phase1d-a-canonical-two-page-packet",
+  "milestone": "phase-1d-a-core-canonical-two-page-packet-passed",
+  "status": "PHASE_1D_A_PASSED_READY_1D_B",
+  "phase_milestone_before": "Phase 1D-A IN_PROGRESS_RUNTIME_OVERFLOW_EVIDENCE_REQUIRED",
+  "phase_milestone_after": "Phase 1D-A PASSED / Phase 1D-B OPEN",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
     "1B_2_full_plus_detail",
     "1B_3_site_building_assignment",
-    "1C_multi_label_300_301"
+    "1C_multi_label_300_301",
+    "1D_A_core_canonical_two_page_packet"
   ],
   "validation": {
     "shared_authority_hashes": "19/19 PASS",
@@ -23,7 +24,7 @@
     "phase1c_pdf_sha256": "6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
     "phase1c_source_package_sha256": "47d25b73b60bf4bcce8d6282690c18c62af5c466ba378f863d3ffcb19a7e6698",
     "phase1d_semantics_locked": "PASS",
-    "phase1d_build_freeze": "PASS_PENDING_ONE_TARGETED_RUNTIME_GATE",
+    "phase1d_build_freeze": "PASS",
     "phase1d_front_pdf_sha256": "d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133",
     "phase1d_combined_pdf_sha256": "140170231e7bcff2e799725758b8f8d9a3a5949de0d0eaa862039dd06518ce3a",
     "phase1d_apk_sha256": "05b8da05c265d569dcb11c581bfce1533182694a2f1e6a81ac1c7792b0db079d",
@@ -47,23 +48,39 @@
     "phase1d_target_sdk": 37,
     "phase1d_reserved_territory_pdf_sweep": 0,
     "phase1d_overflow_regression_source_commit": "20467cad81fa7da43caffdcca86fd98584eb94fd",
-    "phase1d_overflow_runtime_gate": "NOT_YET_EXECUTED"
+    "phase1d_overflow_runtime_gate": "PASS_241_ENTRIES_FAIL_CLOSED",
+    "phase1d_overflow_entry_count": 241,
+    "phase1d_overflow_regression_source_sha256": "f64c3e1c8b43eba231002c0a281c1a6986ee3e3a7b1e7aea72098b558d193134",
+    "phase1d_overflow_runtime_log_sha256": "cc1b9c2dd45c77fd4b4b154ea2e4e024a2235288d03efb2d62527fec16ea857a",
+    "phase1d_overflow_compile_test_log_sha256": "273cdbcaa78c16d46d9db7de8a1b390c855ac5873084ce744b98f6af7706940e",
+    "phase1d_a_closeout_workflow_run_id": 36264215014,
+    "phase1d_a_closeout_workflow_head_sha": "13556c3354dff8aa47309453d33b7e51b9479cde",
+    "phase1d_a_closeout_artifact_id": 10913805330,
+    "phase1d_a_closeout_artifact_zip_sha256": "c1342c9cd9155e6019815ead771c60b7ce048b018501f8237ba2049d30246bfb",
+    "phase1d_a_overflow_evidence_commit": "7f5bf746632a47f13cd0f7afa0a848fc087d2c7e",
+    "phase1d_a_validation_record_commit": "f5e43db26c7805afa39b196f863fbf65b00f5a6c",
+    "phase1d_a_status": "PASS"
   },
-  "reopened_defects": [
-    "Phase 1D acceptance evidence claimed back-page overflow fail-closed, but the durable core regression only exercised 7 mutations and did not execute an explicit >240-address overflow case. A dedicated 241-entry regression source is staged and must run successfully before Phase 1D can pass."
-  ],
-  "blocker_fingerprint": "phase1d-overflow-runtime-evidence-missing@20467cad81fa7da43caffdcca86fd98584eb94fd",
-  "blocker_route_attempts": 1,
+  "reopened_defects": [],
+  "blocker_fingerprint": null,
+  "blocker_route_attempts": 0,
   "internal_review": {
     "type": "internal",
-    "score": 9.8,
-    "milestone_approval": false,
+    "score": 10,
+    "milestone_approval": true,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Actual Poppler 1x/4x and MuPDF 1x front/back evidence is visually clean and semantically consistent; two-page identity/order/hash/build/signature gates passed. Phase 1D remains open because explicit 241-address overflow fail-closed runtime evidence is still missing."
+    "reason": "Phase 1D-A canonical two-page packet foundation now has complete identity/hash/order/visual/build evidence plus explicit 241-address runtime overflow fail-closed proof. Phase 1D-B, 1D-C, 1D-D and later phases remain open."
   },
-  "last_completed_package": "phase1d-0.1.20-build-freeze-visual-review-plus-overflow-regression-staged",
-  "next_open_gate": "Phase 1D - canonical front/back PDF semantics",
-  "next_bounded_task": "Phase 1D only: execute the staged CanonicalFrontBackOverflowRegression.kt against the exact reconstructed Phase 1C + Phase 1D 0.1.20 source, prove 241-address back-page overflow fails closed at runtime, persist the targeted evidence hash, then mark Phase 1D PASSED and advance to 1E. Do not start 1E early.",
-  "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json"
+  "last_completed_package": "0.1.20-phase1d-a-canonical-two-page-packet-pass",
+  "next_open_gate": "Phase 1D-B - Letter Writing verified address inventory + Page 2",
+  "next_bounded_task": "Phase 1D-B only: implement the verified Letter Writing address-inventory data contract first—territory identity, street address, apartment/unit where applicable, city/state/ZIP where available, verification status, source/provenance, territory assignment, deduplication, deterministic inventory hash, change tracking, and fail-closed boundary/neighbor/source conflicts—then wire the clean professional Page-2 renderer to that verified inventory. Use synthetic or already-authorized regression evidence only; do not touch the six reserved commissioning territories.",
+  "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
+  "scope_completed": [
+    "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
+    "executed CanonicalFrontBackOverflowRegressionKt against the exact reconstructed Phase 1C + Phase 1D 0.1.20 source under -Xmx192m",
+    "proved a 241-address Page-2 inventory fails closed at runtime instead of shrinking below the locked legibility floor or silently creating an extra page",
+    "persisted exact overflow source, compile-log, runtime-log and workflow-artifact hashes while leaving the previously passed 0.1.20 APK/AAB freeze unchanged",
+    "kept the six reserved commissioning territories untouched and reserved territory PDF sweep at zero"
+  ]
 }
