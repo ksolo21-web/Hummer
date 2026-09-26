@@ -43,6 +43,7 @@ fun main() {
         verificationStatus = status,
         verifiedAtUtc = verifiedAt,
         boundaryStatus = boundary,
+        boundaryEvidenceSha256 = "c".repeat(64),
         neighborTerritoryConflicts = conflicts,
         provenanceIds = provenanceIds
     )
@@ -85,6 +86,7 @@ fun main() {
     blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(territoryDisplayId = "A992b") else r }), "territory assignment")
     blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(boundaryStatus = LetterWritingBoundaryStatus.AMBIGUOUS) else r }), "locked working area")
     blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(neighborTerritoryConflicts = listOf("A992b")) else r }), "neighboring-territory conflict")
+    blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(boundaryEvidenceSha256 = "bad") else r }), "boundary/neighbor evidence SHA-256")
     blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(verificationStatus = LetterWritingVerificationStatus.NEEDS_REVIEW) else r }), "not verified")
     blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(verifiedAtUtc = null) else r }), "verified timestamp")
     blocked(base.copy(records = base.records.mapIndexed { i, r -> if (i == 0) r.copy(provenanceIds = listOf("legacy-reference")) else r }), "field-use-eligible provenance")
@@ -106,13 +108,14 @@ fun main() {
         "CHANGED" to "addr-2"
     ))
     val tracked = next.copy(changes = changes)
+    blocked(next.copy(previousInventorySha256 = null, changes = changes), "Change tracking requires previous inventory SHA-256")
     val trackedValidation = LetterWritingAddressInventoryValidator.validateForPage2(tracked)
     check(trackedValidation.passed) { trackedValidation.errors.joinToString() }
     check(trackedValidation.inventorySha256 != first.inventorySha256)
 
     println("phase1d_b_letter_writing_inventory_contract=PASS")
     println("phase1d_b_verified_records=" + first.verifiedRecordCount)
-    println("phase1d_b_fail_closed_mutations=9")
+    println("phase1d_b_fail_closed_mutations=11")
     println("phase1d_b_change_tracking=PASS")
     println("phase1d_b_inventory_sha256=" + first.inventorySha256)
 }
