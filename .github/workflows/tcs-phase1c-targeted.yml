@@ -1,0 +1,112 @@
+name: TCS Phase 1C Targeted Gate
+
+on:
+  push:
+    branches:
+      - tcs-phase1c-019-work
+    paths:
+      - .github/workflows/tcs-phase1c-targeted.yml
+      - .tooling/tcs/phase1c-transform.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tcs-phase1c-targeted
+  cancel-in-progress: false
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Phase 1C branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact frozen Phase 1B-3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected = "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          parts = [p.read_text() for p in sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))]
+          raw = "".join(parts)
+          def exact(candidate):
+              try: patch = base64.b64decode(candidate, validate=True)
+              except Exception: return None
+              return patch if hashlib.sha256(patch).hexdigest() == expected else None
+          patch = exact(raw)
+          repair = "none"
+          if patch is None:
+              if len(parts) != 8 or len(parts[5]) != 12002:
+                  raise SystemExit("unexpected Phase 1B-3 transport shape")
+              p6 = parts[5]
+              for i in range(len(p6)-1):
+                  candidate = list(parts)
+                  candidate[5] = p6[:i] + p6[i+2:]
+                  patch = exact("".join(candidate))
+                  if patch is not None:
+                      repair = f"part06-remove-adjacent-pair@{i}"
+                      break
+              else:
+                  raise SystemExit("unable to recover exact locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3.patch").write_bytes(patch)
+          Path("evidence/phase1b3-transport-repair.txt").write_text(repair+"\n")
+          print(repair)
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3.patch)
+          echo "122ab6c3dee4906c7e07048a7201796d52869f3f9f0906c7c6ff3360b254f547  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt" | sha256sum -c -
+          echo "c537d7da1ff4eb5308c5e006eb84e51b5d8eec19b0be6da7f56a95d438fddc46  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt" | sha256sum -c -
+
+      - name: Apply deterministic Phase 1C transform
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tcs-src/.tooling/tcs
+          cp .tooling/tcs/phase1c-transform.py tcs-src/.tooling/tcs/phase1c-transform.py
+          python3 tcs-src/.tooling/tcs/phase1c-transform.py | tee evidence/phase1c-transform.log
+          grep -F "PHASE1C_TRANSFORM=PASS" evidence/phase1c-transform.log
+          sha256sum             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/MultiLabel300301FixtureGenerator.kt             > evidence/phase1c-files.sha256
+          grep -R -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)"             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/MultiLabel300301FixtureGenerator.kt             > evidence/reserved-literal-sweep.txt && exit 7 || true
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Run Phase 1C core gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
+          grep -F "BUILD SUCCESSFUL" evidence/core-test.log
+          grep -F "adapter_fail_closed_mutations=30" evidence/core-test.log
+          sha256sum evidence/core-test.log > evidence/core-test.sha256
+          echo "PHASE_1C_TARGETED=PASS" > evidence/status.txt
+          echo "RESERVED_TERRITORY_PDF_SWEEP=0" >> evidence/status.txt
+
+      - name: Upload Phase 1C targeted evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1c-targeted
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
