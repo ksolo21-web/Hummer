@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: tcs-phase1d-b-021-build
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   phase1db:
