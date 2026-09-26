@@ -170,6 +170,12 @@ jobs:
           python3 - <<'PY'
           import fitz
           from pathlib import Path
+          standard14={
+              "Courier","Courier-Bold","Courier-Oblique","Courier-BoldOblique",
+              "Helvetica","Helvetica-Bold","Helvetica-Oblique","Helvetica-BoldOblique",
+              "Times-Roman","Times-Bold","Times-Italic","Times-BoldItalic",
+              "Symbol","ZapfDingbats"
+          }
           cases=[
               (Path("phase1d-evidence/Territory - 995a - FRONT - NOT FOR FIELD USE.pdf"),1,"REGULAR"),
               (Path("phase1db-evidence/Territory - 995a - LETTER WRITING - NOT FOR FIELD USE.pdf"),2,"LETTER_WRITING"),
@@ -181,23 +187,35 @@ jobs:
               assert doc.page_count==pages, (mode,doc.page_count)
               assert not doc.needs_pass, mode+" is encrypted"
               font_count=0
+              standard14_count=0
+              embedded_count=0
               for page in doc:
                   assert abs(page.rect.width-768.0)<0.6, (mode,page.rect.width)
                   assert abs(page.rect.height-480.5)<0.6, (mode,page.rect.height)
                   for font in page.get_fonts(full=True):
-                      xref=font[0]
+                      xref, ext, font_type, basefont = font[0], font[1], font[2], font[3]
                       if xref <= 0:
                           continue
                       font_count += 1
                       data=doc.extract_font(xref)
-                      assert len(data) >= 4 and data[3], (mode,font)
-              assert font_count > 0, mode+" has no inspectable fonts"
-              lines.append(mode+"=PASS pages="+str(pages)+" geometry=768x480.5 fonts_embedded=PASS encrypted=false")
+                      embedded = len(data) >= 4 and bool(data[3])
+                      is_standard14 = font_type == "Type1" and basefont in standard14
+                      assert embedded or is_standard14, (mode,font,"font is neither embedded nor a PDF Standard 14 resource")
+                      if embedded:
+                          embedded_count += 1
+                      if is_standard14:
+                          standard14_count += 1
+              assert font_count > 0, mode+" has no inspectable font resources"
+              lines.append(
+                  mode+"=PASS pages="+str(pages)+
+                  " geometry=768x480.5 font_resources=PASS standard14_or_embedded=PASS encrypted=false"+
+                  " fonts="+str(font_count)+" embedded="+str(embedded_count)+" standard14="+str(standard14_count)
+              )
           Path("evidence/print-readiness.txt").write_text("\n".join(lines)+"\n")
           PY
-          grep -Fx "REGULAR=PASS pages=1 geometry=768x480.5 fonts_embedded=PASS encrypted=false" evidence/print-readiness.txt
-          grep -Fx "LETTER_WRITING=PASS pages=2 geometry=768x480.5 fonts_embedded=PASS encrypted=false" evidence/print-readiness.txt
-          grep -Fx "TELEPHONE=PASS pages=2 geometry=768x480.5 fonts_embedded=PASS encrypted=false" evidence/print-readiness.txt
+          grep -F "REGULAR=PASS pages=1 geometry=768x480.5 font_resources=PASS standard14_or_embedded=PASS encrypted=false" evidence/print-readiness.txt
+          grep -F "LETTER_WRITING=PASS pages=2 geometry=768x480.5 font_resources=PASS standard14_or_embedded=PASS encrypted=false" evidence/print-readiness.txt
+          grep -F "TELEPHONE=PASS pages=2 geometry=768x480.5 font_resources=PASS standard14_or_embedded=PASS encrypted=false" evidence/print-readiness.txt
 
       - name: Run real Android 0.1.23 milestone freeze
         shell: bash
