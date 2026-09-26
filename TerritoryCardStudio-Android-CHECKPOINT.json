@@ -2,9 +2,9 @@
   "project": "Territory Card Studio Android",
   "version": "0.1.23-phase1d-d-cross-mode",
   "milestone": "phase-1d-d-cross-mode-passed",
-  "status": "PHASE_1D_D_PASSED_READY_1E",
-  "phase_milestone_before": "Phase 1D-D IN_PROGRESS_PRINT_READINESS_ASSERTION",
-  "phase_milestone_after": "Phase 1D-D PASSED / Aggregate Phase 1D COMPLETE / Phase 1E OPEN",
+  "status": "PHASE_1E_IN_PROGRESS",
+  "phase_milestone_before": "Phase 1E OPEN",
+  "phase_milestone_after": "Phase 1E IN PROGRESS",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -211,22 +211,33 @@
     "phase1d_d_app_compile": "PASS",
     "phase1d_d_assemble_debug": "PASS",
     "phase1d_d_bundle_debug": "PASS",
-    "phase1d_status": "PASS_AGGREGATE"
+    "phase1d_status": "PASS_AGGREGATE",
+    "phase1e_status": "IN_PROGRESS",
+    "phase1e_golden_renderer_hashes": {
+      "normal_residential": "5474c57cdba333802a1aedfc577b7e156413346e7f107a6afd321b0a3b505e33",
+      "curved_callout": "ddbce80bcf9f6d4378150a9ef16ae6a885d4dda2c7227de369dac2548af26b4e",
+      "dedicated_detail": "ce741fa6142a16e8df27a927da6b5eb988cad30935887ab64689c6da31fc35fb",
+      "split_detail": "0bb14819899794da7ff546c8805c27fcbf2966af85b2363dc9d4be95dd469175",
+      "full_plus_detail": "d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133",
+      "site_building_300_301": "6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+      "letter_writing": "c8678a6f66b1479a0808b07c0dab16383edbd8ba4ee8cdc7c417996101842232",
+      "telephone": "01f704feb3e8253d443ceb3d373993b5dc57d41a7464a286e66e86fdacc9350e"
+    }
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
   "internal_review": {
     "type": "internal",
-    "score": 10,
-    "milestone_approval": true,
+    "score": 9.5,
+    "milestone_approval": false,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 1D-D passed the shared Regular/Letter Writing/Telephone packet contract, exact-approval binding, 12 fail-closed mutations, Standard-14-aware print readiness, Android 0.1.23 build/signature/integrity gates, and reserved-territory sweep. Aggregate Phase 1D is complete; Phase 1E remains open."
+    "reason": "Phase 1E golden corpus recovered; final parity execution remains pending."
   },
-  "last_completed_package": "0.1.23-phase1d-d-cross-mode-pass",
+  "last_completed_package": "phase1e-golden-corpus-recovery",
   "next_open_gate": "Phase 1E - Final all-mode renderer parity",
-  "next_bounded_task": "Phase 1E only: verify final parity across normal residential, dedicated detail, split/detail, full-plus detail, site/building assignment, multi-label 300/301, Letter Writing and Telephone modes using the frozen regression corpus. Compare deterministic hashes, identity/filename semantics, road/building/label rules, page roles, print readiness and renderer behavior across modes; do not regenerate or visually re-review unchanged fixtures unless a touched dependency or exact defect requires it.",
+  "next_bounded_task": "Phase 1E only: run final golden parity across normal residential, curved/callout, dedicated detail, split/detail, full-plus detail, site/building + multi-label 300/301, Letter Writing and Telephone. Require exact deterministic PDF hashes/spec hashes, identity/filename semantics, mode markers, page roles, print-readiness linkage and all frozen fail-closed suites. Do not visually re-review unchanged fixtures unless a hash or semantic mismatch appears.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
