@@ -1,0 +1,57 @@
+{
+  "project": "Territory Card Studio Android",
+  "ledger_version": 1,
+  "current_phase": 1,
+  "current_checkpoint": "0.1.17-full-plus-detail-renderer-candidate",
+  "milestone_statuses": {
+    "1A_dedicated_detail": "PASSED",
+    "1B_1_split_detail": "PASSED",
+    "1B_2_full_plus_detail": "OPEN_CI_FREEZE_ROUTE_STAGED",
+    "1B_3_site_building_assignment": "OPEN_DEPENDS_1B2",
+    "1C_multi_label_300_301": "OPEN_DEPENDS_1B",
+    "1D_front_back_pdf_semantics": "OPEN_DEPENDS_1C",
+    "1E_final_renderer_parity": "OPEN_DEPENDS_1D",
+    "2_production_ui": "NOT_STARTED_DEPENDS_PHASE1",
+    "3_editing_commissioning_workflow": "NOT_STARTED_DEPENDS_PHASE2",
+    "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
+    "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
+    "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
+    "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
+    "8_release_hardening": "NOT_STARTED_DEPENDS_PHASE7",
+    "9_final_release_gate": "NOT_STARTED_DEPENDS_PHASE8"
+  },
+  "immutable_passed_baseline": {
+    "split_detail_pdf": "0bb14819899794da7ff546c8805c27fcbf2966af85b2363dc9d4be95dd469175",
+    "apk": "2ff89af5cd7aff0274903f48fefcd18ecee1c70919aadfe61f8cd1a8118dc703",
+    "aab": "e900cdd1017d61dc7d4d06d04a494c7c6cd4c33458efb169c68629096fce6568",
+    "source_package": "ebcd10cd0474655dd48a2150f9821a18dccb42760e68ee0f4060e819b596908a"
+  },
+  "in_progress_0_1_17": {
+    "full_plus_detail_pdf": "d83dd01f11f5096f9b987417a86187061409bd5598fc73278db8a14bc54eb133",
+    "render_spec": "8d6648ef64da73d8618fa0b5b60994500b9046766ae72a1e1b7922ea88b7279f",
+    "render_1x": "e4d71bd930a4f88b8291fcb4129cd8f740d553f97b92495db9bc55a6d3106d4d",
+    "render_4x": "53a544b768d0382eba417782828014e06ae671049e5433318526c72b37727844",
+    "source_package": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7",
+    "ci_build_source_tar_xz": "f3d0ede6da0b7e5c358988321cd374a69672fc4a38861d1f22f1dff132154484"
+  },
+  "reopened_defects": [],
+  "blocker_fingerprint": "phase1b2_freeze__local_toolchain_route_exhausted__authorized_ci_route_staged__source_0.1.17_unchanged",
+  "blocker_route_attempts": 2,
+  "last_completed_package": "0.1.17-phase1b2-authorized-ci-freeze-route-staging",
+  "next_open_gate": "Phase 1B-2 - Android build freeze for full_plus_detail",
+  "next_bounded_task": "Finish deterministic source handoff to the dedicated CI branch and run pinned JDK17/Gradle9.6/API37/BuildTools36.0.0 core test, app compile, APK/AAB builds, signatures, ZIP integrity, version checks and hashes. Do not start 1B-3 in the same run.",
+  "reserved_commissioning_territories": [
+    "250T",
+    "257A",
+    "297",
+    "298A",
+    "299",
+    "347TA"
+  ],
+  "reserved_commissioning_status": "UNTOUCHED_UNAPPROVED",
+  "ci_freeze_route": {
+    "repository": "ksolo21-web/Hummer",
+    "branch": "tcs-phase1b2-017-build-freeze",
+    "main_modified": false
+  }
+}
