@@ -1,0 +1,3 @@
+workspace-regular-dark.png width=1080 height=2400 sha256=ddb9807ad550aaa890b379084e59a34b395830bd5cc3faa8cef2fff779b3a651 mean_rgb=32.36
+workspace-letter-writing-dark.png width=1080 height=2400 sha256=26aa6897609ae2b2c1e49c5b2b8581e877a6984bd13262fbb859e6ce13dadb06 mean_rgb=38.58
+workspace-telephone-dark.png width=1080 height=2400 sha256=a9da7f875ac7fea7d12e93b6baf1cd4b3c3a632691a0f4b24cc1a1eed6f8d219 mean_rgb=39.39
