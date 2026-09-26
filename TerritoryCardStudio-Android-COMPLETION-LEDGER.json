@@ -23,16 +23,16 @@
     "1D_B_letter_writing_page2": "PASSED",
     "1D_C_telephone_page2": "PASSED",
     "1D_D_cross_mode_validation": "PASSED",
-    "2A_theme_dashboard_workspace_foundation": "IN_PROGRESS_HARNESS_REPAIR"
+    "2A_theme_dashboard_workspace_foundation": "IN_PROGRESS_SCREENSHOT_CLOSEOUT"
   },
   "phase_milestone_before": "Phase 2 OPEN",
   "phase_milestone_after": "Phase 2A UI foundation IN PROGRESS",
-  "last_completed_package": "phase2a-ui-source-staged-freeze-blocked-before-compile",
+  "last_completed_package": "phase2a-ui-compile-package-and-instrumentation-pass-screenshot-install-harness-repaired",
   "next_open_gate": "Phase 2A - theme system + Dashboard / Workspace production shell",
-  "next_bounded_task": "Phase 2A only: repair the freeze harness by restoring .tooling/tcs/phase1b2-core-build.gradle.kts into tcs-src/core/build.gradle.kts before :core:test; rerun the same UI freeze. Do not change the staged UI unless compile/instrumentation proves an exact defect.",
+  "next_bounded_task": "Phase 2A only: finish the repaired emulator screenshot closeout. UI source, frozen core regression, app/androidTest compilation, APK/AAB packaging/signatures, and connected instrumentation already passed. Remaining gate is actual System-following light/dark and wide-layout screenshots plus screenshot validation/source freeze; direct APK path repair is staged at 50d5f5be846f277dcf4b5d97f0bef24b4d908930. Do not start Phase 2B.",
   "reopened_defects": [],
-  "blocker_fingerprint": "phase2a-freeze-missing-core-test-build-script",
-  "blocker_route_attempts": 1,
+  "blocker_fingerprint": "phase2a-emulator-runner-shell-variable-scope-apk-install",
+  "blocker_route_attempts": 3,
   "phase1d_in_progress": {
     "branch": "tcs-phase1d-020-work",
     "page_order": [
