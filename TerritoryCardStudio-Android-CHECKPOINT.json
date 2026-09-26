@@ -164,18 +164,24 @@
     "phase1b3_version_code": 18,
     "phase1b3_version_name": "0.1.18",
     "phase1b3_target_sdk": 37,
-    "phase1b3_overlay_transport_repair": "part06-remove-adjacent-pair@12000"
+    "phase1b3_overlay_transport_repair": "part06-remove-adjacent-pair@12000",
+    "phase1b3_independent_artifact_hash_inspection": "PASS",
+    "phase1b3_independent_apk_sha256": "d948bf76152d38fcc2c38f942d9835dd0f9454391dff633ee176b49930a689a3",
+    "phase1b3_independent_aab_sha256": "311208db1e2c248bb65db06f383c94c195cacf60e55f9fc1b8c2b32a99c1c36a",
+    "phase1b3_independent_artifact_zip_sha256": "029d24f7a7e54192400ce637004c8b7799f140e6a9ea76d32aaedd2ec0c8ed2d",
+    "phase1b3_confirmatory_ci_run_id": 36254345730,
+    "phase1b3_confirmatory_ci_run": "PASS_SAME_SOURCE_NO_DEPENDENCY_CHANGE"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
   "internal_review": {
     "type": "internal",
-    "score": 9.8,
+    "score": 10,
     "milestone_approval": true,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 1B-3 geometry/rendering and real Android 0.1.18 freeze gates are all green; later app phases remain open."
+    "reason": "Phase 1B-3 geometry/rendering, fail-closed gates, real Android 0.1.18 freeze, signatures/integrity/version checks, reserved-territory guard, and independently re-hashed downloaded APK/AAB bytes are all green. Later app phases remain open."
   },
   "last_completed_package": "0.1.18-phase1b3-android-build-freeze-pass",
   "next_open_gate": "Phase 1C - multi-label single-footprint 300/301 preservation",
