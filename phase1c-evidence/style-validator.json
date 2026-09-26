@@ -1,0 +1,20 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+{
+  "passed": true,
+  "artifact_sha256": "6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+  "token_sha256": "ced211f7df0d2dafffb6d05bde4640a8bd2c1b0a44719b986a57c11a65d792fe",
+  "checks": {
+    "one_page": true,
+    "page_size": true,
+    "token_provenance": true,
+    "sidebar": true,
+    "map_panel": true,
+    "directions_panel": true,
+    "sidebar_fill": true,
+    "legend_swatches": true,
+    "dejavu_shell_font": true,
+    "territory_id_locked_box": true,
+    "locality_locked_variant": true
+  },
+  "errors": []
+}

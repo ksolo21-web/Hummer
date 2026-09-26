@@ -1,0 +1,525 @@
+--- /tmp/pre1c/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt	2026-09-26 17:30:56.969453626 +0000
++++ tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt	2026-09-26 17:30:57.038334796 +0000
+@@ -88,7 +88,7 @@
+             spec.sourceMasterLabel?.let(::add)
+             spec.roads.forEach { add(it.roadName) }
+             spec.labels.forEach { add(it.text) }
+-            spec.buildings.forEach { add(it.label) }
++            spec.buildings.forEach { building -> add(building.label); building.labelItems.forEach { add(it.text) } }
+             spec.dedicatedDetails.forEach { detail ->
+                 detail.roads.forEach { add(it.roadName) }
+                 detail.labels.forEach { add(it.text) }
+@@ -96,7 +96,7 @@
+             spec.fullPlusDetail?.detail?.let { detail ->
+                 detail.roads.forEach { add(it.roadName) }
+                 detail.detailLabels.forEach { add(it.text) }
+-                detail.buildings.forEach { add(it.label) }
++                detail.buildings.forEach { building -> add(building.label); building.labelItems.forEach { add(it.text) } }
+             }
+             spec.siteBuildingAssignment?.let { layout ->
+                 layout.buildingBindings.forEach { binding ->
+@@ -132,6 +132,7 @@
+         spec.buildings.forEach { b ->
+             require(b.points.size >= 3) { "Building polygon requires >=3 points" }
+             require(b.points.all { pagePoint(it.first, it.second) }) { "Building polygon point outside locked page" }
++            validateBuildingLabelItems(b, requireVerifiedItems = spec.layoutMode == "site_building_assignment")
+         }
+         val detailsById = spec.dedicatedDetails.associateBy { it.detailId }
+         require(detailsById.size == spec.dedicatedDetails.size) { "Duplicate dedicated-detail IDs" }
+@@ -402,10 +403,15 @@
+             require(binding.verifiedLabelTexts.isNotEmpty() && binding.verifiedLabelTexts.distinct().size == binding.verifiedLabelTexts.size) {
+                 "site_building_assignment $buildingId verified building labels must be non-empty and unique"
+             }
+-            require(binding.verifiedLabelTexts.size == 1) {
+-                "site_building_assignment $buildingId multi-label single-footprint rendering remains blocked until Phase 1C"
++            require(base.labelItems.isNotEmpty()) { "site_building_assignment $buildingId requires verified interior label items" }
++            require(binding.verifiedLabelTexts.sorted() == base.labelItems.map { it.text }.sorted()) {
++                "site_building_assignment $buildingId verified label binding drift"
++            }
++            if (base.labelItems.size > 1) {
++                require(base.labelItems.all { it.originX != null && it.originTopY != null }) {
++                    "site_building_assignment $buildingId multi-label footprint requires exact verified text origins"
++                }
+             }
+-            require(binding.verifiedLabelTexts.single() == base.label) { "site_building_assignment $buildingId verified label binding drift" }
+         }
+ 
+         val inset = layout.accessInset ?: return
+@@ -540,6 +546,53 @@
+         label.callout?.let { c -> add(c.roadAnchor); add(c.tailStart); add(c.labelAttach) }
+     }
+ 
++    private fun validateBuildingLabelItems(building: PdfBuildingShape, requireVerifiedItems: Boolean = false) {
++        if (requireVerifiedItems) require(building.labelItems.isNotEmpty()) {
++            "${building.buildingId}: verified building label items are required"
++        }
++        if (building.labelItems.isEmpty()) return
++        require(building.labelItems.map { it.text }.distinct().size == building.labelItems.size) {
++            "${building.buildingId}: duplicate verified building label text"
++        }
++        building.labelItems.forEach { item ->
++            require(item.text.isNotBlank()) { "${building.buildingId}: blank verified building label text" }
++            require(item.fontSizePt > 0.0) { "${building.buildingId}: invalid verified building label font size" }
++            require(pagePoint(item.centerX, item.centerTopY)) { "${building.buildingId}: building label center outside locked page" }
++            require(pointInPolygon(item.centerX, item.centerTopY, building.points)) {
++                "${building.buildingId}: building label '${item.text}' center escapes physical footprint"
++            }
++            require((item.originX == null) == (item.originTopY == null)) {
++                "${building.buildingId}: building label '${item.text}' has incomplete verified origin"
++            }
++            if (item.originX != null && item.originTopY != null) {
++                require(pagePoint(item.originX, item.originTopY)) {
++                    "${building.buildingId}: building label '${item.text}' origin outside locked page"
++                }
++            }
++        }
++        if (building.labelItems.size > 1) {
++            require(building.labelItems.all { it.originX != null && it.originTopY != null }) {
++                "${building.buildingId}: multi-label single-footprint rendering requires exact verified origins"
++            }
++        }
++    }
++
++    private fun pointInPolygon(x: Double, y: Double, polygon: List<Pair<Double, Double>>): Boolean {
++        var inside = false
++        var j = polygon.lastIndex
++        for (i in polygon.indices) {
++            val (xi, yi) = polygon[i]
++            val (xj, yj) = polygon[j]
++            val cross = (x - xi) * (yj - yi) - (y - yi) * (xj - xi)
++            val dot = (x - xi) * (x - xj) + (y - yi) * (y - yj)
++            if (kotlin.math.abs(cross) <= 1e-7 && dot <= 1e-7) return true
++            val denom = (yj - yi).takeIf { kotlin.math.abs(it) > 1e-12 } ?: 1e-12
++            if (((yi > y) != (yj > y)) && x < (xj - xi) * (y - yi) / denom + xi) inside = !inside
++            j = i
++        }
++        return inside
++    }
++
+     private fun pagePoint(x: Double, topY: Double): Boolean = x in 0.0..PAGE_W && topY in 0.0..PAGE_H
+ 
+     private fun buildContent(spec: CandidatePdfRenderSpec, specSha: String, metrics: TemplateFontMetrics): String {
+@@ -801,10 +854,39 @@
+         b.append(num(first.first)).append(' ').append(num(PAGE_H - first.second)).append(" m\n")
+         building.points.drop(1).forEach { (x, y) -> b.append(num(x)).append(' ').append(num(PAGE_H - y)).append(" l\n") }
+         b.append("h B\n")
+-        val cx = building.points.map { it.first }.average()
+-        val cyTop = building.points.map { it.second }.average()
+         fillColor(b, "#27343C")
+-        text(b, "F2+0", 8.0, cx - (building.label.length * 2.0), PAGE_H - cyTop + 2.5, building.label)
++        if (building.labelItems.isNotEmpty()) {
++            b.append("% TCS_BUILDING_LABEL_ITEMS_EXACT ").append(building.buildingId).append('\n')
++            building.labelItems.forEach { drawBuildingLabelItem(b, it) }
++        } else {
++            val cx = building.points.map { it.first }.average()
++            val cyTop = building.points.map { it.second }.average()
++            text(b, "F2+0", 8.0, cx - (building.label.length * 2.0), PAGE_H - cyTop + 2.5, building.label)
++        }
++    }
++
++    private fun drawBuildingLabelItem(b: StringBuilder, item: PdfBuildingLabelItem) {
++        val metrics = currentTemplateMetrics ?: error("Building-label renderer font metrics unavailable")
++        val angle = Math.toRadians(item.rotationDegrees)
++        val c = cos(angle)
++        val s = sin(angle)
++        val width = metrics.regularWidth(item.text, item.fontSizePt)
++        val baselineX: Double
++        val baselineTopY: Double
++        if (item.originX != null && item.originTopY != null) {
++            baselineX = item.originX
++            baselineTopY = item.originTopY
++        } else {
++            val halfW = width / 2.0
++            val baselineRise = item.fontSizePt * 0.26
++            baselineX = item.centerX - c * halfW - s * baselineRise
++            baselineTopY = item.centerTopY - s * halfW + c * baselineRise
++        }
++        b.append("BT /F2+0 ").append(num(item.fontSizePt)).append(" Tf ")
++            .append(num(c)).append(' ').append(num(s)).append(' ')
++            .append(num(-s)).append(' ').append(num(c)).append(' ')
++            .append(num(baselineX)).append(' ').append(num(PAGE_H - baselineTopY)).append(" Tm (")
++            .append(pdfEscape(item.text)).append(") Tj ET\n")
+     }
+ 
+     private fun drawDirections(b: StringBuilder, lines: List<String>) {
+@@ -979,10 +1061,21 @@
+     val callout: PdfArrowCallout? = null
+ )
+ 
++data class PdfBuildingLabelItem(
++    val text: String,
++    val centerX: Double,
++    val centerTopY: Double,
++    val originX: Double? = null,
++    val originTopY: Double? = null,
++    val rotationDegrees: Double = 0.0,
++    val fontSizePt: Double = 8.0
++)
++
+ data class PdfBuildingShape(
+     val buildingId: String,
+     val label: String,
+-    val points: List<Pair<Double, Double>>
++    val points: List<Pair<Double, Double>>,
++    val labelItems: List<PdfBuildingLabelItem> = emptyList()
+ )
+ 
+ data class PdfDetailRect(
+@@ -1111,7 +1204,12 @@
+                     .append(';').append(c.lengthPt).append(';').append(c.tailGapPt) }
+                 append('\n')
+             }
+-            buildings.forEachIndexed { i, x -> append("building[").append(i).append("]=").append(x.buildingId).append('|').append(x.label); x.points.forEach { p -> append('|').append(p.first).append(',').append(p.second) }; append('\n') }
++            buildings.forEachIndexed { i, x ->
++                append("building[").append(i).append("]=").append(x.buildingId).append('|').append(x.label)
++                x.points.forEach { p -> append('|').append(p.first).append(',').append(p.second) }
++                x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) }
++                append('\n')
++            }
+             dedicatedDetails.forEachIndexed { i, d ->
+                 append("detail[").append(i).append("]=").append(d.detailId).append('|')
+                     .append(d.sourceBounds.left).append(',').append(d.sourceBounds.top).append(',').append(d.sourceBounds.right).append(',').append(d.sourceBounds.bottom).append('|')
+@@ -1139,7 +1237,7 @@
+                         append("|road:").append(r.segmentId).append(',').append(r.roadName).append(',').append(r.x1).append(',').append(r.topY1).append(',').append(r.x2).append(',').append(r.topY2).append(',').append(r.status.name).append(',').append(r.strokeWidthPt)
+                     }
+                     panel.labels.sortedBy { it.labelId }.forEach { l -> append("|label:").append(l.labelId).append(',').append(l.segmentId).append(',').append(l.text).append(',').append(l.x).append(',').append(l.baselineTopY).append(',').append(l.mode.name) }
+-                    panel.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label); x.points.forEach { p -> append('@').append(p.first).append(',').append(p.second) } }
++                    panel.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label); x.points.forEach { p -> append('@').append(p.first).append(',').append(p.second) }; x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) } }
+                     append('\n')
+                 }
+                 appendPanel(split.northPanel)
+@@ -1156,7 +1254,7 @@
+                 p.sourceLabelIds.sorted().forEach { append("|labelSource:").append(it) }
+                 p.roads.sortedWith(compareBy<PdfRoadStroke>({ it.segmentId }, { it.x1 }, { it.topY1 }, { it.x2 }, { it.topY2 })).forEach { r -> append("|road:").append(r.segmentId).append(',').append(r.roadName).append(',').append(r.x1).append(',').append(r.topY1).append(',').append(r.x2).append(',').append(r.topY2).append(',').append(r.status.name).append(',').append(r.strokeWidthPt) }
+                 p.detailLabels.sortedBy { it.labelId }.forEach { l -> append("|label:").append(l.labelId).append(',').append(l.segmentId).append(',').append(l.text).append(',').append(l.x).append(',').append(l.baselineTopY).append(',').append(l.mode.name) }
+-                p.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label); x.points.forEach { pt -> append('@').append(pt.first).append(',').append(pt.second) } }
++                p.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label); x.points.forEach { pt -> append('@').append(pt.first).append(',').append(pt.second) }; x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) } }
+                 append('\n')
+             }
+             siteBuildingAssignment?.let { layout ->
+@@ -1226,6 +1324,7 @@
+         if (spec.layoutMode == "split_detail" && !raw.contains("% TCS_SPLIT_DETAIL_LOCKED 350 228")) errors += "Locked split-detail marker/dividers missing"
+         if (spec.layoutMode == "full_plus_detail" && !raw.contains("% TCS_FULL_PLUS_DETAIL_EXPLICIT_MAPPING")) errors += "Explicit full-plus-detail mapping marker missing"
+         if (spec.layoutMode == "site_building_assignment" && !raw.contains("% TCS_SITE_BUILDING_ASSIGNMENT_EXPLICIT")) errors += "Explicit site/building assignment marker missing"
++        if (spec.buildings.any { it.labelItems.size > 1 } && !raw.contains("% TCS_BUILDING_LABEL_ITEMS_EXACT")) errors += "Exact multi-label building rendering marker missing"
+         return CandidatePdfExactValidation(
+             passed = errors.isEmpty(),
+             errors = errors,
+--- /tmp/pre1c/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt	2026-09-26 17:30:56.973235264 +0000
++++ tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt	2026-09-26 17:30:57.038649624 +0000
+@@ -477,13 +477,7 @@
+             val road = requireNotNull(roadsByIdForRender[label.segmentId]) { "Verified label targets unknown road ${label.segmentId}" }
+             toPdfLabel(label, road)
+         }
+-        val buildings = state.buildings.filter { it.assigned }.sortedBy { it.buildingId }.map { building ->
+-            PdfBuildingShape(
+-                buildingId = building.buildingId,
+-                label = building.label,
+-                points = building.polygon.map { it.x to it.y }
+-            )
+-        }
++        val buildings = state.buildings.filter { it.assigned }.sortedBy { it.buildingId }.map(::toPdfBuildingShape)
+         val labelByIdForDetail = input.labels.associateBy { it.labelId }
+         val dedicatedDetails = input.dedicatedDetails.sortedBy { it.detailId }.map { detail ->
+             PdfDedicatedDetail(
+@@ -526,8 +520,8 @@
+                     toPdfLabel(label, renderedRoad)
+                 },
+                 buildings = panel.renderedBuildings.sortedBy { it.buildingId }.map { b ->
+-                    val base = requireNotNull(buildingByIdForSplit[b.buildingId]) { "Split-detail panel references unknown building ${b.buildingId}" }
+-                    PdfBuildingShape(base.buildingId, base.label, b.polygon.map { it.x to it.y })
++                    requireNotNull(buildingByIdForSplit[b.buildingId]) { "Split-detail panel references unknown building ${b.buildingId}" }
++                    toPdfBuildingShape(b)
+                 }
+             )
+             PdfSplitDetailLayout(
+@@ -566,8 +560,8 @@
+                         toPdfLabel(label, renderedRoad)
+                     },
+                     buildings = panel.renderedBuildings.sortedBy { it.buildingId }.map { b ->
+-                        val base = requireNotNull(buildingById[b.buildingId]) { "Full-plus-detail panel references unknown building ${b.buildingId}" }
+-                        PdfBuildingShape(base.buildingId, base.label, b.polygon.map { it.x to it.y })
++                        requireNotNull(buildingById[b.buildingId]) { "Full-plus-detail panel references unknown building ${b.buildingId}" }
++                        toPdfBuildingShape(b)
+                     }
+                 )
+             )
+@@ -662,6 +656,23 @@
+         )
+     }
+ 
++    private fun toPdfBuildingShape(building: BuildingGeometry): PdfBuildingShape = PdfBuildingShape(
++        buildingId = building.buildingId,
++        label = building.label,
++        points = building.polygon.map { it.x to it.y },
++        labelItems = building.labelItems.map { item ->
++            PdfBuildingLabelItem(
++                text = item.text,
++                centerX = item.center.x,
++                centerTopY = item.center.y,
++                originX = item.origin?.x,
++                originTopY = item.origin?.y,
++                rotationDegrees = item.angleDeg,
++                fontSizePt = item.fontSizePt
++            )
++        }
++    )
++
+     private fun validateHousingAndBuildings(
+         state: CurrentAuthoritativeAssignmentState,
+         input: ProductionRenderModelInput,
+@@ -685,11 +696,16 @@
+                 if (building.housingType != state.housingType) {
+                     failures += "${building.buildingId}: building housing type '${building.housingType}' does not match current assignment '${state.housingType}'"
+                 }
+-                if (building.labelItems.size > 1) {
+-                    failures += "${building.buildingId}: current renderer cannot preserve multiple verified 300/301 labels inside one footprint"
++                val normalizedMembers = building.sourceMembers.map(BuildingValidationEngine::normalizeMemberId).sorted()
++                val normalizedLabels = building.labelItems.map { BuildingValidationEngine.normalizeMemberId(it.text) }.sorted()
++                if (normalizedMembers != normalizedLabels) {
++                    failures += "${building.buildingId}: verified 300/301 source-member/label inventory drift"
++                }
++                if (building.labelItems.size == 1 && building.labelItems.single().text != building.label) {
++                    failures += "${building.buildingId}: single-label building display label does not match verified interior label"
+                 }
+-                if (building.labelItems.singleOrNull()?.text != building.label) {
+-                    failures += "${building.buildingId}: building display label is not exactly the single verified interior label"
++                if (building.labelItems.size > 1 && building.labelItems.any { it.origin == null }) {
++                    failures += "${building.buildingId}: multi-label single-footprint rendering requires exact verified text origins"
+                 }
+             }
+         }
+@@ -817,8 +833,16 @@
+             panel.renderedBuildings.forEach { building ->
+                 val base = buildingById[building.buildingId]
+                 if (building.buildingId !in panel.sourceBuildingIds || base == null) failures += "${panel.panelId}: rendered building targets undeclared source ${building.buildingId}"
+-                else if (building.label != base.label || building.housingType != base.housingType || building.assigned != base.assigned) failures += "${panel.panelId}: rendered building meaning drift for ${building.buildingId}"
++                else {
++                    if (building.label != base.label || building.housingType != base.housingType || building.assigned != base.assigned) failures += "${panel.panelId}: rendered building meaning drift for ${building.buildingId}"
++                    if (building.sourceMembers.sorted() != base.sourceMembers.sorted() || building.labelItems.map { it.text }.sorted() != base.labelItems.map { it.text }.sorted()) {
++                        failures += "${panel.panelId}: rendered building 300/301 member-label binding drift for ${building.buildingId}"
++                    }
++                    val detailBuildingValidation = BuildingValidationEngine.validateBuildings(listOf(building), applicable = true)
++                    if (!detailBuildingValidation.passed) failures += detailBuildingValidation.failures.map { "${panel.panelId}: $it" }
++                }
+                 if (building.polygon.any { !rectContainsPoint(expectedDest, it) }) failures += "${panel.panelId}: rendered building escapes destination region"
++                if (building.labelItems.any { !rectContainsPoint(expectedDest, it.center) }) failures += "${panel.panelId}: rendered building label escapes destination region"
+             }
+             if (panel.renderedBuildings.map { it.buildingId }.toSet() != panel.sourceBuildingIds.toSet()) failures += "${panel.panelId}: panel must preserve every declared source building exactly once"
+         }
+@@ -903,12 +927,32 @@
+         if (expectedBuildings.size != actualBuildings.size) failures += "full_plus_detail must preserve every declared source building exactly once"
+         expectedBuildings.zip(actualBuildings).forEach { (base, detail) ->
+             if (base.buildingId != detail.buildingId || base.label != detail.label || base.housingType != detail.housingType || base.assigned != detail.assigned) failures += "full_plus_detail building meaning drift for ${base.buildingId}"
++            if (base.sourceMembers.sorted() != detail.sourceMembers.sorted() || base.labelItems.map { it.text }.sorted() != detail.labelItems.map { it.text }.sorted()) {
++                failures += "full_plus_detail building 300/301 member-label binding drift for ${base.buildingId}"
++            }
+             if (base.polygon.size != detail.polygon.size) failures += "full_plus_detail building vertex-count drift for ${base.buildingId}"
+             else base.polygon.zip(detail.polygon).forEach { (src, dst) ->
+                 val mapped = mapPoint(src)
+                 if (!eq(mapped.x, dst.x) || !eq(mapped.y, dst.y)) failures += "full_plus_detail building geometry is not declared source-to-destination mapping for ${base.buildingId}"
+             }
++            val baseItems = base.labelItems.sortedBy { it.text }
++            val detailItems = detail.labelItems.sortedBy { it.text }
++            if (baseItems.size != detailItems.size) failures += "full_plus_detail building label-item count drift for ${base.buildingId}"
++            else baseItems.zip(detailItems).forEach { (src, dst) ->
++                val mappedCenter = mapPoint(src.center)
++                if (src.text != dst.text || src.angleDeg != dst.angleDeg || src.fontSizePt != dst.fontSizePt || !eq(mappedCenter.x, dst.center.x) || !eq(mappedCenter.y, dst.center.y)) {
++                    failures += "full_plus_detail building label-item mapping drift for ${base.buildingId}/${src.text}"
++                }
++                if ((src.origin == null) != (dst.origin == null)) failures += "full_plus_detail building label origin binding drift for ${base.buildingId}/${src.text}"
++                if (src.origin != null && dst.origin != null) {
++                    val mappedOrigin = mapPoint(src.origin)
++                    if (!eq(mappedOrigin.x, dst.origin.x) || !eq(mappedOrigin.y, dst.origin.y)) failures += "full_plus_detail building label origin mapping drift for ${base.buildingId}/${src.text}"
++                }
++            }
++            val detailBuildingValidation = BuildingValidationEngine.validateBuildings(listOf(detail), applicable = true)
++            if (!detailBuildingValidation.passed) failures += detailBuildingValidation.failures.map { "full_plus_detail: $it" }
+             if (detail.polygon.any { !rectContainsPoint(panel.destinationBounds, it) }) failures += "full_plus_detail rendered building escapes detail destination"
++            if (detail.labelItems.any { !rectContainsPoint(panel.destinationBounds, it.center) }) failures += "full_plus_detail rendered building label escapes detail destination"
+         }
+ 
+         val sourceLabels = panel.sourceLabelIds.mapNotNull { labelById[it] }.sortedWith(compareBy({ it.segmentId }, { it.text }, { it.labelId }))
+@@ -998,8 +1042,7 @@
+                 if (binding.sourceMemberIds.sorted() != building.sourceMembers.sorted()) failures += "$id: 300/301 source-member binding drift"
+                 val expectedLabels = building.labelItems.map { it.text }.sorted()
+                 if (binding.verifiedLabelTexts.sorted() != expectedLabels) failures += "$id: 300/301 member/label binding drift"
+-                if (expectedLabels.size != 1) failures += "$id: multi-label single-footprint rendering remains blocked until Phase 1C"
+-                if (expectedLabels.singleOrNull() != building.label) failures += "$id: rendered building label does not preserve verified label item"
++                if (expectedLabels.size > 1 && building.labelItems.any { it.origin == null }) failures += "$id: multi-label footprint has unverified text origin"
+             }
+         }
+ 
+--- /tmp/pre1c/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt	2026-09-26 17:30:56.976992679 +0000
++++ tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt	2026-09-26 17:30:57.038901835 +0000
+@@ -150,6 +150,8 @@
+         check(siteFirst.exactValidation.passed)
+         val siteRaw = siteFirst.pdfBytes.toString(Charsets.ISO_8859_1)
+         check(siteRaw.contains("% TCS_SITE_BUILDING_ASSIGNMENT_EXPLICIT"))
++        check(siteRaw.contains("% TCS_BUILDING_LABEL_ITEMS_EXACT site-building-300-301"))
++        check(siteRaw.contains("(300) Tj") && siteRaw.contains("(301) Tj")) { "single-footprint 300/301 labels were not both rendered" }
+         check(siteRaw.contains("SITE / BUILDINGS") && siteRaw.contains("VERIFIED ACCESS"))
+         val siteLayout = requireNotNull(site.siteBuildingAssignment)
+         check(runCatching { CandidatePdfRenderer.renderNonFieldFixture(template, site.copy(siteBuildingAssignment = null)) }.isFailure) {
+@@ -168,6 +170,18 @@
+         check(runCatching {
+             CandidatePdfRenderer.renderNonFieldFixture(
+                 template,
++                site.copy(buildings = site.buildings.map { it.copy(labelItems = it.labelItems.dropLast(1)) })
++            )
++        }.isFailure) { "site_building_assignment missing 301 label item unexpectedly rendered" }
++        check(runCatching {
++            CandidatePdfRenderer.renderNonFieldFixture(
++                template,
++                site.copy(buildings = site.buildings.map { it.copy(labelItems = it.labelItems.mapIndexed { index, item -> if (index == 1) item.copy(originX = null, originTopY = null) else item }) })
++            )
++        }.isFailure) { "site_building_assignment guessed multi-label origin unexpectedly rendered" }
++        check(runCatching {
++            CandidatePdfRenderer.renderNonFieldFixture(
++                template,
+                 site.copy(siteBuildingAssignment = siteLayout.copy(
+                     accessInset = requireNotNull(siteLayout.accessInset).copy(
+                         roads = siteLayout.accessInset.roads.map { it.copy(status = PdfRoadStatus.DO_NOT_WORK) }
+@@ -388,8 +402,15 @@
+         fun mx(x: Double) = dest.left + (x - source.left) * dest.width / source.width
+         fun my(y: Double) = dest.top + (y - source.top) * dest.height / source.height
+         val buildings = listOf(
+-            PdfBuildingShape("site-building-300", "300", listOf(235.0 to 165.0, 300.0 to 165.0, 300.0 to 210.0, 235.0 to 210.0)),
+-            PdfBuildingShape("site-building-301", "301", listOf(335.0 to 165.0, 400.0 to 165.0, 400.0 to 210.0, 335.0 to 210.0))
++            PdfBuildingShape(
++                buildingId = "site-building-300-301",
++                label = "300-301",
++                points = listOf(235.0 to 165.0, 400.0 to 165.0, 400.0 to 225.0, 235.0 to 225.0),
++                labelItems = listOf(
++                    PdfBuildingLabelItem("300", 285.0, 190.0, 275.604, 192.338, 0.0, 9.0),
++                    PdfBuildingLabelItem("301", 350.0, 200.0, 340.604, 202.338, 0.0, 9.0)
++                )
++            )
+         )
+         return CandidatePdfRenderSpec(
+             identity = TerritoryIdentity(994, TerritoryClass.Apartment, 'a'),
+@@ -415,11 +436,10 @@
+                 diagramId = "site-diagram",
+                 diagramRect = diagram,
+                 sourceSegmentIds = listOf("seg-access", "seg-site"),
+-                sourceBuildingIds = listOf("site-building-300", "site-building-301"),
++                sourceBuildingIds = listOf("site-building-300-301"),
+                 sourceLabelIds = listOf("label-access-source", "label-site"),
+                 buildingBindings = listOf(
+-                    PdfBuildingMemberLabelBinding("site-building-300", listOf("300"), listOf("300")),
+-                    PdfBuildingMemberLabelBinding("site-building-301", listOf("301"), listOf("301"))
++                    PdfBuildingMemberLabelBinding("site-building-300-301", listOf("300", "301"), listOf("300", "301"))
+                 ),
+                 accessInset = PdfSiteAccessInsetPanel(
+                     panelId = "verified-access",
+--- /tmp/pre1c/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt	2026-09-26 17:30:56.980568706 +0000
++++ tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt	2026-09-26 17:30:57.039123839 +0000
+@@ -360,7 +360,7 @@
+ 
+         // Phase 1B-3: site_building_assignment preserves verified site/building member+label bindings
+         // and may carry one explicit verified access inset. Multi-label single-footprint remains Phase 1C.
+-        val siteAssignment = kb.assignments.getValue("A261b")
++        val siteAssignment = kb.assignments.getValue("A264")
+         check(!siteAssignment.needsNewCard && siteAssignment.housingType == "apartment")
+         val siteAuthoritySha = siteAssignment.sourceHashes.first()
+         val siteRoads = listOf(
+@@ -377,22 +377,25 @@
+         )
+         val siteBuilding = BuildingGeometry(
+             buildingId = "site-building-435",
+-            label = "435",
++            label = "407-433",
+             housingType = "apartment",
+             assigned = true,
+             attachedGroup = "site-building",
+-            sourceMembers = listOf("435"),
++            sourceMembers = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),
+             labelItems = listOf(
+-                BuildingLabelItem(
+-                    text = "435",
+-                    center = Point2D(270.0, 187.0),
+-                    origin = Point2D(260.0, 190.0),
+-                    angleDeg = 0.0,
+-                    fontSizePt = 9.0
+-                )
++                BuildingLabelItem("407", Point2D(260.0, 178.0), Point2D(250.0, 181.0), 0.0, 9.0),
++                BuildingLabelItem("409", Point2D(300.0, 178.0), Point2D(290.0, 181.0), 0.0, 9.0),
++                BuildingLabelItem("413", Point2D(340.0, 178.0), Point2D(330.0, 181.0), 0.0, 9.0),
++                BuildingLabelItem("415", Point2D(380.0, 178.0), Point2D(370.0, 181.0), 0.0, 9.0),
++                BuildingLabelItem("419", Point2D(420.0, 178.0), Point2D(410.0, 181.0), 0.0, 9.0),
++                BuildingLabelItem("421", Point2D(260.0, 207.0), Point2D(250.0, 210.0), 0.0, 9.0),
++                BuildingLabelItem("425", Point2D(300.0, 207.0), Point2D(290.0, 210.0), 0.0, 9.0),
++                BuildingLabelItem("427", Point2D(340.0, 207.0), Point2D(330.0, 210.0), 0.0, 9.0),
++                BuildingLabelItem("431", Point2D(380.0, 207.0), Point2D(370.0, 210.0), 0.0, 9.0),
++                BuildingLabelItem("433", Point2D(420.0, 207.0), Point2D(410.0, 210.0), 0.0, 9.0)
+             ),
+             polygon = listOf(
+-                Point2D(235.0, 165.0), Point2D(305.0, 165.0), Point2D(305.0, 210.0), Point2D(235.0, 210.0)
++                Point2D(235.0, 155.0), Point2D(445.0, 155.0), Point2D(445.0, 225.0), Point2D(235.0, 225.0)
+             )
+         )
+         val siteState = CurrentAuthoritativeAssignmentState(
+@@ -440,7 +443,7 @@
+             displayId = siteState.displayId,
+             candidateSourceSha256 = siteAuthoritySha,
+             candidateTopology = siteTopology,
+-            candidateBuildingMemberIds = listOf("435"),
++            candidateBuildingMemberIds = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),
+             sourceTruth = siteSourceTruth,
+             jurisdiction = VerificationJurisdiction("Oakland County", "Michigan", "United States")
+         )
+@@ -502,8 +505,8 @@
+             buildingBindings = listOf(
+                 VerifiedSiteBuildingBinding(
+                     buildingId = "site-building-435",
+-                    sourceMemberIds = listOf("435"),
+-                    verifiedLabelTexts = listOf("435")
++                    sourceMemberIds = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),
++                    verifiedLabelTexts = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433")
+                 )
+             ),
+             accessInset = VerifiedSiteAccessInsetGeometry(
+@@ -539,7 +542,10 @@
+         check(siteAdapted.renderSpec.labels.map { it.labelId }.toSet() == setOf("site-access-source", "site-loop-label")) {
+             "site access detail label leaked into site diagram"
+         }
+-        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("435"))
++        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"))
++        check(siteAdapted.renderSpec.buildings.single().labelItems.map { it.text } == listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433")) {
++            "adapter flattened or dropped verified multi-label building items"
++        }
+         val siteRendered = CandidatePdfRenderer.renderNonFieldFixture(template, siteAdapted.renderSpec)
+         check(siteRendered.exactValidation.passed)
+         check(siteRendered.renderSpecSha256 == siteAdapted.renderSpecSha256)
+@@ -554,6 +560,22 @@
+         expectBlocked(
+             kb,
+             siteInput.copy(siteBuildingAssignment = siteGeometry.copy(
++                buildingBindings = listOf(
++                    VerifiedSiteBuildingBinding("site-building-435", listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"), listOf("407", "409", "413", "415", "419", "421", "425", "427", "431"))
++                )
++            )),
++            "member/label binding drift"
++        )
++        expectBlocked(
++            kb,
++            siteInput.copy(assignment = siteState.copy(
++                buildings = listOf(siteBuilding.copy(labelItems = siteBuilding.labelItems.mapIndexed { index, item -> if (index == 1) item.copy(origin = null) else item }))
++            )),
++            "multi-label single-footprint rendering requires exact verified text origins"
++        )
++        expectBlocked(
++            kb,
++            siteInput.copy(siteBuildingAssignment = siteGeometry.copy(
+                 accessInset = requireNotNull(siteGeometry.accessInset).copy(
+                     renderedRoads = siteGeometry.accessInset.renderedRoads.map { it.copy(status = "red") }
+                 )
+@@ -630,7 +652,7 @@
+         println("adapter_input_sha256=${first.inputSha256}")
+         println("adapter_output_spec_sha256=${first.renderSpecSha256}")
+         println("adapter_non_field_pdf_sha256=${rendered.pdfSha256}")
+-        println("adapter_fail_closed_mutations=28")
++        println("adapter_fail_closed_mutations=32")
+     }
+ 
+     private fun label(

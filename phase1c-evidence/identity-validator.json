@@ -1,0 +1,13 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+{
+  "passed": true,
+  "errors": [],
+  "expected": {
+    "base_number": 994,
+    "card_class": "A",
+    "suffix": "a",
+    "display_id": "A994a",
+    "canonical_filename": "Territory - 994Aa.pdf"
+  },
+  "artifact": "/home/runner/work/Hummer/Hummer/evidence/phase1c-0.1.19/Territory - 994Aa - NOT FOR FIELD USE.pdf"
+}

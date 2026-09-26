@@ -1,0 +1,11 @@
+{
+  "created_before_placement":true,
+  "source_path":"synthetic-source.json",
+  "source_sha256":"245ab2444bfe1d05eb485610b3f4a96f57ad756f7eaf380e674ef1447dce7d6d",
+  "source_evidence":"Synthetic non-field site/building multi-label regression.",
+  "labels":[
+    {"label_id":"label-access-source","street":"Access Rd","navigation_role":"site_source_run","segment_id":"seg-access","whole_contour_required":false},
+    {"label_id":"label-site","street":"Site Loop","navigation_role":"site_loop_run","segment_id":"seg-site","whole_contour_required":false},
+    {"label_id":"label-access-detail","street":"Access Rd","navigation_role":"verified_access_enlarged_run","segment_id":"seg-access","whole_contour_required":false}
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "artifact_sha256":"6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+  "delivery_format_review":{
+    "artifact_sha256":"6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+    "artifact_filename":"Territory - 994Aa - NOT FOR FIELD USE.pdf",
+    "artifact_mime_type":"application/pdf",
+    "final_user_deliverable_pdf":true,
+    "image_preview_only":true,
+    "vector_or_native_map_geometry":true,
+    "pdf_openable":true,
+    "single_page":true,
+    "encrypted":false,
+    "bytes":82439
+  },
+  "label_metric_review":{
+    "artifact_sha256":"6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+    "measurement_reference":"exact_final_pdf_1x_72dpi",
+    "reference_label_ids":["label-access-source","label-site","label-access-detail"],
+    "reference_gap_values_px":[3.0,3.0,3.0],
+    "reference_gap_median_px":3.0,
+    "consistency_tolerance_px":1.0,
+    "target_gap_px":3.0,
+    "hard_gap_min_px":2.0,
+    "hard_gap_max_px":4.0,
+    "reference_gap_consistency_passed":true,
+    "outlier_label_count":0,
+    "label_metrics":[
+      {"label_id":"label-access-source","street":"Access Rd","assigned_road_gap_px":3.0,"touches_any_road":false,"overlaps_any_road":false,"alignment_passed":true,"match_reference_gap":true,"cluster_clearance_passed":true},
+      {"label_id":"label-site","street":"Site Loop","assigned_road_gap_px":3.0,"touches_any_road":false,"overlaps_any_road":false,"alignment_passed":true,"match_reference_gap":true,"cluster_clearance_passed":true},
+      {"label_id":"label-access-detail","street":"Access Rd","assigned_road_gap_px":3.0,"touches_any_road":false,"overlaps_any_road":false,"alignment_passed":true,"match_reference_gap":true,"cluster_clearance_passed":true}
+    ],
+    "repeat_label_groups":[
+      {"street":"Access Rd","required_count":2,"actual_count":2,"label_ids":["label-access-source","label-access-detail"],"navigation_roles":["site_source_run","verified_access_enlarged_run"],"materially_separated_runs":true,"navigation_improved":true,"new_cluster_created":false}
+    ]
+  },
+  "label_navigation_review":{
+    "contract_revision":"R52",
+    "scope":"bounded_label_regression",
+    "artifact_sha256":"6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+    "artifact_path":"Territory - 994Aa - NOT FOR FIELD USE.pdf",
+    "target_lock_path":"target-lock.json",
+    "target_lock_sha256":"bd9f092ac3b8e2af6e3b0050d72af8addd8dcb66d956a46a8585ae9877247287",
+    "rendered_label_ids":["label-access-source","label-site","label-access-detail"],
+    "all_in_scope_labels_reviewed":true,
+    "labels":[
+      {"label_id":"label-access-source","street":"Access Rd","navigation_role":"site_source_run","segment_id":"seg-access","observed_segment_id":"seg-access","source_segment_trace_verified":true,"target_from_saved_pdf":true,"actual_size_clear":true,"closeup_clear":true,"source_evidence":"synthetic-source.json seg-access","mode":"direct"},
+      {"label_id":"label-site","street":"Site Loop","navigation_role":"site_loop_run","segment_id":"seg-site","observed_segment_id":"seg-site","source_segment_trace_verified":true,"target_from_saved_pdf":true,"actual_size_clear":true,"closeup_clear":true,"source_evidence":"synthetic-source.json seg-site","mode":"direct"},
+      {"label_id":"label-access-detail","street":"Access Rd","navigation_role":"verified_access_enlarged_run","segment_id":"seg-access","observed_segment_id":"seg-access","source_segment_trace_verified":true,"target_from_saved_pdf":true,"actual_size_clear":true,"closeup_clear":true,"source_evidence":"synthetic-source.json explicit verified access inset","mode":"direct"}
+    ]
+  },
+  "critic_label_navigation_review":{
+    "artifact_sha256":"6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+    "raw_target_lock_reopened":true,
+    "each_repeat_role_rechecked":true,
+    "start_middle_end_and_suffix_rechecked":true,
+    "native_font_spacing_visual_review":true,
+    "builder_target_ids_used_as_proof":false,
+    "reviewer_type":"authorized_internal",
+    "critic_independent":false,
+    "screenshots_inspected":["render-1x/page-1.png","render-4x/page-1.png"]
+  },
+  "critic_visual_hard_override_review":{
+    "artifact_sha256":"6714060b793c5a39a96fdea11ef28c864f53e9579b0e89c922440d3679fad9a0",
+    "actual_size_inspected":true,
+    "four_x_closeups_inspected":true,
+    "all_street_labels_checked_against_all_map_objects":true,
+    "perimeter_border_labels_checked":true,
+    "mixed_status_junctions_checked":true,
+    "label_any_object_contact_count":0,
+    "label_any_object_overlap_count":0,
+    "perimeter_label_inside_count":0,
+    "mixed_status_color_overlap_count":0,
+    "direct_curved_gap_violation_count":0,
+    "direct_curved_gap_target_px":3.0,
+    "direct_curved_gap_hard_min_px":2.0,
+    "direct_curved_gap_hard_max_px":4.0,
+    "direct_curved_gap_tolerance_px":1.0,
+    "perimeter_border_label_count":0,
+    "perimeter_label_records":[],
+    "mixed_status_junction_count":0,
+    "mixed_status_junction_records":[],
+    "direct_curved_label_count":3,
+    "direct_curved_label_records":[
+      {"label_id":"label-access-source","assigned_road_gap_px":3.0,"touches_any_map_object":false,"overlaps_any_map_object":false,"result":"PASS"},
+      {"label_id":"label-site","assigned_road_gap_px":3.0,"touches_any_map_object":false,"overlaps_any_map_object":false,"result":"PASS"},
+      {"label_id":"label-access-detail","assigned_road_gap_px":3.0,"touches_any_map_object":false,"overlaps_any_map_object":false,"result":"PASS"}
+    ],
+    "evidence":["render-1x/page-1.png","render-4x/page-1.png","style-validator.json"]
+  }
+}
