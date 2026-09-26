@@ -1,0 +1,304 @@
+name: TCS Phase 1C Build and Visual Evidence
+
+on:
+  push:
+    branches:
+      - tcs-phase1c-019-work
+    paths:
+      - .github/workflows/tcs-phase1c-019-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tcs-phase1c-019-build
+  cancel-in-progress: false
+
+jobs:
+  phase1c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Phase 1C branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact Phase 1B-3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src /tmp/pre1c
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          test "$(find tcs-src -type f | wc -l)" -eq 79
+
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected = "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          paths = sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))
+          parts = [p.read_text() for p in paths]
+          raw = "".join(parts)
+          def exact(candidate):
+              try:
+                  patch = base64.b64decode(candidate, validate=True)
+              except Exception:
+                  return None
+              return patch if hashlib.sha256(patch).hexdigest() == expected else None
+          patch = exact(raw)
+          repair = "none"
+          if patch is None:
+              if len(parts) != 8 or len(parts[5]) != 12002:
+                  raise SystemExit("unexpected Phase 1B-3 transport shape")
+              p6 = parts[5]
+              for i in range(len(p6) - 1):
+                  candidate_parts = list(parts)
+                  candidate_parts[5] = p6[:i] + p6[i+2:]
+                  patch = exact("".join(candidate_parts))
+                  if patch is not None:
+                      repair = f"part06-remove-adjacent-pair@{i}"
+                      break
+              else:
+                  raise SystemExit("unable to recover exact locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3-overlay.patch").write_bytes(patch)
+          Path("evidence/phase1b3-transport-recovery.txt").write_text(repair + "\n")
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3-overlay.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3-overlay.patch)
+
+          echo "122ab6c3dee4906c7e07048a7201796d52869f3f9f0906c7c6ff3360b254f547  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt" | sha256sum -c -
+          echo "c537d7da1ff4eb5308c5e006eb84e51b5d8eec19b0be6da7f56a95d438fddc46  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt" | sha256sum -c -
+          echo "db77c1eac1da955621f290be7e5d3e1712aad6a1357c3c2468c73f9b2ebb8c6f  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt" | sha256sum -c -
+          echo "30d6fc40bbd2c1b7671fde428bb4a17d25d30c17292e492d1d280edd3bb567d0  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt" | sha256sum -c -
+          echo "296964daffa06a85d1a7e1406544ae3ab70b20523a93121744ac85916cda2f53  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/SiteBuildingAssignmentFixtureGenerator.kt" | sha256sum -c -
+
+          for p in \
+            core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt \
+            core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt \
+            core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt \
+            core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt; do
+            mkdir -p "/tmp/pre1c/$(dirname "$p")"
+            cp "tcs-src/$p" "/tmp/pre1c/$p"
+          done
+
+      - name: Apply bounded Phase 1C transform
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .tooling/tcs/phase1c-apply.py tcs-src | tee evidence/phase1c-apply.log
+          grep -F "PHASE1C_APPLY=PASS" evidence/phase1c-apply.log
+          {
+            diff -u /tmp/pre1c/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt || true
+            diff -u /tmp/pre1c/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt || true
+            diff -u /tmp/pre1c/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt || true
+            diff -u /tmp/pre1c/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt || true
+          } > evidence/phase1c-source.patch
+          test -s evidence/phase1c-source.patch
+          sha256sum .tooling/tcs/phase1c-apply.py evidence/phase1c-source.patch \
+            tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt \
+            tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt \
+            tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRendererTest.kt \
+            tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapterTest.kt \
+            > evidence/phase1c-source-sha256.txt
+
+          cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+          sed -i 's/versionCode = 17/versionCode = 19/' tcs-src/app/build.gradle.kts
+          sed -i 's/versionName = "0.1.17"/versionName = "0.1.19"/' tcs-src/app/build.gradle.kts
+          grep -F 'versionCode = 19' tcs-src/app/build.gradle.kts
+          grep -F 'versionName = "0.1.19"' tcs-src/app/build.gradle.kts
+
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files-before-fixture.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files-before-fixture.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android API 37 and Build Tools 36.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f 2>/dev/null | sort -V | tail -n 1)"
+          fi
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
+
+      - name: Install PDF review dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          python3 -m pip install --quiet pymupdf
+
+      - name: Strict core compile and 192m smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v kotlinc
+          mapfile -t SOURCES < <(find tcs-src/core/src/main/kotlin tcs-src/core/src/test/kotlin -name '*.kt' -type f | sort)
+          kotlinc -Werror -jvm-target 17 "${SOURCES[@]}" -include-runtime -d evidence/phase1c-core-tests.jar 2>&1 | tee evidence/core-werror-compile.log
+          java -Xmx192m -cp evidence/phase1c-core-tests.jar com.koenterprises.territorycardstudio.core.CoreContractSmokeTestKt \
+            tcs-src/app/src/main/assets/territory \
+            "tcs-src/core/src/test/resources/pdf-boundary/Territory - 300Aa.pdf" \
+            2>&1 | tee evidence/core-smoke-xmx192.log
+          grep -F "adapter_fail_closed_mutations=32" evidence/core-smoke-xmx192.log
+
+      - name: Generate Phase 1C synthetic visual evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="evidence/phase1c-0.1.19"
+          mkdir -p "$OUT/render-1x" "$OUT/render-4x" "$OUT/mupdf-1x" "$OUT/mupdf-4x"
+          PDF="$OUT/Territory - 994a - NOT FOR FIELD USE.pdf"
+          java -Xmx192m -cp evidence/phase1c-core-tests.jar com.koenterprises.territorycardstudio.core.SiteBuildingAssignmentFixtureGeneratorKt \
+            tcs-src/app/src/main/assets/territory "$PDF" | tee "$OUT/generator.log"
+          grep -F "validation_passed=true" "$OUT/generator.log"
+          sha256sum "$PDF" > "$OUT/pdf-sha256.txt"
+          pdfinfo "$PDF" > "$OUT/pdfinfo.txt"
+          pdftoppm -png -singlefile -r 72 "$PDF" "$OUT/render-1x/page-1" >/dev/null 2>&1
+          pdftoppm -png -singlefile -r 288 "$PDF" "$OUT/render-4x/page-1" >/dev/null 2>&1
+          python3 - <<'PY'
+          import fitz
+          from pathlib import Path
+          pdf=Path("evidence/phase1c-0.1.19/Territory - 994a - NOT FOR FIELD USE.pdf")
+          doc=fitz.open(pdf)
+          page=doc[0]
+          for scale,name in [(1,"mupdf-1x/page-1.png"),(4,"mupdf-4x/page-1.png")]:
+              pix=page.get_pixmap(matrix=fitz.Matrix(scale,scale),alpha=False)
+              pix.save(str(pdf.parent/name))
+          PY
+          sha256sum "$OUT"/render-1x/page-1.png "$OUT"/render-4x/page-1.png "$OUT"/mupdf-1x/page-1.png "$OUT"/mupdf-4x/page-1.png > "$OUT/render-sha256.txt"
+
+          mkdir -p tcs-src/app/src/main/assets/territory/render-authority/references
+          cp tcs-src/app/src/main/assets/territory/R48-Canonical-Style-Tokens.json \
+            tcs-src/app/src/main/assets/territory/render-authority/references/R48-Canonical-Style-Tokens.json
+          cat > "$OUT/identity.json" <<'JSON'
+          {
+            "source_master_label":"SYNTHETIC-ANDROID-SITE-BUILDING-FIXTURE",
+            "card_identity":{"base_number":994,"card_class":"","suffix":"a","display_id":"994a","canonical_filename":"Territory - 994a.pdf","identity_status":"fixture_only"}
+          }
+          JSON
+          python3 tcs-src/app/src/main/assets/territory/render-authority/validators/validate_style_token_layer.py "$PDF" > "$OUT/style-validator.json"
+          (cd tcs-src/app/src/main/assets/territory/render-authority/validators && python3 validate_pdf_identity.py --fixture "$GITHUB_WORKSPACE/$OUT/identity.json" "$GITHUB_WORKSPACE/$PDF") > "$OUT/identity-validator.json"
+          grep -F '"passed": true' "$OUT/style-validator.json"
+          grep -F '"passed": true' "$OUT/identity-validator.json"
+
+          python3 - <<'PY'
+          from PIL import Image, ImageChops
+          from pathlib import Path
+          base=Path("evidence/phase1c-0.1.19")
+          # Compare Poppler vs MuPDF at the same 1x raster size; record difference only, do not fake zero.
+          a=Image.open(base/"render-1x/page-1.png").convert("RGB")
+          b=Image.open(base/"mupdf-1x/page-1.png").convert("RGB")
+          if a.size != b.size:
+              b=b.resize(a.size)
+          d=ImageChops.difference(a,b)
+          hist=d.histogram()
+          changed=sum(v for i,v in enumerate(hist) if i%256 != 0)
+          total=a.width*a.height*3
+          (base/"renderer-parity.txt").write_text(f"changed_channel_fraction={changed/total:.8f}\\n")
+          PY
+
+      - name: Run real Android milestone freeze build
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-gradle-test.log
+          grep -F "BUILD SUCCESSFUL" evidence/core-gradle-test.log
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin) 2>&1 | tee evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug) 2>&1 | tee evidence/assemble-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/assemble-debug.log
+          (cd tcs-src && gradle --no-daemon :app:bundleDebug) 2>&1 | tee evidence/bundle-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/bundle-debug.log
+
+          APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+          AAB="$(find tcs-src/app/build/outputs/bundle/debug -type f -name '*.aab' | head -n 1)"
+          test -s "$APK" && test -s "$AAB"
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\\." evidence/aab-jar-verify.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='19'.*versionName='0.1.19'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+          cp "$APK" evidence/TerritoryCardStudio-0.1.19-debug.apk
+          cp "$AAB" evidence/TerritoryCardStudio-0.1.19-debug.aab
+
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
+          sha256sum evidence/*.log evidence/*.sha256 2>/dev/null > evidence/log-and-manifest-sha256.txt || true
+          cat > evidence/status.txt <<'EOF'
+          PHASE_1C_BUILD_FREEZE=PASS_PENDING_VISUAL_REVIEW
+          MULTI_LABEL_SINGLE_FOOTPRINT_CORE=PASS
+          STRICT_KOTLIN_WERROR_JVM17=PASS
+          CORE_SMOKE_XMX192=PASS
+          CORE_GRADLE_TEST=PASS
+          APP_COMPILE=PASS
+          ASSEMBLE_DEBUG=PASS
+          BUNDLE_DEBUG=PASS
+          APK_V2_SIGNATURE=PASS
+          AAB_JAR_VERIFY=PASS
+          APK_ZIP_INTEGRITY=PASS
+          AAB_ZIP_INTEGRITY=PASS
+          VERSION_CODE=19
+          VERSION_NAME=0.1.19
+          TARGET_SDK=37
+          RESERVED_TERRITORY_PDF_SWEEP=0
+          NEXT_REQUIRED_GATE=ACTUAL_1X_4X_VISUAL_REVIEW_THEN_R48_R51_R52_HARD_OVERRIDE
+          EOF
+
+      - name: Commit inspectable non-field visual evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "territory-card-studio-ci"
+          git config user.email "territory-card-studio-ci@users.noreply.github.com"
+          mkdir -p phase1c-evidence
+          cp "evidence/phase1c-0.1.19/Territory - 994a - NOT FOR FIELD USE.pdf" phase1c-evidence/
+          cp evidence/phase1c-0.1.19/render-1x/page-1.png phase1c-evidence/phase1c-994a-1x.png
+          cp evidence/phase1c-0.1.19/render-4x/page-1.png phase1c-evidence/phase1c-994a-4x.png
+          cp evidence/phase1c-0.1.19/mupdf-1x/page-1.png phase1c-evidence/phase1c-994a-mupdf-1x.png
+          cp evidence/phase1c-0.1.19/renderer-parity.txt phase1c-evidence/
+          cp evidence/phase1c-source.patch phase1c-evidence/
+          cp evidence/phase1c-source-sha256.txt phase1c-evidence/
+          cp evidence/phase1c-0.1.19/pdf-sha256.txt phase1c-evidence/
+          cp evidence/phase1c-0.1.19/style-validator.json phase1c-evidence/
+          cp evidence/phase1c-0.1.19/identity-validator.json phase1c-evidence/
+          git add phase1c-evidence
+          if ! git diff --cached --quiet; then
+            git commit -m "Add Phase 1C synthetic visual evidence"
+            git push origin HEAD:tcs-phase1c-019-work
+          fi
+
+      - name: Upload Phase 1C build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1c-019-build-evidence
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
