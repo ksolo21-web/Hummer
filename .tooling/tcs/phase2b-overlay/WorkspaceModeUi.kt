@@ -463,8 +463,8 @@ private fun WorkspaceDetailsSurface(
         a.sourceHashes.distinct().take(4).forEachIndexed { index, hash ->
             WorkspaceInfoRow("Source " + (index + 1), hash)
         }
-        if (a.approvalNote != null) {
-            WorkspaceInfoRow("Approval note", a.approvalNote)
+        a.approvalNote?.let { note ->
+            WorkspaceInfoRow("Approval note", note)
         }
     }
 }
