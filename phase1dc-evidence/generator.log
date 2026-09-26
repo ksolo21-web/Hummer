@@ -1,0 +1,8 @@
+phase1d_c_telephone_fixture=PASS
+inventory_count=15
+verified_phone_count=12
+unavailable_phone_count=3
+inventory_sha256=fcd07fcf4ec9c67fe411781e72a043221001059929576cfc89776e41d03331b7
+combined_pdf_sha256=01f704feb3e8253d443ceb3d373993b5dc57d41a7464a286e66e86fdacc9350e
+page_count=2
+page_roles=FRONT_MAP,BACK_PHONE_LIST

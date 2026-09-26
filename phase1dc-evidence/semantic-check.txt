@@ -1,0 +1,7 @@
+mode=TELEPHONE
+page_count=2
+page1_role=FRONT_MAP
+page2_role=BACK_PHONE_LIST
+front_prefix_exact=true
+front_sha256=5978c93dd04ddd9cb138e01aa75ae3854d400a488e0dbab789317ab968a190a4
+combined_sha256=01f704feb3e8253d443ceb3d373993b5dc57d41a7464a286e66e86fdacc9350e

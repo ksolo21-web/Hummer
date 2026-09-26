@@ -1,0 +1,5 @@
+e39de2ade626224deb5ccbda6eaba338f02d96522afa17fd2858069c426686a8  /tmp/phase1dc-frontback.py
+9d926f5ea84621e3d12900c3f7833d01f69875410106d21eac5ecc868299c708  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+59d14ff4cf9a1fe9bf15348d1808fe2480c931c1ba67e6a374fea0ad5b7f5fa7  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventory.kt
+780399cb17ad2f6cc967587845148170c4abbaf33713eb7600a897cdbf68647f  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephoneTerritoryInventoryRegression.kt
+fdd5f1927e31e76d32d37958b0c8381c76a5a52e32eef58903f3bd85b7d1dc2b  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/TelephonePage2FixtureGenerator.kt
