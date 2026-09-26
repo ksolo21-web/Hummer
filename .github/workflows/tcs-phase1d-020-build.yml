@@ -1,0 +1,322 @@
+name: TCS Phase 1D Canonical Front Back Freeze
+
+on:
+  push:
+    branches:
+      - tcs-phase1d-020-work
+    paths:
+      - .github/workflows/tcs-phase1d-020-build.yml
+      - .tooling/tcs/phase1d.patch.b64.part*
+      - .tooling/tcs/phase1c-apply.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tcs-phase1d-020-build
+  cancel-in-progress: false
+
+jobs:
+  phase1d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Phase 1D branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact Phase 1C source baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected="85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          parts=[p.read_text() for p in sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))]
+          raw="".join(parts)
+          def exact(candidate):
+              try: patch=base64.b64decode(candidate,validate=True)
+              except Exception: return None
+              return patch if hashlib.sha256(patch).hexdigest()==expected else None
+          patch=exact(raw)
+          repair="none"
+          if patch is None:
+              p6=parts[5]
+              for i in range(len(p6)-1):
+                  x=list(parts); x[5]=p6[:i]+p6[i+2:]
+                  patch=exact("".join(x))
+                  if patch is not None:
+                      repair=f"part06-remove-adjacent-pair@{i}"; break
+              else: raise SystemExit("unable to recover locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3.patch").write_bytes(patch)
+          Path("evidence/phase1b3-recovery.txt").write_text(repair+"\n")
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3.patch)
+
+          python3 .tooling/tcs/phase1c-apply.py tcs-src | tee evidence/phase1c-apply.log
+          grep -F "PHASE1C_APPLY=PASS" evidence/phase1c-apply.log
+
+      - name: Reconstruct and apply exact Phase 1D patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "a6af185d45da7c1701f4651b045c237376b6d094011c3aa88d836013c6f8c4bb  .tooling/tcs/phase1d.patch.b64.part00a1" | sha256sum -c -
+          echo "adee5fcbbaf090c3623b0da67165db8174830d7450d3ba41cf273b3f41165f6a  .tooling/tcs/phase1d.patch.b64.part00a2" | sha256sum -c -
+          echo "c7dc297ab576da416d976548cccec661d15e331522e160bd980967476c80e33e  .tooling/tcs/phase1d.patch.b64.part00b" | sha256sum -c -
+          echo "4b86dbf35b35cd45d887d6520d743d0b37eb85bfd4416c508a175e971034788b  .tooling/tcs/phase1d.patch.b64.part00c" | sha256sum -c -
+          echo "6fd09471737da1cec32e47b975f070b6cb70402db44246d2a2b97e7c71d8c251  .tooling/tcs/phase1d.patch.b64.part00d" | sha256sum -c -
+          echo "93dada74de2f5552b37d377573a9ad11b33789d25883179dbf1414f8206cb883  .tooling/tcs/phase1d.patch.b64.part01a" | sha256sum -c -
+          echo "6225f2a03b130716e3f396328b26cc56db8fc8e71cc41fe381ca0f2dae53b29c  .tooling/tcs/phase1d.patch.b64.part01b" | sha256sum -c -
+          echo "1ce9d1174ba9c04422996fd7a8184cafc9e4e8beac773a3ca010206661dcd006  .tooling/tcs/phase1d.patch.b64.part01c" | sha256sum -c -
+          echo "88dc7ea0368036aa0720f1790f7f473b10bcb0e535c9386ef670307af86264a9  .tooling/tcs/phase1d.patch.b64.part01d" | sha256sum -c -
+          echo "46e8c425af6b3bb8790201bd8c7633d1b49548671c36a5f07c03d1f0cafc91ad  .tooling/tcs/phase1d.patch.b64.part02a" | sha256sum -c -
+          echo "cf0d2e862e119f5f9887a789ef5219c9dc7ef1af5dfb51c74d497e8b1bbcc5b8  .tooling/tcs/phase1d.patch.b64.part02b" | sha256sum -c -
+          echo "63bbc05ceb0140922c2250863d4f849a4e7d283412ec8d684fa20fd4d13ff04e  .tooling/tcs/phase1d.patch.b64.part02c" | sha256sum -c -
+          echo "c99abaee9fdaa36196af5539d403675b15532f559e90c18d04e2071e49795822  .tooling/tcs/phase1d.patch.b64.part02d" | sha256sum -c -
+          echo "4936e1761ba51f5214ce070dd2040fa90ebc663d5605559e5b5b03a749e63e25  .tooling/tcs/phase1d.patch.b64.part03a" | sha256sum -c -
+          echo "14aed65aeb21e1d84ee7654987b644be2d6664ffaa245b449233c391c7a6eba9  .tooling/tcs/phase1d.patch.b64.part03b" | sha256sum -c -
+          echo "97f52182001f9c5daff070090e533d76f38d9ccc99ff5eba520ff43dfc2ac22f  .tooling/tcs/phase1d.patch.b64.part03c" | sha256sum -c -
+          echo "e84455c53fe5cd03b7a1afcc881607b4df4e770dad2ddd1176ea718d9a1343b0  .tooling/tcs/phase1d.patch.b64.part03d" | sha256sum -c -
+          echo "9348b25e800cfaa015433138f06eef7a7570bcc395ade2e71be5a93394f45ccc  .tooling/tcs/phase1d.patch.b64.part04" | sha256sum -c -
+
+          cat             .tooling/tcs/phase1d.patch.b64.part00a1             .tooling/tcs/phase1d.patch.b64.part00a2             .tooling/tcs/phase1d.patch.b64.part00b             .tooling/tcs/phase1d.patch.b64.part00c             .tooling/tcs/phase1d.patch.b64.part00d             .tooling/tcs/phase1d.patch.b64.part01a             .tooling/tcs/phase1d.patch.b64.part01b             .tooling/tcs/phase1d.patch.b64.part01c             .tooling/tcs/phase1d.patch.b64.part01d             .tooling/tcs/phase1d.patch.b64.part02a             .tooling/tcs/phase1d.patch.b64.part02b             .tooling/tcs/phase1d.patch.b64.part02c             .tooling/tcs/phase1d.patch.b64.part02d             .tooling/tcs/phase1d.patch.b64.part03a             .tooling/tcs/phase1d.patch.b64.part03b             .tooling/tcs/phase1d.patch.b64.part03c             .tooling/tcs/phase1d.patch.b64.part03d             .tooling/tcs/phase1d.patch.b64.part04 > /tmp/phase1d.patch.b64
+          echo "f18c32f4f4c3308275347245d0d323ba2ed663646847cce1bd82202dbe10f86d  /tmp/phase1d.patch.b64" | sha256sum -c -
+          base64 -d /tmp/phase1d.patch.b64 > /tmp/phase1d.patch
+          echo "9bf60ea0a8f7cd4df7a41f681cc2b50196232ef44875118093981fc75d797f19  /tmp/phase1d.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1d.patch)
+          cp /tmp/phase1d.patch evidence/phase1d-source.patch
+          sha256sum /tmp/phase1d.patch > evidence/phase1d-source-patch.sha256
+
+          cp .tooling/tcs/phase1b2-app-build.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+          sed -i 's/versionCode = 17/versionCode = 20/' tcs-src/app/build.gradle.kts
+          sed -i 's/versionName = "0.1.17"/versionName = "0.1.20"/' tcs-src/app/build.gradle.kts
+          grep -F 'versionCode = 20' tcs-src/app/build.gradle.kts
+          grep -F 'versionName = "0.1.20"' tcs-src/app/build.gradle.kts
+
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files-before-fixture.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files-before-fixture.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install Android and PDF review tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path "*/bin/sdkmanager" -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
+          (cd tcs-src && ./tools/check_android_toolchain.sh) 2>&1 | tee evidence/toolchain-preflight.log
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          python3 -m pip install --quiet pymupdf pillow
+
+      - name: Run Phase 1D core regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:test) 2>&1 | tee evidence/core-test.log
+          grep -F "BUILD SUCCESSFUL" evidence/core-test.log
+          grep -F "canonical_front_back_pdf=PASS" evidence/core-test.log
+          grep -F "canonical_front_back_fail_closed_mutations=7" evidence/core-test.log
+          sha256sum evidence/core-test.log > evidence/core-test.sha256
+
+      - name: Generate and inspect canonical two-page fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="evidence/phase1d-0.1.20"
+          mkdir -p "$OUT/poppler-1x" "$OUT/poppler-4x" "$OUT/mupdf-1x"
+          FRONT="$OUT/Territory - 995a - FRONT - NOT FOR FIELD USE.pdf"
+          COMBINED="$OUT/Territory - 995a - NOT FOR FIELD USE.pdf"
+
+          MAIN_JAR="$(find tcs-src/core/build/libs -type f -name '*.jar' | head -n 1)"
+          test -s "$MAIN_JAR"
+          # Use Gradle test classes/runtime for the fixture generator.
+          TEST_CP="tcs-src/core/build/classes/kotlin/test:tcs-src/core/build/classes/kotlin/main"
+          KLIB="$(find ~/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib -name '*.jar' | head -n 1)"
+          java -Xmx192m -cp "$TEST_CP:$KLIB" com.koenterprises.territorycardstudio.core.CanonicalFrontBackFixtureGeneratorKt             tcs-src/app/src/main/assets/territory "$FRONT" "$COMBINED" | tee "$OUT/generator.log"
+          grep -F "validation_passed=true" "$OUT/generator.log"
+          grep -F "page_count=2" "$OUT/generator.log"
+          grep -F "page_roles=FRONT_MAP,BACK_ADDRESS_LIST" "$OUT/generator.log"
+
+          sha256sum "$FRONT" "$COMBINED" > "$OUT/pdf-sha256.txt"
+          pdfinfo "$FRONT" > "$OUT/front-pdfinfo.txt"
+          pdfinfo "$COMBINED" > "$OUT/combined-pdfinfo.txt"
+          grep -F "Pages:           2" "$OUT/combined-pdfinfo.txt"
+          pdftotext -f 2 -l 2 "$COMBINED" "$OUT/back-text.txt"
+          grep -F "ADDRESSES" "$OUT/back-text.txt"
+          grep -F "101 Example Way Apt 1" "$OUT/back-text.txt"
+          grep -F "402 Test Lane Unit 4" "$OUT/back-text.txt"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, fitz
+          base=Path("evidence/phase1d-0.1.20")
+          front=(base/"Territory - 995a - FRONT - NOT FOR FIELD USE.pdf").read_bytes()
+          combined=(base/"Territory - 995a - NOT FOR FIELD USE.pdf").read_bytes()
+          assert combined[:len(front)] == front, "front bytes are not exact combined prefix"
+          doc=fitz.open(stream=combined,filetype="pdf")
+          assert doc.page_count==2
+          for i,p in enumerate(doc):
+              assert abs(p.rect.width-768.0)<0.6 and abs(p.rect.height-480.5)<0.6, (i,p.rect)
+          txt=doc[1].get_text()
+          assert "ADDRESS LIST" in txt and "ADDRESSES" in txt and "NOT FOR FIELD USE" in txt
+          (base/"semantic-check.txt").write_text(
+              "page_count=2\npage1_role=FRONT_MAP\npage2_role=BACK_ADDRESS_LIST\nfront_prefix_exact=true\n"
+              f"front_sha256={hashlib.sha256(front).hexdigest()}\ncombined_sha256={hashlib.sha256(combined).hexdigest()}\n"
+          )
+          PY
+
+          for page in 1 2; do
+            pdftoppm -png -f "$page" -l "$page" -singlefile -r 72 "$COMBINED" "$OUT/poppler-1x/page-$page" >/dev/null 2>&1
+            pdftoppm -png -f "$page" -l "$page" -singlefile -r 288 "$COMBINED" "$OUT/poppler-4x/page-$page" >/dev/null 2>&1
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import fitz, base64
+          base=Path("evidence/phase1d-0.1.20")
+          doc=fitz.open(base/"Territory - 995a - NOT FOR FIELD USE.pdf")
+          for i,p in enumerate(doc):
+              pix=p.get_pixmap(matrix=fitz.Matrix(1,1),alpha=False)
+              out=base/"mupdf-1x"/f"page-{i+1}.png"
+              pix.save(out)
+          for name in ["poppler-1x/page-1.png","poppler-1x/page-2.png","poppler-4x/page-1.png","poppler-4x/page-2.png","mupdf-1x/page-1.png","mupdf-1x/page-2.png"]:
+              src=base/name
+              dst=base/(name.replace("/","-")+".b64.txt")
+              dst.write_text(base64.b64encode(src.read_bytes()).decode("ascii"))
+          PY
+          sha256sum "$OUT"/poppler-1x/*.png "$OUT"/poppler-4x/*.png "$OUT"/mupdf-1x/*.png > "$OUT/render-sha256.txt"
+
+          mkdir -p tcs-src/app/src/main/assets/territory/render-authority/references
+          cp tcs-src/app/src/main/assets/territory/R48-Canonical-Style-Tokens.json             tcs-src/app/src/main/assets/territory/render-authority/references/R48-Canonical-Style-Tokens.json
+          cat > "$OUT/front-identity.json" <<'JSON'
+          {
+            "source_master_label":"SYNTHETIC-ANDROID-FULL-PLUS-DETAIL-FIXTURE",
+            "card_identity":{"base_number":995,"card_class":"","suffix":"a","display_id":"995a","canonical_filename":"Territory - 995a.pdf","identity_status":"fixture_only"}
+          }
+          JSON
+          VDIR="tcs-src/app/src/main/assets/territory/render-authority/validators"
+          python3 "$VDIR/validate_style_token_layer.py" "$FRONT" > "$OUT/front-style-validator.json"
+          (cd "$VDIR" && python3 validate_pdf_identity.py --fixture "$GITHUB_WORKSPACE/$OUT/front-identity.json" "$GITHUB_WORKSPACE/$FRONT") > "$OUT/front-identity-validator.json"
+          grep -F '"passed": true' "$OUT/front-style-validator.json"
+          grep -F '"passed": true' "$OUT/front-identity-validator.json"
+
+      - name: Run real Android 0.1.20 freeze
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :app:compileDebugKotlin) 2>&1 | tee evidence/app-compile.log
+          grep -F "BUILD SUCCESSFUL" evidence/app-compile.log
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug) 2>&1 | tee evidence/assemble-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/assemble-debug.log
+          (cd tcs-src && gradle --no-daemon :app:bundleDebug) 2>&1 | tee evidence/bundle-debug.log
+          grep -F "BUILD SUCCESSFUL" evidence/bundle-debug.log
+
+          APK="$(find tcs-src/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+          AAB="$(find tcs-src/app/build/outputs/bundle/debug -type f -name '*.aab' | head -n 1)"
+          test -s "$APK" && test -s "$AAB"
+          sha256sum "$APK" > evidence/apk.sha256
+          sha256sum "$AAB" > evidence/aab.sha256
+          unzip -t "$APK" > evidence/apk-zip-test.txt
+          unzip -t "$AAB" > evidence/aab-zip-test.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK" > evidence/apk-signature.txt 2>&1
+          grep -F "Verified using v2 scheme (APK Signature Scheme v2): true" evidence/apk-signature.txt
+          jarsigner -verify -verbose -certs "$AAB" > evidence/aab-jar-verify.txt 2>&1
+          grep -E "jar verified|jar verified\." evidence/aab-jar-verify.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$APK" > evidence/apk-badging.txt
+          grep -E "^package:.*versionCode='20'.*versionName='0.1.20'" evidence/apk-badging.txt
+          grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
+          cp "$APK" evidence/TerritoryCardStudio-0.1.20-debug.apk
+          cp "$AAB" evidence/TerritoryCardStudio-0.1.20-debug.aab
+
+          (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
+          sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
+          tar -cJf evidence/TerritoryCardStudio-Android-0.1.20-phase1d-source.tar.xz -C tcs-src .
+          sha256sum evidence/TerritoryCardStudio-Android-0.1.20-phase1d-source.tar.xz > evidence/source-package.sha256
+
+          cat > evidence/status.txt <<'EOF'
+          PHASE_1D_BUILD_FREEZE=PASS_PENDING_MODEL_VISUAL_REVIEW
+          CANONICAL_FRONT_BACK_CORE=PASS
+          FRONT_PREFIX_EXACT=PASS
+          PAGE_COUNT=2
+          PAGE_ORDER=FRONT_MAP,BACK_ADDRESS_LIST
+          ADDRESS_SOURCE_HASH_BINDING=PASS
+          FRONT_R48_STYLE=PASS
+          FRONT_PDF_IDENTITY=PASS
+          CORE_GRADLE_TEST=PASS
+          APP_COMPILE=PASS
+          ASSEMBLE_DEBUG=PASS
+          BUNDLE_DEBUG=PASS
+          APK_V2_SIGNATURE=PASS
+          AAB_JAR_VERIFY=PASS
+          APK_ZIP_INTEGRITY=PASS
+          AAB_ZIP_INTEGRITY=PASS
+          VERSION_CODE=20
+          VERSION_NAME=0.1.20
+          TARGET_SDK=37
+          RESERVED_TERRITORY_PDF_SWEEP=0
+          NEXT_REQUIRED_GATE=ACTUAL_FRONT_BACK_1X_4X_MODEL_VISUAL_REVIEW
+          EOF
+
+      - name: Commit inspectable Phase 1D evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "territory-card-studio-ci"
+          git config user.email "territory-card-studio-ci@users.noreply.github.com"
+          mkdir -p phase1d-evidence
+          cp "evidence/phase1d-0.1.20/Territory - 995a - FRONT - NOT FOR FIELD USE.pdf" phase1d-evidence/
+          cp "evidence/phase1d-0.1.20/Territory - 995a - NOT FOR FIELD USE.pdf" phase1d-evidence/
+          cp evidence/phase1d-0.1.20/poppler-1x/*.png phase1d-evidence/
+          cp evidence/phase1d-0.1.20/poppler-4x/*.png phase1d-evidence/
+          cp evidence/phase1d-0.1.20/*.b64.txt phase1d-evidence/
+          cp evidence/phase1d-0.1.20/pdf-sha256.txt phase1d-evidence/
+          cp evidence/phase1d-0.1.20/semantic-check.txt phase1d-evidence/
+          cp evidence/phase1d-0.1.20/front-style-validator.json phase1d-evidence/
+          cp evidence/phase1d-0.1.20/front-identity-validator.json phase1d-evidence/
+          cp evidence/phase1d-source.patch phase1d-evidence/
+          cp evidence/phase1d-source-patch.sha256 phase1d-evidence/
+          cp evidence/apk.sha256 phase1d-evidence/
+          cp evidence/aab.sha256 phase1d-evidence/
+          cp evidence/apk-badging.txt phase1d-evidence/
+          cp evidence/apk-signature.txt phase1d-evidence/
+          cp evidence/aab-jar-verify.txt phase1d-evidence/
+          cp evidence/extracted-source-manifest.sha256 phase1d-evidence/
+          cp evidence/source-package.sha256 phase1d-evidence/
+          cp evidence/status.txt phase1d-evidence/
+          git add phase1d-evidence
+          if ! git diff --cached --quiet; then
+            git commit -m "Add Phase 1D canonical front back evidence"
+            git push origin HEAD:tcs-phase1d-020-work
+          fi
+
+      - name: Upload Phase 1D freeze evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1d-020-build-evidence
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
