@@ -2,6 +2,7 @@ package com.koenterprises.territorycardstudio
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -471,7 +472,7 @@ private fun WorkspaceDetailsSurface(
 @Composable
 private fun WorkspaceSurfaceCard(
     title: String,
-    content: @Composable Column.() -> Unit
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("workspace-surface-" + title.replace(" ", "-")),
