@@ -98,50 +98,56 @@ class SourceMapIntakeStore(context: Context) {
         val temp = File(territoryDir, "incoming.tmp")
         val digest = MessageDigest.getInstance("SHA-256")
         var total = 0L
-        temp.outputStream().use { output ->
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            while (true) {
-                val read = input.read(buffer)
-                if (read <= 0) break
-                total += read
-                require(total <= MAX_SOURCE_BYTES) {
-                    "Source map exceeds maximum intake size"
+        try {
+            temp.outputStream().use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+                    total += read
+                    require(total <= MAX_SOURCE_BYTES) {
+                        "Source map exceeds maximum intake size"
+                    }
+                    digest.update(buffer, 0, read)
+                    output.write(buffer, 0, read)
                 }
-                digest.update(buffer, 0, read)
-                output.write(buffer, 0, read)
             }
-        }
-        require(total > 0L) { "Source map is empty" }
+            require(total > 0L) { "Source map is empty" }
+            validateMagic(temp, mimeType)
 
-        val sha = digest.digest().joinToString("") { "%02x".format(it) }
-        val localName = sha + extensionFor(mimeType)
-        val destination = File(territoryDir, localName)
-        if (!destination.exists()) {
-            require(temp.renameTo(destination)) { "Unable to finalize source-map intake" }
-        } else {
+            val sha = digest.digest().joinToString("") { "%02x".format(it) }
+            val localName = sha + extensionFor(mimeType)
+            val destination = File(territoryDir, localName)
+            if (!destination.exists()) {
+                require(temp.renameTo(destination)) { "Unable to finalize source-map intake" }
+            } else {
+                temp.delete()
+            }
+
+            val record = SourceMapIntakeRecord(
+                territoryDisplayId = assignment.displayId,
+                canonicalFilename = assignment.canonicalFilename,
+                sourceFilename = sourceFilename,
+                mimeType = mimeType,
+                byteCount = total,
+                sha256 = sha,
+                importedAtUtc = importedAtUtc,
+                localFilename = localName,
+                provenanceType = "user_provided_source_map",
+                assignmentAuthority = false
+            )
+            val previous = get(assignment.displayId)
+            if (previous != null && previous.localFilename != record.localFilename) {
+                File(territoryDir, previous.localFilename).delete()
+            }
+            require(preferences.edit().putString(key(assignment.displayId), encode(record)).commit()) {
+                "Unable to persist source-map intake metadata"
+            }
+            return record
+        } finally {
             temp.delete()
         }
 
-        val record = SourceMapIntakeRecord(
-            territoryDisplayId = assignment.displayId,
-            canonicalFilename = assignment.canonicalFilename,
-            sourceFilename = sourceFilename,
-            mimeType = mimeType,
-            byteCount = total,
-            sha256 = sha,
-            importedAtUtc = importedAtUtc,
-            localFilename = localName,
-            provenanceType = "user_provided_source_map",
-            assignmentAuthority = false
-        )
-        val previous = get(assignment.displayId)
-        if (previous != null && previous.localFilename != record.localFilename) {
-            File(territoryDir, previous.localFilename).delete()
-        }
-        require(preferences.edit().putString(key(assignment.displayId), encode(record)).commit()) {
-            "Unable to persist source-map intake metadata"
-        }
-        return record
     }
 
     fun clear(displayId: String) {
@@ -149,6 +155,33 @@ class SourceMapIntakeStore(context: Context) {
             File(File(root, safeTerritoryDirectory(displayId)), previous.localFilename).delete()
         }
         preferences.edit().remove(key(displayId)).commit()
+    }
+
+    private fun validateMagic(file: File, mimeType: String) {
+        val header = ByteArray(8)
+        val read = file.inputStream().use { it.read(header) }
+        require(read > 0) { "Source map is empty" }
+        val valid = when (mimeType) {
+            "application/pdf" -> read >= 5 &&
+                header[0] == '%'.code.toByte() &&
+                header[1] == 'P'.code.toByte() &&
+                header[2] == 'D'.code.toByte() &&
+                header[3] == 'F'.code.toByte() &&
+                header[4] == '-'.code.toByte()
+            "image/png" -> read >= 8 &&
+                header.sliceArray(0 until 8).contentEquals(
+                    byteArrayOf(
+                        0x89.toByte(), 0x50, 0x4E, 0x47,
+                        0x0D, 0x0A, 0x1A, 0x0A
+                    )
+                )
+            "image/jpeg" -> read >= 3 &&
+                header[0] == 0xFF.toByte() &&
+                header[1] == 0xD8.toByte() &&
+                header[2] == 0xFF.toByte()
+            else -> false
+        }
+        require(valid) { "Source map file signature does not match $mimeType" }
     }
 
     private fun encode(record: SourceMapIntakeRecord): String = JSONObject()
