@@ -6,6 +6,7 @@ on:
       - tcs-phase1d-020-work
     paths:
       - .github/workflows/tcs-phase2a-025-screenshot-closeout.yml
+      - .tooling/tcs/phase2a-overlay/wait-for-ui.sh
 
 permissions:
   contents: read
@@ -141,34 +142,20 @@ jobs:
             adb shell pm clear com.koenterprises.territorycardstudio >/dev/null
             adb shell cmd uimode night no
             adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
-            sleep 5
-            adb shell uiautomator dump /sdcard/tcs-light.xml >/dev/null
-            adb pull /sdcard/tcs-light.xml evidence/ui/tcs-light.xml >/dev/null
-            grep -F "Territories" evidence/ui/tcs-light.xml
-            grep -F "Phase 1 engine locked" evidence/ui/tcs-light.xml
-            grep -F "Appearance: System" evidence/ui/tcs-light.xml
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-light.xml evidence/ui/tcs-light.xml "Territories" "Phase 1 engine locked" "Appearance: System"
             adb exec-out screencap -p > evidence/ui/dashboard-light.png
 
             adb shell am force-stop com.koenterprises.territorycardstudio
             adb shell cmd uimode night yes
             adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
-            sleep 6
-            adb shell uiautomator dump /sdcard/tcs-dark.xml >/dev/null
-            adb pull /sdcard/tcs-dark.xml evidence/ui/tcs-dark.xml >/dev/null
-            grep -F "Territories" evidence/ui/tcs-dark.xml
-            grep -F "Phase 1 engine locked" evidence/ui/tcs-dark.xml
-            grep -F "Appearance: System" evidence/ui/tcs-dark.xml
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-dark.xml evidence/ui/tcs-dark.xml "Territories" "Phase 1 engine locked" "Appearance: System"
             adb exec-out screencap -p > evidence/ui/dashboard-dark.png
 
             adb shell wm size 1600x2560
             adb shell wm density 280
             adb shell am force-stop com.koenterprises.territorycardstudio
             adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
-            sleep 6
-            adb shell uiautomator dump /sdcard/tcs-wide.xml >/dev/null
-            adb pull /sdcard/tcs-wide.xml evidence/ui/tcs-wide.xml >/dev/null
-            grep -F "Territories" evidence/ui/tcs-wide.xml
-            grep -F "Workspace" evidence/ui/tcs-wide.xml
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-wide.xml evidence/ui/tcs-wide.xml "Territories" "Workspace"
             adb exec-out screencap -p > evidence/ui/dashboard-wide-dark.png
             adb shell wm size reset
             adb shell wm density reset
