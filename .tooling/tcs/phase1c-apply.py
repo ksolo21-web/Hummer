@@ -444,8 +444,11 @@ rep(renderer_test,
 "renderer multi-label failure regressions")
 
 # Adapter regression fixture: one footprint with two source members/labels and exact origins.
-rep(adapter_test, '''            label = "435",''', '''            label = "435-437",''', "adapter aggregate label")
-rep(adapter_test, '''            sourceMembers = listOf("435"),''', '''            sourceMembers = listOf("435", "437"),''', "adapter source members")
+# Bind the synthetic rendering geometry to an existing authoritative multi-label inventory without changing source truth.
+rep(adapter_test, '''        val siteAssignment = kb.assignments.getValue("A261b")''', '''        val siteAssignment = kb.assignments.getValue("A264")''', "adapter authoritative multi-label assignment")
+
+rep(adapter_test, '''            label = "435",''', '''            label = "425-427",''', "adapter aggregate label")
+rep(adapter_test, '''            sourceMembers = listOf("435"),''', '''            sourceMembers = listOf("425", "427"),''', "adapter source members")
 rep(adapter_test,
 '''            labelItems = listOf(
                 BuildingLabelItem(
@@ -458,14 +461,14 @@ rep(adapter_test,
             ),''',
 '''            labelItems = listOf(
                 BuildingLabelItem(
-                    text = "435",
+                    text = "425",
                     center = Point2D(265.0, 184.0),
                     origin = Point2D(255.0, 187.0),
                     angleDeg = 0.0,
                     fontSizePt = 9.0
                 ),
                 BuildingLabelItem(
-                    text = "437",
+                    text = "427",
                     center = Point2D(285.0, 196.0),
                     origin = Point2D(275.0, 199.0),
                     angleDeg = 0.0,
@@ -474,19 +477,19 @@ rep(adapter_test,
             ),''',
 "adapter multi-label items")
 
-rep(adapter_test, '''            candidateBuildingMemberIds = listOf("435"),''', '''            candidateBuildingMemberIds = listOf("435", "437"),''', "adapter live member list")
+rep(adapter_test, '''            candidateBuildingMemberIds = listOf("435"),''', '''            candidateBuildingMemberIds = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),''', "adapter live member list")
 
 rep(adapter_test,
 '''                    sourceMemberIds = listOf("435"),
                     verifiedLabelTexts = listOf("435")''',
-'''                    sourceMemberIds = listOf("435", "437"),
-                    verifiedLabelTexts = listOf("435", "437")''',
+'''                    sourceMemberIds = listOf("425", "427"),
+                    verifiedLabelTexts = listOf("425", "427")''',
 "adapter verified binding")
 
 rep(adapter_test,
 '''        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("435"))''',
-'''        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("435", "437"))
-        check(siteAdapted.renderSpec.buildings.single().labelItems.map { it.text } == listOf("435", "437")) {
+'''        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("425", "427"))
+        check(siteAdapted.renderSpec.buildings.single().labelItems.map { it.text } == listOf("425", "427")) {
             "adapter flattened or dropped verified multi-label building items"
         }''',
 "adapter positive multi-label assertion")
@@ -505,7 +508,7 @@ rep(adapter_test,
             kb,
             siteInput.copy(siteBuildingAssignment = siteGeometry.copy(
                 buildingBindings = listOf(
-                    VerifiedSiteBuildingBinding("site-building-435", listOf("435", "437"), listOf("435"))
+                    VerifiedSiteBuildingBinding("site-building-435", listOf("425", "427"), listOf("425"))
                 )
             )),
             "member/label binding drift"
