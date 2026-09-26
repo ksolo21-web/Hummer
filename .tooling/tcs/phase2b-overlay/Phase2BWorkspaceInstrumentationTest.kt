@@ -3,7 +3,8 @@ package com.koenterprises.territorycardstudio
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -73,7 +74,7 @@ class Phase2BWorkspaceInstrumentationTest {
         composeRule.onNodeWithTag("workspace-tab-Streets").assertIsDisplayed()
         composeRule.onNodeWithTag("workspace-mode-Letter-Writing").performClick()
         composeRule.onNodeWithTag("workspace-tab-Addresses").assertIsDisplayed()
-        composeRule.onNodeWithTag("workspace-tab-Streets").assertDoesNotExist()
+        composeRule.onAllNodesWithTag("workspace-tab-Streets").assertCountEquals(0)
         composeRule.onNodeWithTag("workspace-tab-Addresses").performClick()
         composeRule.onNodeWithTag("letter-inventory-unavailable").assertIsDisplayed()
     }
@@ -99,7 +100,7 @@ class Phase2BWorkspaceInstrumentationTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("workspace-tab-Phone-List").assertIsDisplayed()
-        composeRule.onNodeWithTag("workspace-mode-Letter-Writing").assertDoesNotExist()
+        composeRule.onAllNodesWithTag("workspace-mode-Letter-Writing").assertCountEquals(0)
         composeRule.onNodeWithTag("workspace-tab-Phone-List").performClick()
         composeRule.onNodeWithTag("phone-inventory-unavailable").assertIsDisplayed()
     }
