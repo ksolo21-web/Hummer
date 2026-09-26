@@ -24,13 +24,13 @@
     "1D_C_telephone_page2": "PASSED",
     "1D_D_cross_mode_validation": "PASSED",
     "2A_theme_dashboard_workspace_foundation": "PASSED",
-    "2B_mode_aware_workspace_tabs_verification": "OPEN"
+    "2B_mode_aware_workspace_tabs_verification": "IN_PROGRESS"
   },
-  "phase_milestone_before": "Phase 2A UI foundation IN PROGRESS",
-  "phase_milestone_after": "Phase 2A PASSED / Phase 2B OPEN",
-  "last_completed_package": "0.2.0-phase2a-theme-dashboard-workspace-foundation-pass",
+  "phase_milestone_before": "Phase 2B OPEN",
+  "phase_milestone_after": "Phase 2B IN PROGRESS",
+  "last_completed_package": "phase2b-mode-aware-workspace-source-staged",
   "next_open_gate": "Phase 2B - mode-aware Territory Workspace tabs and verification/readiness surfaces",
-  "next_bounded_task": "Phase 2B only: implement territory-mode-aware Workspace tabs using the proven engine—Regular: Map | Streets | Buildings | Details; Letter Writing: Map | Addresses | Buildings | Details; Telephone: Map | Phone List | Buildings | Details. Surface verified/review/conflict counts, source/provenance state and exact field-release/readiness state from existing engine data. Do not implement vector-PDF preview, Generate Page 2, approval/export, or editing/commissioning in the same bounded package.",
+  "next_bounded_task": "Phase 2B only: compile and validate the staged mode-aware Workspace. Require Regular Map|Streets|Buildings|Details, Letter Writing Map|Addresses|Buildings|Details, Telephone Map|Phone List|Buildings|Details; real-KB readiness/provenance/field-release surfaces; explicit unavailable inventory state rather than guessed address/phone counts; connected instrumentation; actual Regular/Letter/Telephone workspace screenshots; Android 0.2.1 freeze. Do not start vector-PDF preview, Generate Page 2, approval/export, or editing/commissioning.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -257,7 +257,7 @@
   "phase2_in_progress": {
     "aggregate_status": "IN_PROGRESS_2B",
     "2A": "PASSED",
-    "2B": "OPEN",
+    "2B": "IN_PROGRESS",
     "status": "IN_PROGRESS_2B"
   },
   "phase2a_freeze_evidence": {
