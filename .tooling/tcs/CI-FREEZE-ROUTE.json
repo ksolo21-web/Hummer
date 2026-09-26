@@ -6,8 +6,17 @@
   "branch": "tcs-phase1b2-017-build-freeze",
   "base_main_sha": "1f8fbad51db29a0c7b0d8382cd850f28d9ae584b",
   "candidate_source_package_sha256": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7",
-  "build_source_tar_xz_sha256": "f3d0ede6da0b7e5c358988321cd374a69672fc4a38861d1f22f1dff132154484",
-  "build_source_tar_xz_size_bytes": 634404,
+  "build_source_policy": "deterministic source/config/test/assets only; excludes prior build outputs and validation evidence",
+  "build_source_file_manifest_sha256": "607880c99091c1923c0668402267c82fa1911b690bc65c11a68b0f48b81fa1cd",
+  "build_source_file_count": 79,
+  "build_source_tar_xz_sha256": "795d120db0685238f68f834a65f4cd44682b4cddb291ec1826e3fd1b80f2ef1e",
+  "build_source_tar_xz_size_bytes": 772588,
+  "build_source_parts": [
+    {"name":"part-01.bin","size_bytes":193147,"sha256":"2c321e8a228d812310439f18f4b440096c1a096baf0fadab80bff02db21f2366"},
+    {"name":"part-02.bin","size_bytes":193147,"sha256":"9cc8066c2e9115177c33f4e5bee3c90396778af3b285c52dfcf3f837f45d7d4e"},
+    {"name":"part-03.bin","size_bytes":193147,"sha256":"294a6e734994c8937e070107bcce3f25744d1b6a2325c5ce1e65660dd73a94a1"},
+    {"name":"part-04.bin","size_bytes":193147,"sha256":"c623561846b710827c7d30d9f3b8f891bfccda48f28c56bfcf44dbd95036c157"}
+  ],
   "expected_toolchain": {
     "jdk": "17",
     "gradle": "9.6.0",
