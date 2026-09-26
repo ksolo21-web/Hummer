@@ -222,14 +222,20 @@ object LetterWritingAddressInventoryValidator {
             sourceInventoryVerified = true,
             entries = inventory.records.sortedWith(
                 compareBy<LetterWritingAddressRecord>(
-                    { it.streetAddress.lowercase(Locale.US) },
-                    { it.unit?.lowercase(Locale.US) ?: "" },
+                    { naturalSortKey(it.streetAddress) },
+                    { naturalSortKey(it.unit ?: "") },
                     { it.recordId }
                 )
             ).map { CanonicalAddressEntry(it.recordId, it.canonicalMailingLine()) },
             nonFieldFixture = inventory.nonFieldFixture
         )
     }
+
+    private fun naturalSortKey(value: String): String =
+        Regex("\\d+|\\D+").findAll(value.trim().lowercase(Locale.US)).joinToString("") { part ->
+            val token = part.value
+            if (token.all { it.isDigit() }) token.padStart(12, '0') else token
+        }
 }
 
 object LetterWritingInventoryDiff {
