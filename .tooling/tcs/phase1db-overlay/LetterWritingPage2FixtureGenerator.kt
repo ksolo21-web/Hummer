@@ -43,6 +43,7 @@ fun main(args: Array<String>) {
                 verificationStatus = LetterWritingVerificationStatus.VERIFIED,
                 verifiedAtUtc = "2026-09-26T19:00:00Z",
                 boundaryStatus = LetterWritingBoundaryStatus.INSIDE_LOCKED_WORKING_AREA,
+                boundaryEvidenceSha256 = "c".repeat(64),
                 provenanceIds = listOf(provenance.provenanceId)
             )
         },
