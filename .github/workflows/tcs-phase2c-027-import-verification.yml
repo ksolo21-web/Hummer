@@ -114,6 +114,8 @@ jobs:
           python3 .tooling/tcs/phase2c-overlay/apply-workspace.py tcs-src > evidence/phase2c-workspace.log
           grep -F "PHASE2C_WORKSPACE_TRANSFORM=PASS" evidence/phase2c-workspace.log
           cp .tooling/tcs/phase2c-overlay/Phase2CImportVerificationInstrumentationTest.kt "$TEST/Phase2CImportVerificationInstrumentationTest.kt"
+          python3 .tooling/tcs/phase2c-overlay/apply-phase2b-test-compat.py tcs-src > evidence/phase2c-phase2b-test-compat.log
+          grep -F "PHASE2C_PHASE2B_TEST_COMPAT=PASS" evidence/phase2c-phase2b-test-compat.log
 
           cp .tooling/tcs/phase2a-overlay/Phase2AppBuild.gradle.kts tcs-src/app/build.gradle.kts
           sed -i 's/versionCode = 25/versionCode = 27/' tcs-src/app/build.gradle.kts
@@ -215,8 +217,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
             mkdir -p evidence/ui
-            (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1
-            cat evidence/connected-android-test.log
+            sh -c 'set +e; (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1; rc=$?; mkdir -p evidence/android-test-results evidence/android-test-report; cp -R tcs-src/app/build/outputs/androidTest-results/connected/debug/. evidence/android-test-results/ 2>/dev/null || true; cp -R tcs-src/app/build/reports/androidTests/connected/debug/. evidence/android-test-report/ 2>/dev/null || true; cat evidence/connected-android-test.log; if [ "$rc" -ne 0 ]; then grep -R -n -E "failure|Assertion|Exception|FAILED|error" evidence/android-test-results evidence/android-test-report 2>/dev/null || true; fi; exit "$rc"'
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
 
             adb shell cmd uimode night yes
