@@ -1,4 +1,4 @@
-name: TCS Phase 1C Build and Visual Evidence # attempt 2
+name: TCS Phase 1C Build and Visual Evidence # attempt 3
 
 on:
   push:
@@ -154,7 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           command -v kotlinc
-          mapfile -t SOURCES < <(find tcs-src/core/src/main/kotlin tcs-src/core/src/test/kotlin -name '*.kt' -type f | sort)
+          mapfile -t SOURCES < <(find tcs-src/core/src/main/kotlin tcs-src/core/src/test/kotlin -name '*.kt' -type f ! -name 'CoreGradleTestBridge.kt' | sort)
           kotlinc -Werror -jvm-target 17 "${SOURCES[@]}" -include-runtime -d evidence/phase1c-core-tests.jar 2>&1 | tee evidence/core-werror-compile.log
           java -Xmx192m -cp evidence/phase1c-core-tests.jar com.koenterprises.territorycardstudio.core.CoreContractSmokeTestKt \
             tcs-src/app/src/main/assets/territory \
