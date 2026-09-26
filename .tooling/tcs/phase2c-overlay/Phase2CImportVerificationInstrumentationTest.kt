@@ -176,11 +176,15 @@ class Phase2CImportVerificationInstrumentationTest {
         composeRule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-import-map"))
         composeRule.onNodeWithTag("workspace-import-map").performClick()
         composeRule.onNodeWithTag("import-map-screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("import-map-screen").performScrollToNode(hasTestTag("import-source-card"))
         composeRule.onNodeWithTag("import-source-card").assertIsDisplayed()
+        composeRule.onNodeWithTag("import-map-screen").performScrollToNode(hasTestTag("continue-verification"))
         composeRule.onNodeWithTag("continue-verification").performClick()
 
         composeRule.onNodeWithTag("verification-screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("verification-screen").performScrollToNode(hasTestTag("verification-source_truth"))
         composeRule.onNodeWithTag("verification-source_truth").assertIsDisplayed()
+        composeRule.onNodeWithTag("verification-screen").performScrollToNode(hasTestTag("verification-geometry"))
         composeRule.onNodeWithTag("verification-geometry").assertIsDisplayed()
     }
 }
