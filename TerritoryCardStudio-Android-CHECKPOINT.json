@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
   "version": "0.1.18-site-building-assignment",
-  "milestone": "phase-1b3-site-building-assignment-passed",
-  "status": "PHASE_1B3_PASSED_READY_1C",
-  "phase_milestone_before": "Phase 1B-3 OPEN_CI_FREEZE_PENDING",
-  "phase_milestone_after": "Phase 1B-3 PASSED",
+  "milestone": "phase-1c-multi-label-300-301-in-progress",
+  "status": "PHASE_1C_IN_PROGRESS",
+  "phase_milestone_before": "Phase 1C OPEN",
+  "phase_milestone_after": "Phase 1C IN_PROGRESS",
   "scope_completed": [
     "implemented explicit site/building assignment diagram region inside the locked R48 map panel",
     "implemented optional verified access inset with explicit source bounds to destination bounds mapping",
@@ -18,7 +18,10 @@
     "identified two CI transport failures before compilation and switched from raw split-base64 decoding to exact decoded-patch hash recovery",
     "recovered the exact locked Phase 1B-3 overlay from the two-character transport insertion without changing the locked patch hash",
     "passed the real Android 0.1.18 freeze through core test, app compile, APK assemble, AAB bundle, signature, ZIP, version and targetSdk gates",
-    "inspected the uploaded freeze artifact digest plus exact APK and AAB SHA-256 values before milestone approval"
+    "inspected the uploaded freeze artifact digest plus exact APK and AAB SHA-256 values before milestone approval",
+    "recovered the exact Phase 1B-3 frozen renderer state and identified the remaining Phase 1C gate: a valid single physical 300/301 footprint with multiple verified interior labels is still deliberately blocked",
+    "confirmed the authoritative building model already carries exact source-member IDs plus independently positioned BuildingLabelItem records inside the footprint, so Phase 1C can remain a focused renderer/adapter preservation change",
+    "created isolated durable Phase 1C work branch tcs-phase1c-019-work without reopening any passed Phase 1A/1B milestone or touching reserved commissioning territories"
   ],
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
@@ -167,7 +170,11 @@
     "phase1b3_version_code": 18,
     "phase1b3_version_name": "0.1.18",
     "phase1b3_target_sdk": 37,
-    "phase1b3_overlay_transport_repair": "part06-remove-adjacent-pair@12000"
+    "phase1b3_overlay_transport_repair": "part06-remove-adjacent-pair@12000",
+    "phase1c_work_branch": "tcs-phase1c-019-work",
+    "phase1c_gap_isolated": "PASS",
+    "phase1c_multi_label_rendering": "IN_PROGRESS_NOT_PASSED",
+    "phase1c_reserved_candidate_pdfs_generated": 0
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -180,9 +187,9 @@
     "independent_critic_runtime_available": false,
     "reason": "Phase 1B-3 geometry/rendering and real Android 0.1.18 freeze gates are all green; later app phases remain open."
   },
-  "last_completed_package": "0.1.18-phase1b3-android-build-freeze-pass",
+  "last_completed_package": "phase1c-recovery-and-gap-isolation",
   "next_open_gate": "Phase 1C - multi-label single-footprint 300/301 preservation",
-  "next_bounded_task": "Phase 1C only: preserve authoritative multi-label 300/301 single-footprint bindings, fail closed on ambiguity or residential leakage, use safe regression fixtures only, run targeted validators and 1x/4x review, and do not touch the six reserved commissioning territories.",
+  "next_bounded_task": "Phase 1C only: replace the single-label building rendering path with exact verified multi-label item preservation for one physical footprint, bind each rendered label to authoritative source member/label geometry, add ambiguity/leakage/drift fail-closed tests, generate synthetic NOT-FOR-FIELD-USE regression, run targeted validators and 1x/4x review, then freeze only if all mandatory gates pass.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "source_package": "TerritoryCardStudio-Android-0.1.17-full-plus-detail-renderer-CANDIDATE.zip",
   "source_package_sha256": "2abb0dbdec898df05d843222377542f3a2037c0bdcb2c599df9b9fb5ca0c51f7"
