@@ -1,0 +1,200 @@
+package com.koenterprises.territorycardstudio
+
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import com.koenterprises.territorycardstudio.core.KnowledgeBaseAssignment
+import org.json.JSONObject
+import java.io.File
+import java.io.InputStream
+import java.security.MessageDigest
+import java.time.Instant
+
+data class SourceMapIntakeRecord(
+    val territoryDisplayId: String,
+    val canonicalFilename: String,
+    val sourceFilename: String,
+    val mimeType: String,
+    val byteCount: Long,
+    val sha256: String,
+    val importedAtUtc: String,
+    val localFilename: String,
+    val provenanceType: String,
+    val assignmentAuthority: Boolean
+) {
+    init {
+        require(territoryDisplayId.isNotBlank())
+        require(canonicalFilename.isNotBlank())
+        require(sourceFilename.isNotBlank())
+        require(mimeType in SourceMapIntakeStore.ALLOWED_MIME_TYPES)
+        require(byteCount in 1..SourceMapIntakeStore.MAX_SOURCE_BYTES)
+        require(Regex("^[0-9a-f]{64}$").matches(sha256))
+        Instant.parse(importedAtUtc)
+        require(localFilename.isNotBlank())
+        require(provenanceType == "user_provided_source_map")
+        require(!assignmentAuthority) {
+            "An imported source map cannot silently become assignment authority"
+        }
+    }
+}
+
+class SourceMapIntakeStore(context: Context) {
+    private val appContext = context.applicationContext
+    private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+    private val root = File(appContext.noBackupFilesDir, "territory-card-studio/source-intake-v1").apply {
+        require(exists() || mkdirs()) { "Unable to create source-map intake directory" }
+    }
+
+    fun get(displayId: String): SourceMapIntakeRecord? {
+        val raw = preferences.getString(key(displayId), null) ?: return null
+        return parse(raw)
+    }
+
+    fun importFromUri(
+        assignment: KnowledgeBaseAssignment,
+        uri: Uri
+    ): SourceMapIntakeRecord {
+        val resolver = appContext.contentResolver
+        val mime = resolver.getType(uri)?.lowercase()
+            ?: error("Source map MIME type is unavailable")
+        require(mime in ALLOWED_MIME_TYPES) {
+            "Unsupported source map type: $mime"
+        }
+        val displayName = resolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }?.takeIf { it.isNotBlank() } ?: "source-map" + extensionFor(mime)
+
+        val input = resolver.openInputStream(uri)
+            ?: error("Unable to open selected source map")
+        return input.use {
+            importFromStream(
+                assignment = assignment,
+                sourceFilename = displayName,
+                mimeType = mime,
+                input = it
+            )
+        }
+    }
+
+    fun importFromStream(
+        assignment: KnowledgeBaseAssignment,
+        sourceFilename: String,
+        mimeType: String,
+        input: InputStream,
+        importedAtUtc: String = Instant.now().toString()
+    ): SourceMapIntakeRecord {
+        require(mimeType in ALLOWED_MIME_TYPES) { "Unsupported source map type: $mimeType" }
+        require(sourceFilename.isNotBlank()) { "Source filename is required" }
+
+        val territoryDir = File(root, safeTerritoryDirectory(assignment.displayId)).apply {
+            require(exists() || mkdirs()) { "Unable to create territory source-map directory" }
+        }
+        val temp = File(territoryDir, "incoming.tmp")
+        val digest = MessageDigest.getInstance("SHA-256")
+        var total = 0L
+        temp.outputStream().use { output ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                total += read
+                require(total <= MAX_SOURCE_BYTES) {
+                    "Source map exceeds maximum intake size"
+                }
+                digest.update(buffer, 0, read)
+                output.write(buffer, 0, read)
+            }
+        }
+        require(total > 0L) { "Source map is empty" }
+
+        val sha = digest.digest().joinToString("") { "%02x".format(it) }
+        val localName = sha + extensionFor(mimeType)
+        val destination = File(territoryDir, localName)
+        if (!destination.exists()) {
+            require(temp.renameTo(destination)) { "Unable to finalize source-map intake" }
+        } else {
+            temp.delete()
+        }
+
+        val record = SourceMapIntakeRecord(
+            territoryDisplayId = assignment.displayId,
+            canonicalFilename = assignment.canonicalFilename,
+            sourceFilename = sourceFilename,
+            mimeType = mimeType,
+            byteCount = total,
+            sha256 = sha,
+            importedAtUtc = importedAtUtc,
+            localFilename = localName,
+            provenanceType = "user_provided_source_map",
+            assignmentAuthority = false
+        )
+        val previous = get(assignment.displayId)
+        if (previous != null && previous.localFilename != record.localFilename) {
+            File(territoryDir, previous.localFilename).delete()
+        }
+        require(preferences.edit().putString(key(assignment.displayId), encode(record)).commit()) {
+            "Unable to persist source-map intake metadata"
+        }
+        return record
+    }
+
+    fun clear(displayId: String) {
+        get(displayId)?.let { previous ->
+            File(File(root, safeTerritoryDirectory(displayId)), previous.localFilename).delete()
+        }
+        preferences.edit().remove(key(displayId)).commit()
+    }
+
+    private fun encode(record: SourceMapIntakeRecord): String = JSONObject()
+        .put("territory_display_id", record.territoryDisplayId)
+        .put("canonical_filename", record.canonicalFilename)
+        .put("source_filename", record.sourceFilename)
+        .put("mime_type", record.mimeType)
+        .put("byte_count", record.byteCount)
+        .put("sha256", record.sha256)
+        .put("imported_at_utc", record.importedAtUtc)
+        .put("local_filename", record.localFilename)
+        .put("provenance_type", record.provenanceType)
+        .put("assignment_authority", record.assignmentAuthority)
+        .toString()
+
+    private fun parse(raw: String): SourceMapIntakeRecord {
+        val o = JSONObject(raw)
+        return SourceMapIntakeRecord(
+            territoryDisplayId = o.getString("territory_display_id"),
+            canonicalFilename = o.getString("canonical_filename"),
+            sourceFilename = o.getString("source_filename"),
+            mimeType = o.getString("mime_type"),
+            byteCount = o.getLong("byte_count"),
+            sha256 = o.getString("sha256"),
+            importedAtUtc = o.getString("imported_at_utc"),
+            localFilename = o.getString("local_filename"),
+            provenanceType = o.getString("provenance_type"),
+            assignmentAuthority = o.getBoolean("assignment_authority")
+        )
+    }
+
+    private fun key(displayId: String): String = "source_map_" + safeTerritoryDirectory(displayId)
+
+    private fun safeTerritoryDirectory(displayId: String): String =
+        displayId.replace(Regex("[^A-Za-z0-9_-]"), "_")
+
+    companion object {
+        const val MAX_SOURCE_BYTES: Long = 50L * 1024L * 1024L
+        val ALLOWED_MIME_TYPES = setOf("application/pdf", "image/jpeg", "image/png")
+        private const val PREFERENCES_NAME = "territory-card-studio-source-intake-v1"
+
+        private fun extensionFor(mimeType: String): String = when (mimeType) {
+            "application/pdf" -> ".pdf"
+            "image/jpeg" -> ".jpg"
+            "image/png" -> ".png"
+            else -> error("Unsupported source map MIME type: $mimeType")
+        }
+    }
+}
