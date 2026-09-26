@@ -1,0 +1,151 @@
+name: TCS Phase 1D-A Overflow Runtime Closeout
+
+on:
+  push:
+    branches:
+      - tcs-phase1d-020-work
+    paths:
+      - .github/workflows/tcs-phase1d-a-overflow-closeout.yml
+      - .tooling/tcs/phase1d-overlay/CanonicalFrontBackOverflowRegression.kt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tcs-phase1d-a-overflow-closeout
+  cancel-in-progress: false
+
+jobs:
+  overflow_runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Phase 1D branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct exact Phase 1C source baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo "6449840c97a88bddf6be8c48db0de851ff6840d564e1ac9a8d0aee8aa3114442  .tooling/tcs/phase1b2-source.tar.xz" | sha256sum -c -
+          tar -xJf .tooling/tcs/phase1b2-source.tar.xz -C tcs-src
+          python3 - <<'PY'
+          import base64, hashlib
+          from pathlib import Path
+          expected="85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946"
+          parts=[p.read_text() for p in sorted(Path(".tooling/tcs").glob("phase1b3-overlay.b64.part*"))]
+          raw="".join(parts)
+          def exact(candidate):
+              try: patch=base64.b64decode(candidate,validate=True)
+              except Exception: return None
+              return patch if hashlib.sha256(patch).hexdigest()==expected else None
+          patch=exact(raw)
+          repair="none"
+          if patch is None:
+              p6=parts[5]
+              for i in range(len(p6)-1):
+                  x=list(parts); x[5]=p6[:i]+p6[i+2:]
+                  patch=exact("".join(x))
+                  if patch is not None:
+                      repair=f"part06-remove-adjacent-pair@{i}"; break
+              else: raise SystemExit("unable to recover locked Phase 1B-3 patch")
+          Path("/tmp/phase1b3.patch").write_bytes(patch)
+          Path("evidence/phase1b3-recovery.txt").write_text(repair+"\n")
+          PY
+          echo "85bf31b214098df041b43f1aad65f947c59876fbace92e256bb1e26d73946946  /tmp/phase1b3.patch" | sha256sum -c -
+          (cd tcs-src && patch -p1 --forward < /tmp/phase1b3.patch)
+          python3 .tooling/tcs/phase1c-apply.py tcs-src | tee evidence/phase1c-apply.log
+          grep -F "PHASE1C_APPLY=PASS" evidence/phase1c-apply.log
+
+      - name: Apply exact Phase 1D-A source overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdf.kt             tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackPdfTest.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackFixtureGenerator.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackFixtureGenerator.kt
+          cp .tooling/tcs/phase1d-overlay/CanonicalFrontBackOverflowRegression.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackOverflowRegression.kt
+          python3 .tooling/tcs/phase1d-overlay/apply-existing.py tcs-src | tee evidence/phase1d-overlay.log
+          grep -F "PHASE1D_EXISTING_TRANSFORM=PASS" evidence/phase1d-overlay.log
+
+          echo "a1ff66fc7fa303eefb4959ac5bb2c686caa9872148c1938bcf833351a266874b  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt" | sha256sum -c -
+          sha256sum .tooling/tcs/phase1d-overlay/CanonicalFrontBackOverflowRegression.kt > evidence/overflow-regression-source.sha256
+
+          cp .tooling/tcs/phase1b2-core-build.gradle.kts tcs-src/core/build.gradle.kts
+          mkdir -p tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core
+          cp .tooling/tcs/phase1b2-CoreGradleTestBridge.kt             tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreGradleTestBridge.kt
+
+          find tcs-src -type f -iname "*.pdf" -printf "%f\n" > evidence/pdf-files.txt
+          if grep -E "(250T|257A|(^|[^0-9])297([^0-9]|$)|298A|(^|[^0-9])299([^0-9]|$)|347TA)" evidence/pdf-files.txt > evidence/reserved-territory-pdf-sweep.txt; then
+            echo "Reserved territory PDF detected" >&2
+            exit 6
+          fi
+          : > evidence/reserved-territory-pdf-sweep.txt
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Compile exact core test runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon :core:compileTestKotlin) 2>&1 | tee evidence/compile-test-kotlin.log
+          grep -F "BUILD SUCCESSFUL" evidence/compile-test-kotlin.log
+          sha256sum evidence/compile-test-kotlin.log > evidence/compile-test-kotlin.sha256
+
+      - name: Execute 241-address overflow fail-closed regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST_CP="tcs-src/core/build/classes/kotlin/test:tcs-src/core/build/classes/kotlin/main"
+          KLIB="$(find ~/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib -name '*.jar' | head -n 1)"
+          java -Xmx192m -cp "$TEST_CP:$KLIB"             com.koenterprises.territorycardstudio.core.CanonicalFrontBackOverflowRegressionKt             tcs-src/app/src/main/assets/territory             2>&1 | tee evidence/overflow-runtime.log
+          grep -Fx "phase1d_back_overflow_fail_closed=PASS" evidence/overflow-runtime.log
+          grep -Fx "phase1d_back_overflow_entry_count=241" evidence/overflow-runtime.log
+          sha256sum evidence/overflow-runtime.log > evidence/overflow-runtime.sha256
+          {
+            echo "PHASE_1D_A_OVERFLOW_RUNTIME=PASS"
+            echo "OVERFLOW_ENTRY_COUNT=241"
+            echo "OVERFLOW_BEHAVIOR=FAIL_CLOSED"
+            echo "CORE_TEST_RUNTIME_XMX=192m"
+            echo "RESERVED_TERRITORY_PDF_SWEEP=0"
+            echo "NEXT_OPEN_GATE=PHASE_1D_B_LETTER_WRITING"
+          } > evidence/status.txt
+
+      - name: Commit targeted 1D-A closeout evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "territory-card-studio-ci"
+          git config user.email "territory-card-studio-ci@users.noreply.github.com"
+          mkdir -p phase1d-evidence
+          cp evidence/overflow-regression-source.sha256 phase1d-evidence/
+          cp evidence/overflow-runtime.log phase1d-evidence/
+          cp evidence/overflow-runtime.sha256 phase1d-evidence/
+          cp evidence/compile-test-kotlin.sha256 phase1d-evidence/
+          cp evidence/status.txt phase1d-evidence/phase1d-a-overflow-closeout-status.txt
+          git add phase1d-evidence
+          if ! git diff --cached --quiet; then
+            git commit -m "Add Phase 1D-A 241-address overflow runtime proof"
+            git push origin HEAD:tcs-phase1d-020-work
+          fi
+
+      - name: Upload targeted 1D-A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-phase1d-a-overflow-closeout
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
