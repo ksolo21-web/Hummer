@@ -283,22 +283,36 @@
     "phase2a_phase1_source_hash_lock": "PASS",
     "phase2a_compose_compile": "NOT_RUN",
     "phase2a_instrumentation": "NOT_RUN",
-    "phase2a_screenshots": "NOT_RUN"
+    "phase2a_screenshots": "NOT_RUN",
+    "phase2a_core_gradle_test": "PASS",
+    "phase2a_app_compile": "PASS",
+    "phase2a_android_test_compile": "PASS",
+    "phase2a_assemble_debug": "PASS",
+    "phase2a_bundle_debug": "PASS",
+    "phase2a_connected_android_test": "PASS",
+    "phase2a_emulator_boot": "PASS",
+    "phase2a_screenshot_gate": "PENDING_REPAIRED_APK_INSTALL",
+    "phase2a_harness_failure_history": [
+      "missing frozen core test build/bridge - repaired",
+      "emulator runner /bin/sh rejected pipefail - repaired",
+      "emulator runner per-line shell scope lost APK variable after instrumentation PASS - repaired with direct APK path"
+    ],
+    "phase2a_repair_commit": "50d5f5be846f277dcf4b5d97f0bef24b4d908930"
   },
   "reopened_defects": [],
-  "blocker_fingerprint": "phase2a-freeze-missing-core-test-build-script",
-  "blocker_route_attempts": 1,
+  "blocker_fingerprint": "phase2a-emulator-runner-shell-variable-scope-apk-install",
+  "blocker_route_attempts": 3,
   "internal_review": {
     "type": "internal",
-    "score": 9.1,
+    "score": 9.5,
     "milestone_approval": false,
     "overall_app_approval": false,
     "independent_critic_runtime_available": false,
-    "reason": "Phase 2A UI source is staged and Phase 1 source locks passed. First freeze stopped before Compose compilation because the workflow omitted the core test build script, so :core:test did not exist."
+    "reason": "Phase 2A source and connected instrumentation are green. Only repaired screenshot/source-freeze closeout remains."
   },
-  "last_completed_package": "phase2a-ui-source-staged-freeze-blocked-before-compile",
+  "last_completed_package": "phase2a-ui-compile-package-and-instrumentation-pass-screenshot-install-harness-repaired",
   "next_open_gate": "Phase 2A - theme system + Dashboard / Workspace production shell",
-  "next_bounded_task": "Phase 2A only: repair the freeze harness by restoring .tooling/tcs/phase1b2-core-build.gradle.kts into tcs-src/core/build.gradle.kts before :core:test; rerun the same UI freeze. Do not change the staged UI unless compile/instrumentation proves an exact defect.",
+  "next_bounded_task": "Phase 2A only: finish the repaired emulator screenshot closeout. UI source, frozen core regression, app/androidTest compilation, APK/AAB packaging/signatures, and connected instrumentation already passed. Remaining gate is actual System-following light/dark and wide-layout screenshots plus screenshot validation/source freeze; direct APK path repair is staged at 50d5f5be846f277dcf4b5d97f0bef24b4d908930. Do not start Phase 2B.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
