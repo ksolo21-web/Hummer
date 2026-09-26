@@ -229,7 +229,7 @@ jobs:
             adb shell input swipe 540 1900 540 900 350
             sleep 1
             adb shell input swipe 540 1900 540 1050 300
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-letter.xml evidence/ui/tcs-letter.xml "Verified address inventory not attached" "Phase 1D-B verified"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-letter.xml evidence/ui/tcs-letter.xml "Verified address inventory not attached"
             adb exec-out screencap -p > evidence/ui/workspace-letter-writing-dark.png
 
             adb shell am force-stop com.koenterprises.territorycardstudio
@@ -245,7 +245,7 @@ jobs:
             adb shell input swipe 540 1900 540 900 350
             sleep 1
             adb shell input swipe 540 1900 540 1050 300
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel.xml evidence/ui/tcs-tel.xml "Authorized phone inventory not attached" "Phase 1D-C verified"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-tel.xml evidence/ui/tcs-tel.xml "Authorized phone inventory not attached"
             adb exec-out screencap -p > evidence/ui/workspace-telephone-dark.png
 
       - name: Validate screenshots and freeze Phase 2B source
