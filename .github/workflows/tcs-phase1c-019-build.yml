@@ -1,4 +1,4 @@
-name: TCS Phase 1C Build and Visual Evidence
+name: TCS Phase 1C Build and Visual Evidence # attempt 2
 
 on:
   push:
@@ -147,7 +147,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq poppler-utils
-          python3 -m pip install --quiet pymupdf
+          python3 -m pip install --quiet pymupdf pillow
 
       - name: Strict core compile and 192m smoke
         shell: bash
@@ -288,6 +288,13 @@ jobs:
           cp evidence/phase1c-0.1.19/pdf-sha256.txt phase1c-evidence/
           cp evidence/phase1c-0.1.19/style-validator.json phase1c-evidence/
           cp evidence/phase1c-0.1.19/identity-validator.json phase1c-evidence/
+          cp evidence/apk.sha256 phase1c-evidence/
+          cp evidence/aab.sha256 phase1c-evidence/
+          cp evidence/status.txt phase1c-evidence/
+          cp evidence/apk-signature.txt phase1c-evidence/
+          cp evidence/aab-jar-verify.txt phase1c-evidence/
+          cp evidence/apk-badging.txt phase1c-evidence/
+          cp evidence/extracted-source-manifest.sha256 phase1c-evidence/
           git add phase1c-evidence
           if ! git diff --cached --quiet; then
             git commit -m "Add Phase 1C synthetic visual evidence"
