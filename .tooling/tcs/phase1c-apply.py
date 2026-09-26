@@ -447,8 +447,8 @@ rep(renderer_test,
 # Bind the synthetic rendering geometry to an existing authoritative multi-label inventory without changing source truth.
 rep(adapter_test, '''        val siteAssignment = kb.assignments.getValue("A261b")''', '''        val siteAssignment = kb.assignments.getValue("A264")''', "adapter authoritative multi-label assignment")
 
-rep(adapter_test, '''            label = "435",''', '''            label = "425-427",''', "adapter aggregate label")
-rep(adapter_test, '''            sourceMembers = listOf("435"),''', '''            sourceMembers = listOf("425", "427"),''', "adapter source members")
+rep(adapter_test, '''            label = "435",''', '''            label = "407-433",''', "adapter aggregate label")
+rep(adapter_test, '''            sourceMembers = listOf("435"),''', '''            sourceMembers = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),''', "adapter source members")
 rep(adapter_test,
 '''            labelItems = listOf(
                 BuildingLabelItem(
@@ -460,36 +460,41 @@ rep(adapter_test,
                 )
             ),''',
 '''            labelItems = listOf(
-                BuildingLabelItem(
-                    text = "425",
-                    center = Point2D(265.0, 184.0),
-                    origin = Point2D(255.0, 187.0),
-                    angleDeg = 0.0,
-                    fontSizePt = 9.0
-                ),
-                BuildingLabelItem(
-                    text = "427",
-                    center = Point2D(285.0, 196.0),
-                    origin = Point2D(275.0, 199.0),
-                    angleDeg = 0.0,
-                    fontSizePt = 9.0
-                )
+                BuildingLabelItem("407", Point2D(260.0, 178.0), Point2D(250.0, 181.0), 0.0, 9.0),
+                BuildingLabelItem("409", Point2D(300.0, 178.0), Point2D(290.0, 181.0), 0.0, 9.0),
+                BuildingLabelItem("413", Point2D(340.0, 178.0), Point2D(330.0, 181.0), 0.0, 9.0),
+                BuildingLabelItem("415", Point2D(380.0, 178.0), Point2D(370.0, 181.0), 0.0, 9.0),
+                BuildingLabelItem("419", Point2D(420.0, 178.0), Point2D(410.0, 181.0), 0.0, 9.0),
+                BuildingLabelItem("421", Point2D(260.0, 207.0), Point2D(250.0, 210.0), 0.0, 9.0),
+                BuildingLabelItem("425", Point2D(300.0, 207.0), Point2D(290.0, 210.0), 0.0, 9.0),
+                BuildingLabelItem("427", Point2D(340.0, 207.0), Point2D(330.0, 210.0), 0.0, 9.0),
+                BuildingLabelItem("431", Point2D(380.0, 207.0), Point2D(370.0, 210.0), 0.0, 9.0),
+                BuildingLabelItem("433", Point2D(420.0, 207.0), Point2D(410.0, 210.0), 0.0, 9.0)
             ),''',
 "adapter multi-label items")
+
+rep(adapter_test,
+'''            polygon = listOf(
+                Point2D(235.0, 165.0), Point2D(305.0, 165.0), Point2D(305.0, 210.0), Point2D(235.0, 210.0)
+            )''',
+'''            polygon = listOf(
+                Point2D(235.0, 155.0), Point2D(445.0, 155.0), Point2D(445.0, 225.0), Point2D(235.0, 225.0)
+            )''',
+"adapter multi-label footprint")
 
 rep(adapter_test, '''            candidateBuildingMemberIds = listOf("435"),''', '''            candidateBuildingMemberIds = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),''', "adapter live member list")
 
 rep(adapter_test,
 '''                    sourceMemberIds = listOf("435"),
                     verifiedLabelTexts = listOf("435")''',
-'''                    sourceMemberIds = listOf("425", "427"),
-                    verifiedLabelTexts = listOf("425", "427")''',
+'''                    sourceMemberIds = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"),
+                    verifiedLabelTexts = listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433")''',
 "adapter verified binding")
 
 rep(adapter_test,
 '''        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("435"))''',
-'''        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("425", "427"))
-        check(siteAdapted.renderSpec.buildings.single().labelItems.map { it.text } == listOf("425", "427")) {
+'''        check(requireNotNull(siteAdapted.renderSpec.siteBuildingAssignment).buildingBindings.single().sourceMemberIds == listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"))
+        check(siteAdapted.renderSpec.buildings.single().labelItems.map { it.text } == listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433")) {
             "adapter flattened or dropped verified multi-label building items"
         }''',
 "adapter positive multi-label assertion")
@@ -508,7 +513,7 @@ rep(adapter_test,
             kb,
             siteInput.copy(siteBuildingAssignment = siteGeometry.copy(
                 buildingBindings = listOf(
-                    VerifiedSiteBuildingBinding("site-building-435", listOf("425", "427"), listOf("425"))
+                    VerifiedSiteBuildingBinding("site-building-435", listOf("407", "409", "413", "415", "419", "421", "425", "427", "431", "433"), listOf("407", "409", "413", "415", "419", "421", "425", "427", "431"))
                 )
             )),
             "member/label binding drift"
