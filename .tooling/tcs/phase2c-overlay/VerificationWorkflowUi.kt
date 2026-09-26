@@ -179,6 +179,30 @@ data class VerificationWorkflowModel(
                 provenance = "Frozen Phase 1 renderer authority"
             )
 
+            val fieldRelease = when {
+                a.needsNewCard -> VerificationCategoryUi(
+                    "field_release",
+                    "Exact field release",
+                    VerificationUiState.BLOCKED,
+                    "This territory needs a new card. No generated candidate may field-release without explicit approval.",
+                    "needs_new_card • candidate-unapproved"
+                )
+                a.fieldReleaseAllowedForExactArtifact -> VerificationCategoryUi(
+                    "field_release",
+                    "Exact field release",
+                    VerificationUiState.VERIFIED,
+                    "The exact current approved artifact remains eligible. Importing a new source does not approve or replace it.",
+                    a.referenceSha256.take(16) + "…"
+                )
+                else -> VerificationCategoryUi(
+                    "field_release",
+                    "Exact field release",
+                    VerificationUiState.BLOCKED,
+                    "No exact approved artifact is currently field-release eligible.",
+                    a.status
+                )
+            }
+
             val inventory = when (mode) {
                 WorkspaceMode.REGULAR -> VerificationCategoryUi(
                     "inventory",
@@ -210,6 +234,7 @@ data class VerificationWorkflowModel(
                 labels,
                 buildings,
                 colorsTemplate,
+                fieldRelease,
                 inventory
             )
             val hardBlocked = categories.count { it.state == VerificationUiState.BLOCKED }
