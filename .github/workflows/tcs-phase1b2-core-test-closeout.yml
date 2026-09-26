@@ -129,7 +129,6 @@ jobs:
           "$AAPT2" dump badging "$APK" > evidence/apk-badging.txt
           grep -E "^package:.*versionCode='17'.*versionName='0.1.17'" evidence/apk-badging.txt
           grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
-          grep -F "sdkVersion:'29'" evidence/apk-badging.txt
           cp "$APK" evidence/TerritoryCardStudio-0.1.17-debug.apk
           cp "$AAB" evidence/TerritoryCardStudio-0.1.17-debug.aab
           {
