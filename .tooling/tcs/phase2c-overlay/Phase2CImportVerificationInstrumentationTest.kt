@@ -100,6 +100,20 @@ class Phase2CImportVerificationInstrumentationTest {
             letter.categories.first { it.key == "inventory" }.state
         )
 
+        val needsNewItem = dashboard.items.first { it.assignment.displayId == "T250" }
+        val needsNew = VerificationWorkflowModel.from(
+            item = needsNewItem,
+            mode = WorkspaceMode.TELEPHONE,
+            intake = null,
+            knowledgeBase = app.services.knowledgeBase,
+            onlinePolicy = app.services.activePolicy
+        )
+        assertEquals(
+            VerificationUiState.BLOCKED,
+            needsNew.categories.first { it.key == "field_release" }.state
+        )
+        assertFalse(needsNew.buildMayProceed)
+
         val telephoneItem = dashboard.items.first { it.assignment.displayId == "T14" }
         val telephone = VerificationWorkflowModel.from(
             item = telephoneItem,
