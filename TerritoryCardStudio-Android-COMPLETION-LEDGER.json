@@ -22,15 +22,15 @@
     "1D_A_core_two_page_packet": "PASSED",
     "1D_B_letter_writing_page2": "PASSED",
     "1D_C_telephone_page2": "PASSED",
-    "1D_D_cross_mode_validation": "IN_PROGRESS_PRINT_CLOSEOUT"
+    "1D_D_cross_mode_validation": "IN_PROGRESS_PRINT_READINESS_ASSERTION"
   },
   "phase_milestone_before": "Phase 1D-D OPEN",
   "phase_milestone_after": "Phase 1D-D IN_PROGRESS",
-  "last_completed_package": "phase1dd-cross-mode-core-pass-print-preflight-route-switch",
+  "last_completed_package": "phase1dd-cross-mode-contract-pass-print-readiness-evidence-blocked",
   "next_open_gate": "Phase 1D-D - Regular / Letter Writing / Telephone cross-mode packet validation",
-  "next_bounded_task": "Phase 1D-D only: preserve the successful cross-mode core regression from workflow 36268920427, switch the print-readiness reviewer to a PDF-standard-aware rule that permits only Base-14 standard fonts such as Helvetica to be non-embedded while requiring all custom fonts embedded, recheck the three frozen packet PDFs, then run the pending Android 0.1.23 milestone freeze. Do not rerun unchanged cross-mode core logic unless a source hash changes.",
+  "next_bounded_task": "Phase 1D-D only: repair the print-readiness evidence gate so PDF Standard 14 Type1 fonts such as Helvetica are not falsely required to have extractable embedded font bytes; still require canonical page geometry, unencrypted/openable PDFs, inspectable fonts/resources, frozen artifact hashes and Poppler/MuPDF-rendered readability evidence. Rerun the same cross-mode freeze; do not change renderer output or reopen 1D-A/B/C unless an exact PDF defect is proven.",
   "reopened_defects": [],
-  "blocker_fingerprint": "phase1dd-print-preflight-standard14-helvetica-false-positive",
+  "blocker_fingerprint": "phase1dd-print-readiness-font-assertion-standard-type1-helvetica",
   "blocker_route_attempts": 1,
   "phase1d_in_progress": {
     "branch": "tcs-phase1d-020-work",
@@ -58,7 +58,7 @@
     "1D_A": "PASSED",
     "1D_B": "PASSED",
     "1D_C": "PASSED",
-    "1D_D": "IN_PROGRESS_PRINT_CLOSEOUT",
+    "1D_D": "IN_PROGRESS_PRINT_READINESS_ASSERTION",
     "overflow_entry_count": 241,
     "overflow_regression_source_sha256": "f64c3e1c8b43eba231002c0a281c1a6986ee3e3a7b1e7aea72098b558d193134",
     "overflow_runtime_log_sha256": "cc1b9c2dd45c77fd4b4b154ea2e4e024a2235288d03efb2d62527fec16ea857a",
@@ -68,7 +68,10 @@
     "overflow_closeout_artifact_id": 10913805330,
     "overflow_closeout_artifact_zip_sha256": "c1342c9cd9155e6019815ead771c60b7ce048b018501f8237ba2049d30246bfb",
     "overflow_evidence_commit": "7f5bf746632a47f13cd0f7afa0a848fc087d2c7e",
-    "validation_record_commit": "f5e43db26c7805afa39b196f863fbf65b00f5a6c"
+    "validation_record_commit": "f5e43db26c7805afa39b196f863fbf65b00f5a6c",
+    "cross_mode_contract": "PASS",
+    "cross_mode_fail_closed_mutations": 12,
+    "print_readiness_evidence_gate": "FAIL_FALSE_POSITIVE_STANDARD_TYPE1_HELVETICA"
   },
   "reserved_commissioning_status": "UNTOUCHED_UNAPPROVED",
   "phase1d_a_freeze_evidence": {
