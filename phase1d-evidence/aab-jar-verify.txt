@@ -1,0 +1,1383 @@
+
+sm        56 Thu Jan 01 01:01:02 UTC 1981 BUNDLE-METADATA/com.android.tools.build.gradle/app-metadata.properties
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       628 Thu Jan 01 01:01:02 UTC 1981 BundleConfig.pb
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       199 Thu Jan 01 01:01:02 UTC 1981 base/assets.pb
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     27444 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/Knowledge_Base_Assignment_Status.csv
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1554 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/NEEDS_NEW_CARD_QUEUE.json
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      3241 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/Online-Source-Policy.json
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       957 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/Provider-Endpoint-Switches.properties
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      7107 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/R48-Canonical-Style-Tokens.json
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     41201 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/REFERENCE-MANIFEST.json
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      7583 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/Territory-Identity-Naming-Contract.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm    10917860 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/Territory-Knowledge-Base.json
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      3459 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/Territory-Source-Truth-Knowledge-Base-Contract.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      6433 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/label-authority/Territory-Critic-Visual-Hard-Override-2026-09-21.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     12757 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/label-authority/Territory-Label-Completeness-Preflight-Contract.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     18085 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/label-authority/Territory-Label-Uniformity-and-Road-Line-Quality-Override-2026-09-18.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      6050 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/label-authority/Territory-PDF-Label-Metric-Contract.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      9812 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/label-authority/Territory-Segment-Role-Whole-Label-Contract.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     77010 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      3937 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/Locked-Template-Style-Token-Contract.md
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     13411 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/a33-directions-car.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      7107 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/references/R48-Canonical-Style-Tokens.json
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10514 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/render_locked_template.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1450 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/territory_identity.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      5137 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/validate_critic_visual_hard_overrides.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10462 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/validate_label_navigation_contract.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1651 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/validate_pdf_identity.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      6201 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/validate_pdf_label_metrics.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      4233 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/validate_style_token_layer.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      2093 Thu Jan 01 01:01:02 UTC 1981 base/assets/territory/render-authority/validators/validate_territory_identity.py
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm    18641736 Thu Jan 01 01:01:02 UTC 1981 base/dex/classes.dex
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm    1226568 Thu Jan 01 01:01:02 UTC 1981 base/dex/classes2.dex
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     41168 Thu Jan 01 01:01:02 UTC 1981 base/dex/classes3.dex
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     56568 Thu Jan 01 01:01:02 UTC 1981 base/dex/classes4.dex
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     92944 Thu Jan 01 01:01:02 UTC 1981 base/dex/classes5.dex
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm    10276704 Thu Jan 01 01:01:02 UTC 1981 base/dex/classes6.dex
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10096 Thu Jan 01 01:01:02 UTC 1981 base/lib/arm64-v8a/libandroidx.graphics.path.so
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      7252 Thu Jan 01 01:01:02 UTC 1981 base/lib/armeabi-v7a/libandroidx.graphics.path.so
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      9284 Thu Jan 01 01:01:02 UTC 1981 base/lib/x86/libandroidx.graphics.path.so
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10760 Thu Jan 01 01:01:02 UTC 1981 base/lib/x86_64/libandroidx.graphics.path.so
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      5906 Thu Jan 01 01:01:02 UTC 1981 base/manifest/AndroidManifest.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm        85 Thu Jan 01 01:01:02 UTC 1981 base/native.pb
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       177 Thu Jan 01 01:01:02 UTC 1981 base/res/color/vector_tint_color.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       221 Thu Jan 01 01:01:02 UTC 1981 base/res/color/vector_tint_theme_color.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       212 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-hdpi-v4/notification_bg_low_normal.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       225 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-hdpi-v4/notification_bg_low_pressed.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       212 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-hdpi-v4/notification_bg_normal.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       225 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-hdpi-v4/notification_bg_normal_pressed.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       909 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-hdpi-v4/notification_oversize_large_icon_bg.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       107 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-hdpi-v4/notify_panel_notification_icon_bg.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       215 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-mdpi-v4/notification_bg_low_normal.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       223 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-mdpi-v4/notification_bg_low_pressed.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       215 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-mdpi-v4/notification_bg_normal.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       223 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-mdpi-v4/notification_bg_normal_pressed.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm        98 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-mdpi-v4/notify_panel_notification_icon_bg.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       221 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-xhdpi-v4/notification_bg_low_normal.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       252 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-xhdpi-v4/notification_bg_low_pressed.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       221 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-xhdpi-v4/notification_bg_normal.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       247 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-xhdpi-v4/notification_bg_normal_pressed.9.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       138 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable-xhdpi-v4/notify_panel_notification_icon_bg.png
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1515 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/ic_call_answer.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1373 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/ic_call_answer_low.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       931 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/ic_call_answer_video.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       789 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/ic_call_answer_video_low.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1689 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/ic_call_decline.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1547 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/ic_call_decline_low.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      2250 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/notification_action_background.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       751 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/notification_bg.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       753 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/notification_bg_low.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       314 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/notification_icon_background.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       319 Thu Jan 01 01:01:02 UTC 1981 base/res/drawable/notification_tile_bg.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       828 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/custom_dialog.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       365 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/ime_base_split_test_activity.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1465 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/ime_secondary_split_test_activity.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      2216 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/notification_action.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      2677 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/notification_action_tombstone.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      6318 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/notification_template_custom_big.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      2432 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/notification_template_icon_group.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       643 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/notification_template_part_chronometer.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       630 Thu Jan 01 01:01:02 UTC 1981 base/res/layout/notification_template_part_time.xml
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm    499295 Thu Jan 01 01:01:02 UTC 1981 base/resources.pb
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1728 Thu Jan 01 01:01:02 UTC 1981 base/root/DebugProbesKt.bin
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.activity_activity-compose.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.activity_activity-ktx.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.activity_activity.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.annotation_annotation-experimental.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm        67 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.arch.core_core-runtime.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.autofill_autofill.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.animation_animation-core.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.animation_animation.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.foundation_foundation-layout.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.foundation_foundation.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.material3_material3.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.material_material-ripple.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.runtime_runtime-annotation.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.runtime_runtime-retain.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.runtime_runtime-saveable.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.runtime_runtime.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-geometry.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-graphics.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-text.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-tooling-data.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-tooling-preview.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-tooling.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-unit.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui-util.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.compose.ui_ui.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.core_core-ktx.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.core_core-viewtree.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         7 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.core_core.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.customview_customview-poolingcontainer.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.emoji2_emoji2.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.graphics_graphics-path.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.interpolator_interpolator.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-livedata-core.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-process.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-runtime-compose.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-runtime-ktx.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-runtime.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel-ktx.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel-savedstate.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.navigationevent_navigationevent-compose.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.navigationevent_navigationevent.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.profileinstaller_profileinstaller.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.savedstate_savedstate-compose.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.savedstate_savedstate-ktx.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.savedstate_savedstate.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.startup_startup-runtime.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.tracing_tracing.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.versionedparcelable_versionedparcelable.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.window_window-core.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         6 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx.window_window.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10175 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx/annotation/annotation/LICENSE.txt
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10175 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx/collection/collection-ktx/LICENSE.txt
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10175 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx/collection/collection/LICENSE.txt
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10175 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     10175 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm        56 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/com/android/build/gradle/app-metadata.properties
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         5 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/kotlinx_coroutines_android.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm         5 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/kotlinx_coroutines_core.version
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm        54 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/services/kotlinx.coroutines.CoroutineExceptionHandler
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm        52 Thu Jan 01 01:01:02 UTC 1981 base/root/META-INF/services/kotlinx.coroutines.internal.MainDispatcherFactory
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      1022 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/annotation/annotation.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      8625 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/collections/collections.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      2882 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/concurrent/atomics/atomics.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       139 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/coroutines/coroutines.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm       596 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/internal/internal.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm     30920 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/kotlin.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      4353 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/ranges/ranges.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+sm      4859 Thu Jan 01 01:01:02 UTC 1981 base/root/kotlin/reflect/reflect.kotlin_builtins
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+       19536 Thu Jan 01 01:01:02 UTC 1981 META-INF/ANDROIDD.SF
+        1167 Thu Jan 01 01:01:02 UTC 1981 META-INF/ANDROIDD.RSA
+s      19487 Thu Jan 01 01:01:02 UTC 1981 META-INF/MANIFEST.MF
+
+      >>> Signer
+      X.509, C=US, O=Android, CN=Android Debug
+      Signature algorithm: SHA256withRSA, 2048-bit key
+      [certificate is valid from 9/26/26, 6:28 PM to 9/18/56, 6:28 PM]
+      [Invalid certificate chain: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target]
+
+
+  s = signature was verified 
+  m = entry is listed in manifest
+  k = at least one certificate was found in keystore
+
+- Signed by "C=US, O=Android, CN=Android Debug"
+    Digest algorithm: SHA-256
+    Signature algorithm: SHA256withRSA, 2048-bit key
+
+jar verified.
+
+Warning: 
+This jar contains entries whose certificate chain is invalid. Reason: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+This jar contains entries whose signer certificate is self-signed.
+This jar contains signatures that do not include a timestamp. Without a timestamp, users may not be able to validate this jar after any of the signer certificates expire (as early as 2056-09-18).
+POSIX file permission and/or symlink attributes detected. These attributes are ignored when signing and are not protected by the signature.
+
+This JAR file contains internal inconsistencies that may result in different contents when reading via JarFile and JarInputStream:
+- Manifest is missing when reading via JarInputStream
+- Entry BUNDLE-METADATA/com.android.tools.build.gradle/app-metadata.properties is signed in JarFile but is not signed in JarInputStream
+- Entry BundleConfig.pb is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets.pb is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/Knowledge_Base_Assignment_Status.csv is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/NEEDS_NEW_CARD_QUEUE.json is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/Online-Source-Policy.json is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/Provider-Endpoint-Switches.properties is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/R48-Canonical-Style-Tokens.json is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/REFERENCE-MANIFEST.json is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/Territory-Identity-Naming-Contract.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/Territory-Knowledge-Base.json is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/Territory-Source-Truth-Knowledge-Base-Contract.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/label-authority/Territory-Critic-Visual-Hard-Override-2026-09-21.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/label-authority/Territory-Label-Completeness-Preflight-Contract.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/label-authority/Territory-Label-Uniformity-and-Road-Line-Quality-Override-2026-09-18.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/label-authority/Territory-PDF-Label-Metric-Contract.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/label-authority/Territory-Segment-Role-Whole-Label-Contract.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/Locked-Template-Style-Token-Contract.md is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/a33-directions-car.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/references/R48-Canonical-Style-Tokens.json is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/render_locked_template.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/territory_identity.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/validate_critic_visual_hard_overrides.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/validate_label_navigation_contract.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/validate_pdf_identity.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/validate_pdf_label_metrics.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/validate_style_token_layer.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/assets/territory/render-authority/validators/validate_territory_identity.py is signed in JarFile but is not signed in JarInputStream
+- Entry base/dex/classes.dex is signed in JarFile but is not signed in JarInputStream
+- Entry base/dex/classes2.dex is signed in JarFile but is not signed in JarInputStream
+- Entry base/dex/classes3.dex is signed in JarFile but is not signed in JarInputStream
+- Entry base/dex/classes4.dex is signed in JarFile but is not signed in JarInputStream
+- Entry base/dex/classes5.dex is signed in JarFile but is not signed in JarInputStream
+- Entry base/dex/classes6.dex is signed in JarFile but is not signed in JarInputStream
+- Entry base/lib/arm64-v8a/libandroidx.graphics.path.so is signed in JarFile but is not signed in JarInputStream
+- Entry base/lib/armeabi-v7a/libandroidx.graphics.path.so is signed in JarFile but is not signed in JarInputStream
+- Entry base/lib/x86/libandroidx.graphics.path.so is signed in JarFile but is not signed in JarInputStream
+- Entry base/lib/x86_64/libandroidx.graphics.path.so is signed in JarFile but is not signed in JarInputStream
+- Entry base/manifest/AndroidManifest.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/native.pb is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/color/vector_tint_color.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/color/vector_tint_theme_color.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-hdpi-v4/notification_bg_low_normal.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-hdpi-v4/notification_bg_low_pressed.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-hdpi-v4/notification_bg_normal.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-hdpi-v4/notification_bg_normal_pressed.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-hdpi-v4/notification_oversize_large_icon_bg.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-hdpi-v4/notify_panel_notification_icon_bg.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-mdpi-v4/notification_bg_low_normal.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-mdpi-v4/notification_bg_low_pressed.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-mdpi-v4/notification_bg_normal.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-mdpi-v4/notification_bg_normal_pressed.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-mdpi-v4/notify_panel_notification_icon_bg.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-xhdpi-v4/notification_bg_low_normal.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-xhdpi-v4/notification_bg_low_pressed.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-xhdpi-v4/notification_bg_normal.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-xhdpi-v4/notification_bg_normal_pressed.9.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable-xhdpi-v4/notify_panel_notification_icon_bg.png is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/ic_call_answer.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/ic_call_answer_low.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/ic_call_answer_video.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/ic_call_answer_video_low.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/ic_call_decline.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/ic_call_decline_low.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/notification_action_background.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/notification_bg.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/notification_bg_low.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/notification_icon_background.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/drawable/notification_tile_bg.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/custom_dialog.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/ime_base_split_test_activity.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/ime_secondary_split_test_activity.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/notification_action.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/notification_action_tombstone.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/notification_template_custom_big.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/notification_template_icon_group.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/notification_template_part_chronometer.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/res/layout/notification_template_part_time.xml is signed in JarFile but is not signed in JarInputStream
+- Entry base/resources.pb is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/DebugProbesKt.bin is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.activity_activity-compose.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.activity_activity-ktx.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.activity_activity.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.annotation_annotation-experimental.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.arch.core_core-runtime.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.autofill_autofill.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.animation_animation-core.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.animation_animation.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.foundation_foundation-layout.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.foundation_foundation.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.material3_material3.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.material_material-ripple.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.runtime_runtime-annotation.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.runtime_runtime-retain.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.runtime_runtime-saveable.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.runtime_runtime.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-geometry.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-graphics.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-text.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-tooling-data.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-tooling-preview.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-tooling.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-unit.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui-util.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.compose.ui_ui.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.core_core-ktx.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.core_core-viewtree.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.core_core.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.customview_customview-poolingcontainer.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.emoji2_emoji2.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.graphics_graphics-path.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.interpolator_interpolator.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-livedata-core.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-process.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-runtime-compose.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-runtime-ktx.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-runtime.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel-ktx.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel-savedstate.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.navigationevent_navigationevent-compose.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.navigationevent_navigationevent.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.profileinstaller_profileinstaller.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.savedstate_savedstate-compose.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.savedstate_savedstate-ktx.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.savedstate_savedstate.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.startup_startup-runtime.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.tracing_tracing.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.versionedparcelable_versionedparcelable.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.window_window-core.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx.window_window.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx/annotation/annotation/LICENSE.txt is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx/collection/collection-ktx/LICENSE.txt is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx/collection/collection/LICENSE.txt is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/com/android/build/gradle/app-metadata.properties is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/kotlinx_coroutines_android.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/kotlinx_coroutines_core.version is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/services/kotlinx.coroutines.CoroutineExceptionHandler is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/META-INF/services/kotlinx.coroutines.internal.MainDispatcherFactory is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/annotation/annotation.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/collections/collections.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/concurrent/atomics/atomics.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/coroutines/coroutines.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/internal/internal.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/kotlin.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/ranges/ranges.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry base/root/kotlin/reflect/reflect.kotlin_builtins is signed in JarFile but is not signed in JarInputStream
+- Entry META-INF/MANIFEST.MF is signed in JarFile but is not signed in JarInputStream
+
+The signer certificate will expire on 2056-09-18.

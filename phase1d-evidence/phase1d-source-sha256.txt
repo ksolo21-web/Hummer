@@ -1,0 +1,5 @@
+a1ff66fc7fa303eefb4959ac5bb2c686caa9872148c1938bcf833351a266874b  tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdf.kt
+1404977c28ee6023a5273e0ab9d43e24926d9dd75c87d1104ab52f30acd2e852  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackPdfTest.kt
+aa70a87b80198629cbf73ac66b9e4f5656b2d1bd87e98bc9286e21cffd72fbd1  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CanonicalFrontBackFixtureGenerator.kt
+d1252d84f8c435266a3ee3316ae68f6278cd2efbc23d2e9fd2daa5392fda4412  tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidPdfArtifactService.kt
+09b8490ee32d1520906071610b576bb173a4a863f224c4296528e4ccea547db2  tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/CoreContractSmokeTest.kt
