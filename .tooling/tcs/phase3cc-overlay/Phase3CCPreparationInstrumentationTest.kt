@@ -102,13 +102,17 @@ class Phase3CCPreparationInstrumentationTest {
         if(InstrumentationRegistry.getArguments().getString("captureOnly")=="repair" && name !in setOf("blocked-dark","prepared-light"))return
         val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
         rule.waitForIdle();automation.waitForIdle(500,10000)
-        var prior:Bitmap?=null;var accepted:Bitmap?=null
+        var prior:Bitmap?=null;var accepted:Bitmap?=null;var stableSince=0L
         try {rule.waitUntil(20000) {
             val b=requireNotNull(automation.takeScreenshot());val dark=name.endsWith("-dark")
             val background=b.getPixel(8,b.height/2);val luminance=(android.graphics.Color.red(background)+android.graphics.Color.green(background)+android.graphics.Color.blue(background))/3
             var stable=prior!=null && prior!!.width==b.width && prior!!.height==b.height && (if(dark)luminance<80 else luminance>180)
-            if(stable)for(y in 80 until b.height-48 step 8)for(x in 0 until b.width step 8)if(prior!!.getPixel(x,y)!=b.getPixel(x,y))stable=false
-            prior?.recycle();prior=b;if(stable){accepted=b;prior=null;true}else false
+            val insets=rule.activity.window.decorView.rootWindowInsets
+            stable=stable && insets?.isVisible(android.view.WindowInsets.Type.statusBars())==true
+            if(stable)for(y in 0 until b.height step 4)for(x in 0 until b.width step 8)if(prior!!.getPixel(x,y)!=b.getPixel(x,y))stable=false
+            val now=android.os.SystemClock.elapsedRealtime()
+            if(!stable)stableSince=0L else if(stableSince==0L)stableSince=now
+            prior?.recycle();prior=b;if(stable && now-stableSince>=1000){accepted=b;prior=null;true}else false
         }
         val b=requireNotNull(accepted);val wide=rule.activity.resources.configuration.screenWidthDp>=840
         File(rule.activity.filesDir,"phase3cc-${if(wide)"wide-" else ""}$name.png").outputStream().use {assertTrue(b.compress(Bitmap.CompressFormat.PNG,100,it))}

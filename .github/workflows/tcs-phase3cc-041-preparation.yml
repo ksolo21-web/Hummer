@@ -386,14 +386,14 @@ jobs:
           grep -E "^package:.*versionCode='41'.*versionName='0.3.4'" evidence/apk-badging.txt
           grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
 
-      - name: Retain all sixteen passing identities and twenty valid captures
+      - name: Retain all sixteen passing identities and twenty-two valid captures
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10943325552/zip > retained.zip
-          echo "5b19028b33a8ad39d3045d0ce1b962b53236ac4585f35ec3a97a3f157c6a5bba  retained.zip" | sha256sum -c -
+          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10942144470/zip > retained.zip
+          echo "2ec1c870a1dc3087e52c48fa76e37fb9ba20f9029d87769f275a5543b9abb71d  retained.zip" | sha256sum -c -
           mkdir retained
           unzip -q retained.zip -d retained
           cp .tooling/tcs/phase3cc-evidence/retained*.json evidence/
@@ -402,8 +402,8 @@ jobs:
           import hashlib,json,shutil
           from pathlib import Path
           p=json.loads(Path('evidence/retained-results.json').read_text())
-          assert hashlib.sha256(Path('retained/phase3cc-runtime.log').read_bytes()).hexdigest()==p['runtime_sha256']
-          assert hashlib.sha256(Path('retained/phase3cc-wide-captures.log').read_bytes()).hexdigest()==p['wide_runtime_sha256']
+          assert hashlib.sha256(Path('retained/retained-runtime.log').read_bytes()).hexdigest()==p['runtime_sha256']
+          assert hashlib.sha256(Path('retained/retained-wide-captures.log').read_bytes()).hexdigest()==p['wide_runtime_sha256']
           for row in p['screenshots']:
               f=Path('retained')/row['file'];assert hashlib.sha256(f.read_bytes()).hexdigest()==row['sha256'];shutil.copyfile(f,Path('evidence')/f.name)
           shutil.copyfile('retained/TEST-phase3cc.xml','evidence/TEST-phase3cc.xml')
@@ -414,7 +414,7 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Retry only four system-transition screenshots
+      - name: Retry only two phone status-bar screenshots
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

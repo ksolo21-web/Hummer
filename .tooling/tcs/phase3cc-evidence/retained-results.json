@@ -71,7 +71,7 @@
   ],
   "runtime_sha256": "e9a8c27c879b3c159735c947c22fc2c4d092718b1d4e7d7db038d213caf7aa06",
   "wide_runtime_sha256": "70764a00b9a860ae3b12839077dc0aa869f5ea603fcc22f3a702ff402edf27e1",
-  "retry_scope": "Only phone/wide initial dark and post-dialog prepared light images; all16 functional identities retained",
+  "retry_scope": "Only two phone status-bar captures; functional16 and other22 captures frozen",
   "screenshots": [
     {
       "file": "phase3cc-authority-dark.png",
@@ -122,6 +122,10 @@
       "sha256": "7a265445d4801e8b61f7ddd90b667b6cbf3c418beca2b5b1bdea3d4ff1ed5e05"
     },
     {
+      "file": "phase3cc-wide-blocked-dark.png",
+      "sha256": "1f7a2eeef0d43dd81e7e07a74eca1b38177070ac99a701c65c80aed2fb0094b1"
+    },
+    {
       "file": "phase3cc-wide-blocked-light.png",
       "sha256": "0b980d9733b1b366b8db2bb5335839ebf599db9ec684fb6d57108fd32dcacbe0"
     },
@@ -136,6 +140,10 @@
     {
       "file": "phase3cc-wide-prepared-dark.png",
       "sha256": "e37cd9e673e493e268f8e9cc58258e703ad6b207e5801fe38a257d60e3866bc0"
+    },
+    {
+      "file": "phase3cc-wide-prepared-light.png",
+      "sha256": "0aedffbd4615c533a6e6c1251a12a0e44c3ec4ccd96fda5e302fc3cd1bf9e29e"
     },
     {
       "file": "phase3cc-wide-stale-dark.png",
