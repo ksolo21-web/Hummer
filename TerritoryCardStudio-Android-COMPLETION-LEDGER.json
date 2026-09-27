@@ -29,10 +29,10 @@
     "2C_import_map_verification_workflow": "PASSED",
     "2D_build_generate_page2": "IN_PROGRESS",
     "2D_A_page2_service": "PASSED",
-    "2D_B_build_ui_coordinator": "OPEN"
+    "2D_B_build_ui_coordinator": "IN_PROGRESS"
   },
   "phase_milestone_before": "Phase 2D-A IN_PROGRESS",
-  "phase_milestone_after": "Phase 2D-A PASSED; Phase 2D-B OPEN",
+  "phase_milestone_after": "Phase 2D-B IN_PROGRESS: implementation awaiting runtime, capture and independent review",
   "last_completed_package": "0.2.3-phase2da-page2-service",
   "next_open_gate": "Phase 2D-B Build UI / coordinator integration",
   "next_bounded_task": "Phase 2D-B: implement the Build UI and coordinator using the passed Android Page 2 service and frozen Phase 1 render-model/validation pipeline. Connect real prepared, validated production inputs only; absent or unresolved inputs remain blocked. Support mode-correct Generate Page 2 using typed inventories and preserve front/inventory authority, revision and hash binding. Do not infer source truth from imported maps, alter frozen renderers, fabricate inventories, commission the six reserved territories, or enable approval/export prematurely. Validate changed coordinator/UI with targeted Android runtime evidence and independent review. Phase 2D-A stays frozen unless a touched dependency or concrete defect reopens it.",
@@ -267,7 +267,7 @@
     "2C": "PASSED",
     "2D": "IN_PROGRESS",
     "2D_A": "PASSED",
-    "2D_B": "OPEN"
+    "2D_B": "IN_PROGRESS"
   },
   "phase2a_freeze_evidence": {
     "full_build_run_id": 36273476116,
@@ -321,7 +321,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T01:20:05.478Z",
+  "saved_at_utc": "2026-09-27T01:32:56.152Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
