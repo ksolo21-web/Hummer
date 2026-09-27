@@ -43,10 +43,10 @@
   "phase_milestone_after": "Phase 2J IN_PROGRESS",
   "last_completed_package": "0.2.9-phase2i-dashboard-filtering-complete-browsing",
   "next_open_gate": "Phase 2J runtime and independent acceptance",
-  "next_bounded_task": "Resolve authoritative Phase2J run36306323377 for source a27aa735172efaa29dbfaf9657234bcaa6b80abf; inspect all20 repaired phone/wide light/dark captures and exact source/APK/AAB; independent critic >9 with all checks passed, then freeze2J. Do not start duplicate CI or2K before acceptance.",
+  "next_bounded_task": "Resolve authoritative Phase2J run36307042923 for source6e1aa9c662a34e772f213cad8afe3465620849ef. Require all57tests and20reviewed phone/wide light/dark captures, source/APK/AAB verification and independentcritic>9. Prior Phase2F IMErace fixed in test harness only; no weakened assertions. Do not start duplicateCI or2K before acceptance.",
   "reopened_defects": [],
-  "blocker_fingerprint": "2J-runtime-passed57-wide-preview-context-and-capture-evidence-repair-awaiting-CI",
-  "blocker_route_attempts": 2,
+  "blocker_fingerprint": "2J-Phase2F-test-IME-race-repaired-awaiting-full-CI",
+  "blocker_route_attempts": 1,
   "phase1d_in_progress": {
     "branch": "tcs-phase1d-020-work",
     "page_order": [
@@ -337,7 +337,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T08:29:40.158368+00:00",
+  "saved_at_utc": "2026-09-27T08:43:07.111766+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -807,20 +807,21 @@
     ]
   },
   "phase2j_in_progress": {
-    "status": "CI_VISUAL_REPAIR_IN_PROGRESS",
+    "status": "CI_SYNC_REPAIR_IN_PROGRESS",
     "candidate_version": "0.2.10",
     "candidate_code": 35,
     "baseline_source": "a8df14b97d7cf3aaa27feeadfaa16d540cc705a0",
     "reserved_territories": "UNTOUCHED",
     "mandatory_new_tests": 5,
     "mandatory_prior_tests": 52,
-    "source_commit": "a27aa735172efaa29dbfaf9657234bcaa6b80abf",
-    "run_id": 36306323377,
-    "previous_run_id": 36305358958,
+    "source_commit": "6e1aa9c662a34e772f213cad8afe3465620849ef",
+    "run_id": 36307042923,
+    "previous_run_id": 36306323377,
     "previous_tests": 57,
-    "previous_failures": 0,
+    "previous_failures": 1,
     "new_phase2j_tests_passed": 5,
     "previous_unique_captures": 18,
-    "required_unique_captures": 20
+    "required_unique_captures": 20,
+    "prior_test_sync_repair": "Phase2F physical click waits for Compose focus clear, hidden IME and stable bounds; all assertions preserved"
   }
 }
