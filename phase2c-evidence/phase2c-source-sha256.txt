@@ -1,0 +1,6 @@
+5f9f8ea9a4588a0bc1cc440ac98c4f5bfe2237b74f45cab5fc3a2076380666d6  tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/ProductionUi.kt
+54bb1eebdfe1b8a94b63cc41151f064945d8c0d25ee1cb1869546dce16ec3ba7  tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
+fcbc378b67f571af4d0221431a2ab2c9be128dea7a9dac1c483bf4e650549413  tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt
+27d8bf28f3e56f3323c338470df142e198b9d55a35261aa30f67dc6afac06f60  tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/VerificationWorkflowUi.kt
+94b4b53c9ba833a96b8bf5ea0bf790396a29414ba9e3240a4295bf4c478840dc  tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase2CImportVerificationInstrumentationTest.kt
+b0e83c5184a938c39b3a98d122c9707655f93e90eeec96ca366e3e1d4bf1ab73  tcs-src/app/build.gradle.kts

@@ -1,0 +1,2 @@
+import-map-dark.png width=1080 height=2400 sha256=093fbda164562e4c718b2100083b749b6154bd40370984ca78a5daee283e6d77 mean_rgb=37.03
+verification-dark.png width=1080 height=2400 sha256=c3d12a45bb80385faae51c25d2de6b25ff1ff558767227d6708e89fe49fe55a6 mean_rgb=34.08

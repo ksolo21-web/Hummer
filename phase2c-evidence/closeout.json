@@ -1,0 +1,29 @@
+{
+  "run_id": 36283734889,
+  "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
+  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36283734889",
+  "run_conclusion": "success",
+  "artifact_id": 10919489088,
+  "artifact_zip_sha256": "c02c69264d9c0d1fec9c6c537e21c225bc7de8c5ff87192f5719bb396f414eca",
+  "artifact_expires_at": "2026-10-11T00:57:16Z",
+  "source_package_sha256": "40d83f2c25c12a6fb6314fbc1af70ad35ad42641ddde8c5194d2d1b69e153642",
+  "apk_sha256": "12978d937f05079eb775a7167be50db399df7401dbb81b0fd0fa808da90458b7",
+  "aab_sha256": "eaefa373c1d2d22f7454326fc2ac82f7bf246906ddeceb0d8dd896b5204992af",
+  "extracted_source_manifest_sha256": "87974ba83afc385dfbbcc5332b501175ff15e4e91254dba0e5d6158d5d8a080d",
+  "version_name": "0.2.2",
+  "version_code": 27,
+  "target_sdk": 37,
+  "connected_tests": 11,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "document_picker": "PASS_COMPILED_ONLY",
+  "persisted_stream_intake_navigation": "PASS_RUNTIME",
+  "visual_review": "PASS",
+  "independent_critic": {
+    "agent": "/root/phase2c_critic",
+    "score": 9.5,
+    "passed": true
+  },
+  "reserved_territory_pdf_sweep": 0
+}
