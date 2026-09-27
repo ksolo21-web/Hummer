@@ -37,17 +37,24 @@ class Phase3CBEditorInstrumentationTest {
         rule.waitUntil(20000){rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())!=true}
         scroll(tag);rule.onNodeWithTag(tag).performScrollTo();rule.waitForIdle()
         var previous:androidx.compose.ui.geometry.Rect?=null
-        rule.waitUntil(20000) {
+        var diagnostics="not sampled"
+        try {rule.waitUntil(20000) {
             runCatching {
-                val viewport=rule.onNodeWithTag("extended-editor").fetchSemanticsNode().boundsInRoot
+                val viewport=rule.onNodeWithTag("extended-editor").fetchSemanticsNode().boundsInRoot.intersect(rule.onRoot().fetchSemanticsNode().boundsInRoot)
                 val bounds=rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
-                if(bounds.top<viewport.top+24 || bounds.bottom>viewport.bottom-24) {
-                    rule.onNodeWithTag("extended-editor").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy){it(0f,bounds.center.y-viewport.center.y)};previous=null;false
+                diagnostics="tag=$tag viewport=$viewport bounds=$bounds";android.util.Log.i("Phase3CBChip",diagnostics)
+                if(bounds.height<=0 || bounds.width<=0 || bounds.center.y<viewport.top+8 || bounds.center.y>viewport.bottom-8) {
+                    rule.onNodeWithTag("extended-editor").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy){val moved=it(0f,(bounds.center.y-viewport.center.y).coerceIn(-viewport.height/3,viewport.height/3));android.util.Log.i("Phase3CBChip","scroll accepted=$moved")};rule.waitForIdle();previous=null;false
                 } else {
                     rule.onNodeWithTag(tag).assertIsDisplayed();val stable=previous==bounds;previous=bounds;stable
                 }
-            }.getOrDefault(false)
+            }.getOrElse {previous=null;scroll(tag);rule.waitForIdle();false}
+        }} catch(t:Throwable) {
+            val b=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            if(b!=null) {File(rule.activity.filesDir,"phase3cb-debug-chip-timeout.png").outputStream().use {b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
+            throw AssertionError("Chip failed to become physically visible: $diagnostics",t)
         }
+        rule.onNodeWithTag(tag).assertIsDisplayed()
         rule.onNodeWithTag(tag).performClick();rule.waitForIdle()
         rule.waitUntil(20000){runCatching{rule.onNodeWithTag(tag).assertIsSelected()}.isSuccess}
     }

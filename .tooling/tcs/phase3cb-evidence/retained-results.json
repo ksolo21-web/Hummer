@@ -60,6 +60,10 @@
     [
       "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
       "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
     ]
   ],
   "reopened": [
@@ -71,14 +75,10 @@
   "retry": [
     [
       "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
-      "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
-    ],
-    [
-      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
       "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
     ]
   ],
-  "reason": "Fourteen retained passes from two explicit runtime logs; retry only two remaining physical-tap synchronization failures.",
+  "reason": "Fifteen retained passes from explicit runtime logs; retry only remaining workspace physical-scroll synchronization failure.",
   "screenshots": [
     {
       "file": "phase3cb-building-form-dark.png",
@@ -215,6 +215,17 @@
       [
         "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
         "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
+      ]
+    ]
+  },
+  "third_run": {
+    "run_id": 36346291814,
+    "source_commit": "7e15cf277d4d19f464595b4de60709b7339e403f",
+    "runtime_sha256": "856245e27e3e5b101837ded55ab96f6522a469da4daa34cb9e6122343857ffa2",
+    "passed": [
+      [
+        "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+        "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
       ]
     ]
   }

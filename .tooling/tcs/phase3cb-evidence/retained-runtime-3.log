@@ -1,0 +1,58 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest:
+INSTRUMENTATION_STATUS: test=phoneFormsPreserveUnavailableAndUnknownWithoutApproval
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=phoneFormsPreserveUnavailableAndUnknownWithoutApproval
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:40)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:67)
+
+INSTRUMENTATION_STATUS: stream=
+Error in workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:40)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:67)
+
+INSTRUMENTATION_STATUS: test=workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 80.939
+There was 1 failure:
+1) workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:40)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:67)
+
+FAILURES!!!
+Tests run: 2,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

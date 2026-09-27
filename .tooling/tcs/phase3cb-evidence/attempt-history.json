@@ -68,6 +68,20 @@
       "source_commit": "e6b228fad1898fc5d87bc4746f0d34fc067346c6",
       "status": "TEST_COMPILE_FAILED",
       "reason": "Test-only performScrollBy unavailable; use existing ScrollBy semantics action. No runtime identities reopened."
+    },
+    {
+      "run_id": 36346291814,
+      "source_commit": "7e15cf277d4d19f464595b4de60709b7339e403f",
+      "status": "15_PASS_1_FAIL",
+      "fresh_pass": 1,
+      "retained": 15,
+      "retry": [
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
+        ]
+      ],
+      "reason": "Telephone physical flow passed; workspace scroll must await idle and reacquire uncomposed target"
     }
   ]
 }

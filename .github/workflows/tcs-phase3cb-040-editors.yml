@@ -376,7 +376,7 @@ jobs:
           grep -E "^package:.*versionCode='40'.*versionName='0.3.3'" evidence/apk-badging.txt
           grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
 
-      - name: Retain fourteen passing identities and phone screenshots
+      - name: Retain fifteen passing identities and phone screenshots
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -404,7 +404,7 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Retry only two remaining editor tap cases
+      - name: Retry only remaining workspace editor case
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
