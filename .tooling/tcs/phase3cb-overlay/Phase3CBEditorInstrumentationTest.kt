@@ -29,7 +29,7 @@ class Phase3CBEditorInstrumentationTest {
     @Composable private fun Content(x:Phase3CBFixture,theme:AppearanceMode=AppearanceMode.LIGHT,onBack:()->Unit={}) {
         TerritoryCardStudioTheme(theme){Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){ExtendedDraftEditorScreen(Modifier.fillMaxSize().safeDrawingPadding(),x.id,x.mode,x.store,onBack)}}
     }
-    private fun ready() {rule.waitUntil(20000){rule.onAllNodesWithTag("extended-status").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.joinToString()?.let {!it.contains("Loading")}==true};rule.waitForIdle()}
+    private fun ready() {scroll("extended-status");rule.waitUntil(20000){rule.onAllNodesWithTag("extended-status").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.joinToString()?.let {!it.contains("Loading")}==true};rule.waitForIdle()}
     private fun scroll(tag:String) {rule.waitUntil(20000){runCatching{rule.onNodeWithTag("extended-editor").performScrollToNode(hasTestTag(tag))}.isSuccess}}
     private fun click(tag:String) {scroll(tag);rule.waitUntil(20000){runCatching{rule.onNodeWithTag(tag).assertIsEnabled()}.isSuccess};rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun dialog(tag:String) {rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
