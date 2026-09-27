@@ -1,0 +1,85 @@
+name: TCS Phase 3D Editing Integration
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-phase3d-integration.yml
+      - .tooling/tcs/phase3d-overlay/**
+      - .tooling/tcs/phase3d-run-device-tests.sh
+      - .tooling/tcs/phase3d-summarize.py
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: tcs-phase3d-integration
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover exact accepted Phase 3C-C source and APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence accepted tcs-src
+          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10944262679/zip > accepted.zip
+          echo 'd4825ca5c127bc745c143c56baa0dcb6e4411a2d0a682275c78ef981e27fe370  accepted.zip' | sha256sum -c -
+          unzip -q accepted.zip -d accepted
+          echo 'b48625a582fb8ce5e78ec29c5d41dfc2caffbfe6e533e356c22ff93a656d595b  accepted/TerritoryCardStudio-Android-0.3.4-phase3cc-source.tar.xz' | sha256sum -c -
+          tar -xJf accepted/TerritoryCardStudio-Android-0.3.4-phase3cc-source.tar.xz -C tcs-src
+          (cd tcs-src && sha256sum -c ../accepted/extracted-source-files.sha256) > evidence/accepted-source-verification.log
+          cp accepted/apk.sha256 accepted/aab.sha256 evidence/
+          cp .tooling/tcs/phase3d-overlay/*.kt tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Set up pinned Android toolchain and compile only test package
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          python3 -m pip install --quiet pillow
+          (cd tcs-src && gradle --no-daemon :app:assembleDebugAndroidTest) > evidence/test-compile.log 2>&1 || { cat evidence/test-compile.log; exit 1; }
+          sha256sum -c evidence/apk.sha256
+          sha256sum -c evidence/aab.sha256
+          sha256sum tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > evidence/test-apk.sha256
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Execute only new Phase 3D cases
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: |
+            adb shell svc power stayon true
+            adb shell settings put system screen_off_timeout 1800000
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell wm dismiss-keyguard
+            bash .tooling/tcs/phase3d-run-device-tests.sh
+      - name: Save source and exact evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/source-files.sha256
+          find evidence -maxdepth 1 -name '*.log' -type f -print0 | sort -z | xargs -0 sha256sum > evidence/logs.sha256
+          tar -cJf evidence/phase3d-source.tar.xz -C tcs-src .
+          sha256sum evidence/phase3d-source.tar.xz > evidence/source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase3d-integration-evidence
+          path: evidence
+          retention-days: 14
