@@ -2,9 +2,9 @@
   "project": "Territory Card Studio Android",
   "version": "0.2.9-phase2i-dashboard-filtering-complete-browsing",
   "milestone": "phase-2i-dashboard-filtering-complete-browsing-passed",
-  "status": "PHASE_2I_PASSED_PHASE_2_IN_PROGRESS",
-  "phase_milestone_before": "Phase 2I IN_PROGRESS",
-  "phase_milestone_after": "Phase 2I PASSED",
+  "status": "PHASE_2J_IN_PROGRESS_PHASE_2_IN_PROGRESS",
+  "phase_milestone_before": "Phase 2I PASSED",
+  "phase_milestone_after": "Phase 2J IN_PROGRESS",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -450,7 +450,7 @@
   },
   "last_completed_package": "0.2.9-phase2i-dashboard-filtering-complete-browsing",
   "next_open_gate": "Phase 2J — Workspace exact preview, populated inventory and current verification binding",
-  "next_bounded_task": "Implement Phase 2J Workspace exact approved/candidate PDF preview binding, populate Letter Writing/Telephone inventories from current verified data, and bind visible readiness to the current verification/source/hash state per .tooling/tcs/phase2i-evidence/next-phase2j.md. Preserve all passed Phase 2A–2I behavior, 52 tests, frozen renderer/approval/export authority and both themes. Validate runtime, phone/wide Light/Dark captures, independent critic >9 and the next version source/APK/AAB freeze. No real commissioning; 2K and final aggregate Phase 2 audit remain open.",
+  "next_bounded_task": "Validate Phase 2J implementation and resolve authoritative CI before any new package. Requirements: .tooling/tcs/phase2j-overlay/requirements.md. Preserve 2A–2I. Independent critic and full runtime/evidence freeze required.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -1035,5 +1035,14 @@
         "result": "CANCELLED_BY_CONCURRENCY_BEFORE_REPLACEMENT"
       }
     ]
+  },
+  "phase2j_in_progress": {
+    "status": "IMPLEMENTED_PENDING_VALIDATION",
+    "candidate_version": "0.2.10",
+    "candidate_code": 35,
+    "baseline_source": "a8df14b97d7cf3aaa27feeadfaa16d540cc705a0",
+    "reserved_territories": "UNTOUCHED",
+    "mandatory_new_tests": 5,
+    "mandatory_prior_tests": 52
   }
 }
