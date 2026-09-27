@@ -7,6 +7,8 @@ on:
     paths:
       - .github/workflows/tcs-phase2k-036-findings-audit.yml
       - .tooling/tcs/phase2k-overlay/**
+      - .tooling/tcs/phase2k-run-device-tests.sh
+      - .tooling/tcs/phase2k-evidence/frozen-run36323755251-pass62.xml
 
 permissions:
   contents: read
@@ -354,11 +356,10 @@ jobs:
 
             adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk
             adb install -r tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell pm clear com.koenterprises.territorycardstudio
             adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2JWorkspaceUiInstrumentationTest#captureCurrentWorkspacePreviewInventoriesAndVerification com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/capture-test.log
             cat evidence/capture-test.log
             grep -F "OK (1 test)" evidence/capture-test.log
-            adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest#captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase2k-capture-phone.log
+            cp evidence/connected-android-test.log evidence/phase2k-capture-phone.log
             cat evidence/phase2k-capture-phone.log
             grep -F "OK (1 test)" evidence/phase2k-capture-phone.log
             adb shell wm size 1920x1200
@@ -367,6 +368,7 @@ jobs:
             cat evidence/capture-wide-test.log
             grep -F "OK (1 test)" evidence/capture-wide-test.log
             adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest#captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase2k-capture-wide.log
+            adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest#captureFindingsAndAuditAndNavigateFromPreviewDark com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner >> evidence/phase2k-capture-wide.log
             cat evidence/phase2k-capture-wide.log
             grep -F "OK (1 test)" evidence/phase2k-capture-wide.log
             mkdir -p evidence/ui
@@ -406,8 +408,8 @@ jobs:
           assert files
           cases=[c for p in files for c in ET.parse(p).getroot().iter('testcase')]
           required={'realRecordsKeepAuthorityAndEverySourcePatchAndFinding', 'missingReferenceAndScopedConflictsRemainTruthful', 'workspaceAndExportStateSurviveReadOnlyDestination', 'allSourceHashesAndMissingSearchRemainAccessible', 'captureKnowledgeLightDarkRecordsRulesAndConflicts'}
-          required.update({'scopedAuditKeepsExactIdentityAndReadbackWithoutFieldAuthority','staleAuditNeverWritesAndUnpreparedEvidenceIsHonest','actualOverlapRoadAndBuildingAreItemLinkedWithoutInferredIdentifiers','captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes','actualSystemPickerCancelsSavesAndRejectsStaleAudit','affectedRoadFindingOpensStreetsWithActualItemContext'})
-          assert len(cases) == 63
+          required.update({'scopedAuditKeepsExactIdentityAndReadbackWithoutFieldAuthority','staleAuditNeverWritesAndUnpreparedEvidenceIsHonest','actualOverlapRoadAndBuildingAreItemLinkedWithoutInferredIdentifiers','captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes','captureFindingsAndAuditAndNavigateFromPreviewDark','actualSystemPickerCancelsSavesAndRejectsStaleAudit','affectedRoadFindingOpensStreetsWithActualItemContext'})
+          assert len(cases) == 64
           required.update({'realDashboardFiltersAssignmentsAndHonestScreeningRecords', 'readinessUsesEveryScopedFindingNotBooleanConflictPresence', 'completeWorkspaceCollectionsHaveNoPresentationCeiling', 'combinedSearchFilterNoMatchAndCompleteScreeningAreReachable', 'roadsBuildingsAndSyntheticSourcesRemainCompletelyBrowsable', 'captureDashboardFiltersScreeningAndCompleteRoadBrowsing'})
           required.update({'snapshotsBindBothInventoriesAndVerificationToCurrentSource', 'mutableInventoryInvalidatesSnapshotAndTerritoryModeCannotLeak', 'approvedPreviewIsExactAndIndependentOfCandidatePreparation', 'resumeRemovesStalePreviewAndInventory', 'captureCurrentWorkspacePreviewInventoriesAndVerification'})
           assert required <= {c.get('name') for c in cases}
@@ -436,7 +438,7 @@ jobs:
           AGGREGATE_PHASE_2=PENDING_FINAL_AUDIT
           VERSION_NAME=0.2.11
           VERSION_CODE=36
-          CONNECTED_TESTS=63
+          CONNECTED_TESTS=64
           EXPLICIT_STATUS_FILTERS=PASS_RUNTIME
           UNASSIGNED_SCREENING_AUTHORITY=PASS_RUNTIME
           TRUE_FINDING_COUNTS=PASS_RUNTIME

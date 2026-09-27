@@ -136,13 +136,15 @@ class Phase2KUiInstrumentationTest {
             rule.onNodeWithText("Review the shared junction").assertExists()
         }
     }
-    @Test fun captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes() {
+    @Test fun captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes() = captureTheme(AppearanceMode.LIGHT)
+    @Test fun captureFindingsAndAuditAndNavigateFromPreviewDark() = captureTheme(AppearanceMode.DARK)
+    private fun captureTheme(theme:AppearanceMode) {
         wait("territories-dashboard")
-        for (theme in listOf(AppearanceMode.LIGHT,AppearanceMode.DARK)) Phase2DBFixture(false).use { f ->
+        Phase2DBFixture(false).use { f ->
             f.prepare();f.build();f.page2()
             val item=TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId==f.identity.displayId }
             val preview=AndroidPdfPreviewService(f.coordinator,File(f.root,"2k-preview"),f.service)
-            rule.activityRule.scenario.onActivity { activity -> activity.setContent { TerritoryCardStudioTheme(theme) {
+            rule.activity.runOnUiThread { rule.activity.setContent { TerritoryCardStudioTheme(theme) {
                 Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
                     ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(),item,f.kb.revision,{},f.kb,f.coordinator,preview)
                 }
