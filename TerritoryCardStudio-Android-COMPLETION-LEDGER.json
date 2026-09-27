@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
   "current_phase": 2,
-  "current_checkpoint": "0.2.2-phase2c-import-verification",
+  "current_checkpoint": "0.2.3-phase2da-page2-service",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -11,7 +11,7 @@
     "1C_multi_label_300_301": "PASSED",
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
-    "2_production_ui": "IN_PROGRESS_2DA",
+    "2_production_ui": "IN_PROGRESS_2DB_NEXT",
     "3_editing_commissioning_workflow": "NOT_STARTED_DEPENDS_PHASE2",
     "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
@@ -28,14 +28,14 @@
     "2C_import_map_verification_ui": "PASSED",
     "2C_import_map_verification_workflow": "PASSED",
     "2D_build_generate_page2": "IN_PROGRESS",
-    "2D_A_page2_service": "IN_PROGRESS",
-    "2D_B_build_ui_coordinator": "OPEN_DEPENDS_2DA"
+    "2D_A_page2_service": "PASSED",
+    "2D_B_build_ui_coordinator": "OPEN"
   },
-  "phase_milestone_before": "Phase 2C PASSED",
-  "phase_milestone_after": "Phase 2D-A IN_PROGRESS",
-  "last_completed_package": "0.2.2-phase2c-import-verification",
-  "next_open_gate": "Phase 2D-A Page 2 service integration",
-  "next_bounded_task": "Phase 2D-A only: validate Android Page 2 service integration for Letter Writing and Telephone through frozen assemblers. Require front/inventory identity, current KB revision and assignment authority binding; reauthorize front render receipt, verify app-owned front path/hash; runtime deterministic byte parity for both modes, explicit UNAVAILABLE phones, fail-closed invalid inputs preserving prior packet, unapproved-only output, core/Android compile and package freeze. Phase 2D remains IN_PROGRESS; Build UI/coordinator is next 2D-B. Preserve earlier passed milestones and all six reserved territories.",
+  "phase_milestone_before": "Phase 2D-A IN_PROGRESS",
+  "phase_milestone_after": "Phase 2D-A PASSED; Phase 2D-B OPEN",
+  "last_completed_package": "0.2.3-phase2da-page2-service",
+  "next_open_gate": "Phase 2D-B Build UI / coordinator integration",
+  "next_bounded_task": "Phase 2D-B: implement the Build UI and coordinator using the passed Android Page 2 service and frozen Phase 1 render-model/validation pipeline. Connect real prepared, validated production inputs only; absent or unresolved inputs remain blocked. Support mode-correct Generate Page 2 using typed inventories and preserve front/inventory authority, revision and hash binding. Do not infer source truth from imported maps, alter frozen renderers, fabricate inventories, commission the six reserved territories, or enable approval/export prematurely. Validate changed coordinator/UI with targeted Android runtime evidence and independent review. Phase 2D-A stays frozen unless a touched dependency or concrete defect reopens it.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -260,14 +260,14 @@
     "status": "PASS"
   },
   "phase2_in_progress": {
-    "aggregate_status": "IN_PROGRESS_2DA",
+    "aggregate_status": "IN_PROGRESS_2DB_NEXT",
     "2A": "PASSED",
     "2B": "PASSED",
-    "status": "IN_PROGRESS_2DA",
+    "status": "IN_PROGRESS_2DB_NEXT",
     "2C": "PASSED",
     "2D": "IN_PROGRESS",
-    "2D_A": "IN_PROGRESS",
-    "2D_B": "OPEN_DEPENDS_2DA"
+    "2D_A": "PASSED",
+    "2D_B": "OPEN"
   },
   "phase2a_freeze_evidence": {
     "full_build_run_id": 36273476116,
@@ -321,7 +321,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T01:09:44.333Z",
+  "saved_at_utc": "2026-09-27T01:20:05.478Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -350,5 +350,38 @@
       "passed": true
     },
     "reserved_territory_pdf_sweep": 0
+  },
+  "phase2da_freeze_evidence": {
+    "run_id": 36284699199,
+    "run_head_sha": "e38facd102140eae13241d833f35662696af9c8c",
+    "run_conclusion": "success",
+    "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36284699199",
+    "artifact_id": 10920760261,
+    "artifact_zip_sha256": "4856c45373b11be87facb12c58ec8e2181282a1577e07d66f3f55930f9133500",
+    "artifact_expires_at": "2026-10-11T01:17:02Z",
+    "version_name": "0.2.3",
+    "version_code": 28,
+    "target_sdk": 37,
+    "source_package_sha256": "d010f72f23a81cdcc781579cc4a75c1667acf5750ada595050e74bb9e320704c",
+    "apk_sha256": "d2a5a0721bafdcee1f6b66506b29be549a7edcfceafa489d4e5b47373d0deaef",
+    "aab_sha256": "c9ab582680ab4ca358d0a3b6b98d5bd20e9fe55c087089c74226c7e42811390e",
+    "extracted_source_manifest_sha256": "d1821f24706e58f70e3f86fd9bb9f6f8db1aa77dbeac73ce35d2224304c5c724",
+    "connected_tests": 13,
+    "new_service_tests": 2,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "fail_closed_cases": 21,
+    "frozen_assembler_byte_parity": "PASS_BOTH_MODES",
+    "frozen_main_files_checked": 63,
+    "only_main_file_changed": "AndroidPdfArtifactService.kt",
+    "generated_candidate_release": "AWAITING_EXPLICIT_USER_APPROVAL",
+    "reserved_pdf_sweep": 0,
+    "independent_critic": {
+      "agent": "/root/phase2da_critic",
+      "score": 10,
+      "passed": true
+    },
+    "scope": "Phase2D-A_Page2_service_only"
   }
 }

@@ -1,0 +1,33 @@
+{
+  "run_id": 36284699199,
+  "run_head_sha": "e38facd102140eae13241d833f35662696af9c8c",
+  "run_conclusion": "success",
+  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36284699199",
+  "artifact_id": 10920760261,
+  "artifact_zip_sha256": "4856c45373b11be87facb12c58ec8e2181282a1577e07d66f3f55930f9133500",
+  "artifact_expires_at": "2026-10-11T01:17:02Z",
+  "version_name": "0.2.3",
+  "version_code": 28,
+  "target_sdk": 37,
+  "source_package_sha256": "d010f72f23a81cdcc781579cc4a75c1667acf5750ada595050e74bb9e320704c",
+  "apk_sha256": "d2a5a0721bafdcee1f6b66506b29be549a7edcfceafa489d4e5b47373d0deaef",
+  "aab_sha256": "c9ab582680ab4ca358d0a3b6b98d5bd20e9fe55c087089c74226c7e42811390e",
+  "extracted_source_manifest_sha256": "d1821f24706e58f70e3f86fd9bb9f6f8db1aa77dbeac73ce35d2224304c5c724",
+  "connected_tests": 13,
+  "new_service_tests": 2,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "fail_closed_cases": 21,
+  "frozen_assembler_byte_parity": "PASS_BOTH_MODES",
+  "frozen_main_files_checked": 63,
+  "only_main_file_changed": "AndroidPdfArtifactService.kt",
+  "generated_candidate_release": "AWAITING_EXPLICIT_USER_APPROVAL",
+  "reserved_pdf_sweep": 0,
+  "independent_critic": {
+    "agent": "/root/phase2da_critic",
+    "score": 10,
+    "passed": true
+  },
+  "scope": "Phase2D-A_Page2_service_only"
+}

@@ -1,0 +1,2 @@
+0636a3215f6d098ac3cef914b9725abee8928fb9756b2cb22c12ef2f8bcb0e49  tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidPdfArtifactService.kt
+7c93e7addb7b3f502608b19158bf9446cdb7a1deede9f6d77ac9321cceb333ff  tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase2DPage2InstrumentationTest.kt
