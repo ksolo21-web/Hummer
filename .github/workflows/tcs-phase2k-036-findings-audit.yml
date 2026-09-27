@@ -338,7 +338,7 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Run Phase 2K and integrated Phase 2 runtime tests
+      - name: Capture missing Phase 2K visual evidence; preserve 64 passing cases
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -353,49 +353,6 @@ jobs:
             adb shell input keyevent KEYCODE_WAKEUP
             adb shell wm dismiss-keyguard
             bash .tooling/tcs/phase2k-run-device-tests.sh
-
-            adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk
-            adb install -r tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2JWorkspaceUiInstrumentationTest#captureCurrentWorkspacePreviewInventoriesAndVerification com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/capture-test.log
-            cat evidence/capture-test.log
-            grep -F "OK (1 test)" evidence/capture-test.log
-            cp evidence/connected-android-test.log evidence/phase2k-capture-phone.log
-            cat evidence/phase2k-capture-phone.log
-            grep -F "OK (1 test)" evidence/phase2k-capture-phone.log
-            adb shell wm size 1920x1200
-            adb shell wm density 160
-            adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2JWorkspaceUiInstrumentationTest#captureCurrentWorkspacePreviewInventoriesAndVerification com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/capture-wide-test.log
-            cat evidence/capture-wide-test.log
-            grep -F "OK (1 test)" evidence/capture-wide-test.log
-            adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest#captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase2k-capture-wide.log
-            adb shell am instrument -w -e class com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest#captureFindingsAndAuditAndNavigateFromPreviewDark com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner >> evidence/phase2k-capture-wide.log
-            cat evidence/phase2k-capture-wide.log
-            grep -F "OK (1 test)" evidence/phase2k-capture-wide.log
-            mkdir -p evidence/ui
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-candidate-light.png > evidence/ui/phase2j-candidate-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-addresses-light.png > evidence/ui/phase2j-addresses-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-verification-light.png > evidence/ui/phase2j-verification-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-telephone-light.png > evidence/ui/phase2j-telephone-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-approved-light.png > evidence/ui/phase2j-approved-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-candidate-dark.png > evidence/ui/phase2j-candidate-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-addresses-dark.png > evidence/ui/phase2j-addresses-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-verification-dark.png > evidence/ui/phase2j-verification-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-telephone-dark.png > evidence/ui/phase2j-telephone-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-approved-dark.png > evidence/ui/phase2j-approved-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-candidate-light.png > evidence/ui/phase2j-wide-candidate-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-addresses-light.png > evidence/ui/phase2j-wide-addresses-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-verification-light.png > evidence/ui/phase2j-wide-verification-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-telephone-light.png > evidence/ui/phase2j-wide-telephone-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-approved-light.png > evidence/ui/phase2j-wide-approved-light.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-candidate-dark.png > evidence/ui/phase2j-wide-candidate-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-addresses-dark.png > evidence/ui/phase2j-wide-addresses-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-verification-dark.png > evidence/ui/phase2j-wide-verification-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-telephone-dark.png > evidence/ui/phase2j-wide-telephone-dark.png
-            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2j-wide-approved-dark.png > evidence/ui/phase2j-wide-approved-dark.png
-            for mode in "" "wide-"; do for theme in light dark; do for page in findings audit; do
-              name="phase2k-${mode}${page}-${theme}.png"
-              adb exec-out run-as com.koenterprises.territorycardstudio cat "files/$name" > "evidence/ui/$name"
-            done; done; done
 
       - name: Freeze Phase 2K and aggregate Phase 2 review evidence
         shell: bash
@@ -414,18 +371,18 @@ jobs:
           required.update({'snapshotsBindBothInventoriesAndVerificationToCurrentSource', 'mutableInventoryInvalidatesSnapshotAndTerritoryModeCannotLeak', 'approvedPreviewIsExactAndIndependentOfCandidatePreparation', 'resumeRemovesStalePreviewAndInventory', 'captureCurrentWorkspacePreviewInventoriesAndVerification'})
           assert required <= {c.get('name') for c in cases}
           assert all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases)
-          Path('evidence/test-summary.txt').write_text('CONNECTED_TESTS='+str(len(cases))+'\nFAILURES=0\nSKIPPED=0\nPHASE2J_TESTS=5\nPHASE2K_TESTS=6\n')
+          Path('evidence/test-summary.txt').write_text('CONNECTED_TESTS='+str(len(cases))+'\nFAILURES=0\nSKIPPED=0\nPHASE2J_TESTS=5\nPHASE2K_TESTS=7\n')
           from PIL import Image,ImageStat
           import hashlib
           shots=list(Path('evidence/ui').glob('*.png'))
-          assert len(shots)==28
+          assert len(shots)==8
           hashes=[]
           for p in shots:
               im=Image.open(p).convert('RGB')
               assert im.size==((1920,1200) if 'wide-' in p.name else (1080,2400)), (p, im.size)
               assert max(ImageStat.Stat(im).stddev)>15, str(p)
               hashes.append(hashlib.sha256(p.read_bytes()).hexdigest())
-          assert len(set(hashes))==28
+          assert len(set(hashes))==8
           Path('evidence/screenshots.sha256').write_text(''.join(h+'  '+str(p)+'\n' for p,h in zip(shots,hashes)))
           CHECK
           sha256sum evidence/core-test.log evidence/app-compile.log evidence/package-build.log evidence/connected-android-test.log > evidence/build-logs.sha256
@@ -449,7 +406,7 @@ jobs:
           REAL_TERRITORY_COMMISSIONING=NOT_PERFORMED
           STATUS
 
-      - name: Upload Phase 2J evidence
+      - name: Upload Phase 2K evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:

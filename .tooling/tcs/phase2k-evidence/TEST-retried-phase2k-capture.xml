@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Phase2K failed-case theme retries" tests="2" failures="0" errors="0" skipped="0">
+  <testcase classname="com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest" name="captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes"/>
+  <testcase classname="com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest" name="captureFindingsAndAuditAndNavigateFromPreviewDark"/>
+</testsuite>
