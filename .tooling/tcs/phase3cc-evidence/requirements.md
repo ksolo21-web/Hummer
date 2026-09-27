@@ -1,0 +1,12 @@
+# Phase 3C-C — independent reconciliation and guarded preparation
+
+Baseline: Phase3C-B readback218c722430e4b8b7155442563a8293bf17e2b394;116 distinct passing identities frozen. Reserved250T,257A,297,298A,299,347TA remain Phase7. Phase3D aggregate integration remains open.
+
+- Concrete bounded authority-facts intake. Computed exact whole-file SHA must already be the independently prepared current assignment authority (not an arbitrary reference hash), or an eligible category-specific provenance source for that exact current inventory record. Telephone facts additionally require permitted telephone use. No trust registration, editable authority flags, draft-derived acquisition or self-asserted payload hashes.
+- Independently authored facts are acquired without access to either proposal journal. Unknown/mixed unauthorized fields, wrong contexts, duplicates, ambiguous encodings, oversized/deep/nonfinite inputs fail closed. A pinned PDF without structured facts remains explicitly blocked; synthetic evidence is not real territory commissioning.
+- Reconcile both journals exactly against the original verified baseline and independently acquired facts. Reject changed before-values, undeclared changes, additions/deletions and contradictory overlapping building label/member proposals. Preserve compound values and unavailable telephone state. Unknown/unverified telephone proposals cannot pass inventory validation.
+- Recompute topology, color, overlap, building/member/label and inventory validators; execute fresh provider verification with BYPASS and use the frozen production adapter. Never manufacture verification from proposal references.
+- Immutable receipt/ticket bound to territory/mode/source/KB/base candidate, exact authority bytes, journal witnesses including absence, full detached input/inventory and importer revision. Monotonic expiry, cancellation, revocation, optimistic candidate protection and preservation on failure.
+- Lock-free committed-journal witnesses avoid catalog recursion and coordinator/store lock inversion. No recovery or writes under prepared guards. Edits, corruption, source/receipt revocation invalidate later prepared use.
+- Explicit import/review/validate/prepare UI with asynchronous work, stale/race/blocked states, separate confirmation, no approval or automatic build. Actual phone/wide Light/Dark evidence and positive/negative new instrumented cases.
+- Independent critic >9 target10; exact evidence provenance, checkpoint/ledger and remote readback. Retest only new, failed or concretely affected identities.
