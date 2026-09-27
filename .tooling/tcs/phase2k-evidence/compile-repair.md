@@ -1,3 +1,5 @@
 # Phase 2K initial compile rejection
 
 Run 36317203051 reconstructed the accepted 2J source and passed the frozen core tests. App Kotlin compilation stopped before any runtime test: public Phase2KAuditService.exportCreated exposed the internal CreatedExportDestination type, and WorkspaceModeUi lacked the OutlinedButton import. Both are bounded source compile repairs. The same follow-up adds the explicitly required actual affected-road-to-Streets test; no previous gate is weakened. Full CI rerun required before acceptance.
+
+Second run 36317394461 compiled/packaged but device tests passed59/63. All57 prior cases passed; the four new failures were synthetic overlap count inconsistent with KB constructor (2), lazy offscreen finding-target wait (1), and re-opened document picker before the resumed audit ticket became enabled (1). Test fixture counts and bounded readiness/scroll synchronization repaired. Retain all real assertions and re-run63 plus capture gate.

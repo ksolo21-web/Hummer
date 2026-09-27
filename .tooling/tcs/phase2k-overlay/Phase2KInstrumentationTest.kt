@@ -75,7 +75,9 @@ class Phase2KInstrumentationTest {
             val overlap=OverlapCandidate(road,listOf(f.identity.displayId,"273"),"verified","Source geometry intersection")
             val a=f.slot.copy(buildingReauditFailures=listOf("Building member assignment missing"))
             val kb=f.kb.copy(assignments=f.kb.assignments+(f.identity.displayId to a),
-                crossTerritoryOverlapAudit=f.kb.crossTerritoryOverlapAudit.copy(reviewCandidates=listOf(overlap)))
+                crossTerritoryOverlapAudit=f.kb.crossTerritoryOverlapAudit.copy(
+                reviewCandidates=f.kb.crossTerritoryOverlapAudit.reviewCandidates+overlap,
+                reviewCandidateCount=f.kb.crossTerritoryOverlapAudit.reviewCandidateCount+1))
             val item=TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId==f.identity.displayId }
             val model=VerificationWorkflowModel.from(item,f.mode,null,kb,f.app.services.activePolicy)
             val findings=Phase2KFindings.from(item,f.mode,model,kb,null)

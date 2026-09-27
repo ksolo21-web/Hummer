@@ -91,6 +91,7 @@ class Phase2KUiInstrumentationTest {
             assertTrue(InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK))
             wait("audit-message");rule.onNodeWithTag("audit-message").assertTextContains("cancelled",substring=true)
             assertTrue(shell("test ! -e '$path' && echo absent").toString(Charsets.UTF_8).contains("absent"))
+            rule.waitUntil(20000) { runCatching { rule.onNodeWithTag("audit-save").assertIsEnabled() }.isSuccess }
             rule.onNodeWithTag("audit-save").performClick()
             awaitNode { it.packageName?.toString()?.contains("documentsui")==true }
             val save=awaitNode { it.isClickable && it.isEnabled && it.text?.toString()?.equals("Save",true)==true }
@@ -100,6 +101,7 @@ class Phase2KUiInstrumentationTest {
             assertArrayEquals(expected.bytes,saved)
             assertEquals(f.identity.displayId,JSONObject(String(saved)).getString("territory"))
             shell("rm -f '$path'")
+            rule.waitUntil(20000) { runCatching { rule.onNodeWithTag("audit-save").assertIsEnabled() }.isSuccess }
             rule.onNodeWithTag("audit-save").performClick()
             awaitNode { it.packageName?.toString()?.contains("documentsui")==true }
             f.importSource("changed-in-picker")
@@ -113,7 +115,9 @@ class Phase2KUiInstrumentationTest {
     @Test fun affectedRoadFindingOpensStreetsWithActualItemContext() {
         Phase2DBFixture(false).use { f ->
             val overlap=OverlapCandidate("Alpha Rd",listOf(f.identity.displayId,"273"),"review","Review the shared junction")
-            val kb=f.kb.copy(crossTerritoryOverlapAudit=f.kb.crossTerritoryOverlapAudit.copy(reviewCandidates=listOf(overlap)))
+            val kb=f.kb.copy(crossTerritoryOverlapAudit=f.kb.crossTerritoryOverlapAudit.copy(
+                reviewCandidates=f.kb.crossTerritoryOverlapAudit.reviewCandidates+overlap,
+                reviewCandidateCount=f.kb.crossTerritoryOverlapAudit.reviewCandidateCount+1))
             val item=TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId==f.identity.displayId }
             val preview=AndroidPdfPreviewService(f.coordinator,File(f.root,"2k-finding-preview"),f.service)
             rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(AppearanceMode.LIGHT) {
@@ -126,7 +130,7 @@ class Phase2KUiInstrumentationTest {
             wait("findings-screen")
             rule.onNodeWithTag("finding-overlap-Alpha Rd").assertExists()
             rule.onNodeWithTag("finding-open-overlap").performClick()
-            wait("finding-target")
+            wait("territory-workspace");scroll("finding-target");wait("finding-target")
             rule.onNodeWithTag("workspace-tab-Streets").assertExists()
             rule.onNodeWithText("Finding • overlap • Alpha Rd").assertExists()
             rule.onNodeWithText("Review the shared junction").assertExists()
@@ -150,7 +154,7 @@ class Phase2KUiInstrumentationTest {
             wait("findings-screen");rule.onNodeWithTag("finding-field_release-category").assertExists()
             shot("findings-${theme.name.lowercase()}")
             rule.onNodeWithTag("finding-open-field_release").performClick()
-            wait("finding-target");rule.onNodeWithTag("workspace-tab-Details").assertExists()
+            wait("territory-workspace");scroll("finding-target");wait("finding-target");rule.onNodeWithTag("workspace-tab-Details").assertExists()
             scroll("workspace-audit");rule.onNodeWithTag("workspace-audit").performClick()
             wait("audit-screen")
             rule.waitUntil(20000) { runCatching { rule.onNodeWithTag("audit-save").assertIsEnabled() }.isSuccess }
