@@ -1,0 +1,371 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest:
+INSTRUMENTATION_STATUS: test=competingInstancesAllowExactlyOneWriter
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.competingInstancesAllowExactlyOneWriter(Phase3ADraftInstrumentationTest.kt:148)
+
+INSTRUMENTATION_STATUS: stream=
+Error in competingInstancesAllowExactlyOneWriter(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.competingInstancesAllowExactlyOneWriter(Phase3ADraftInstrumentationTest.kt:148)
+
+INSTRUMENTATION_STATUS: test=competingInstancesAllowExactlyOneWriter
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=restoreCreatesNewRevisionAndRetainsOriginalProvenance
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.restoreCreatesNewRevisionAndRetainsOriginalProvenance(Phase3ADraftInstrumentationTest.kt:102)
+
+INSTRUMENTATION_STATUS: stream=
+Error in restoreCreatesNewRevisionAndRetainsOriginalProvenance(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.restoreCreatesNewRevisionAndRetainsOriginalProvenance(Phase3ADraftInstrumentationTest.kt:102)
+
+INSTRUMENTATION_STATUS: test=restoreCreatesNewRevisionAndRetainsOriginalProvenance
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=modeIsolationAndCrossContextReplayRejected
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.modeIsolationAndCrossContextReplayRejected(Phase3ADraftInstrumentationTest.kt:64)
+
+INSTRUMENTATION_STATUS: stream=
+Error in modeIsolationAndCrossContextReplayRejected(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.modeIsolationAndCrossContextReplayRejected(Phase3ADraftInstrumentationTest.kt:64)
+
+INSTRUMENTATION_STATUS: test=modeIsolationAndCrossContextReplayRejected
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=boundedHistoryPayloadAndMissingSourceAreExplicit
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.boundedHistoryPayloadAndMissingSourceAreExplicit(Phase3ADraftInstrumentationTest.kt:134)
+
+INSTRUMENTATION_STATUS: stream=
+Error in boundedHistoryPayloadAndMissingSourceAreExplicit(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.boundedHistoryPayloadAndMissingSourceAreExplicit(Phase3ADraftInstrumentationTest.kt:134)
+
+INSTRUMENTATION_STATUS: test=boundedHistoryPayloadAndMissingSourceAreExplicit
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=allMutationsRejectOldRevisionTokens
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.allMutationsRejectOldRevisionTokens(Phase3ADraftInstrumentationTest.kt:76)
+
+INSTRUMENTATION_STATUS: stream=
+Error in allMutationsRejectOldRevisionTokens(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.allMutationsRejectOldRevisionTokens(Phase3ADraftInstrumentationTest.kt:76)
+
+INSTRUMENTATION_STATUS: test=allMutationsRejectOldRevisionTokens
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=invalidContextAndUnknownOrMalformedEditsFailClosed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.invalidContextAndUnknownOrMalformedEditsFailClosed(Phase3ADraftInstrumentationTest.kt:50)
+
+INSTRUMENTATION_STATUS: stream=
+Error in invalidContextAndUnknownOrMalformedEditsFailClosed(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.invalidContextAndUnknownOrMalformedEditsFailClosed(Phase3ADraftInstrumentationTest.kt:50)
+
+INSTRUMENTATION_STATUS: test=invalidContextAndUnknownOrMalformedEditsFailClosed
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=sourceAndLockedBaseChangesMakeDraftStale
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.sourceAndLockedBaseChangesMakeDraftStale(Phase3ADraftInstrumentationTest.kt:86)
+
+INSTRUMENTATION_STATUS: stream=
+Error in sourceAndLockedBaseChangesMakeDraftStale(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.sourceAndLockedBaseChangesMakeDraftStale(Phase3ADraftInstrumentationTest.kt:86)
+
+INSTRUMENTATION_STATUS: test=sourceAndLockedBaseChangesMakeDraftStale
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=createSaveReopenPreservesAuthorityAndBuildState
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.createSaveReopenPreservesAuthorityAndBuildState(Phase3ADraftInstrumentationTest.kt:34)
+
+INSTRUMENTATION_STATUS: stream=
+Error in createSaveReopenPreservesAuthorityAndBuildState(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.createSaveReopenPreservesAuthorityAndBuildState(Phase3ADraftInstrumentationTest.kt:34)
+
+INSTRUMENTATION_STATUS: test=createSaveReopenPreservesAuthorityAndBuildState
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=interruptedAtomicWriteRetainsLastCommittedRevision
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.interruptedAtomicWriteRetainsLastCommittedRevision(Phase3ADraftInstrumentationTest.kt:125)
+
+INSTRUMENTATION_STATUS: stream=
+Error in interruptedAtomicWriteRetainsLastCommittedRevision(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.interruptedAtomicWriteRetainsLastCommittedRevision(Phase3ADraftInstrumentationTest.kt:125)
+
+INSTRUMENTATION_STATUS: test=interruptedAtomicWriteRetainsLastCommittedRevision
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=corruptDraftIsNeverTreatedAsAbsentOrOverwritten
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=10
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.corruptDraftIsNeverTreatedAsAbsentOrOverwritten(Phase3ADraftInstrumentationTest.kt:114)
+
+INSTRUMENTATION_STATUS: stream=
+Error in corruptDraftIsNeverTreatedAsAbsentOrOverwritten(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest):
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.corruptDraftIsNeverTreatedAsAbsentOrOverwritten(Phase3ADraftInstrumentationTest.kt:114)
+
+INSTRUMENTATION_STATUS: test=corruptDraftIsNeverTreatedAsAbsentOrOverwritten
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 12.329
+There were 10 failures:
+1) competingInstancesAllowExactlyOneWriter(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.competingInstancesAllowExactlyOneWriter(Phase3ADraftInstrumentationTest.kt:148)
+2) restoreCreatesNewRevisionAndRetainsOriginalProvenance(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.restoreCreatesNewRevisionAndRetainsOriginalProvenance(Phase3ADraftInstrumentationTest.kt:102)
+3) modeIsolationAndCrossContextReplayRejected(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.modeIsolationAndCrossContextReplayRejected(Phase3ADraftInstrumentationTest.kt:64)
+4) boundedHistoryPayloadAndMissingSourceAreExplicit(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.boundedHistoryPayloadAndMissingSourceAreExplicit(Phase3ADraftInstrumentationTest.kt:134)
+5) allMutationsRejectOldRevisionTokens(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.allMutationsRejectOldRevisionTokens(Phase3ADraftInstrumentationTest.kt:76)
+6) invalidContextAndUnknownOrMalformedEditsFailClosed(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.invalidContextAndUnknownOrMalformedEditsFailClosed(Phase3ADraftInstrumentationTest.kt:50)
+7) sourceAndLockedBaseChangesMakeDraftStale(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.sourceAndLockedBaseChangesMakeDraftStale(Phase3ADraftInstrumentationTest.kt:86)
+8) createSaveReopenPreservesAuthorityAndBuildState(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.createSaveReopenPreservesAuthorityAndBuildState(Phase3ADraftInstrumentationTest.kt:34)
+9) interruptedAtomicWriteRetainsLastCommittedRevision(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.interruptedAtomicWriteRetainsLastCommittedRevision(Phase3ADraftInstrumentationTest.kt:125)
+10) corruptDraftIsNeverTreatedAsAbsentOrOverwritten(com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest)
+java.lang.IllegalArgumentException: Road count mismatch for 999a
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.<init>(TerritoryKnowledgeBase.kt:251)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy(Unknown Source:88)
+	at com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase.copy$default(Unknown Source:140)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest$Fixture.<init>(Phase3ADraftInstrumentationTest.kt:22)
+	at com.koenterprises.territorycardstudio.Phase3ADraftInstrumentationTest.corruptDraftIsNeverTreatedAsAbsentOrOverwritten(Phase3ADraftInstrumentationTest.kt:114)
+
+FAILURES!!!
+Tests run: 10,  Failures: 10
+
+
+INSTRUMENTATION_CODE: -1

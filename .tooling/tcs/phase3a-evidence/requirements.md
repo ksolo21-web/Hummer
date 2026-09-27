@@ -1,3 +1,5 @@
+Status: Phase3A PASSED at independent10/10; aggregatePhase3 IN_PROGRESS. Final evidence run36334431100. See acceptance-checklist.md and verification.json.
+
 # Phase 3: controlled editing / commissioning
 
 Authority: original ANDROID_PORT_PLAN.md; Phase2 accepted at a61f98f2ce92b0337970ee9bac93da32250b64ea. All Phase1–2 approvals remain frozen absent changed dependencies or exact defects.

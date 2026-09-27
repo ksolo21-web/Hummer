@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
   "current_phase": 3,
-  "current_checkpoint": "0.2.11-phase2k-findings-audit",
+  "current_checkpoint": "0.3.0-phase3a-editing-drafts",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -12,7 +12,7 @@
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
-    "3_editing_commissioning_workflow": "IN_PROGRESS_3A",
+    "3_editing_commissioning_workflow": "IN_PROGRESS_3B",
     "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
@@ -38,16 +38,16 @@
     "2J_workspace_inventory_verification_binding": "PASSED",
     "2K_defects_audit_output": "PASSED",
     "2_final_integration_audit": "PASSED",
-    "3A_editing_draft_foundation": "IN_PROGRESS",
-    "3B_editor_ui": "NOT_STARTED_DEPENDS_3A",
+    "3A_editing_draft_foundation": "PASSED",
+    "3B_editor_ui": "OPEN_NOT_STARTED",
     "3C_validated_editing_preparation": "NOT_STARTED_DEPENDS_3B",
     "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C"
   },
-  "phase_milestone_before": "Phase2K and aggregate Phase2 IN_PROGRESS",
-  "phase_milestone_after": "Phase2K and aggregate Phase2 PASSED; Phase3 OPEN_NOT_STARTED",
-  "last_completed_package": "0.2.11-phase2k-findings-audit",
-  "next_open_gate": "Phase3A editing draft service acceptance",
-  "next_bounded_task": "Verify ten focused draft-service cases, independently review actual source/runtime/package evidence, then close3A and continue3B editorUI.",
+  "phase_milestone_before": "Phase3A IN_PROGRESS",
+  "phase_milestone_after": "Phase3A PASSED; aggregatePhase3 IN_PROGRESS; Phase3B OPEN_NOT_STARTED",
+  "last_completed_package": "0.3.0-phase3a-editing-drafts",
+  "next_open_gate": "Phase3B \u2014 controlled editing draft UI",
+  "next_bounded_task": "Implement Light/Dark adaptive draft editor using accepted3A service: known item selection, staged labels/rationale/evidence, review changes, save/reopen/conflicts/stale status, restore/discard. Verify actual phone/wide screenshots and targeted navigation/persistence; retain passed1\u20133A. Validated build bridge remains3C; reserved real commissioning remainsPhase7.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -323,7 +323,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T16:35:39.981044+00:00",
+  "saved_at_utc": "2026-09-27T16:55:43.707307+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -607,7 +607,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase2k-and-aggregate-phase2-closeout",
+  "last_completed_task": "phase3a-editing-draft-foundation-closeout",
   "phase2h_freeze_evidence": {
     "status": "PASS",
     "run_id": 36295828394,
@@ -1104,7 +1104,7 @@
     "2K": "NOT_STARTED",
     "audit": "COMPLETED_GAPS_IDENTIFIED"
   },
-  "phase3a_in_progress": {
+  "phase3a_history": {
     "status": "IMPLEMENTED_PENDING_TARGETED_RUNTIME_AND_INDEPENDENT_ACCEPTANCE",
     "candidate_version": "0.3.0",
     "candidate_code": 37,
@@ -1114,5 +1114,73 @@
     "source_baseline": "a61f98f2ce92b0337970ee9bac93da32250b64ea",
     "scope": "App-private revisioned unvalidated road/building label proposals; no UI/build bridge yet",
     "reserved_territories": "UNTOUCHED"
+  },
+  "phase3a_freeze_evidence": {
+    "status": "PASS",
+    "run_id": 36334431100,
+    "source_commit": "117fbf3a1aa229ed5a3fc089bacbe9b1015da2d6",
+    "version": "0.3.0",
+    "code": 37,
+    "new_phase3a_tests": 10,
+    "frozen_phase2_tests": 67,
+    "frozen_phase2_run": 36330985449,
+    "combined_distinct_identities": 77,
+    "full_prior_suite_rerun": false,
+    "failures": 0,
+    "manifest_files": 2450,
+    "frozen_files": 126,
+    "source_sha256": "adcbbdd804db1f3841ff68d36d993542fb77f66d74491a7c0578b0cd580503aa",
+    "apk_sha256": "3c6ceb68b0f4d4173bde55a218c1d3bb741b3d473f5a754dc8688c942d9fbf40",
+    "aab_sha256": "a76e96b9fd1c6116f8b2cdb9f4567f748b62d5f5dfbb326ee57321586fc954f4",
+    "ui_changes": 0,
+    "reserved_territories": "UNTOUCHED",
+    "phase3": "IN_PROGRESS",
+    "next": "3B_editor_ui",
+    "run_head_sha": "117fbf3a1aa229ed5a3fc089bacbe9b1015da2d6",
+    "run_conclusion": "success",
+    "artifact_id": 10937141404,
+    "artifact_sha256": "344b82605799d44cf8165087a9cc0377a47974e4364d312167915b02a5abfcc4",
+    "artifact_size": 54330525,
+    "independent_critic": {
+      "passed": true,
+      "score": 10,
+      "scope": "Phase3A service-only non-authoritative editing draft journal",
+      "run_id": 36334431100,
+      "source_commit": "117fbf3a1aa229ed5a3fc089bacbe9b1015da2d6",
+      "artifact_id": 10937141404,
+      "artifact_sha256": "344b82605799d44cf8165087a9cc0377a47974e4364d312167915b02a5abfcc4",
+      "version": "0.3.0",
+      "version_code": 37,
+      "mandatory_checks": {
+        "exact_context_binding": "PASS: territory/mode, KB/reference/source and locked base binding independently computed",
+        "known_label_proposals": "PASS: road and building positive persistence/restore; invalid IDs, before-values, evidence, duplicates and malformed text rejected",
+        "revision_conflicts": "PASS: old tokens rejected for save/restore/discard; competing instances allow exactly one writer",
+        "bounded_atomic_integrity": "PASS: bounded canonical journal/hash chain, explicit corruption, oversized file/history rejection and interrupted AtomicFile recovery",
+        "stale_and_restore": "PASS: changed KB/base/source detected; eligible stale restore rejects; restore appends provenance-preserving revision",
+        "authority_isolation": "PASS: unchanged KB/source/build state; only lazy store registration plus isolated new store, no UI or downstream bridge",
+        "actual_runtime": "PASS: ten XML identities independently matched per-case success in raw Android instrumentation log; zero failures/errors/skips",
+        "source_package_and_regression_parity": "PASS: reviewed verifier for2450 manifest files,126 frozen files, signatures/version/package hashes; independently matched all three reviewed Kotlin files to packaged source",
+        "visual_gate": "NOT_APPLICABLE: service only; UI unchanged"
+      },
+      "new_runtime_cases": 10,
+      "retained_prior_cases": 67,
+      "combined_identities": 77,
+      "prior_full_suite_rerun": false,
+      "source_sha256": "adcbbdd804db1f3841ff68d36d993542fb77f66d74491a7c0578b0cd580503aa",
+      "apk_sha256": "3c6ceb68b0f4d4173bde55a218c1d3bb741b3d473f5a754dc8688c942d9fbf40",
+      "aab_sha256": "a76e96b9fd1c6116f8b2cdb9f4567f748b62d5f5dfbb326ee57321586fc954f4",
+      "unresolved_implementation_issues": [],
+      "phase3_complete": false,
+      "next_phase": "3B editor UI",
+      "limitations": [
+        "Single-process journal locking; no atomic transaction across external source import and draft commit. Changed context is detected and makes proposals stale.",
+        "Draft hashes detect journal inconsistency; no field authority or trusted editing approval follows.",
+        "No UI visual acceptance is claimed.",
+        "Phase3B/3C/3D and later phases remain open; six real commissioning territories untouched."
+      ],
+      "post_review_closeout": [
+        "Persist checkpoint, ledger, source/package/evidence and independent review; verify durable readback."
+      ]
+    }
   }
 }

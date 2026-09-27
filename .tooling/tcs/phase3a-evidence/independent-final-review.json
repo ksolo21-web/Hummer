@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "score": 10,
+  "scope": "Phase3A service-only non-authoritative editing draft journal",
+  "run_id": 36334431100,
+  "source_commit": "117fbf3a1aa229ed5a3fc089bacbe9b1015da2d6",
+  "artifact_id": 10937141404,
+  "artifact_sha256": "344b82605799d44cf8165087a9cc0377a47974e4364d312167915b02a5abfcc4",
+  "version": "0.3.0",
+  "version_code": 37,
+  "mandatory_checks": {
+    "exact_context_binding": "PASS: territory/mode, KB/reference/source and locked base binding independently computed",
+    "known_label_proposals": "PASS: road and building positive persistence/restore; invalid IDs, before-values, evidence, duplicates and malformed text rejected",
+    "revision_conflicts": "PASS: old tokens rejected for save/restore/discard; competing instances allow exactly one writer",
+    "bounded_atomic_integrity": "PASS: bounded canonical journal/hash chain, explicit corruption, oversized file/history rejection and interrupted AtomicFile recovery",
+    "stale_and_restore": "PASS: changed KB/base/source detected; eligible stale restore rejects; restore appends provenance-preserving revision",
+    "authority_isolation": "PASS: unchanged KB/source/build state; only lazy store registration plus isolated new store, no UI or downstream bridge",
+    "actual_runtime": "PASS: ten XML identities independently matched per-case success in raw Android instrumentation log; zero failures/errors/skips",
+    "source_package_and_regression_parity": "PASS: reviewed verifier for2450 manifest files,126 frozen files, signatures/version/package hashes; independently matched all three reviewed Kotlin files to packaged source",
+    "visual_gate": "NOT_APPLICABLE: service only; UI unchanged"
+  },
+  "new_runtime_cases": 10,
+  "retained_prior_cases": 67,
+  "combined_identities": 77,
+  "prior_full_suite_rerun": false,
+  "source_sha256": "adcbbdd804db1f3841ff68d36d993542fb77f66d74491a7c0578b0cd580503aa",
+  "apk_sha256": "3c6ceb68b0f4d4173bde55a218c1d3bb741b3d473f5a754dc8688c942d9fbf40",
+  "aab_sha256": "a76e96b9fd1c6116f8b2cdb9f4567f748b62d5f5dfbb326ee57321586fc954f4",
+  "unresolved_implementation_issues": [],
+  "phase3_complete": false,
+  "next_phase": "3B editor UI",
+  "limitations": [
+    "Single-process journal locking; no atomic transaction across external source import and draft commit. Changed context is detected and makes proposals stale.",
+    "Draft hashes detect journal inconsistency; no field authority or trusted editing approval follows.",
+    "No UI visual acceptance is claimed.",
+    "Phase3B/3C/3D and later phases remain open; six real commissioning territories untouched."
+  ],
+  "post_review_closeout": [
+    "Persist checkpoint, ledger, source/package/evidence and independent review; verify durable readback."
+  ]
+}
