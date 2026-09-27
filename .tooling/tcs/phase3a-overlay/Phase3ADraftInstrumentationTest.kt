@@ -18,7 +18,7 @@ class Phase3ADraftInstrumentationTest {
     private class Fixture : AutoCloseable {
         val f=Phase2DBFixture(false)
         val root=File(f.root,"drafts")
-        val slot=f.slot.copy(roads=f.input.roads,buildings=listOf(BuildingGeometry("building-1","1","apartment",true,"",listOf("1"),emptyList(),listOf(Point2D(0.0,0.0),Point2D(1.0,0.0),Point2D(0.0,1.0)))))
+        val slot=f.slot.copy(roads=f.input.assignment.roads,buildings=listOf(BuildingGeometry("building-1","1","apartment",true,"",listOf("1"),emptyList(),listOf(Point2D(0.0,0.0),Point2D(1.0,0.0),Point2D(0.0,1.0)))))
         val kb=f.kb.copy(assignments=f.kb.assignments+(f.identity.displayId to slot))
         val id=f.identity.displayId
         val mode=WorkspaceMode.LETTER_WRITING
