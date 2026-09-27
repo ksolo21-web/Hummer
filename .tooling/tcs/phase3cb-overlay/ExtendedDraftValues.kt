@@ -85,7 +85,7 @@ internal object ExtendedValues {
                 if(v.labels.size==1)require(v.label==v.labels.single().text) {"Building label must match its single member"}
                 if(v.labels.size>1)require(v.labels.all {it.origin!=null}) {"Multiple labels require exact origins"}
             }
-            is AddressValue -> {text(v.street);listOf(v.unit,v.city,v.state,v.postal,v.building).forEach {text(it,blank=true)};require(v.state.isEmpty() || Regex("[A-Z]{2}").matches(v.state));require(v.postal.isEmpty() || Regex("[0-9]{5}(-[0-9]{4})?").matches(v.postal))}
+            is AddressValue -> {text(v.street);listOf(v.unit,v.city,v.state,v.postal,v.building).forEach {text(it,blank=true)};require(v.state.isEmpty() || Regex("[A-Z]{2}").matches(v.state)) {"State must be two uppercase letters"};require(v.postal.isEmpty() || Regex("[0-9]{5}(-[0-9]{4})?").matches(v.postal)) {"Postal code must be five digits or ZIP+4"}}
             is PhoneValue -> {text(v.number,32,true);if(v.state==ProposedPhoneState.NUMBER)require(Regex("[0-9]{10}|1[0-9]{10}").matches(v.number)) {"Use a 10-digit number or 1 plus 10 digits"} else require(v.number.isEmpty()) {"Unavailable/unknown must not carry a number"}}
         }
     }

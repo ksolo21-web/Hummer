@@ -50,7 +50,7 @@ class Phase3CBStoreInstrumentationTest {
         Phase3CBFixture(true).use {x->val d=x.create();val p=x.proposal(ExtendedKind.PHONE_NUMBER)
             fails{x.store.save(x.id,x.mode,d.latest.token,listOf(p.copy(proposed=PhoneValue(ProposedPhoneState.UNAVAILABLE,"2025550101"))))}
             fails{x.store.save(x.id,x.mode,d.latest.token,listOf(p.copy(proposed=PhoneValue(ProposedPhoneState.NUMBER,"123"))))}
-            fails{x.store.save(x.id,x.mode,d.latest.token,listOf(p.copy(evidenceRole="ADDRESS_SOURCE"))))}
+            fails{x.store.save(x.id,x.mode,d.latest.token,listOf(p.copy(evidenceRole="ADDRESS_SOURCE")))}
             val valid=p.copy(proposed=PhoneValue(ProposedPhoneState.NUMBER,"2025550199"));x.store.save(x.id,x.mode,d.latest.token,listOf(valid))
             assertFalse(x.draft().grantsAuthority);assertEquals("2025550101",(x.f.inventory as Page2Inventory.Telephone).inventory.records.first().phoneNumber)
             val unavailable=x.catalog().items.single {it.kind==ExtendedKind.PHONE_NUMBER && it.id=="phone-2"}.before as PhoneValue

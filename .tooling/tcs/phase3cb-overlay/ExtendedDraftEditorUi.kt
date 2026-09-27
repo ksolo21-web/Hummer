@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.koenterprises.territorycardstudio.core.Point2D
@@ -178,15 +179,15 @@ private fun ExtendedMapPreview(item:ExtendedItem,items:List<ExtendedItem>,propos
             val ox=(size.width-(maxX-minX).toFloat()*scale)/2;val oy=(size.height-(maxY-minY).toFloat()*scale)/2
             fun pos(p:Point2D)=Offset(ox+(p.x-minX).toFloat()*scale,oy+(p.y-minY).toFloat()*scale)
             fun path(points:List<Point2D>):Path=Path().apply {points.forEachIndexed {i,p->val q=pos(p);if(i==0)moveTo(q.x,q.y) else lineTo(q.x,q.y)};if(pathKind==ExtendedKind.BUILDING_PATH)close()}
-            drawPath(path(base),gray,style=Stroke(8f));drawPath(path(shown),color,style=Stroke(4f));shown.forEachIndexed {i,p->val q=pos(p);drawCircle(color,5f,q);drawContext.canvas.nativeCanvas.drawText((i+1).toString(),q.x+8,q.y-8,Paint(Paint.ANTI_ALIAS_FLAG).apply {this.color=ink.toArgb();textSize=22f})}
+            drawPath(path(base),gray,style=Stroke(3.dp.toPx()));drawPath(path(shown),color,style=Stroke(1.5.dp.toPx()));shown.forEachIndexed {i,p->val q=pos(p);drawCircle(color,4.dp.toPx(),q);drawContext.canvas.nativeCanvas.drawText((i+1).toString(),q.x+6.dp.toPx(),q.y-6.dp.toPx(),Paint(Paint.ANTI_ALIAS_FLAG).apply {this.color=ink.toArgb();textSize=12.sp.toPx()})}
             if(work?.status=="yellow" && shown.size>=2) {
                 val a=pos(shown[0]);val b=pos(shown[1]);val dx=b.x-a.x;val dy=b.y-a.y;val len=kotlin.math.sqrt(dx*dx+dy*dy)
                 if(len>1f) {val middle=Offset((a.x+b.x)/2,(a.y+b.y)/2);val sign=if(work.insideSide=="left")1f else -1f
-                    val n=Offset(sign*dy/len,-sign*dx/len);val end=middle+n*32f;drawLine(color,middle,end,4f)
-                    drawLine(color,end,end-n*10f+Offset(dx/len,dy/len)*6f,4f);drawLine(color,end,end-n*10f-Offset(dx/len,dy/len)*6f,4f)
+                    val n=Offset(sign*dy/len,-sign*dx/len);val end=middle+n*28.dp.toPx();drawLine(color,middle,end,2.dp.toPx())
+                    drawLine(color,end,end-n*8.dp.toPx()+Offset(dx/len,dy/len)*5.dp.toPx(),2.dp.toPx());drawLine(color,end,end-n*8.dp.toPx()-Offset(dx/len,dy/len)*5.dp.toPx(),2.dp.toPx())
                 }
             }
-            building?.labels?.forEach {l->if(bounded(l.center)){val p=pos(l.center);drawContext.canvas.nativeCanvas.drawText(l.text,p.x,p.y,Paint(Paint.ANTI_ALIAS_FLAG).apply {this.color=ink.toArgb();textSize=24f;textAlign=Paint.Align.CENTER})}}
+            building?.labels?.forEach {l->if(bounded(l.center)){val p=pos(l.center);drawContext.canvas.nativeCanvas.drawText(l.text,p.x,p.y,Paint(Paint.ANTI_ALIAS_FLAG).apply {this.color=ink.toArgb();textSize=16.sp.toPx();textAlign=Paint.Align.CENTER})}}
         }
     }}
 }
