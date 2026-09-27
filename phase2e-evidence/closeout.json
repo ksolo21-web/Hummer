@@ -1,0 +1,59 @@
+{
+  "run_id": 36288560989,
+  "run_head_sha": "22d9e12a88f4147268b3ca4903c4d5b5c574f47f",
+  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36288560989",
+  "run_conclusion": "success",
+  "artifact_id": 10921617832,
+  "artifact_zip_sha256": "044eefa32c1e9a58bf47720eb2cc06cb7cc90b64bf29bf924df20b19091a3f28",
+  "artifact_expires_at": "2026-10-11T02:37:14Z",
+  "version_name": "0.2.5",
+  "version_code": 30,
+  "target_sdk": 37,
+  "source_package_sha256": "06119c562388db02370731e6de37ff09c2dd48e4725ec1085b34473fc171af39",
+  "apk_sha256": "1521d396f3b711593d9578fac9fa878ffefca22f0f121f74175ae88698b834fe",
+  "aab_sha256": "1fc82669699519970426d5e947a853a91df879638e8310ba4b28344f344282c8",
+  "extracted_source_manifest_sha256": "7695f651e3212bfb98e9cbb8c1738ec6ae2f01a4470c6e00377e784a4a19e50b",
+  "connected_tests": 25,
+  "new_preview_tests": 6,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "dedicated_capture_test": "PASS",
+  "screenshots": {
+    "phase2e-front-dark.png": "505015fc1ccadb2fe51f73dca6eb0444d6a96da28adef09522e0d2ea1caf58d9",
+    "phase2e-front-light.png": "fb96cb41c1ee28391c68bfc8b4c03c515a2a9a74282a0007f30b3458dd424622",
+    "phase2e-front-zoom-dark.png": "3d25a746a6af666aa3fc61f3993c8171131f11fc276907dfc2e4886138c64079",
+    "phase2e-letter-back-dark.png": "44e9378f12be9b5a6bb5743186153eaf5c203ce6c0a71be3d56f094b1d150d6d",
+    "phase2e-letter-back-zoom-dark.png": "335a36cfdb836300375bd0c8635a1873a97eb8ca749d0b52a3b53ca1c29cb0a2",
+    "phase2e-stale-blocked-dark.png": "54fee9a53a638fdd5c9a6350cc06451bac9981b9f30759a6857fb5c1dc1981f7",
+    "phase2e-telephone-back-light.png": "7ae621dfa15ce1996014b63c8ac1c7d8a6b672bec2d51f14250d5d624b0b828e",
+    "phase2e-telephone-back-zoom-light.png": "3f300ceb364b92baf5d8a9c243c39712db357dbfcdeae47ed9caaabeb7a2d0ed"
+  },
+  "synthetic_pdfs": {
+    "phase2e-synthetic-letter.pdf": {
+      "sha256": "7d95b756b8c57d28165c47870aaad3821688691f6954aef2f85a599e0841a06c",
+      "bytes": 86457
+    },
+    "phase2e-synthetic-telephone.pdf": {
+      "sha256": "1221439b836c045fea90749e45bbea7dc4ba6f36a59b6c2bd6f60bd451bc4160",
+      "bytes": 86891
+    }
+  },
+  "exact_pdf_pixel_parity": "PASS_BOTH_MODES",
+  "front_packet_page_navigation": "PASS_RUNTIME",
+  "zoom_pan_fit": "PASS_RUNTIME",
+  "resume_stale_frame_removal": "PASS_RUNTIME",
+  "source_inventory_identity_mode_hash_page_size_gates": "PASS_RUNTIME",
+  "temporary_snapshot_cleanup": "PASS_RUNTIME",
+  "frozen_core_assets_page2_service_intake": "PASS_UNCHANGED",
+  "archived_manifest_files_verified": 2296,
+  "independent_critic": {
+    "agent": "/root/phase2da_critic",
+    "score": 10,
+    "passed": true
+  },
+  "reserved_pdf_sweep": 0,
+  "real_territory_commissioning": "NOT_PERFORMED",
+  "field_approval_export": "NOT_ENABLED",
+  "scope": "Phase2E_exact_candidate_PDF_preview"
+}

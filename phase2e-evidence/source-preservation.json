@@ -1,0 +1,17 @@
+{
+  "prior_main_files_checked": 65,
+  "unchanged_main_files": 61,
+  "changed_main_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/AndroidBuildWorkflowCoordinator.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/BuildWorkflowUi.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt"
+  ],
+  "added_main_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/AndroidPdfPreviewService.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/PdfPreviewUi.kt"
+  ],
+  "archived_manifest_files_verified": 2296,
+  "archived_apk_aab_hashes": "PASS",
+  "frozen_core_assets_page2_service_intake": "PASS_UNCHANGED"
+}
