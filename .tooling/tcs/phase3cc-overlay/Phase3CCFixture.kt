@@ -53,7 +53,7 @@ internal class Phase3CCFixture(val phone:Boolean=false,val unknownPhone:Boolean=
     val labelsRoot=File(f.root,"labels");val extendedRoot=File(f.root,"extended");val authorityRoot=File(f.root,"authority")
     val labels=AndroidEditingDraftStore(labelsRoot,kb,f.sources)
     val extended=AndroidExtendedDraftStore(extendedRoot,kb,f.sources,coordinator)
-    var now=1000L;var calls=0;var duringFetch:()->Unit={};var evidenceTransform:(List<ProviderVerificationEvidence>)->List<ProviderVerificationEvidence>={it}
+    var now=1000L;var calls=0;var duringFetch:()->Unit={};var evidenceTransform:(List<ProviderVerificationEvidence>)->List<ProviderVerificationEvidence> = {it}
     val authority=AndroidEditingAuthorityStore(authorityRoot,kb,f.sources,coordinator,{now})
     val preparation=AndroidExtendedPreparationService(kb,f.app.services.activePolicy,labels,extended,authority,f.sources,coordinator,models,{q->calls++;duringFetch();evidenceTransform(evidence(q))},{now})
     init {coordinator.prepare(id,mode,f.source.sha256,input,inventory)}

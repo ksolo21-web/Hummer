@@ -76,7 +76,7 @@ class Phase3CCPreparationInstrumentationTest {
             click("preparation-import");rule.waitUntil(15000){nativeNode("Show roots")!=null}
             assertTrue(InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));rule.waitForIdle();ready(false)
             val uris=listOf(document(x,"{}".toByteArray()),document(x,x.assignmentBytes),document(x,x.inventoryBytes))
-            try {selectDocument(x,uris[0]);ready(false);selectDocument(x,uris[1]);ready();selectDocument(x,uris[2]);ready();assertEquals(2,x.authority.status(x.id,x.mode).sourceCount)}finally{uris.forEach {x.f.app.contentResolver.delete(it,null,null)}}
+            try {selectDocument(x,uris[0]);scroll("preparation-message");ready(false);selectDocument(x,uris[1]);rule.waitUntil(20000){x.authority.status(x.id,x.mode).sourceCount==1};ready();selectDocument(x,uris[2]);rule.waitUntil(20000){x.authority.status(x.id,x.mode).sourceCount==2};ready();assertEquals(2,x.authority.status(x.id,x.mode).sourceCount)}finally{uris.forEach {x.f.app.contentResolver.delete(it,null,null)}}
             x.evidenceTransform={emptyList()};click("preparation-validate");idle()
             scroll("preparation-message");rule.onNodeWithTag("preparation-message").assertTextContains("Fresh independent geometry verification blocked preparation")
             assertEquals(before,x.coordinator.currentCandidateVersion(x.id,x.mode));rule.onNodeWithTag("preparation-prepare").assertDoesNotExist()
