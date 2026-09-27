@@ -226,9 +226,7 @@ jobs:
             adb shell pm clear com.koenterprises.territorycardstudio >/dev/null
             adb shell cmd uimode night yes
             test -n "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
-            adb shell am instrument -w -r \
-              -e class 'com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest#captureDarkImportAndVerificationScreens' \
-              "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)/androidx.test.runner.AndroidJUnitRunner" > evidence/capture-instrumentation.log 2>&1
+            adb shell am instrument -w -e class 'com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest#captureDarkImportAndVerificationScreens' "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)/androidx.test.runner.AndroidJUnitRunner" > evidence/capture-instrumentation.log 2>&1
             cat evidence/capture-instrumentation.log
             grep -F "OK (1 test)" evidence/capture-instrumentation.log
             adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2c-import-map-dark.png > evidence/ui/import-map-dark.png
