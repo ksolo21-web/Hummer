@@ -11,6 +11,8 @@ internal object EditingSnapshots {
             require(++nodes<=100000 && depth<=64) { "Editing input graph exceeds bounds" }
             return when(v) {
                 null,is String,is Boolean,is Int,is Long,is Double,is Float,is Short,is Byte,is Char,is Enum<*> -> v
+                is Page2Inventory.LetterWriting -> Page2Inventory.LetterWriting(copy(v.inventory,depth+1) as com.koenterprises.territorycardstudio.core.LetterWritingAddressInventory)
+                is Page2Inventory.Telephone -> Page2Inventory.Telephone(copy(v.inventory,depth+1) as com.koenterprises.territorycardstudio.core.TelephoneTerritoryInventory)
                 is List<*> -> Collections.unmodifiableList(v.map {copy(it,depth+1)})
                 is Set<*> -> Collections.unmodifiableSet(v.mapTo(linkedSetOf()){copy(it,depth+1)})
                 is Map<*,*> -> Collections.unmodifiableMap(v.entries.associate {copy(it.key,depth+1) to copy(it.value,depth+1)})
