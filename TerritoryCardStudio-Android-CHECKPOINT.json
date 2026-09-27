@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "version": "0.3.0-phase3a-editing-drafts",
   "milestone": "phase-3a-editing-draft-foundation-passed",
-  "status": "PHASE_3A_PASSED_PHASE_3_IN_PROGRESS",
+  "status": "PHASE3B_IN_PROGRESS",
   "phase_milestone_before": "Phase3A IN_PROGRESS",
   "phase_milestone_after": "Phase3A PASSED; aggregatePhase3 IN_PROGRESS; Phase3B OPEN_NOT_STARTED",
   "preserved_passed_milestones": [
@@ -456,8 +456,8 @@
     "critic_agent": "/root/phase2j_critic"
   },
   "last_completed_package": "0.3.0-phase3a-editing-drafts",
-  "next_open_gate": "Phase3B \u2014 controlled editing draft UI",
-  "next_bounded_task": "Implement Light/Dark adaptive draft editor using accepted3A service: known item selection, staged labels/rationale/evidence, review changes, save/reopen/conflicts/stale status, restore/discard. Verify actual phone/wide screenshots and targeted navigation/persistence; retain passed1\u20133A. Validated build bridge remains3C; reserved real commissioning remainsPhase7.",
+  "next_open_gate": "Phase3B targeted runtime and independent visual acceptance",
+  "next_bounded_task": "Complete Phase3B editor, preserve 77 prior passing identities",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -530,7 +530,7 @@
   ],
   "source_package": "TerritoryCardStudio-Android-0.3.0-phase3a-source.tar.xz",
   "source_package_sha256": "adcbbdd804db1f3841ff68d36d993542fb77f66d74491a7c0578b0cd580503aa",
-  "saved_at_utc": "2026-09-27T16:55:43.705576+00:00",
+  "saved_at_utc": "2026-09-27T18:00:00Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -1421,5 +1421,15 @@
         "Persist checkpoint, ledger, source/package/evidence and independent review; verify durable readback."
       ]
     }
+  },
+  "phase3b_progress": {
+    "status": "IMPLEMENTED_PENDING_RUNTIME_AND_CRITIC",
+    "version": "0.3.1",
+    "code": 38,
+    "frozen_prior_tests": 77,
+    "new_test_identities": 10,
+    "planned_screenshots": 14,
+    "requirements": ".tooling/tcs/phase3b-evidence/requirements.md",
+    "phase3_complete": false
   }
 }
