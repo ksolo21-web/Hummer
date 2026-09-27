@@ -1,0 +1,38 @@
+{
+  "milestone": "Phase 3C-C",
+  "passed": false,
+  "score": 8.9,
+  "critic_agent": "/root/phase3cc_critic",
+  "source_commit": "41399d4cc9ab4015c0a83d021afb82347d99555c",
+  "run_id": 36353168711,
+  "status": "REPAIR_REQUIRED",
+  "mandatory_checks": {
+    "functional_raw_log_identities": "PASS:16 unique XML identities exactly map to status0 in hashed retained-runtime.log",
+    "source_initial_defects": "PASS:telephone rebinding, DocumentsUI intake, bounded authority cleanup repaired",
+    "visuals": "FAIL:22/24 screenshots pass;2 phone captures show clipped native status glyphs",
+    "archive_provenance": "PASS:original ZIP digest verified and full mechanical verifier passed",
+    "frozen_baseline": "PASS:2756 manifest files,137 frozen files;116 inherited checks preserved"
+  },
+  "issues": [
+    {
+      "files": [
+        "phase3cc-blocked-dark.png",
+        "phase3cc-prepared-light.png"
+      ],
+      "defect": "Native status time and icons abruptly clipped at y63; incomplete stable-frame evidence. Confirmed original-resolution top140px crops.",
+      "repair": "Recapture only these phone images with status/inset/whole-frame stability checks. Preserve16 functional checks and22 accepted images."
+    }
+  ],
+  "findings": [
+    "Individually opened all24 actual PNGs, including4 replacements. Wide dark blocked is no longer blank; all app content legible.",
+    "Source requires exact before/proposed matches and record-specific recognized independent hashes.",
+    "Source mandates changed-address verified-phone rebinding, fresh provider evidence, topology/overlap/building checks and guarded explicit preparation.",
+    "Real DocumentsUI tests include invalid selection,cancellation and successful two-source import.",
+    "Candidate preservation/stale/revocation/expiry/concurrent journal scenarios have actual retained status0 evidence."
+  ],
+  "limitations": [
+    "Synthetic test fixtures; not real territory commissioning.",
+    "Phase3D integration remains outside this review.",
+    "No fresh device execution by this critic; reviewed recorded instrumentation evidence."
+  ]
+}
