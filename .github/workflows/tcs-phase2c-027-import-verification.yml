@@ -219,29 +219,25 @@ jobs:
             mkdir -p evidence/ui
             sh -c 'set +e; (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1; rc=$?; mkdir -p evidence/android-test-results evidence/android-test-report; cp -R tcs-src/app/build/outputs/androidTest-results/connected/debug/. evidence/android-test-results/ 2>/dev/null || true; cp -R tcs-src/app/build/reports/androidTests/connected/debug/. evidence/android-test-report/ 2>/dev/null || true; cat evidence/connected-android-test.log; if [ "$rc" -ne 0 ]; then grep -R -n -E "failure|Assertion|Exception|FAILED|error" evidence/android-test-results evidence/android-test-report 2>/dev/null || true; fi; exit "$rc"'
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
-            adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
-
+            TARGET_APK="tcs-src/app/build/outputs/apk/debug/app-debug.apk"
+            TEST_APK="$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)"
+            test -s "$TARGET_APK"
+            test -n "$TEST_APK" && test -s "$TEST_APK"
+            adb install -r "$TARGET_APK" >/dev/null
+            adb install -r "$TEST_APK" >/dev/null
+            adb shell pm clear com.koenterprises.territorycardstudio >/dev/null
             adb shell cmd uimode night yes
-            adb shell am force-stop com.koenterprises.territorycardstudio
-            adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-dash.xml evidence/ui/tcs-dash.xml "Territories" "Search territories"
-            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory 1"
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-workspace.xml evidence/ui/tcs-workspace.xml "Verification & readiness"
-            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-workspace-actions.xml evidence/ui/tcs-workspace-actions.xml UP "Import Map"
-
-            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Import Map"
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-import-top.xml evidence/ui/tcs-import-top.xml "Import Map" "Assignment authority stays locked"
-            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-import.xml evidence/ui/tcs-import.xml UP "Source map"
-            adb exec-out screencap -p > evidence/ui/import-map-dark.png
-
-            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-import-back.xml evidence/ui/tcs-import-back.xml DOWN "Back to workspace"
-            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Back to workspace" --contains
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-workspace2.xml evidence/ui/tcs-workspace2.xml "Verification & readiness"
-            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-workspace2-actions.xml evidence/ui/tcs-workspace2-actions.xml UP "Verification"
-            python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Verification"
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-verify-top.xml evidence/ui/tcs-verify-top.xml "Verification" "Build remains locked" "Source truth"
-            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-verify.xml evidence/ui/tcs-verify.xml UP "Exact field release"
-            adb exec-out screencap -p > evidence/ui/verification-dark.png
+            TEST_PACKAGE="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$TEST_APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
+            test -n "$TEST_PACKAGE"
+            adb shell am instrument -w -r \
+              -e class 'com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest#captureDarkImportAndVerificationScreens' \
+              "$TEST_PACKAGE/androidx.test.runner.AndroidJUnitRunner" > evidence/capture-instrumentation.log 2>&1
+            cat evidence/capture-instrumentation.log
+            grep -F "OK (1 test)" evidence/capture-instrumentation.log
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2c-import-map-dark.png > evidence/ui/import-map-dark.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2c-verification-dark.png > evidence/ui/verification-dark.png
+            test -s evidence/ui/import-map-dark.png
+            test -s evidence/ui/verification-dark.png
 
       - name: Validate screenshots and freeze Phase 2C source
         shell: bash
