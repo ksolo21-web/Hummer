@@ -11,14 +11,14 @@ import java.io.ByteArrayOutputStream
 
 @RunWith(AndroidJUnit4::class)
 class Phase2KInstrumentationTest {
-    private class Destination(var corrupt: Boolean = false, val afterWrite: (() -> Unit)? = null) : CreatedExportDestination {
+    private class Destination(var corrupt: Boolean = false, val afterWrite: (() -> Unit)? = null, val canDelete: Boolean = true) : CreatedExportDestination {
         val saved = ByteArrayOutputStream()
         var deleted = false
         override fun openOutput(): java.io.OutputStream = object : java.io.FilterOutputStream(saved) {
             override fun close() { super.close(); afterWrite?.invoke() }
         }
         override fun openInput() = ByteArrayInputStream(if (corrupt) byteArrayOf(0) else saved.toByteArray())
-        override fun deleteCreated(): Boolean { deleted = true; return true }
+        override fun deleteCreated(): Boolean { deleted = canDelete; return canDelete }
     }
     @Test fun scopedAuditKeepsExactIdentityAndReadbackWithoutFieldAuthority() {
         Phase2DBFixture(false).use { f ->
@@ -79,12 +79,29 @@ class Phase2KInstrumentationTest {
                 reviewCandidates=f.kb.crossTerritoryOverlapAudit.reviewCandidates+overlap,
                 reviewCandidateCount=f.kb.crossTerritoryOverlapAudit.reviewCandidateCount+1))
             val item=TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId==f.identity.displayId }
-            val model=VerificationWorkflowModel.from(item,f.mode,null,kb,f.app.services.activePolicy)
-            val findings=Phase2KFindings.from(item,f.mode,model,kb,null)
-            assertTrue(findings.any { it.category=="overlap" && it.itemId==road && it.tab==WorkspaceTab.STREETS && it.reason==overlap.reason })
+            for (mode in WorkspaceMode.values()) {
+            val model=VerificationWorkflowModel.from(item,mode,null,kb,f.app.services.activePolicy)
+            val findings=Phase2KFindings.from(item,mode,model,kb,null)
+            assertTrue(findings.any { it.category=="overlap" && it.itemId==road && it.tab==(if(mode==WorkspaceMode.REGULAR) WorkspaceTab.STREETS else WorkspaceTab.DETAILS) && it.reason==overlap.reason })
             assertTrue(findings.any { it.category=="buildings" && it.tab==WorkspaceTab.BUILDINGS && it.reason=="Building member assignment missing" })
-            assertTrue(findings.any { it.category=="inventory" && it.itemId==null && it.itemLabel.contains("unavailable") })
+            assertTrue(findings.all { it.tab in WorkspaceModePolicy.tabs(mode) })
+            if(mode!=WorkspaceMode.REGULAR) assertTrue(findings.any { it.category=="inventory" && it.itemId==null && it.itemLabel.contains("unavailable") })
             assertFalse(findings.any { it.itemId=="invented address" })
+            }
         }
     }
+    @Test fun failedAuditCleanupReportsRemainingCopyTruthfully() {
+        Phase2DBFixture(false).use { f ->
+            f.prepare(); f.build(); f.page2()
+            val item=TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId==f.identity.displayId }
+            val service=Phase2KAuditService(f.kb,f.coordinator,f.sources,f.app.services.activePolicy)
+            val destination=Destination(corrupt=true,canDelete=false)
+            val failure=runCatching { service.exportCreated(service.snapshot(item,f.mode),destination) }.exceptionOrNull()
+            assertNotNull(failure)
+            assertTrue(failure!!.message!!.contains("could not be deleted"))
+            assertFalse(destination.deleted)
+            assertTrue(destination.saved.size()>0)
+        }
+    }
+
 }

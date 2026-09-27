@@ -112,8 +112,11 @@ class Phase2KUiInstrumentationTest {
             shell("rm -f '$path'")
         }
     }
-    @Test fun affectedRoadFindingOpensStreetsWithActualItemContext() {
-        Phase2DBFixture(false).use { f ->
+    @Test fun affectedRoadFindingOpensStreetsWithActualItemContext() = roadFinding(WorkspaceMode.REGULAR)
+    @Test fun letterRoadFindingKeepsItemContextInDetails() = roadFinding(WorkspaceMode.LETTER_WRITING)
+    @Test fun telephoneRoadFindingKeepsItemContextInDetails() = roadFinding(WorkspaceMode.TELEPHONE)
+    private fun roadFinding(mode: WorkspaceMode) {
+        Phase2DBFixture(mode == WorkspaceMode.TELEPHONE).use { f ->
             val overlap=OverlapCandidate("Alpha Rd",listOf(f.identity.displayId,"273"),"review","Review the shared junction")
             val kb=f.kb.copy(crossTerritoryOverlapAudit=f.kb.crossTerritoryOverlapAudit.copy(
                 reviewCandidates=f.kb.crossTerritoryOverlapAudit.reviewCandidates+overlap,
@@ -126,12 +129,13 @@ class Phase2KUiInstrumentationTest {
                 }
             } } }
             wait("territory-workspace")
+            if (mode == WorkspaceMode.LETTER_WRITING) { scroll("workspace-mode-Letter-Writing");rule.onNodeWithTag("workspace-mode-Letter-Writing").performClick() }
             scroll("workspace-findings");rule.onNodeWithTag("workspace-findings").performClick()
             wait("findings-screen")
             rule.onNodeWithTag("finding-overlap-Alpha Rd").assertExists()
             rule.onNodeWithTag("finding-open-overlap").performClick()
             wait("territory-workspace");scroll("finding-target");wait("finding-target")
-            rule.onNodeWithTag("workspace-tab-Streets").assertExists()
+            rule.onNodeWithTag("workspace-tab-${if(mode==WorkspaceMode.REGULAR) "Streets" else "Details"}").assertExists()
             rule.onNodeWithText("Finding • overlap • Alpha Rd").assertExists()
             rule.onNodeWithText("Review the shared junction").assertExists()
         }
@@ -168,7 +172,7 @@ class Phase2KUiInstrumentationTest {
             wait("territory-workspace")
             scroll("workspace-tab-Map");rule.onNodeWithTag("workspace-tab-Map").performClick()
             scroll("workspace-surface-Map");wait("workspace-open-preview");scroll("workspace-open-preview");rule.onNodeWithTag("workspace-open-preview").performClick()
-            wait("pdf-preview-screen");rule.onNodeWithTag("preview-findings").performClick()
+            wait("pdf-preview-screen");wait("preview-page");shot("preview-${theme.name.lowercase()}");rule.onNodeWithTag("preview-findings").performClick()
             wait("findings-screen");rule.onNodeWithTag("finding-open-field_release").assertExists()
         }
     }

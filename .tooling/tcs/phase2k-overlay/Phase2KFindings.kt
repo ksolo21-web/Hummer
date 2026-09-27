@@ -21,10 +21,11 @@ object Phase2KFindings {
         kb: TerritoryKnowledgeBase, prepared: WorkspacePreparedSnapshot?): List<ScopedFinding> {
         val id = item.assignment.displayId
         require(verification.territoryDisplayId == id && verification.mode == mode)
+        val roadTab = if (WorkspaceTab.STREETS in WorkspaceModePolicy.tabs(mode)) WorkspaceTab.STREETS else WorkspaceTab.DETAILS
         val categoryTab: (String) -> WorkspaceTab = { key -> when (key) {
             "inventory" -> if (mode == WorkspaceMode.TELEPHONE) WorkspaceTab.PHONE_LIST else if (mode == WorkspaceMode.LETTER_WRITING) WorkspaceTab.ADDRESSES else WorkspaceTab.DETAILS
             "buildings" -> WorkspaceTab.BUILDINGS
-            "labels", "overlap", "geometry", "colors_template" -> WorkspaceTab.STREETS
+            "labels", "overlap", "geometry", "colors_template" -> roadTab
             else -> WorkspaceTab.DETAILS
         } }
         val actual = buildList {
@@ -34,15 +35,15 @@ object Phase2KFindings {
             }
             item.assignment.colorRoleReview?.failures?.forEach { reason ->
                 add(ScopedFinding("colors_template", null, VerificationUiState.BLOCKED, reason,
-                    "Knowledge Base ${kb.revision}", WorkspaceTab.STREETS))
+                    "Knowledge Base ${kb.revision}", roadTab))
             }
             kb.crossTerritoryOverlapAudit.blockingDuplicateWork.filter { id in it.territories }.forEach { overlap ->
                 add(ScopedFinding("overlap", overlap.road, VerificationUiState.BLOCKED, overlap.reason,
-                    "Territories ${overlap.territories.joinToString()} • ${overlap.confidence}", WorkspaceTab.STREETS))
+                    "Territories ${overlap.territories.joinToString()} • ${overlap.confidence}", roadTab))
             }
             kb.crossTerritoryOverlapAudit.reviewCandidates.filter { id in it.territories }.forEach { overlap ->
                 add(ScopedFinding("overlap", overlap.road, VerificationUiState.NEEDS_REVIEW, overlap.reason,
-                    "Territories ${overlap.territories.joinToString()} • ${overlap.confidence}", WorkspaceTab.STREETS))
+                    "Territories ${overlap.territories.joinToString()} • ${overlap.confidence}", roadTab))
             }
             prepared?.inventory?.records?.forEach { record ->
                 val status = record.details.firstOrNull { it.first == "Status" || it.first == "Address status" }?.second

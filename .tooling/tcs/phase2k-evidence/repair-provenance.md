@@ -1,0 +1,7 @@
+# Phase2K focused completion evidence
+
+The original run36323755251 had62 passing cases and one failed combined theme capture. Original failed artifact remains preserved; the derived passing-only XML has62 testcase elements and corrected aggregate metadata. Run36328681508 passed the separated Light and Dark identities, producing64 distinct passing identities. Its later old Phase2J candidate-light recapture timed out during actual-frame readiness. That run is not described as a successful complete pipeline. The old20 Phase2J screenshots remain historical evidence from accepted run36310455841, not current Phase2K screenshots.
+
+Run36330306681 was requested solely for missing Phase2K visual/package evidence. Independent source review then found two concrete defects: special-mode road findings targeted unavailable Streets, and failed audit cleanup was inaccurately reported as successful. These reopen only the three Phase2K service cases, road-navigation case and picker case. Three new regressions cover Letter/Telephone item navigation and failed deletion reporting.59 unaffected case identities are retained. The resulting expected set is67 distinct cases, not67 freshly rerun checks.
+
+Repairs route road evidence to Details in special modes while retaining exact affected item/reason/provenance. Export failure reports whether cleanup succeeded. Current images cover findings, audit and actual exact-PDF preview in Light/Dark on phone/wide screens. Earlier passed phases stay frozen unless a touched dependency or exact proven defect requires reopening.

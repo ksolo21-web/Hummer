@@ -106,12 +106,13 @@ class Phase2KAuditService(private val kb: TerritoryKnowledgeBase, private val co
                 "Saved audit did not match current evidence"
             }
             require(ticket.sameEvidence(snapshot(currentItem, ticket.mode))) {
-                "Audit evidence changed during export. The saved copy was discarded."
+                "Audit evidence changed during export."
             }
             return ticket.sha256
         } catch (failure: Exception) {
-            runCatching { destination.deleteCreated() }
-            throw failure
+            val deleted = runCatching { destination.deleteCreated() }.getOrDefault(false)
+            val cleanup = if (deleted) "The created copy was deleted." else "The created copy could not be deleted; remove it from the selected destination."
+            throw IllegalStateException("${failure.message ?: "Audit export failed."} $cleanup", failure)
         }
     }
 }
