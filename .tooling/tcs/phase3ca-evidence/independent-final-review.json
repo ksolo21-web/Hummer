@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "score": 10,
+  "scope": "Phase3C-A service-only independently verified road-label preparation transaction",
+  "run_id": 36341715486,
+  "source_commit": "4e40daf3b0cba7faee53d5c922e07753c1e19f12",
+  "artifact_id": 10939820452,
+  "artifact_sha256": "92f9c9a7cf8af11f5a3ac34f442758e9fc47236bba1cf972de33b42156d2959d",
+  "version": "0.3.2",
+  "version_code": 39,
+  "mandatory_checks": {
+    "authority_baseline": "PASS: metadata, source truth and jurisdiction fixed to independently prepared baseline; no authority manufactured from drafts",
+    "road_label_scope": "PASS: exact saved proposals and normalization, expected labels preserve placement; undeclared geometry/layout/assignment blocked; building proposals explicitly blocked",
+    "inventory": "PASS: detached baseline structural equality or null front-only; existing validators remain mandatory",
+    "fresh_validation": "PASS: supplied old results ignored, production BYPASS fetch, recomputed reconciliation and frozen adapter gates",
+    "immutable_ownership": "PASS: bounded deep snapshots of core DTOs, Page2Inventory wrappers and provider evidence; unmodifiable collections",
+    "transaction_and_staleness": "PASS: opaque one-use expiring/cancellable ticket, candidate version conflict checks, guarded installation rollback, draft/source guard invalidates build/preview/review",
+    "actual_runtime": "PASS:13 unique XML identities independently mapped to actual raw Android success statuses; no failure/error/skip",
+    "source_and_package": "PASS: reviewed source matches extracted package; artifact exact SHA independently verified; mechanical manifest/parity/signature/version checks reviewed",
+    "frozen_prior_and_UI": "PASS:87 prior identities retained with129 frozen files; no UI change or visual gate; reserved commissioning untouched"
+  },
+  "runtime_cases": [
+    "buildingMemberChangesStayBlockedUntilAuthorityAwareReconciliation",
+    "requestTargetsAndLabelsMustMatchEditedInput",
+    "preparedCandidateBecomesUnavailableAfterDraftChanges",
+    "sourceAndDraftChangesDuringVerificationRejectWithoutReplacement",
+    "letterPreparationBuildAndPacketStayUnapproved",
+    "inventoryFailuresAndCrossModeCannotReplaceCurrentPreparation",
+    "mutablePayloadIsDetachedAndNullInventoryOnlyPermitsFront",
+    "ticketIsOneUseBoundedCancellableAndExpires",
+    "staleTicketAndCandidateReplacementRejectAtomically",
+    "telephoneInventoryAndUnavailableNumberPreserved",
+    "geometryAndAssignmentChangesCannotHideInsideLabelProposal",
+    "mismatchedProposalOrUnboundAuthorityCannotValidate",
+    "freshEvidenceMandatoryAndOldSuppliedResultIgnored"
+  ],
+  "new_cases": 13,
+  "prior_retained_cases": 87,
+  "combined_distinct_identities": 100,
+  "full100_rerun": false,
+  "source_sha256": "591b3674c46039b4b746bfbfb7fe947f5580630d5fa2aeade81abb926826735a",
+  "apk_sha256": "3dc87da9160fe38c9cd86b98bca620777ec2d5a46f631638dc8978c273ee0016",
+  "aab_sha256": "725defaee58678c4c110aeb21139f189be4af6dcbedf6df29ea9581709c4bebc",
+  "issues": [],
+  "phase3c_complete": false,
+  "phase3_complete": false,
+  "next_scope": [
+    "Phase3C-B authority-aware building-label/member reconciliation and expanded geometry, assignment and inventory edit journals and controls.",
+    "Complete remaining Phase3C integration/UI requirements before claiming Phase3C complete.",
+    "Phase3D aggregate editing integration audit remains separate."
+  ],
+  "limits": [
+    "This gate requires an independently verified prepared baseline and separately reconciled road-label input; it does not create source authority.",
+    "BUILDING drafts intentionally reject before provider fetch/preparation pending authority-aware reconciliation.",
+    "No new inventory, geometry or assignment edits accepted by this bounded gate; no field approval or real reserved commissioning.",
+    "Current artifacts are debug packages; reflective snapshot support must be preserved if future minification is introduced."
+  ],
+  "post_review_closeout": [
+    "Persist checkpoint, ledger, exact evidence and review; verify durable readback."
+  ]
+}

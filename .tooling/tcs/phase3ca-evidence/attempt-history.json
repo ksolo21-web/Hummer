@@ -1,0 +1,35 @@
+{
+  "attempts": [
+    {
+      "run_id": 36341266056,
+      "source_commit": "acce9fcb2e79fa66136ea9e1756a83ec993dc5f8",
+      "acceptance": "NOT_ACCEPTED_SUPERSEDED"
+    },
+    {
+      "run_id": 36341286226,
+      "source_commit": "3c981674ecdfd44cbf2d36dad2f755da935ba57f",
+      "acceptance": "COMPILE_FAILED",
+      "failure": "Missing whitespace at generic function-valued test property; app source compiled, Android tests did not run"
+    },
+    {
+      "run_id": 36341575987,
+      "source_commit": "bc691d39f9cbbdd811c8fe542358ba6647e47cd6",
+      "acceptance": "SUPERSEDED_BY_REVIEW_REPAIRS"
+    },
+    {
+      "run_id": 36341672501,
+      "source_commit": "d55927b5e33df38c9a8930196800cef544d5d393",
+      "acceptance": "CANCELLED_SUPERSEDED"
+    }
+  ],
+  "scope_repairs": [
+    "Explicit building-member block pending authority-aware3C-B",
+    "Atomic detached baseline inventory equality",
+    "Exact layout/detail and label-placement baseline bindings"
+  ],
+  "prior_accepted_identities_frozen": 87,
+  "full_prior_suite_rerun": false,
+  "final_runtime_run": 36341715486,
+  "final_runtime_source": "4e40daf3b0cba7faee53d5c922e07753c1e19f12",
+  "final_runtime_unique_passes": 13
+}

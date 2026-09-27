@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
   "current_phase": 3,
-  "current_checkpoint": "0.3.1-phase3b-draft-editor",
+  "current_checkpoint": "0.3.2-phase3ca-preparation",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -12,7 +12,7 @@
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
-    "3_editing_commissioning_workflow": "IN_PROGRESS_3C",
+    "3_editing_commissioning_workflow": "IN_PROGRESS_3CB",
     "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
@@ -40,17 +40,21 @@
     "2_final_integration_audit": "PASSED",
     "3A_editing_draft_foundation": "PASSED",
     "3B_editor_ui": "PASSED",
-    "3C_validated_editing_preparation": "IN_PROGRESS_3CA",
+    "3C_validated_editing_preparation": "IN_PROGRESS",
     "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C",
     "3C_A_preparation_transaction": "IN_PROGRESS",
     "3C_B_extended_controlled_editing": "NOT_STARTED_DEPENDS_3CA",
-    "3C_C_preparation_ui": "NOT_STARTED_DEPENDS_3CB"
+    "3C_C_preparation_ui": "NOT_STARTED_DEPENDS_3CB",
+    "3CA_road_label_preparation_transaction": "PASSED",
+    "3CB_authority_aware_expanded_editing": "OPEN_NOT_STARTED",
+    "3CC_preparation_ui": "OPEN_NOT_STARTED",
+    "3D_editing_integration": "OPEN_NOT_STARTED"
   },
-  "phase_milestone_before": "Phase3B IN_PROGRESS",
-  "phase_milestone_after": "Phase3B PASSED; aggregatePhase3 IN_PROGRESS; Phase3C OPEN_NOT_STARTED",
-  "last_completed_package": "0.3.1-phase3b-draft-editor",
-  "next_open_gate": "Phase3C-A conditional preparation transaction acceptance",
-  "next_bounded_task": "Complete3C-A targeted runtime/independent review; then3C-B extended proposals and3C-C preparation UI. Full3C original scope remains open.",
+  "phase_milestone_before": "Phase3C-A IN_PROGRESS",
+  "phase_milestone_after": "Phase3C-A PASSED; aggregatePhase3C andPhase3 IN_PROGRESS;3C-B NEXT",
+  "last_completed_package": "0.3.2-phase3ca-preparation",
+  "next_open_gate": "Phase3C-B authority-aware expanded editing",
+  "next_bounded_task": "Implement typed durable geometry/assignment/building-member/address/telephone proposals and controlled editors with exact known-item/before-value and per-category authority bindings. Reconcile actual building label/member changes together;3C-A explicitly blocks these. Keep all proposals non-authoritative until independent validation. Then3C-C integrates preparation UI with phone/wide Light/Dark evidence and blocked paths;3D aggregate integration remains open. Retain100 accepted identities and retry only new/failed/concretely affected tests. Reserved six remain untouched untilPhase7.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -326,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T18:35:42.533930+00:00",
+  "saved_at_utc": "2026-09-27T18:55:31.394885+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -610,7 +614,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase3b-draft-editor-closeout",
+  "last_completed_task": "phase3ca-road-label-preparation-closeout",
   "phase2h_freeze_evidence": {
     "status": "PASS",
     "run_id": 36295828394,
@@ -1463,12 +1467,101 @@
       ]
     }
   },
-  "phase3ca_progress": {
+  "phase3ca_history": {
     "status": "IMPLEMENTED_PENDING_RUNTIME_AND_INDEPENDENT_REVIEW",
     "scope": "Conditional preparation transaction; first3C dependency",
     "requirements": ".tooling/tcs/phase3ca-evidence/requirements.md",
     "new_tests": 12,
     "frozen_tests": 87,
     "phase3c_complete": false
+  },
+  "phase3ca_freeze_evidence": {
+    "status": "PASS",
+    "run_id": 36341715486,
+    "source_commit": "4e40daf3b0cba7faee53d5c922e07753c1e19f12",
+    "version": "0.3.2",
+    "code": 39,
+    "new_phase3ca_tests": 13,
+    "frozen_prior_tests": 87,
+    "frozen_phase3b_run": 36339456333,
+    "combined_distinct_identities": 100,
+    "full_prior_suite_rerun": false,
+    "failures": 0,
+    "manifest_files": 2549,
+    "frozen_files": 129,
+    "source_sha256": "591b3674c46039b4b746bfbfb7fe947f5580630d5fa2aeade81abb926826735a",
+    "apk_sha256": "3dc87da9160fe38c9cd86b98bca620777ec2d5a46f631638dc8978c273ee0016",
+    "aab_sha256": "725defaee58678c4c110aeb21139f189be4af6dcbedf6df29ea9581709c4bebc",
+    "ui_changes": 0,
+    "reserved_territories": "UNTOUCHED",
+    "phase3": "IN_PROGRESS",
+    "next": "3C-B_authority_aware_extended_editing",
+    "phase3c_complete": false,
+    "run_head_sha": "4e40daf3b0cba7faee53d5c922e07753c1e19f12",
+    "run_conclusion": "success",
+    "artifact_id": 10939820452,
+    "artifact_sha256": "92f9c9a7cf8af11f5a3ac34f442758e9fc47236bba1cf972de33b42156d2959d",
+    "artifact_size": 54904084,
+    "independent_critic": {
+      "passed": true,
+      "score": 10,
+      "scope": "Phase3C-A service-only independently verified road-label preparation transaction",
+      "run_id": 36341715486,
+      "source_commit": "4e40daf3b0cba7faee53d5c922e07753c1e19f12",
+      "artifact_id": 10939820452,
+      "artifact_sha256": "92f9c9a7cf8af11f5a3ac34f442758e9fc47236bba1cf972de33b42156d2959d",
+      "version": "0.3.2",
+      "version_code": 39,
+      "mandatory_checks": {
+        "authority_baseline": "PASS: metadata, source truth and jurisdiction fixed to independently prepared baseline; no authority manufactured from drafts",
+        "road_label_scope": "PASS: exact saved proposals and normalization, expected labels preserve placement; undeclared geometry/layout/assignment blocked; building proposals explicitly blocked",
+        "inventory": "PASS: detached baseline structural equality or null front-only; existing validators remain mandatory",
+        "fresh_validation": "PASS: supplied old results ignored, production BYPASS fetch, recomputed reconciliation and frozen adapter gates",
+        "immutable_ownership": "PASS: bounded deep snapshots of core DTOs, Page2Inventory wrappers and provider evidence; unmodifiable collections",
+        "transaction_and_staleness": "PASS: opaque one-use expiring/cancellable ticket, candidate version conflict checks, guarded installation rollback, draft/source guard invalidates build/preview/review",
+        "actual_runtime": "PASS:13 unique XML identities independently mapped to actual raw Android success statuses; no failure/error/skip",
+        "source_and_package": "PASS: reviewed source matches extracted package; artifact exact SHA independently verified; mechanical manifest/parity/signature/version checks reviewed",
+        "frozen_prior_and_UI": "PASS:87 prior identities retained with129 frozen files; no UI change or visual gate; reserved commissioning untouched"
+      },
+      "runtime_cases": [
+        "buildingMemberChangesStayBlockedUntilAuthorityAwareReconciliation",
+        "requestTargetsAndLabelsMustMatchEditedInput",
+        "preparedCandidateBecomesUnavailableAfterDraftChanges",
+        "sourceAndDraftChangesDuringVerificationRejectWithoutReplacement",
+        "letterPreparationBuildAndPacketStayUnapproved",
+        "inventoryFailuresAndCrossModeCannotReplaceCurrentPreparation",
+        "mutablePayloadIsDetachedAndNullInventoryOnlyPermitsFront",
+        "ticketIsOneUseBoundedCancellableAndExpires",
+        "staleTicketAndCandidateReplacementRejectAtomically",
+        "telephoneInventoryAndUnavailableNumberPreserved",
+        "geometryAndAssignmentChangesCannotHideInsideLabelProposal",
+        "mismatchedProposalOrUnboundAuthorityCannotValidate",
+        "freshEvidenceMandatoryAndOldSuppliedResultIgnored"
+      ],
+      "new_cases": 13,
+      "prior_retained_cases": 87,
+      "combined_distinct_identities": 100,
+      "full100_rerun": false,
+      "source_sha256": "591b3674c46039b4b746bfbfb7fe947f5580630d5fa2aeade81abb926826735a",
+      "apk_sha256": "3dc87da9160fe38c9cd86b98bca620777ec2d5a46f631638dc8978c273ee0016",
+      "aab_sha256": "725defaee58678c4c110aeb21139f189be4af6dcbedf6df29ea9581709c4bebc",
+      "issues": [],
+      "phase3c_complete": false,
+      "phase3_complete": false,
+      "next_scope": [
+        "Phase3C-B authority-aware building-label/member reconciliation and expanded geometry, assignment and inventory edit journals and controls.",
+        "Complete remaining Phase3C integration/UI requirements before claiming Phase3C complete.",
+        "Phase3D aggregate editing integration audit remains separate."
+      ],
+      "limits": [
+        "This gate requires an independently verified prepared baseline and separately reconciled road-label input; it does not create source authority.",
+        "BUILDING drafts intentionally reject before provider fetch/preparation pending authority-aware reconciliation.",
+        "No new inventory, geometry or assignment edits accepted by this bounded gate; no field approval or real reserved commissioning.",
+        "Current artifacts are debug packages; reflective snapshot support must be preserved if future minification is introduced."
+      ],
+      "post_review_closeout": [
+        "Persist checkpoint, ledger, exact evidence and review; verify durable readback."
+      ]
+    }
   }
 }

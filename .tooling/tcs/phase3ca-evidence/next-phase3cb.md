@@ -1,0 +1,3 @@
+Phase3C-B authority-aware expanded editing
+
+Implement typed durable geometry/assignment/building-member/address/telephone proposals and controlled editors with exact known-item/before-value and per-category authority bindings. Reconcile actual building label/member changes together;3C-A explicitly blocks these. Keep all proposals non-authoritative until independent validation. Then3C-C integrates preparation UI with phone/wide Light/Dark evidence and blocked paths;3D aggregate integration remains open. Retain100 accepted identities and retry only new/failed/concretely affected tests. Reserved six remain untouched untilPhase7.
