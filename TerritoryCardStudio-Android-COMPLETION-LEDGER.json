@@ -45,8 +45,8 @@
   "next_open_gate": "Phase 2J runtime and independent acceptance",
   "next_bounded_task": "Validate Phase 2J implementation and resolve authoritative CI before any new package. Requirements: .tooling/tcs/phase2j-overlay/requirements.md. Preserve 2A–2I. Independent critic and full runtime/evidence freeze required.",
   "reopened_defects": [],
-  "blocker_fingerprint": null,
-  "blocker_route_attempts": 0,
+  "blocker_fingerprint": "2J-initial-run-display-capture-and-documentsui-accessibility",
+  "blocker_route_attempts": 1,
   "phase1d_in_progress": {
     "branch": "tcs-phase1d-020-work",
     "page_order": [
@@ -807,14 +807,18 @@
     ]
   },
   "phase2j_in_progress": {
-    "status": "CI_IN_PROGRESS",
+    "status": "CI_RETRY_IN_PROGRESS",
     "candidate_version": "0.2.10",
     "candidate_code": 35,
     "baseline_source": "a8df14b97d7cf3aaa27feeadfaa16d540cc705a0",
     "reserved_territories": "UNTOUCHED",
     "mandatory_new_tests": 5,
     "mandatory_prior_tests": 52,
-    "source_commit": "ad4cc8209828af06c56edda1e66249fb3deba35a",
-    "run_id": 36304697541
+    "source_commit": "38058333289724f029d7067d80d5764635e64d63",
+    "run_id": 36305358958,
+    "previous_run_id": 36304697541,
+    "previous_tests": 57,
+    "previous_failures": 5,
+    "new_phase2j_tests_passed": 5
   }
 }
