@@ -174,6 +174,7 @@ class Phase2KUiInstrumentationTest {
             rule.onNodeWithTag("audit-screen").performScrollToNode(hasTestTag("audit-save"))
             shot("audit-${theme.name.lowercase()}")
             rule.onNodeWithTag("audit-save").assertIsEnabled()
+            rule.onNodeWithTag("audit-screen").performScrollToNode(hasText("← Back"))
             rule.onNodeWithText("← Back").performClick()
             wait("territory-workspace")
             scroll("workspace-tab-Map");rule.onNodeWithTag("workspace-tab-Map").performClick()
