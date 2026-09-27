@@ -1,0 +1,18 @@
+{
+  "verified_archive_files": 2522,
+  "prior_main_and_instrumentation_files": 87,
+  "unchanged_prior_files": 86,
+  "changed_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/ProductionUi.kt"
+  ],
+  "added_files": [
+    "./app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase2HKnowledgeUiInstrumentationTest.kt",
+    "./app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase2HKnowledgeInstrumentationTest.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/KnowledgeBaseUi.kt"
+  ],
+  "prior_instrumentation_byte_unchanged": true,
+  "all_41_prior_cases_preserved": true,
+  "frozen_core_services_workspace_export_unchanged": true,
+  "connected_tests": 46,
+  "source_package_sha256": "8397cbe140aa55361c2086728ad1b39ce4b3f4d1c572537655fabe33b927b040"
+}
