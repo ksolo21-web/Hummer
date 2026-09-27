@@ -32,10 +32,13 @@ internal fun WorkspaceExactPreview(id: String, mode: WorkspaceMode, kind: PdfPre
         catch (failure: Exception) { frame = null; document = null; error = failure.message ?: "Current PDF is unavailable" }
         finally { pending?.recycle() }
     }
-    Text(if (kind == PdfPreviewKind.APPROVED) "Exact approved reference" else "Current candidate • not approved for field use", style = MaterialTheme.typography.titleMedium)
+    Text(if (kind == PdfPreviewKind.APPROVED) "Exact approved reference" else "Current candidate • not approved for field use", style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("workspace-preview-kind"))
     Text(if (kind == PdfPreviewKind.APPROVED) "Original approved document; this does not certify a new address or telephone packet." else "Preview uses the current validated PDF bytes.", style = MaterialTheme.typography.bodySmall)
     frame?.let { image ->
-        Image(image.asImageBitmap(), "Exact PDF front page for territory $id", Modifier.fillMaxWidth().aspectRatio(image.width.toFloat()/image.height).testTag("workspace-pdf-page"), contentScale = ContentScale.Fit)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val previewHeight = (maxWidth / (image.width.toFloat() / image.height)).coerceAtMost(320.dp)
+            Image(image.asImageBitmap(), "Exact PDF front page for territory $id", Modifier.fillMaxWidth().height(previewHeight).testTag("workspace-pdf-page"), contentScale = ContentScale.Fit)
+        }
         document?.let { Text("SHA-256 ${it.sha256}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.testTag("workspace-pdf-hash")) }
         OutlinedButton(onClick = onOpen, modifier = Modifier.testTag("workspace-open-preview")) { Text("Open PDF • pages and zoom") }
     }

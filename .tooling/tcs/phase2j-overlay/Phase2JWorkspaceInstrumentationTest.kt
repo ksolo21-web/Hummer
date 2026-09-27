@@ -23,6 +23,8 @@ class Phase2JWorkspaceInstrumentationTest {
             assertEquals(if (phone) 2 else 1, inventory.verified)
             assertEquals(0, inventory.review); assertEquals(0, inventory.conflicts)
             assertTrue(inventory.provenance.isNotEmpty())
+            assertTrue(inventory.provenance.contains("Imported source SHA-256" to f.source.sha256))
+            assertTrue(inventory.provenance.contains("Prepared input SHA-256" to f.input.canonicalSha256()))
             if (phone) { assertEquals(1, inventory.unavailableNumbers); assertTrue(inventory.records.any { it.phone == "UNAVAILABLE" }) }
             val item = TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId == id }
             val model = VerificationWorkflowModel.from(item, f.mode, f.source, f.kb, f.app.services.activePolicy, snapshot)
@@ -65,3 +67,4 @@ class Phase2JWorkspaceInstrumentationTest {
         }
     }
 }
+

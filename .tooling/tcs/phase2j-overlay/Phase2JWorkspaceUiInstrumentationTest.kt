@@ -3,6 +3,8 @@ package com.koenterprises.territorycardstudio
 import android.graphics.Bitmap
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -22,9 +24,9 @@ class Phase2JWorkspaceUiInstrumentationTest {
     private fun show(f: Phase2DBFixture, theme: AppearanceMode) {
         val preview = AndroidPdfPreviewService(f.coordinator, File(f.root, "workspace-preview"), f.service)
         val item = TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId == f.identity.displayId }
-        rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(theme) {
+        rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(theme) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(), item, f.kb.revision, {}, f.kb, f.coordinator, preview)
-        } } }
+        } } } }
         waitFor("territory-workspace")
         if (!f.telephoneMode) { scroll("workspace-mode-Letter-Writing"); rule.onNodeWithTag("workspace-mode-Letter-Writing").performClick() }
     }
@@ -56,7 +58,10 @@ class Phase2JWorkspaceUiInstrumentationTest {
             Phase2DBFixture(false).use { f ->
                 f.prepare(); f.build(); f.page2(); show(f, theme)
                 scroll("workspace-surface-Map"); waitFor("workspace-pdf-page")
-                scroll("workspace-pdf-page"); shot("candidate-$suffix")
+                scroll("workspace-preview-kind"); waitFor("workspace-pdf-page")
+                rule.onNodeWithTag("workspace-preview-kind").assertTextEquals("Current candidate • not approved for field use").assertIsDisplayed()
+                rule.onNodeWithTag("workspace-pdf-page").assertIsDisplayed()
+                shot("candidate-$suffix")
                 scroll("workspace-open-preview"); rule.onNodeWithTag("workspace-open-preview").performClick()
                 waitFor("preview-page"); rule.onNodeWithTag("preview-next").performClick(); waitFor("preview-page")
                 rule.onNodeWithTag("preview-page-number").assertTextEquals("2 / 2")
@@ -76,11 +81,14 @@ class Phase2JWorkspaceUiInstrumentationTest {
                 f.attach()
                 val item = TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId == f.id }
                 val preview = AndroidPdfPreviewService(f.source.coordinator, File(f.source.root,"approved-preview"), f.artifacts)
-                rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(theme) {
+                rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(theme) { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(), item, f.kb.revision, {}, f.kb, f.source.coordinator, preview)
-                } } }
+                } } } }
                 waitFor("territory-workspace"); scroll("workspace-surface-Map"); waitFor("workspace-pdf-page")
-                scroll("workspace-pdf-page"); shot("approved-$suffix")
+                scroll("workspace-preview-kind"); waitFor("workspace-pdf-page")
+                rule.onNodeWithTag("workspace-preview-kind").assertTextEquals("Exact approved reference").assertIsDisplayed()
+                rule.onNodeWithTag("workspace-pdf-page").assertIsDisplayed()
+                shot("approved-$suffix")
                 scroll("workspace-open-preview"); rule.onNodeWithTag("workspace-open-preview").performClick()
                 waitFor("preview-page"); rule.onNodeWithText("Original approved document • page 1").assertExists()
                 rule.onNodeWithTag("preview-back").performClick(); waitFor("territory-workspace")

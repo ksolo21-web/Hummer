@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.koenterprises.territorycardstudio.core.OnlineSourcePolicy
 import com.koenterprises.territorycardstudio.core.TerritoryKnowledgeBase
@@ -497,9 +496,7 @@ private fun VerificationCategoryCard(category: VerificationCategoryUi) {
                 Text(
                     it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -543,9 +540,8 @@ private fun WorkflowInfoRow(label: String, value: String) {
         Text(
             value,
             fontWeight = FontWeight.Medium,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 }
+

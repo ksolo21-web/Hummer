@@ -58,7 +58,10 @@ data class WorkspacePreparedSnapshot internal constructor(val id: String, val mo
                     "Current prepared topology and template passed the frozen render-model validation.", "Input SHA-256 $inputHash")
             ) + if (inv != null) listOf(VerificationCategoryUi("inventory", if (mode == WorkspaceMode.TELEPHONE) "Telephone phone list" else "Letter Writing addresses",
                 VerificationUiState.VERIFIED, "${inv.verified} verified records • ${inv.review} review • ${inv.conflicts} conflicts • ${inv.unavailableNumbers} unavailable numbers", "Inventory SHA-256 ${inv.hash}")) else emptyList()
-            return WorkspacePreparedSnapshot(id, mode, sourceHash, inputHash, canBuild, categories.toList(), inv)
+            return WorkspacePreparedSnapshot(id, mode, sourceHash, inputHash, canBuild, categories.toList(), inv?.copy(provenance = listOf(
+                "Territory" to id, "Mode" to mode.name, "Imported source SHA-256" to sourceHash,
+                "Prepared input SHA-256" to inputHash) + inv.provenance))
         }
     }
 }
+
