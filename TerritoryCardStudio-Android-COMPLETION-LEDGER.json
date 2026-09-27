@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
   "current_phase": 3,
-  "current_checkpoint": "0.3.3-phase3cb-extended-editors",
+  "current_checkpoint": "0.3.4-phase3cc-independent-preparation",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -12,7 +12,7 @@
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
-    "3_editing_commissioning_workflow": "IN_PROGRESS_3CC",
+    "3_editing_commissioning_workflow": "IN_PROGRESS_3D",
     "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
@@ -40,21 +40,21 @@
     "2_final_integration_audit": "PASSED",
     "3A_editing_draft_foundation": "PASSED",
     "3B_editor_ui": "PASSED",
-    "3C_validated_editing_preparation": "IN_PROGRESS",
+    "3C_validated_editing_preparation": "PASSED_IMPLEMENTED_SCOPE",
     "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C",
-    "3C_A_preparation_transaction": "IN_PROGRESS",
-    "3C_B_extended_controlled_editing": "NOT_STARTED_DEPENDS_3CA",
-    "3C_C_preparation_ui": "NOT_STARTED_DEPENDS_3CB",
+    "3C_A_preparation_transaction": "PASSED",
+    "3C_B_extended_controlled_editing": "PASSED_PROPOSAL_EDITOR_SCOPE",
+    "3C_C_preparation_ui": "PASSED",
     "3CA_road_label_preparation_transaction": "PASSED",
     "3CB_authority_aware_expanded_editing": "PASSED_PROPOSAL_EDITOR_SCOPE",
-    "3CC_preparation_ui": "OPEN_NOT_STARTED",
-    "3D_editing_integration": "OPEN_NOT_STARTED"
+    "3CC_preparation_ui": "PASSED",
+    "3D_editing_integration": "INITIAL_EVIDENCE_AUDIT_DONE_RUNTIME_OPEN"
   },
-  "phase_milestone_before": "Phase3C-B IN_PROGRESS",
-  "phase_milestone_after": "Phase3C-B PASSED; aggregatePhase3C andPhase3 IN_PROGRESS;3C-C NEXT",
-  "last_completed_package": "0.3.3-phase3cb-extended-editors",
-  "next_open_gate": "Phase3C-C two phone capture repairs and independent acceptance",
-  "next_bounded_task": "Finish capture-only repair at commit851cef2a060cc18f4ce98b218f52a758f43dd008. Do not rerun132 preserved functional identities. Verify original GitHub artifact digest and all source manifest hashes; inspect two fresh phone captures and preserve22 accepted screenshots. Independent critic >9 plus durable closeout is required beforePhase3D. Phase3D initial evidence audit is in .tooling/tcs/phase3d-evidence/integration-audit.md.",
+  "phase_milestone_before": "Phase3C-C IN_PROGRESS",
+  "phase_milestone_after": "Phase3C-C PASSED; Phase3D initial evidence audit complete, runtime cases OPEN; Phase3 IN_PROGRESS",
+  "last_completed_package": "0.3.4-phase3cc-independent-preparation",
+  "next_open_gate": "Phase3D aggregate editing integration",
+  "next_bounded_task": "Phase3D integration audit: implement the four bounded combined-runtime cases in .tooling/tcs/phase3d-evidence/integration-audit.md, preserving132 accepted identities. Cover edited letter/telephone candidates through exact preview/review/local approval; journal/authority/source invalidation after review; rebuild/restart; export boundary. No blanket rerun, no authority escalation, no reserved territory commissioning. Independent review >9 and durable evidence readback required.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T22:41:47.132190+00:00",
+  "saved_at_utc": "2026-09-27T22:55:12.578914+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -614,7 +614,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase3cb-extended-proposals-editors-closeout",
+  "last_completed_task": "phase3cc-independent-reconciliation-preparation-closeout",
   "phase2h_freeze_evidence": {
     "status": "PASS",
     "run_id": 36295828394,
@@ -1906,24 +1906,272 @@
       "closeout_status": "TECHNICAL_AND_VISUAL_ACCEPTED_PENDING_DURABLE_CLOSEOUT"
     }
   },
-  "phase3cc_progress": {
-    "status": "FUNCTIONAL16_PASSED_VISUAL22_OF24_PENDING_TWO_PHONE_CAPTURES",
-    "source_commit": "851cef2a060cc18f4ce98b218f52a758f43dd008",
-    "run_id": 36356150069,
+  "phase3cc_history": {
+    "status": "IMPLEMENTED_PENDING_TARGETED_RUNTIME_AND_REVIEW",
+    "source_commit": "e9869a12cd15b199aca0719054855f02fc9d4a15",
+    "run_id": 36352406418,
     "new_test_identities": 16,
     "frozen_prior_identities": 116,
     "full_prior_suite_rerun": false,
-    "next": "Capture-only repair of two phone views; independent critic acceptance and durable closeout; thenPhase3D",
+    "next": "Resolve only new/failed/affected tests; collect phone/wide Light/Dark evidence; independent acceptance; durable readback",
     "reserved_territories": "UNTOUCHED",
-    "production_authority_file_availability": "NOT_COMMISSIONED",
-    "functional_test_identities_preserved": 132,
-    "accepted_screenshots": 22,
-    "open_screenshots": [
-      "phase3cc-blocked-dark.png",
-      "phase3cc-prepared-light.png"
+    "production_authority_file_availability": "NOT_COMMISSIONED"
+  },
+  "phase3cc_freeze_evidence": {
+    "status": "PASS",
+    "run_id": 36356150069,
+    "source_commit": "851cef2a060cc18f4ce98b218f52a758f43dd008",
+    "version": "0.3.4",
+    "code": 41,
+    "new_phase3cc_tests": 16,
+    "retained_phase3cc_tests": 16,
+    "retried_captures": 2,
+    "frozen_prior_tests": 116,
+    "frozen_phase3cb_run": 36349473357,
+    "combined_distinct_identities": 132,
+    "full_prior_suite_rerun": false,
+    "failures": 0,
+    "manifest_files": 2756,
+    "frozen_files": 137,
+    "source_sha256": "b48625a582fb8ce5e78ec29c5d41dfc2caffbfe6e533e356c22ff93a656d595b",
+    "apk_sha256": "70d635ada9d2b1a9ca9a4ae205565e71c019830145aa7411b36ff3244bfce641",
+    "aab_sha256": "6d6b03170e2d251cd6dc89b724ee5383eb4bebf4de3a4a30a81aeff7385fd58c",
+    "screenshots": [
+      {
+        "file": "phase3cc-authority-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "d6f0f839e7454840deea1f6b4cd228b21b955a3de23c83faf9030f92c6663041"
+      },
+      {
+        "file": "phase3cc-authority-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "3872d2a1f90f629c5d4f5e9942466c5a43ab5af468fc81de023d15b9dad16e6a"
+      },
+      {
+        "file": "phase3cc-blocked-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "ba7a1cd7fec366eca198c5482df645616af56fc4b329134782d78e05de725348"
+      },
+      {
+        "file": "phase3cc-blocked-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "048816d25eeb4b6cf05b34b683d74401d55d8548da3812fcec767d757912fbea"
+      },
+      {
+        "file": "phase3cc-confirmation-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "4fd9303e302ee12bb33b5b42ce38d892455739cfa765c1b4bdeb9e7fa802340f"
+      },
+      {
+        "file": "phase3cc-confirmation-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "45018226df72b79d1fdfd2a44f6cce09ce7f2c4b322a1f8247ac404a82647315"
+      },
+      {
+        "file": "phase3cc-prepared-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "412d7be34eb59bc4971ba797a5d7d746b0a050d6ebb8e4bbb59d59f58b7cc7ec"
+      },
+      {
+        "file": "phase3cc-prepared-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "e4188648890959a3d05ac500783f0b4cf3699e045fa3d5013013325e9c134c72"
+      },
+      {
+        "file": "phase3cc-stale-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "f2f950adb04264b984d9dbea7cd9b87bac09d468c0c05fbdee51787b1fd9a8a3"
+      },
+      {
+        "file": "phase3cc-stale-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "b1de67e1de5258c1a63601f1aea4e33425ff3fcbee874cf48f615f4e2dbbbcf5"
+      },
+      {
+        "file": "phase3cc-validated-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "ba36c33831c3a04df141e3f3270be2ad49b7791eec32e0fc5e04e718e2222026"
+      },
+      {
+        "file": "phase3cc-validated-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "2baccbc7e9be564f52e80783be6d57ea13df0b01e0fcec008f540243d4248b2f"
+      },
+      {
+        "file": "phase3cc-wide-authority-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "684812531001e95ae83e157cebac51b4fcb96ea8d91ddaca4d0376c2c375c62a"
+      },
+      {
+        "file": "phase3cc-wide-authority-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "7a265445d4801e8b61f7ddd90b667b6cbf3c418beca2b5b1bdea3d4ff1ed5e05"
+      },
+      {
+        "file": "phase3cc-wide-blocked-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "1f7a2eeef0d43dd81e7e07a74eca1b38177070ac99a701c65c80aed2fb0094b1"
+      },
+      {
+        "file": "phase3cc-wide-blocked-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "0b980d9733b1b366b8db2bb5335839ebf599db9ec684fb6d57108fd32dcacbe0"
+      },
+      {
+        "file": "phase3cc-wide-confirmation-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "c0ecb261ac806ee71a071888a64179bb3b95d3aab63b0ab7f65f3d5ecb16ab33"
+      },
+      {
+        "file": "phase3cc-wide-confirmation-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "d6c1eb94b009a79d4b93114251726fbd7d052a6a41cf3abcd433ab731ec07ba5"
+      },
+      {
+        "file": "phase3cc-wide-prepared-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "e37cd9e673e493e268f8e9cc58258e703ad6b207e5801fe38a257d60e3866bc0"
+      },
+      {
+        "file": "phase3cc-wide-prepared-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "0aedffbd4615c533a6e6c1251a12a0e44c3ec4ccd96fda5e302fc3cd1bf9e29e"
+      },
+      {
+        "file": "phase3cc-wide-stale-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "0f61eb16bb5f2fb521a89f09ad2b2b452a078da5289d6c7720b249f5da49fff0"
+      },
+      {
+        "file": "phase3cc-wide-stale-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "b4cdc8ecdc2577547af7113d30fe3fb6f23136e50ada74329f8e536505c57656"
+      },
+      {
+        "file": "phase3cc-wide-validated-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "21cc2413a958c36c85b2f84c6280fcb53dff653a0a7e14c89012a2acbad0bae2"
+      },
+      {
+        "file": "phase3cc-wide-validated-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "905fe2426efea8a9129ab1ad41346a057d7f65dbf36d79da553c84900d820b8a"
+      }
     ],
-    "rejected_capture_run": 36355576480,
-    "rejected_capture_reason": "Emulator Pixel Launcher ANR modal contaminated captures; target app functional passes preserved",
-    "independent_score": 8.9
+    "reserved_territories": "UNTOUCHED",
+    "phase3": "IN_PROGRESS",
+    "next": "3D_aggregate_integration",
+    "real_territory_authority_commissioning": false,
+    "run_head_sha": "851cef2a060cc18f4ce98b218f52a758f43dd008",
+    "run_conclusion": "success",
+    "artifact_id": 10944262679,
+    "artifact_size": 59357640,
+    "artifact_sha256": "d4825ca5c127bc745c143c56baa0dcb6e4411a2d0a682275c78ef981e27fe370",
+    "independent_critic": {
+      "milestone": "Phase 3C-C",
+      "passed": true,
+      "score": 10,
+      "critic_agent": "/root/phase3cc_critic",
+      "source_commit": "851cef2a060cc18f4ce98b218f52a758f43dd008",
+      "run_id": 36356150069,
+      "artifact_id": 10944262679,
+      "artifact_sha256": "d4825ca5c127bc745c143c56baa0dcb6e4411a2d0a682275c78ef981e27fe370",
+      "status": "TECHNICAL_AND_VISUAL_ACCEPTED_PENDING_DURABLE_CLOSEOUT",
+      "scope": "Independent authoritative reconciliation and guarded preparation UI; not whole app or Phase3D",
+      "mandatory_checks": {
+        "exact_authority_and_before_proposed_reconciliation": "PASS",
+        "record_specific_provenance_and_phone_rebinding": "PASS",
+        "fresh_providers_topology_overlap_buildings_inventory": "PASS",
+        "stale_race_revocation_expiry_candidate_preservation": "PASS",
+        "explicit_prepare_and_actual_document_picker": "PASS",
+        "bounded_authority_storage": "PASS",
+        "raw_functional_identity_mapping": "PASS",
+        "phone_wide_light_dark_six_states": "PASS",
+        "archive_manifest_package_provenance": "PASS",
+        "frozen_prior_source_preservation": "PASS",
+        "reserved_real_territories_untouched": "PASS"
+      },
+      "evidence": {
+        "functional_identities": 16,
+        "frozen_prior_identities": 116,
+        "combined_distinct_identities": 132,
+        "final_retried_capture_identities": 2,
+        "final_replaced_images": 2,
+        "retained_images": 22,
+        "total_images": 24,
+        "manifest_files": 2756,
+        "full_prior_suite_rerun": false,
+        "source_sha256": "b48625a582fb8ce5e78ec29c5d41dfc2caffbfe6e533e356c22ff93a656d595b",
+        "apk_sha256": "70d635ada9d2b1a9ca9a4ae205565e71c019830145aa7411b36ff3244bfce641",
+        "aab_sha256": "6d6b03170e2d251cd6dc89b724ee5383eb4bebf4de3a4a30a81aeff7385fd58c",
+        "frozen_files": 137
+      },
+      "images_reviewed": [
+        "phase3cc-authority-dark.png",
+        "phase3cc-authority-light.png",
+        "phase3cc-blocked-dark.png",
+        "phase3cc-blocked-light.png",
+        "phase3cc-confirmation-dark.png",
+        "phase3cc-confirmation-light.png",
+        "phase3cc-prepared-dark.png",
+        "phase3cc-prepared-light.png",
+        "phase3cc-stale-dark.png",
+        "phase3cc-stale-light.png",
+        "phase3cc-validated-dark.png",
+        "phase3cc-validated-light.png",
+        "phase3cc-wide-authority-dark.png",
+        "phase3cc-wide-authority-light.png",
+        "phase3cc-wide-blocked-dark.png",
+        "phase3cc-wide-blocked-light.png",
+        "phase3cc-wide-confirmation-dark.png",
+        "phase3cc-wide-confirmation-light.png",
+        "phase3cc-wide-prepared-dark.png",
+        "phase3cc-wide-prepared-light.png",
+        "phase3cc-wide-stale-dark.png",
+        "phase3cc-wide-stale-light.png",
+        "phase3cc-wide-validated-dark.png",
+        "phase3cc-wide-validated-light.png"
+      ],
+      "findings": [
+        "All24 screenshots individually inspected across review rounds. Final22 retained screenshots verified byte-identical to individually accepted images.",
+        "Final blocked-dark/prepared-light phone captures now show complete native status glyphs and navigation, correct state and no foreign modal.",
+        "Final raw captureDark/captureLight each status0, OK(2tests). Original16 raw identities exactly matched XML; final retained logs/XML byte-identical.",
+        "Final artifact digest independently computed;2756 source manifest files,APK/AAB digests andZIP integrity,24 image digests independently checked.",
+        "All final production Kotlin files and functional test bodies byte-identical to reviewed accepted functional build. Prior137 frozen files verified against Phase3CB in earlier full mechanical pass, with unchanged final production.",
+        "Initial telephone rebinding,picker callback and authority cleanup defects repaired and covered by source/runtime review.",
+        "Final full mechanical verifier also completed successfully:2756 manifest files,137 frozen files,132 identities,0failures."
+      ],
+      "issues": [],
+      "limitations": [
+        "Synthetic device fixtures only; no six reserved real territory commissioning or field approval.",
+        "This critic inspected recorded device execution and actual pixels; did not independently operate an emulator.",
+        "Phase3D aggregate integration and later release gates remain open.",
+        "Durable commit/checkpoint and remote readback remain parent closeout tasks."
+      ]
+    }
   }
 }

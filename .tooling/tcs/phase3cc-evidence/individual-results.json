@@ -1,0 +1,73 @@
+{
+  "passed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCPreparationInstrumentationTest",
+      "backCancellationRecreationAndExpiryRequireFreshValidation"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCPreparationInstrumentationTest",
+      "workspaceRouteValidatesAndExplicitlyPreparesWithoutApproval"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCPreparationInstrumentationTest",
+      "captureDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCPreparationInstrumentationTest",
+      "captureLight"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCPreparationInstrumentationTest",
+      "missingAuthorityAndFreshProviderFailurePreserveCandidate"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCPreparationInstrumentationTest",
+      "confirmationRaceAndReceiptRevocationFailClosed"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "exactBothJournalsRejectMissingExtraAndContradictoryChanges"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "preparedGuardRejectsJournalCorruptionRevocationAndClockRollback"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "telephoneAuthorityUpdatesFieldsAndPreservesUnavailableNumber"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "freshProvidersAndBuildingCrosschecksRemainMandatory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "changesDuringFetchRejectWithoutReplacingCandidate"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "allLetterCategoriesAndLabelPrepareWithoutApproval"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "unrecognizedTamperedDuplicateAndMixedAuthorityFactsFailClosed"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "witnessesHandleAbsenceAtomicWritesAndConcurrentReadWithoutDeadlock"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "ticketsExpireCancelConsumeAndProtectChangedCandidate"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CCReconciliationInstrumentationTest",
+      "recordSpecificProvenanceAndUnknownTelephoneCannotPass"
+    ]
+  ],
+  "failed": [],
+  "frozenPrior": 116,
+  "retainedPhase3CC": 16,
+  "freshFunctionalTests": 0,
+  "retriedCaptures": 2
+}

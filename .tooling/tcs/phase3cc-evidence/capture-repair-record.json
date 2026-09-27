@@ -1,0 +1,23 @@
+{
+  "source_commit": "f5157f707d847232451bdf71604e56dbb10341df",
+  "run_id": 36355576480,
+  "status": "PASS",
+  "reason": "Two phone native status bars clipped in previous final capture artifact.",
+  "repaired_files": [
+    "phase3cc-blocked-dark.png",
+    "phase3cc-prepared-light.png"
+  ],
+  "preserved_screenshots": 22,
+  "preserved_test_identities": 132,
+  "production_changes": false,
+  "recovered_original_artifact_sha256": "2ec1c870a1dc3087e52c48fa76e37fb9ba20f9029d87769f275a5543b9abb71d",
+  "original_archive_all_entries_match_extracted_evidence": true,
+  "accepted_run_id": 36356150069,
+  "accepted_source_commit": "851cef2a060cc18f4ce98b218f52a758f43dd008",
+  "accepted_artifact_id": 10944262679,
+  "accepted_artifact_sha256": "d4825ca5c127bc745c143c56baa0dcb6e4411a2d0a682275c78ef981e27fe370",
+  "independent_score": 10,
+  "rejected_retry_run": 36355576480,
+  "rejected_retry_reason": "Pixel Launcher ANR overlay",
+  "repair": "Force-stop emulator launcher before target capture; reject foreign active windows; require whole-frame stability for1second"
+}
