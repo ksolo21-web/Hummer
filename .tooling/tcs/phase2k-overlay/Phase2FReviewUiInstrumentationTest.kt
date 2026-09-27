@@ -90,7 +90,7 @@ class Phase2FReviewUiInstrumentationTest {
     private fun ready(f: Phase2DBFixture) { f.prepare(); assertNull(f.build().error); assertNull(f.page2().error) }
     private fun checks() {
         click("review-pages"); click("review-boundaries"); click("review-data")
-        show("review-actor"); composeRule.onNodeWithTag("review-actor").performTextInput("Synthetic Reviewer")
+        show("review-actor"); composeRule.onNodeWithTag("review-actor").performTextReplacement("Synthetic Reviewer")
         composeRule.activity.runOnUiThread {
             val manager = composeRule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
             manager.hideSoftInputFromWindow(composeRule.activity.window.decorView.windowToken, 0)
