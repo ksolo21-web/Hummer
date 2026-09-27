@@ -1,0 +1,48 @@
+{
+  "audit_status": "COMPLETED_GAPS_IDENTIFIED",
+  "aggregate_phase2": "INCOMPLETE",
+  "app_version_unchanged": "0.2.7",
+  "source_commit": "c75f34998e6d0d9054502828a5ecc1e2edcd54fb",
+  "baseline_closeout_commit": "95302faf1e3aa53bc1a3fac65241bce55ddc2f50",
+  "successful_run": 36292365557,
+  "existing_connected_tests": 41,
+  "new_runtime_tests": 0,
+  "source_changes": 0,
+  "preserved_passed_submilestones": [
+    "2A",
+    "2B",
+    "2C",
+    "2D-A",
+    "2D-B",
+    "2E",
+    "2F",
+    "2G"
+  ],
+  "plan_source": {
+    "library_file_id": "libfile_aa4a3221671c8191b1b85115ff7bb91a",
+    "version_id": "1",
+    "modified_at": "2026-09-26T18:45:47.849510Z",
+    "snapshot_sha256": "9b9ad2f07ff8a51990874a618ad538d90f84674345c80a042fc7b659e75f47f8"
+  },
+  "independent_critic": {
+    "agent": "/root/phase2da_critic",
+    "verdict": "AGGREGATE_PHASE2_INCOMPLETE",
+    "aggregate_scope_score": 7,
+    "score_is_progress_percentage": false
+  },
+  "remaining_packages": {
+    "2H": "Knowledge Base and provenance navigation",
+    "2I": "Dashboard filtering and complete browsing",
+    "2J": "Workspace exact preview, inventory and verification state binding",
+    "2K": "Defect/item navigation and audit-output UI",
+    "2_FINAL": "Complete Phase 2 integration and acceptance audit"
+  },
+  "first_open_package": "2H",
+  "real_territory_commissioning": "NOT_PERFORMED",
+  "reserved_territories": "UNTOUCHED",
+  "evidence_hashes": {
+    "audit.md": "fefc64d1c96c42852303df4c5a7f70eaabbe0fb49a0ad7b595d12125360e88a1",
+    "independent-audit.md": "48eb047361b3bd644682566904cd73eea5ba756fa9d92a83bdf50a4c062bd067",
+    "phase2h-requirements.md": "7b3158d8b8102292c3242e8e2ee4741b9f9b8a3bf3599389e15ce69a162f0880"
+  }
+}

@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
   "version": "0.2.7-phase2g-guarded-approved-export",
-  "milestone": "phase-2g-guarded-approved-export-passed",
-  "status": "PHASE_2G_PASSED_PHASE_2_IN_PROGRESS",
-  "phase_milestone_before": "Phase 2G IN_PROGRESS",
-  "phase_milestone_after": "Phase 2G PASSED",
+  "milestone": "phase-2-integration-audit-completed-gaps-open",
+  "status": "PHASE_2_IN_PROGRESS_PHASE_2H_NEXT",
+  "phase_milestone_before": "Phase 2A–2G PASSED; aggregate Phase 2 audit open",
+  "phase_milestone_after": "Phase 2 audit COMPLETED; aggregate Phase 2 INCOMPLETE; 2H next",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -429,23 +429,24 @@
     "phase2d_status": "PASS_BOUNDED_UI_SERVICE_INTEGRATION",
     "phase2e_status": "PASS",
     "phase2f_status": "PASS",
-    "phase2g_status": "PASS"
+    "phase2g_status": "PASS",
+    "phase2_aggregate_status": "INCOMPLETE_MISSING_UI_REQUIREMENTS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
   "internal_review": {
-    "type": "independent",
-    "score": 10,
-    "milestone_approval": true,
+    "type": "independent_aggregate_audit",
+    "score": 7,
+    "milestone_approval": false,
     "overall_app_approval": false,
-    "independent_critic_runtime_available": true,
     "critic_agent": "/root/phase2da_critic",
-    "reason": "Bounded exact approved export passed 41 tests, nine actual screenshots, real system-picker save/cancel/attach, source/APK/AAB verification and independent 10/10 review. Aggregate Phase 2 awaits final UI audit."
+    "independent_critic_runtime_available": true,
+    "reason": "Full recovered Phase 2 requirements have missing UI surfaces/bindings. Score is scope assessment, not progress percentage. Bounded2A–2G approvals remain unchanged; audit task completed and missing packages recorded."
   },
   "last_completed_package": "0.2.7-phase2g-guarded-approved-export",
-  "next_open_gate": "Phase 2 — final UI integration and closeout audit",
-  "next_bounded_task": "Audit the complete Phase 2A–2G UI acceptance requirements, preserved evidence and end-to-end navigation against the port plan before closing aggregate Phase 2. Record any remaining gaps explicitly. Only then open Phase 3 editing/commissioning workflow. Candidate authority promotion and full lifecycle remain later gates; keep six reserved territories untouched.",
+  "next_open_gate": "Phase 2H — read-only Knowledge Base and provenance navigation",
+  "next_bounded_task": "Implement Phase 2H read-only Knowledge Base and provenance navigation per .tooling/tcs/phase2-audit/phase2h-requirements.md. Use existing immutable KB/rules data; include phone/wide navigation, both themes, territory reference/source hashes, permanent patches, conflicts/overlap warnings and actual rule versions. Preserve all 41 prior tests and passed 2A–2G behavior; no authority mutation or commissioning. Validate actual runtime/screenshots, independent critic >9/all gates, freeze the next app version, and persist evidence before advancing to 2I. Remaining 2I–2K packages are enumerated in the audit; aggregate Phase 2 is NOT passed.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -505,11 +506,12 @@
     "Completed Phase 2D-B Build UI/coordinator: verified preparation, source/input/inventory/artifact invalidation, regular front candidate and typed Letter Writing/Telephone Page 2 integration. Repaired corrupt source reimport; 19 tests, dedicated capture, six light/dark screens and 0.2.4 freeze passed; independent critic 10/10. Real workspaces remain blocked until upstream verified preparation; no real territory commissioned or field release enabled.",
     "Completed Phase 2E exact candidate PDF Preview with native rendering, page navigation, bounded zoom/pan, identity/hash/source/inventory revalidation and stale-frame removal on resume. Both modes passed exact PDF pixel parity; 25 tests, eight real screenshots, version 0.2.5 freeze and independent 10/10 review passed. Reserved territories untouched; approval/export not enabled.",
     "Completed Phase 2F candidate review and explicit local approval/rejection. Reused frozen cross-mode manifest and exact receipt contracts; fresh versions and current identity/source/input/inventory/PDF validation reject stale decisions. Atomic local records require named review checks plus confirmation; persistence, rejection, corruption/disk failure and lifecycle revalidation tested. 33 tests, eight real captures, 0.2.6 source/APK/AAB freeze and independent critic 10/10 passed. All prior instrumentation and frozen render/artifact/intake/preview services preserved; field release remains blocked pending authority promotion; no real commissioning.",
-    "Completed Phase 2G guarded export of exact existing KB-approved PDFs. Revalidates identity/authority/hash around the actual system picker; closes and reads back output before success, rejects stale/restored tickets and cleans up failed new destinations. 41 tests, nine real captures, exact-byte synthetic PDF, 0.2.7 freeze and independent critic 10/10 passed. Prior Review capture synchronization repaired without removing assertions. Local candidate approval cannot enable export; reserved territories untouched."
+    "Completed Phase 2G guarded export of exact existing KB-approved PDFs. Revalidates identity/authority/hash around the actual system picker; closes and reads back output before success, rejects stale/restored tickets and cleans up failed new destinations. 41 tests, nine real captures, exact-byte synthetic PDF, 0.2.7 freeze and independent critic 10/10 passed. Prior Review capture synchronization repaired without removing assertions. Local candidate approval cannot enable export; reserved territories untouched.",
+    "Completed independent Phase 2 integration/closeout audit against recovered authoritative port plan. Identified remaining Knowledge Base, filtering/browsing, Workspace preview, inventory/verification binding, defect navigation and audit-output requirements; recorded bounded2H–2K packages. Preserved0.2.7 and all2A–2G passes; no code/binary/authority changes or new runtime claims."
   ],
   "source_package": "TerritoryCardStudio-Android-0.2.7-phase2g-source.tar.xz",
   "source_package_sha256": "b8460bf1c3b3bbfec0a8783c632b512dcd35812013a09e822804fa90e753d3b1",
-  "saved_at_utc": "2026-09-27T04:04:50.798Z",
+  "saved_at_utc": "2026-09-27T04:36:48.851Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -821,5 +823,54 @@
       "score": 10,
       "passed": true
     }
-  }
+  },
+  "phase2_integration_audit": {
+    "audit_status": "COMPLETED_GAPS_IDENTIFIED",
+    "aggregate_phase2": "INCOMPLETE",
+    "app_version_unchanged": "0.2.7",
+    "source_commit": "c75f34998e6d0d9054502828a5ecc1e2edcd54fb",
+    "baseline_closeout_commit": "95302faf1e3aa53bc1a3fac65241bce55ddc2f50",
+    "successful_run": 36292365557,
+    "existing_connected_tests": 41,
+    "new_runtime_tests": 0,
+    "source_changes": 0,
+    "preserved_passed_submilestones": [
+      "2A",
+      "2B",
+      "2C",
+      "2D-A",
+      "2D-B",
+      "2E",
+      "2F",
+      "2G"
+    ],
+    "plan_source": {
+      "library_file_id": "libfile_aa4a3221671c8191b1b85115ff7bb91a",
+      "version_id": "1",
+      "modified_at": "2026-09-26T18:45:47.849510Z",
+      "snapshot_sha256": "9b9ad2f07ff8a51990874a618ad538d90f84674345c80a042fc7b659e75f47f8"
+    },
+    "independent_critic": {
+      "agent": "/root/phase2da_critic",
+      "verdict": "AGGREGATE_PHASE2_INCOMPLETE",
+      "aggregate_scope_score": 7,
+      "score_is_progress_percentage": false
+    },
+    "remaining_packages": {
+      "2H": "Knowledge Base and provenance navigation",
+      "2I": "Dashboard filtering and complete browsing",
+      "2J": "Workspace exact preview, inventory and verification state binding",
+      "2K": "Defect/item navigation and audit-output UI",
+      "2_FINAL": "Complete Phase 2 integration and acceptance audit"
+    },
+    "first_open_package": "2H",
+    "real_territory_commissioning": "NOT_PERFORMED",
+    "reserved_territories": "UNTOUCHED",
+    "evidence_hashes": {
+      "audit.md": "fefc64d1c96c42852303df4c5a7f70eaabbe0fb49a0ad7b595d12125360e88a1",
+      "independent-audit.md": "48eb047361b3bd644682566904cd73eea5ba756fa9d92a83bdf50a4c062bd067",
+      "phase2h-requirements.md": "7b3158d8b8102292c3242e8e2ee4741b9f9b8a3bf3599389e15ce69a162f0880"
+    }
+  },
+  "last_completed_task": "phase2-integration-audit-0.2.7"
 }
