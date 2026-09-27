@@ -375,7 +375,7 @@ jobs:
           (cd tcs-src && find . -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/extracted-source-files.sha256
           sha256sum evidence/extracted-source-files.sha256 > evidence/extracted-source-manifest.sha256
           tar -cJf evidence/TerritoryCardStudio-Android-0.2.9-phase2i-source.tar.xz -C tcs-src .
-          sha256sum evidence/TerritoryCardStudio-Android-0.2.8-phase2h-source.tar.xz > evidence/source-package.sha256
+          sha256sum evidence/TerritoryCardStudio-Android-0.2.9-phase2i-source.tar.xz > evidence/source-package.sha256
           cat > evidence/status.txt <<'STATUS'
           PHASE_2I_DASHBOARD_BROWSING=PASS_PENDING_INDEPENDENT_REVIEW
           VERSION_NAME=0.2.9
