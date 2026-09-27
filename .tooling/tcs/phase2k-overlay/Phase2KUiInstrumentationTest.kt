@@ -3,6 +3,7 @@ package com.koenterprises.territorycardstudio
 import android.graphics.Bitmap
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.view.WindowInsetsController
 import android.view.accessibility.AccessibilityNodeInfo
 import android.accessibilityservice.AccessibilityService
 import org.json.JSONObject
@@ -153,6 +154,10 @@ class Phase2KUiInstrumentationTest {
                     ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(),item,f.kb.revision,{},f.kb,f.coordinator,preview)
                 }
             } } }
+            rule.activity.runOnUiThread {
+                val mask=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                rule.activity.window.insetsController?.setSystemBarsAppearance(if(theme==AppearanceMode.LIGHT) mask else 0,mask)
+            }
             wait("territory-workspace")
             scroll("workspace-mode-Letter-Writing");rule.onNodeWithTag("workspace-mode-Letter-Writing").performClick()
             scroll("workspace-verification");rule.onNodeWithTag("workspace-verification").performClick()
@@ -166,6 +171,7 @@ class Phase2KUiInstrumentationTest {
             rule.waitUntil(20000) { runCatching { rule.onNodeWithTag("audit-save").assertIsEnabled() }.isSuccess }
             rule.onNodeWithText("Prepared input SHA-256 ${f.input.canonicalSha256()}").assertExists()
             rule.onNodeWithText("Inventory SHA-256 ${requireNotNull(f.coordinator.workspaceSnapshot(f.identity.displayId,f.mode)?.inventory).hash}").assertExists()
+            rule.onNodeWithTag("audit-screen").performScrollToNode(hasTestTag("audit-save"))
             shot("audit-${theme.name.lowercase()}")
             rule.onNodeWithTag("audit-save").assertIsEnabled()
             rule.onNodeWithText("← Back").performClick()
