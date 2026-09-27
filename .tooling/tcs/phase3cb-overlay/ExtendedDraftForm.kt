@@ -9,7 +9,7 @@ internal object ExtendedDraftForm {
         is BuildingValue -> listOf("Assigned" to v.assigned.toString(),"Building display label" to v.label)+v.labels.flatMapIndexed {i,l->listOf(
             "Member ${i+1} • label" to l.text,"Member ${i+1} • center X" to l.center.x.toString(),"Member ${i+1} • center Y" to l.center.y.toString(),
             "Member ${i+1} • origin X (optional)" to l.origin?.x?.toString().orEmpty(),"Member ${i+1} • origin Y (optional)" to l.origin?.y?.toString().orEmpty(),
-            "Member ${i+1} • angle" to l.angleDeg.toString(),"Member ${i+1} • text size" to l.fontSizePt.toString()))}
+            "Member ${i+1} • angle" to l.angleDeg.toString(),"Member ${i+1} • text size" to l.fontSizePt.toString())}
         is AddressValue -> listOf("Street address" to v.street,"Unit" to v.unit,"City" to v.city,"State" to v.state,"Postal code" to v.postal,"Building ID (optional)" to v.building)
         is PhoneValue -> listOf("Availability" to v.state.name,"Proposed number" to v.number)
     }

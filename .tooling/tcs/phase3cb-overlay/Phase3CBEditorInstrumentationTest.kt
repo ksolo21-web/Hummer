@@ -107,17 +107,17 @@ class Phase3CBEditorInstrumentationTest {
             rule.activity.runOnUiThread {rule.activity.enableEdgeToEdge()};rule.setContent {Content(if(phoneMode)phone else letter,theme)};ready()
             rule.runOnIdle {val mask=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;rule.activity.window.insetsController?.setSystemBarsAppearance(if(theme==AppearanceMode.LIGHT)mask else 0,mask)}
             val suffix=theme.name.lowercase()
-            select(ExtendedKind.ROAD_PATH,"adapter-alpha");scroll("extended-map-preview");shot("geometry-preview-$suffix");scroll("extended-field-0");shot("geometry-form-$suffix")
-            select(ExtendedKind.BUILDING_MEMBERS,"building-1");scroll("extended-map-preview");shot("building-preview-$suffix");scroll("extended-field-1");shot("building-form-$suffix")
-            select(ExtendedKind.LETTER_ADDRESS,"address-1");scroll("extended-field-0");shot("letter-form-$suffix")
+            select(ExtendedKind.ROAD_PATH,"adapter-alpha");scroll("extended-map-preview");shot("geometry-preview-$suffix");scroll("extended-field-3");shot("geometry-form-$suffix")
+            select(ExtendedKind.BUILDING_MEMBERS,"building-1");scroll("extended-map-preview");shot("building-preview-$suffix");scroll("extended-field-8");shot("building-form-$suffix")
+            select(ExtendedKind.LETTER_ADDRESS,"address-1");scroll("extended-field-5");shot("letter-form-$suffix")
             if(rule.activity.resources.configuration.screenWidthDp<840) {
                 scroll("extended-reason");rule.onNodeWithTag("extended-reason").performClick();rule.onNodeWithTag("extended-reason").assertIsFocused()
                 rule.runOnIdle {val view=requireNotNull(rule.activity.currentFocus);val imm=rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager;imm.showSoftInput(view,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);rule.activity.window.insetsController?.show(android.view.WindowInsets.Type.ime())}
                 rule.waitUntil(20000){rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())==true};shot("keyboard-$suffix")
             }
-            click("extended-tab-Review");scroll("extended-review-count");shot("review-$suffix")
+            click("extended-tab-Review");scroll("extended-review-BUILDING_MEMBERS:building-1");shot("review-$suffix")
             click("extended-tab-History");scroll("extended-restore-0");shot("history-$suffix")
-            rule.runOnIdle {phoneMode=true};ready();select(ExtendedKind.PHONE_NUMBER,"phone-2");scroll("extended-phone-UNAVAILABLE");shot("phone-form-$suffix")
+            rule.runOnIdle {phoneMode=true};ready();select(ExtendedKind.PHONE_NUMBER,"phone-2");scroll("extended-field-1");shot("phone-form-$suffix")
         }}
     }
 }
