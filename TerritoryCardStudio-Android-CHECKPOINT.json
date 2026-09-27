@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
   "version": "0.2.2-phase2c-import-verification",
-  "milestone": "phase-2c-import-verification-passed",
-  "status": "PHASE_2C_PASSED",
-  "phase_milestone_before": "Phase 2C IN_PROGRESS",
-  "phase_milestone_after": "Phase 2C PASSED",
+  "milestone": "phase-2da-page2-service-in-progress",
+  "status": "PHASE_2DA_IN_PROGRESS",
+  "phase_milestone_before": "Phase 2C PASSED",
+  "phase_milestone_after": "Phase 2D-A IN_PROGRESS",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -425,16 +425,15 @@
   "blocker_route_attempts": 0,
   "internal_review": {
     "type": "independent",
-    "score": 9.5,
-    "milestone_approval": true,
+    "milestone_approval": false,
     "overall_app_approval": false,
     "independent_critic_runtime_available": true,
-    "critic_agent": "/root/phase2c_critic",
-    "reason": "Actual source/runtime/screenshots/source freeze reviewed; 11 connected tests passed. Document picker is compile-only evidence; persisted stream intake and navigation runtime-tested."
+    "critic_agent": "/root/phase2da_critic",
+    "reason": "Source reviewed; runtime evidence pending. Earlier Phase 2C independent approval remains in phase2c_freeze_evidence."
   },
   "last_completed_package": "0.2.2-phase2c-import-verification",
-  "next_open_gate": "Phase 2D - Build / Generate Page 2 integration with the frozen Phase 1 engine",
-  "next_bounded_task": "Implement the next dependency-valid Phase 2 Build / Generate Page 2 workflow using the frozen Phase 1 engine, preserving source-truth, inventory, live-verification, packet and approval gates. Phase 2C is passed and frozen; do not repeat its completed validation unless a touched dependency or concrete defect reopens it. Keep the six reserved commissioning territories untouched. Preview, approval/export and commissioning remain later gates.",
+  "next_open_gate": "Phase 2D-A Page 2 service integration",
+  "next_bounded_task": "Phase 2D-A only: validate Android Page 2 service integration for Letter Writing and Telephone through frozen assemblers. Require front/inventory identity, current KB revision and assignment authority binding; reauthorize front render receipt, verify app-owned front path/hash; runtime deterministic byte parity for both modes, explicit UNAVAILABLE phones, fail-closed invalid inputs preserving prior packet, unapproved-only output, core/Android compile and package freeze. Phase 2D remains IN_PROGRESS; Build UI/coordinator is next 2D-B. Preserve earlier passed milestones and all six reserved territories.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -493,7 +492,7 @@
   ],
   "source_package": "TerritoryCardStudio-Android-0.2.2-phase2c-source.tar.xz",
   "source_package_sha256": "40d83f2c25c12a6fb6314fbc1af70ad35ad42641ddde8c5194d2d1b69e153642",
-  "saved_at_utc": "2026-09-27T01:00:04.654Z",
+  "saved_at_utc": "2026-09-27T01:09:44.333Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -522,5 +521,11 @@
       "passed": true
     },
     "reserved_territory_pdf_sweep": 0
+  },
+  "phase2da_validation": {
+    "status": "SOURCE_STAGED",
+    "version_name": "0.2.3",
+    "version_code": 28,
+    "independent_review": "SOURCE_REVIEW_NO_BLOCKER_RUNTIME_PENDING"
   }
 }

@@ -1,0 +1,5 @@
+# Phase 2D-A — Page 2 service integration
+
+Phase 2D-A only: validate Android Page 2 service integration for Letter Writing and Telephone through frozen assemblers. Require front/inventory identity, current KB revision and assignment authority binding; reauthorize front render receipt, verify app-owned front path/hash; runtime deterministic byte parity for both modes, explicit UNAVAILABLE phones, fail-closed invalid inputs preserving prior packet, unapproved-only output, core/Android compile and package freeze. Phase 2D remains IN_PROGRESS; Build UI/coordinator is next 2D-B. Preserve earlier passed milestones and all six reserved territories.
+
+Mandatory checks: Android service/test compile; both real Android runtime tests and preserved UI tests; both modes exactly match frozen assembler bytes; rejected inputs preserve prior packet; candidate field-release state awaits explicit approval; signed/debug APK/AAB integrity and source freeze; independent critic >9 with all checks passed; checkpoint and ledger persistence. No UI/layout implementation changed, so byte parity reuses frozen renderer visual approval.
