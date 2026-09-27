@@ -1,0 +1,52 @@
+{
+  "passed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "captureDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "captureLight"
+    ]
+  ],
+  "failed": [],
+  "retained": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "telephoneModeBindsCorrectDraft"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "confirmationsRejectRevisionChangedWhileOpenAndCleanFormRefreshes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "restorationRetainsDirtyFieldsAndOriginalToken"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "missingSourceAndEmptyItemsStayHonest"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "invalidInputKeepsDraftAndInput"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "workspaceEditsPreserveOthersAndSupportHistory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "dirtyInputGuardsItemAndBothBackRoutes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "lifecycleSourceChangeAndCorruptDraftFailClosed"
+    ]
+  ],
+  "retained_runs": [
+    36337841251,
+    36338690162
+  ],
+  "frozenPrior": 77
+}

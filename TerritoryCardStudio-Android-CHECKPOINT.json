@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.3.0-phase3a-editing-drafts",
-  "milestone": "phase-3a-editing-draft-foundation-passed",
-  "status": "PHASE3B_IN_PROGRESS",
-  "phase_milestone_before": "Phase3A IN_PROGRESS",
-  "phase_milestone_after": "Phase3A PASSED; aggregatePhase3 IN_PROGRESS; Phase3B OPEN_NOT_STARTED",
+  "version": "0.3.1-phase3b-draft-editor",
+  "milestone": "phase-3b-draft-editor-passed",
+  "status": "PHASE_3B_PASSED_PHASE_3_IN_PROGRESS",
+  "phase_milestone_before": "Phase3B IN_PROGRESS",
+  "phase_milestone_after": "Phase3B PASSED; aggregatePhase3 IN_PROGRESS; Phase3C OPEN_NOT_STARTED",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -30,7 +30,8 @@
     "2K_defects_audit_output",
     "2_final_integration_audit",
     "2_production_ui",
-    "3A_editing_draft_foundation"
+    "3A_editing_draft_foundation",
+    "3B_editor_ui"
   ],
   "validation": {
     "shared_authority_hashes": "19/19 PASS",
@@ -443,7 +444,8 @@
     "phase2j_status": "PASS",
     "phase2k_status": "PASS",
     "phase3a_status": "PASS",
-    "phase3_aggregate_status": "IN_PROGRESS_3B_NEXT"
+    "phase3_aggregate_status": "IN_PROGRESS_3C_NEXT",
+    "phase3b_status": "PASS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -455,9 +457,9 @@
     "overall_app_approval": false,
     "critic_agent": "/root/phase2j_critic"
   },
-  "last_completed_package": "0.3.0-phase3a-editing-drafts",
-  "next_open_gate": "Phase3B targeted runtime and independent visual acceptance",
-  "next_bounded_task": "Complete Phase3B editor, preserve 77 prior passing identities",
+  "last_completed_package": "0.3.1-phase3b-draft-editor",
+  "next_open_gate": "Phase3C \u2014 validated editing preparation bridge",
+  "next_bounded_task": "Implement controlled draft-to-preparation validation and expanded geometry/assignment/inventory editing per the original Phase3 scope. Keep proposals non-authoritative until validated, bind exact source/base/input context, reject stale conflicts, preserve approval/export locks. Add only targeted new/affected tests, retain87 accepted identities. Phase3D aggregate editing audit and reserved commissioning in Phase7 remain open.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -526,11 +528,12 @@
     "Verification categories and Build readiness bound to current prepared results without granting candidate field release.",
     "Repaired wide preview context, PDF capture readiness and theme background; independently reviewed all20 phone/wide Light/Dark screenshots.",
     "Verified57 connected cases, full frozen-source parity, APK/AAB integrity, source manifest and independent Phase2J acceptance.",
-    "Phase3A durable isolated editing proposals, exact source/base bindings, optimistic revisions, atomic bounded history, restore/discard and integrity checks; ten new targeted cases. No UI or verified build bridge yet."
+    "Phase3A durable isolated editing proposals, exact source/base bindings, optimistic revisions, atomic bounded history, restore/discard and integrity checks; ten new targeted cases. No UI or verified build bridge yet.",
+    "Phase3B adaptive Light/Dark draft editor with complete proposal merge, revision history, guarded restore/discard, dirty-state restoration and optimistic conflict protection; ten new UI cases and14 actual captures. Verified preparation bridge remains3C."
   ],
-  "source_package": "TerritoryCardStudio-Android-0.3.0-phase3a-source.tar.xz",
-  "source_package_sha256": "adcbbdd804db1f3841ff68d36d993542fb77f66d74491a7c0578b0cd580503aa",
-  "saved_at_utc": "2026-09-27T18:00:00Z",
+  "source_package": "TerritoryCardStudio-Android-0.3.1-phase3b-source.tar.xz",
+  "source_package_sha256": "c483134b58d581202e0d8e1c0eee7248fd399c7d7d20826ec9fdad04eb8932f1",
+  "saved_at_utc": "2026-09-27T18:19:13.178180+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -848,7 +851,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase3a-editing-draft-foundation-closeout",
+  "last_completed_task": "phase3b-draft-editor-closeout",
   "phase2h_validation": {
     "status": "PASS",
     "version_name": "0.2.8",
@@ -1422,7 +1425,7 @@
       ]
     }
   },
-  "phase3b_progress": {
+  "phase3b_history": {
     "status": "IMPLEMENTED_PENDING_RUNTIME_AND_CRITIC",
     "version": "0.3.1",
     "code": 38,
@@ -1431,5 +1434,281 @@
     "planned_screenshots": 14,
     "requirements": ".tooling/tcs/phase3b-evidence/requirements.md",
     "phase3_complete": false
+  },
+  "phase3b_freeze_evidence": {
+    "status": "PASS",
+    "run_id": 36339456333,
+    "source_commit": "cfcd74bc21f948e2eaeffa902aca35e6e2dd76e2",
+    "version": "0.3.1",
+    "code": 38,
+    "new_phase3b_tests": 10,
+    "frozen_prior_tests": 77,
+    "frozen_phase3a_run": 36334431100,
+    "combined_distinct_identities": 87,
+    "full_prior_suite_rerun": false,
+    "failures": 0,
+    "retained_phase3b_tests": 8,
+    "retained_method_bodies_verified": 8,
+    "retried_capture_cases": 2,
+    "retained_phase3b_runs": [
+      36337841251,
+      36338690162
+    ],
+    "manifest_files": 2532,
+    "frozen_files": 128,
+    "source_sha256": "c483134b58d581202e0d8e1c0eee7248fd399c7d7d20826ec9fdad04eb8932f1",
+    "apk_sha256": "c507daa2e1639025c44e560d71e0e5e6f69954d417c40b4d5c3b293959edb996",
+    "aab_sha256": "8234efb175fed4fc0c63f6c62806f9f8ec7a219b01c251840f94a2d7ecf8a4a4",
+    "screenshots": [
+      {
+        "file": "phase3b-editor-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "49cba80ab2f3436a623fbca32bd796db4c315f35cf1e70651934a28f150ff387"
+      },
+      {
+        "file": "phase3b-editor-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "d262c3bd18176efeb7878c5db32ea864da0e52f01d5a238efe02beda199b8eda"
+      },
+      {
+        "file": "phase3b-history-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "9b428d44c504290d62b75e326d7b58f532d14579c64d2ce920b5527c4b60bc6d"
+      },
+      {
+        "file": "phase3b-history-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "e66ca9efd9bb7a884609964a245f8fddaa2958b93fec7b6a708457ed6507b337"
+      },
+      {
+        "file": "phase3b-keyboard-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "cec297100be324fb933760603599e0a37a303e05922c018b8e2a6c1ecf4ba5fd"
+      },
+      {
+        "file": "phase3b-keyboard-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "f719fc7791473348957c3078309fa0262973b455822e7770b3737448fa526f81"
+      },
+      {
+        "file": "phase3b-review-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "362f3bd1f33cfb35a55b3ed5f5717c567541294b376db1ddd24f89068fd8912e"
+      },
+      {
+        "file": "phase3b-review-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "639632633e558ce4d57de0a71ded66b19d9cc34f4c53c20ab43587e3308872c4"
+      },
+      {
+        "file": "phase3b-wide-editor-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "dd2c7023dcdd53720228ce93345124b5031d0e0aa838d422a24bdd004cc7c87a"
+      },
+      {
+        "file": "phase3b-wide-editor-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "81d8ff53e6bde2d26be32e6676b5b1ecc0966cc13a17791147795f189e95c2a1"
+      },
+      {
+        "file": "phase3b-wide-history-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "740c5d40756a975e403a144c1c6b0a5f620deddbc72bd9d34d5ff3e0b701dc9e"
+      },
+      {
+        "file": "phase3b-wide-history-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "4564a063d32cb68a6034c5471386a57e08f4bb92ebca6fa529f3cc280cf1fa97"
+      },
+      {
+        "file": "phase3b-wide-review-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "a00759f3a7e3b3a852ee58edfd7c8798ce513307ee90ecfa5317ecde8f032793"
+      },
+      {
+        "file": "phase3b-wide-review-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "4e8ed79fbf049722946734f22a4b8e2ed26b45c15f30a96e6ea7e9f3a34fc95d"
+      }
+    ],
+    "reserved_territories": "UNTOUCHED",
+    "phase3": "IN_PROGRESS",
+    "next": "3C_validated_preparation_bridge",
+    "run_head_sha": "cfcd74bc21f948e2eaeffa902aca35e6e2dd76e2",
+    "run_conclusion": "success",
+    "artifact_id": 10938791490,
+    "artifact_sha256": "5506d13f3e6b0dfb917b3129c42445f90d16aecf2939b4429d14695c89e4fd71",
+    "artifact_size": 56564565,
+    "independent_critic": {
+      "passed": true,
+      "score": 10,
+      "scope": "Phase3B controlled non-authoritative road/building label editor UI only",
+      "run_id": 36339456333,
+      "source_commit": "cfcd74bc21f948e2eaeffa902aca35e6e2dd76e2",
+      "artifact_id": 10938791490,
+      "artifact_sha256": "5506d13f3e6b0dfb917b3129c42445f90d16aecf2939b4429d14695c89e4fd71",
+      "version": "0.3.1",
+      "version_code": 38,
+      "mandatory_checks": {
+        "workspace_and_identity": "PASS: route/return, known exact items and mode-bound drafts",
+        "complete_proposals": "PASS: saving/removal preserves other proposals; building and road coverage",
+        "dirty_and_revision_safety": "PASS: both Back routes/item changes guarded, recreation preserves dirty fields/token, confirmation token captured on opening, clean refresh updates form/token together",
+        "recovery_states": "PASS: explicit conflicts/reload, stale/missing/corrupt blocking and no corrupt-to-empty creation",
+        "history_and_discard": "PASS: confirmed restore/removal/discard with revision conflict protection",
+        "lifecycle_and_io": "PASS: async IO and busy gates; scoped resize restored on disposal",
+        "visual": "PASS:14 final actual images individually inspected, phone/wide Light/Dark editor/review/history plus two actual visible-keyboard frames",
+        "authority_and_frozen_gates": "PASS:3A service/core/assets/prior tests unchanged, no preparation/build/approval bridge",
+        "runtime_and_package": "PASS:10 distinct3B identities mapped individually to actual successful raw logs; source files match extracted package; mechanical integrity/signature/version checks reviewed"
+      },
+      "images_reviewed": [
+        "phase3b-editor-dark.png",
+        "phase3b-editor-light.png",
+        "phase3b-history-dark.png",
+        "phase3b-history-light.png",
+        "phase3b-keyboard-dark.png",
+        "phase3b-keyboard-light.png",
+        "phase3b-review-dark.png",
+        "phase3b-review-light.png",
+        "phase3b-wide-editor-dark.png",
+        "phase3b-wide-editor-light.png",
+        "phase3b-wide-history-dark.png",
+        "phase3b-wide-history-light.png",
+        "phase3b-wide-review-dark.png",
+        "phase3b-wide-review-light.png"
+      ],
+      "images": [
+        {
+          "file": "phase3b-editor-dark.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "49cba80ab2f3436a623fbca32bd796db4c315f35cf1e70651934a28f150ff387"
+        },
+        {
+          "file": "phase3b-editor-light.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "d262c3bd18176efeb7878c5db32ea864da0e52f01d5a238efe02beda199b8eda"
+        },
+        {
+          "file": "phase3b-history-dark.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "9b428d44c504290d62b75e326d7b58f532d14579c64d2ce920b5527c4b60bc6d"
+        },
+        {
+          "file": "phase3b-history-light.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "e66ca9efd9bb7a884609964a245f8fddaa2958b93fec7b6a708457ed6507b337"
+        },
+        {
+          "file": "phase3b-keyboard-dark.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "cec297100be324fb933760603599e0a37a303e05922c018b8e2a6c1ecf4ba5fd"
+        },
+        {
+          "file": "phase3b-keyboard-light.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "f719fc7791473348957c3078309fa0262973b455822e7770b3737448fa526f81"
+        },
+        {
+          "file": "phase3b-review-dark.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "362f3bd1f33cfb35a55b3ed5f5717c567541294b376db1ddd24f89068fd8912e"
+        },
+        {
+          "file": "phase3b-review-light.png",
+          "width": 1080,
+          "height": 2400,
+          "sha256": "639632633e558ce4d57de0a71ded66b19d9cc34f4c53c20ab43587e3308872c4"
+        },
+        {
+          "file": "phase3b-wide-editor-dark.png",
+          "width": 1920,
+          "height": 1200,
+          "sha256": "dd2c7023dcdd53720228ce93345124b5031d0e0aa838d422a24bdd004cc7c87a"
+        },
+        {
+          "file": "phase3b-wide-editor-light.png",
+          "width": 1920,
+          "height": 1200,
+          "sha256": "81d8ff53e6bde2d26be32e6676b5b1ecc0966cc13a17791147795f189e95c2a1"
+        },
+        {
+          "file": "phase3b-wide-history-dark.png",
+          "width": 1920,
+          "height": 1200,
+          "sha256": "740c5d40756a975e403a144c1c6b0a5f620deddbc72bd9d34d5ff3e0b701dc9e"
+        },
+        {
+          "file": "phase3b-wide-history-light.png",
+          "width": 1920,
+          "height": 1200,
+          "sha256": "4564a063d32cb68a6034c5471386a57e08f4bb92ebca6fa529f3cc280cf1fa97"
+        },
+        {
+          "file": "phase3b-wide-review-dark.png",
+          "width": 1920,
+          "height": 1200,
+          "sha256": "a00759f3a7e3b3a852ee58edfd7c8798ce513307ee90ecfa5317ecde8f032793"
+        },
+        {
+          "file": "phase3b-wide-review-light.png",
+          "width": 1920,
+          "height": 1200,
+          "sha256": "4e8ed79fbf049722946734f22a4b8e2ed26b45c15f30a96e6ea7e9f3a34fc95d"
+        }
+      ],
+      "runtime_provenance": {
+        "retained_functional": 8,
+        "retained_runs": [
+          36337841251,
+          36338690162
+        ],
+        "final_phone_capture_cases": 2,
+        "final_wide_capture_invocations": 2,
+        "distinct_phase3b_cases": 10,
+        "prior_frozen_cases": 77,
+        "combined_distinct_cases": 87,
+        "full87_rerun": false
+      },
+      "source_sha256": "c483134b58d581202e0d8e1c0eee7248fd399c7d7d20826ec9fdad04eb8932f1",
+      "apk_sha256": "c507daa2e1639025c44e560d71e0e5e6f69954d417c40b4d5c3b293959edb996",
+      "aab_sha256": "8234efb175fed4fc0c63f6c62806f9f8ec7a219b01c251840f94a2d7ecf8a4a4",
+      "issues": [],
+      "visual_notes": [
+        "Both keyboard frames now show focused full reason input above actual keyboard, with status icons unobscured.",
+        "Long proposed labels, rationale and evidence wrap readably; saved review shows both building and road proposals.",
+        "Wide layout uses a bounded centered column, with evidence options and Save fully visible.",
+        "Phone screenshots intentionally show different scroll positions; controls outside a frame remain reachable and exercised by runtime tests."
+      ],
+      "phase3_complete": false,
+      "next": "3C validated preparation bridge and broader controlled editing",
+      "limits": [
+        "UI acceptance covers synthetic fixtures and bounded label proposals, not real commissioning or authority.",
+        "No validated preparation bridge, generated field PDF release, or completion of aggregate Phase3 is implied.",
+        "Prior failures remain recorded; passing cases retained with explicit source/runtime provenance."
+      ],
+      "post_review_closeout": [
+        "Persist checkpoint/ledger, final review, package and runtime/image provenance; verify durable readback."
+      ]
+    }
   }
 }
