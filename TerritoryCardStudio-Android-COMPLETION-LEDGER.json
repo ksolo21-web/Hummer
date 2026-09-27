@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
   "current_phase": 2,
-  "current_checkpoint": "0.2.5-phase2e-exact-pdf-preview",
+  "current_checkpoint": "0.2.6-phase2f-candidate-review-local-approval",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -11,7 +11,7 @@
     "1C_multi_label_300_301": "PASSED",
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
-    "2_production_ui": "IN_PROGRESS_REVIEW_APPROVAL_NEXT",
+    "2_production_ui": "IN_PROGRESS_EXPORT_UI_NEXT",
     "3_editing_commissioning_workflow": "NOT_STARTED_DEPENDS_PHASE2",
     "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
@@ -31,13 +31,13 @@
     "2D_A_page2_service": "PASSED",
     "2D_B_build_ui_coordinator": "PASSED",
     "2E_exact_pdf_preview": "PASSED",
-    "2F_candidate_review": "IN_PROGRESS"
+    "2F_candidate_review": "PASSED"
   },
-  "phase_milestone_before": "Phase 2E IN_PROGRESS",
-  "phase_milestone_after": "Phase 2E PASSED",
-  "last_completed_package": "0.2.5-phase2e-exact-pdf-preview",
-  "next_open_gate": "Phase 2 — candidate review and approval UI",
-  "next_bounded_task": "Implement bounded candidate review and approval UI using the frozen artifact, validation and approval contracts. Bind every explicit approval to exact candidate identity, version and hash; keep missing required inputs blocked. Preserve passed PDF Preview behavior. Validate Android runtime and screenshots with independent review. Do not automatically approve, export or commission real territories; the full candidate lifecycle remains a later gate.",
+  "phase_milestone_before": "Phase 2F IN_PROGRESS",
+  "phase_milestone_after": "Phase 2F PASSED",
+  "last_completed_package": "0.2.6-phase2f-candidate-review-local-approval",
+  "next_open_gate": "Phase 2 — guarded export UI",
+  "next_bounded_task": "Implement the remaining bounded Phase 2 export UI using authoritative exact-artifact release permission and frozen PDF artifact boundaries. Surface identity, canonical filename, exact hash and blockers; local candidate approval alone must not authorize field export or authority promotion. Preserve all passed import, Build, Preview and Review workflows and both themes. Validate real Android export navigation, cancellation, exact-byte output and blocked candidate states with independent review. Do not commission reserved territories; full candidate lifecycle and authority promotion remain later gates.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -262,16 +262,16 @@
     "status": "PASS"
   },
   "phase2_in_progress": {
-    "aggregate_status": "IN_PROGRESS_REVIEW_APPROVAL_NEXT",
+    "aggregate_status": "IN_PROGRESS_EXPORT_UI_NEXT",
     "2A": "PASSED",
     "2B": "PASSED",
-    "status": "IN_PROGRESS_REVIEW_APPROVAL_NEXT",
+    "status": "IN_PROGRESS_EXPORT_UI_NEXT",
     "2C": "PASSED",
     "2D": "PASSED",
     "2D_A": "PASSED",
     "2D_B": "PASSED",
     "2E": "PASSED",
-    "2F": "IN_PROGRESS"
+    "2F": "PASSED"
   },
   "phase2a_freeze_evidence": {
     "full_build_run_id": 36273476116,
@@ -325,7 +325,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T02:44:12.979Z",
+  "saved_at_utc": "2026-09-27T03:14:34.437Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -491,5 +491,55 @@
     "real_territory_commissioning": "NOT_PERFORMED",
     "field_approval_export": "NOT_ENABLED",
     "scope": "Phase2E_exact_candidate_PDF_preview"
+  },
+  "phase2f_freeze_evidence": {
+    "run_id": 36290077000,
+    "run_head_sha": "98f9af91f5952e0158e793f12a9397a518b305fe",
+    "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36290077000",
+    "run_conclusion": "success",
+    "artifact_id": 10921448758,
+    "artifact_zip_sha256": "78b70e60ebea9d54edc3e7e2eac9de3f5f625791facd6fdf18458e8669960490",
+    "artifact_expires_at": "2026-10-11T03:10:48Z",
+    "version_name": "0.2.6",
+    "version_code": 31,
+    "target_sdk": 37,
+    "source_package_sha256": "0fdca9707e06fa3c672aa7150a2b0591779fbf9b36a5f71b0b960250ff458f3c",
+    "apk_sha256": "c88cf03979d04d2e9d6614998d1976198953a27a58a82c522df890b17cbb3931",
+    "aab_sha256": "79f77f80309aef9a0b89a2baefe0eac21984a306a3b3c5b75927dc4a4d1777bf",
+    "extracted_source_manifest_sha256": "bb2370cb9aab54c993b9187c49166386bd1e30fa3f2f7b8449ed55f3f6dacfe9",
+    "connected_tests": 33,
+    "new_review_tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "dedicated_capture_test": "PASS",
+    "screenshots": {
+      "phase2f-approved-local-dark.png": "0774e9b13c26bfce5ba68d3939ce72a9dc0822abafaee38177c8542d15812db1",
+      "phase2f-approved-local-light.png": "55b86f6fdc6ca46f62b8143b7a6818d07a408cac48e429ef7079f506df044b4c",
+      "phase2f-blocked-dark.png": "bed1b211dc2ec470ece11dcfcfef4873c8ac32eec4eb738916f6c98b058e1551",
+      "phase2f-checklist-dark.png": "7106461b21cc8773e06d71f9f678ccff29f74e18f1bef6294f8ce2adc3200ce7",
+      "phase2f-confirm-dark.png": "8ba64ec85cebb9b5c5209e536b0ca70a3a7c299b76fcf31cd3f3c6cb7269e65d",
+      "phase2f-ready-dark.png": "657fdd4d8f9200badff6c4dac21b17d1bc580211fb91cad6e0eb680ec42eca1f",
+      "phase2f-ready-light.png": "0b0b8b13745096d4784769ea67fffa9b37911014249952ec9dacae2b9eecaf0d",
+      "phase2f-rejected-dark.png": "1a2696227d12faab0a043a7d682eb43d2f631e444a6afe385ebae63cc662bc78"
+    },
+    "exact_manifest_version_identity_mode_hash_binding": "PASS_RUNTIME",
+    "explicit_actor_mandatory_checks_confirmation": "PASS_RUNTIME",
+    "durable_local_approval_rejection": "PASS_RUNTIME",
+    "stale_missing_rebuilt_tampered_and_unprepared_restart": "PASS_RUNTIME",
+    "disk_failure_corrupt_receipt": "PASS_RUNTIME",
+    "resume_revalidation_and_input_reset": "PASS_RUNTIME",
+    "all_prior_instrumentation_unchanged": true,
+    "frozen_renderer_service_intake_preview": "PASS_UNCHANGED",
+    "archived_manifest_files_verified": 2353,
+    "independent_critic": {
+      "agent": "/root/phase2da_critic",
+      "score": 10,
+      "passed": true
+    },
+    "reserved_pdf_sweep": 0,
+    "real_territory_commissioning": "NOT_PERFORMED",
+    "authority_promotion_export": "NOT_ENABLED",
+    "scope": "Phase2F_candidate_review_and_local_approval"
   }
 }

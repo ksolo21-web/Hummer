@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.2.5-phase2e-exact-pdf-preview",
-  "milestone": "phase-2e-exact-pdf-preview-passed",
-  "status": "PHASE_2F_IN_PROGRESS_PHASE_2_IN_PROGRESS",
-  "phase_milestone_before": "Phase 2E PASSED",
-  "phase_milestone_after": "Phase 2F IN_PROGRESS",
+  "version": "0.2.6-phase2f-candidate-review-local-approval",
+  "milestone": "phase-2f-candidate-review-local-approval-passed",
+  "status": "PHASE_2F_PASSED_PHASE_2_IN_PROGRESS",
+  "phase_milestone_before": "Phase 2F IN_PROGRESS",
+  "phase_milestone_after": "Phase 2F PASSED",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -21,7 +21,8 @@
     "2C_import_map_verification_workflow",
     "2D_A_page2_service",
     "2D_B_build_ui_coordinator",
-    "2E_exact_pdf_preview"
+    "2E_exact_pdf_preview",
+    "2F_candidate_review_local_approval"
   ],
   "validation": {
     "shared_authority_hashes": "19/19 PASS",
@@ -425,7 +426,8 @@
     "phase2c_reserved_territory_pdf_sweep": 0,
     "phase2db_status": "PASS",
     "phase2d_status": "PASS_BOUNDED_UI_SERVICE_INTEGRATION",
-    "phase2e_status": "PASS"
+    "phase2e_status": "PASS",
+    "phase2f_status": "PASS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -437,11 +439,11 @@
     "overall_app_approval": false,
     "independent_critic_runtime_available": true,
     "critic_agent": "/root/phase2da_critic",
-    "reason": "Exact candidate PDF Preview passed 25 connected tests, eight real runtime captures, source/APK/AAB freeze verification and independent 10/10 review. Overall Phase 2 remains in progress."
+    "reason": "Bounded candidate review/local approval UI passed 33 tests, eight actual light/dark captures, exact source/APK/AAB hash verification and independent 10/10 review. Local approval is evidence only; overall Phase 2 remains in progress."
   },
-  "last_completed_package": "0.2.5-phase2e-exact-pdf-preview",
-  "next_open_gate": "Phase 2 — candidate review and approval UI",
-  "next_bounded_task": "Implement bounded candidate review and approval UI using the frozen artifact, validation and approval contracts. Bind every explicit approval to exact candidate identity, version and hash; keep missing required inputs blocked. Preserve passed PDF Preview behavior. Validate Android runtime and screenshots with independent review. Do not automatically approve, export or commission real territories; the full candidate lifecycle remains a later gate.",
+  "last_completed_package": "0.2.6-phase2f-candidate-review-local-approval",
+  "next_open_gate": "Phase 2 — guarded export UI",
+  "next_bounded_task": "Implement the remaining bounded Phase 2 export UI using authoritative exact-artifact release permission and frozen PDF artifact boundaries. Surface identity, canonical filename, exact hash and blockers; local candidate approval alone must not authorize field export or authority promotion. Preserve all passed import, Build, Preview and Review workflows and both themes. Validate real Android export navigation, cancellation, exact-byte output and blocked candidate states with independent review. Do not commission reserved territories; full candidate lifecycle and authority promotion remain later gates.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -499,11 +501,12 @@
     "Completed Phase 2C runtime intake/navigation and fail-closed verification; 11 connected tests passed, actual Import Map/Verification captures independently reviewed at 9.5/10, Android 0.2.2 source/APK/AAB freeze verified, evidence uploaded.",
     "Completed bounded Phase 2D-A: typed Letter Writing/Telephone Page 2 service integration, front/inventory identity-KB-authority binding, reauthorization and app-owned front/hash checks. Both Android runtime tests pass frozen-assembler byte parity and 21 fail-closed cases; all 13 connected tests passed, version 0.2.3 frozen, critic 10/10. No UI/layout/core changes.",
     "Completed Phase 2D-B Build UI/coordinator: verified preparation, source/input/inventory/artifact invalidation, regular front candidate and typed Letter Writing/Telephone Page 2 integration. Repaired corrupt source reimport; 19 tests, dedicated capture, six light/dark screens and 0.2.4 freeze passed; independent critic 10/10. Real workspaces remain blocked until upstream verified preparation; no real territory commissioned or field release enabled.",
-    "Completed Phase 2E exact candidate PDF Preview with native rendering, page navigation, bounded zoom/pan, identity/hash/source/inventory revalidation and stale-frame removal on resume. Both modes passed exact PDF pixel parity; 25 tests, eight real screenshots, version 0.2.5 freeze and independent 10/10 review passed. Reserved territories untouched; approval/export not enabled."
+    "Completed Phase 2E exact candidate PDF Preview with native rendering, page navigation, bounded zoom/pan, identity/hash/source/inventory revalidation and stale-frame removal on resume. Both modes passed exact PDF pixel parity; 25 tests, eight real screenshots, version 0.2.5 freeze and independent 10/10 review passed. Reserved territories untouched; approval/export not enabled.",
+    "Completed Phase 2F candidate review and explicit local approval/rejection. Reused frozen cross-mode manifest and exact receipt contracts; fresh versions and current identity/source/input/inventory/PDF validation reject stale decisions. Atomic local records require named review checks plus confirmation; persistence, rejection, corruption/disk failure and lifecycle revalidation tested. 33 tests, eight real captures, 0.2.6 source/APK/AAB freeze and independent critic 10/10 passed. All prior instrumentation and frozen render/artifact/intake/preview services preserved; field release remains blocked pending authority promotion; no real commissioning."
   ],
-  "source_package": "TerritoryCardStudio-Android-0.2.5-phase2e-source.tar.xz",
-  "source_package_sha256": "06119c562388db02370731e6de37ff09c2dd48e4725ec1085b34473fc171af39",
-  "saved_at_utc": "2026-09-27T02:44:12.979Z",
+  "source_package": "TerritoryCardStudio-Android-0.2.6-phase2f-source.tar.xz",
+  "source_package_sha256": "0fdca9707e06fa3c672aa7150a2b0591779fbf9b36a5f71b0b960250ff458f3c",
+  "saved_at_utc": "2026-09-27T03:14:34.437Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -690,8 +693,60 @@
     "scope": "Phase2E_exact_candidate_PDF_preview"
   },
   "phase2f_validation": {
-    "status": "IN_PROGRESS",
+    "status": "PASS",
     "version_name": "0.2.6",
-    "version_code": 31
+    "version_code": 31,
+    "connected_tests": 33,
+    "critic_score": 10
+  },
+  "phase2f_freeze_evidence": {
+    "run_id": 36290077000,
+    "run_head_sha": "98f9af91f5952e0158e793f12a9397a518b305fe",
+    "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36290077000",
+    "run_conclusion": "success",
+    "artifact_id": 10921448758,
+    "artifact_zip_sha256": "78b70e60ebea9d54edc3e7e2eac9de3f5f625791facd6fdf18458e8669960490",
+    "artifact_expires_at": "2026-10-11T03:10:48Z",
+    "version_name": "0.2.6",
+    "version_code": 31,
+    "target_sdk": 37,
+    "source_package_sha256": "0fdca9707e06fa3c672aa7150a2b0591779fbf9b36a5f71b0b960250ff458f3c",
+    "apk_sha256": "c88cf03979d04d2e9d6614998d1976198953a27a58a82c522df890b17cbb3931",
+    "aab_sha256": "79f77f80309aef9a0b89a2baefe0eac21984a306a3b3c5b75927dc4a4d1777bf",
+    "extracted_source_manifest_sha256": "bb2370cb9aab54c993b9187c49166386bd1e30fa3f2f7b8449ed55f3f6dacfe9",
+    "connected_tests": 33,
+    "new_review_tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "dedicated_capture_test": "PASS",
+    "screenshots": {
+      "phase2f-approved-local-dark.png": "0774e9b13c26bfce5ba68d3939ce72a9dc0822abafaee38177c8542d15812db1",
+      "phase2f-approved-local-light.png": "55b86f6fdc6ca46f62b8143b7a6818d07a408cac48e429ef7079f506df044b4c",
+      "phase2f-blocked-dark.png": "bed1b211dc2ec470ece11dcfcfef4873c8ac32eec4eb738916f6c98b058e1551",
+      "phase2f-checklist-dark.png": "7106461b21cc8773e06d71f9f678ccff29f74e18f1bef6294f8ce2adc3200ce7",
+      "phase2f-confirm-dark.png": "8ba64ec85cebb9b5c5209e536b0ca70a3a7c299b76fcf31cd3f3c6cb7269e65d",
+      "phase2f-ready-dark.png": "657fdd4d8f9200badff6c4dac21b17d1bc580211fb91cad6e0eb680ec42eca1f",
+      "phase2f-ready-light.png": "0b0b8b13745096d4784769ea67fffa9b37911014249952ec9dacae2b9eecaf0d",
+      "phase2f-rejected-dark.png": "1a2696227d12faab0a043a7d682eb43d2f631e444a6afe385ebae63cc662bc78"
+    },
+    "exact_manifest_version_identity_mode_hash_binding": "PASS_RUNTIME",
+    "explicit_actor_mandatory_checks_confirmation": "PASS_RUNTIME",
+    "durable_local_approval_rejection": "PASS_RUNTIME",
+    "stale_missing_rebuilt_tampered_and_unprepared_restart": "PASS_RUNTIME",
+    "disk_failure_corrupt_receipt": "PASS_RUNTIME",
+    "resume_revalidation_and_input_reset": "PASS_RUNTIME",
+    "all_prior_instrumentation_unchanged": true,
+    "frozen_renderer_service_intake_preview": "PASS_UNCHANGED",
+    "archived_manifest_files_verified": 2353,
+    "independent_critic": {
+      "agent": "/root/phase2da_critic",
+      "score": 10,
+      "passed": true
+    },
+    "reserved_pdf_sweep": 0,
+    "real_territory_commissioning": "NOT_PERFORMED",
+    "authority_promotion_export": "NOT_ENABLED",
+    "scope": "Phase2F_candidate_review_and_local_approval"
   }
 }

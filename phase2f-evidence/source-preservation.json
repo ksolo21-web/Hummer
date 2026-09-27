@@ -1,0 +1,21 @@
+{
+  "verified_archive_files": 2353,
+  "prior_main_and_instrumentation_files": 77,
+  "unchanged_prior_files": 72,
+  "changed_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/BuildWorkflowUi.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/AndroidBuildWorkflowCoordinator.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/PdfPreviewUi.kt"
+  ],
+  "added_main_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/CandidateReviewUi.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/AndroidCandidateReviewService.kt",
+    "./core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CrossModePacketValidation.kt"
+  ],
+  "all_prior_instrumentation_unchanged": true,
+  "frozen_renderer_service_intake_preview_unchanged": true,
+  "connected_tests": 33,
+  "source_package_sha256": "0fdca9707e06fa3c672aa7150a2b0591779fbf9b36a5f71b0b960250ff458f3c"
+}
