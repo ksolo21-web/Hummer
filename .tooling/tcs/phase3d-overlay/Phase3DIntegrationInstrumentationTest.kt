@@ -126,8 +126,9 @@ class Phase3DIntegrationInstrumentationTest {
             val extended=AndroidExtendedDraftStore(x.extendedRoot,x.kb,sources,restarted);assertTrue(extended.read(x.id,x.mode)!!.latest.proposals.isNotEmpty())
             val authority=AndroidEditingAuthorityStore(x.authorityRoot,x.kb,sources,restarted,{x.now})
             assertFalse(authority.status(x.id,x.mode).available)
-            val preparation=AndroidExtendedPreparationService(x.kb,x.f.app.services.activePolicy,labels,extended,authority,sources,restarted,x.models,{error("Restart must require explicit authority intake before provider access")},{x.now})
-            denied{preparation.validate(x.id,x.mode)}
+            var providerCalled=false
+            val preparation=AndroidExtendedPreparationService(x.kb,x.f.app.services.activePolicy,labels,extended,authority,sources,restarted,x.models,{providerCalled=true;error("Restart must require explicit authority intake before provider access")},{x.now})
+            denied{preparation.validate(x.id,x.mode)};assertFalse("Missing authority must block before provider access",providerCalled)
             val review=AndroidCandidateReviewService(restarted,File(dir,"reviews"));assertNull(review.state(x.id,x.mode).ticket);assertNull(review.state(x.id,x.mode).decision)
             assertFalse(restarted.state(x.id,x.mode).canBuild);assertNotNull(restarted.buildFront(x.id,x.mode).error)
             val preview=AndroidPdfPreviewService(restarted,File(dir,"preview"));denied{preview.open(x.id,x.mode,PdfPreviewKind.PACKET)}
