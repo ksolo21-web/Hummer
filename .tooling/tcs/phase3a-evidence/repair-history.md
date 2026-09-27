@@ -1,3 +1,5 @@
 # Phase3A compile repair
 
 Run36333820110 compiled production successfully, then test compilation failed at Phase3ADraftInstrumentationTest.kt:21: unresolved `f.input.roads`. The existing model stores roads under `f.input.assignment.roads`. Corrected this test fixture reference only; production and acceptance unchanged. No runtime case ran in the failed attempt. Raw failure artifact10935977905 SHA-256a276bb86024342bbd50b205159c772f77ad8f92a6b8365fe782d904ef0b6dac1 remains identified.
+
+Run36334005541 compiled/package-verified successfully. All ten runtime cases failed in shared synthetic fixture construction before exercising draft APIs: Knowledge Base rejected inconsistent road counts. Fixture now sets roadCount, namedRoadCount, roadNameInventory and buildingCount to match its synthetic road/building lists. Frozen Knowledge Base validation remains intact. No runtime cases passed in this attempt; only these ten failed new cases are retried, never prior67. Failure artifact10937091580 SHA-2568e54330dca1bedf52eb6a3bb58188144af1a769888ba5c065843ba422334f011.
