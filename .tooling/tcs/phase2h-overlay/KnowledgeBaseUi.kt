@@ -141,8 +141,8 @@ private fun KnowledgeRecordView(record: KnowledgeRecord, service: AndroidApprove
             Text("Export rechecks the bytes and authority before every save. Local candidate approval does not enable field export.")
         } }
         item { KnowledgePanel("Reference & provenance", "knowledge-provenance") {
-            KnowledgeFact("Current reference", a.referenceFile)
-            KnowledgeFact("Reference SHA-256", a.referenceSha256)
+            KnowledgeFact(if (a.needsNewCard) "Legacy reference (not current approved card)" else "Current reference", a.referenceFile)
+            KnowledgeFact(if (a.needsNewCard) "Legacy reference SHA-256" else "Reference SHA-256", a.referenceSha256)
             KnowledgeFact("Source class", a.sourceClass)
             KnowledgeFact("Extractor", a.extractor)
             a.approvalNote?.let { KnowledgeFact("Authority note", it) }
