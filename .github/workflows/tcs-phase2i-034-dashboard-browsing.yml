@@ -244,7 +244,7 @@ jobs:
           APP=tcs-src/app/src/main/java/com/koenterprises/territorycardstudio
           TEST=tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio
           for file in ProductionUi WorkspaceModeUi; do cp ".tooling/tcs/phase2i-overlay/$file.kt" "$APP/$file.kt"; done
-          for file in Phase2IDashboardInstrumentationTest Phase2IDashboardUiInstrumentationTest Phase2EPreviewUiInstrumentationTest; do cp ".tooling/tcs/phase2i-overlay/$file.kt" "$TEST/$file.kt"; done
+          for file in Phase2IDashboardInstrumentationTest Phase2IDashboardUiInstrumentationTest Phase2EPreviewUiInstrumentationTest Phase2FReviewUiInstrumentationTest; do cp ".tooling/tcs/phase2i-overlay/$file.kt" "$TEST/$file.kt"; done
           sed -i 's/versionCode = 33/versionCode = 34/; s/versionName = "0.2.8"/versionName = "0.2.9"/' tcs-src/app/build.gradle.kts
           cmp .tooling/tcs/phase2h-overlay/KnowledgeBaseUi.kt "$APP/KnowledgeBaseUi.kt"
           cmp .tooling/tcs/phase2g-overlay/ApprovedExportUi.kt "$APP/ApprovedExportUi.kt"
