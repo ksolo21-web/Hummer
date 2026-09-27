@@ -106,6 +106,16 @@
       "source_commit": "d14e2f707da5dff06f7067717534993482f70529",
       "status": "15_RETAINED_WORKSPACE_TEXT_FOCUS_RACE",
       "reason": "Explicit text entry failure: focus changes lazy composition and removes captured reason node before SetText. Idempotent replacement now reacquires field and asserts exact entered value."
+    },
+    {
+      "run_id": 36349473357,
+      "source_commit": "992d5f5170764b87c0ce8fb2267bbbac0689a9c5",
+      "status": "PASS_PENDING_INDEPENDENT_REVIEW",
+      "retained": 15,
+      "fresh_pass": 1,
+      "wide_capture_passes": 2,
+      "distinct_phase3cb_tests": 16,
+      "screenshots": 34
     }
   ]
 }

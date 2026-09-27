@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.3.2-phase3ca-preparation",
-  "milestone": "phase-3ca-road-label-preparation-passed",
-  "status": "PHASE_3CB_IN_PROGRESS",
-  "phase_milestone_before": "Phase3C-A IN_PROGRESS",
-  "phase_milestone_after": "Phase3C-A PASSED; aggregatePhase3C andPhase3 IN_PROGRESS;3C-B NEXT",
+  "version": "0.3.3-phase3cb-extended-editors",
+  "milestone": "phase-3cb-extended-proposals-editors-passed",
+  "status": "PHASE_3CB_PASSED_PHASE_3_IN_PROGRESS",
+  "phase_milestone_before": "Phase3C-B IN_PROGRESS",
+  "phase_milestone_after": "Phase3C-B PASSED; aggregatePhase3C andPhase3 IN_PROGRESS;3C-C NEXT",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -32,7 +32,8 @@
     "2_production_ui",
     "3A_editing_draft_foundation",
     "3B_editor_ui",
-    "3CA_road_label_preparation_transaction"
+    "3CA_road_label_preparation_transaction",
+    "3CB_extended_proposals_and_editors"
   ],
   "validation": {
     "shared_authority_hashes": "19/19 PASS",
@@ -445,9 +446,10 @@
     "phase2j_status": "PASS",
     "phase2k_status": "PASS",
     "phase3a_status": "PASS",
-    "phase3_aggregate_status": "IN_PROGRESS_3CB_NEXT",
+    "phase3_aggregate_status": "IN_PROGRESS_3CC_NEXT",
     "phase3b_status": "PASS",
-    "phase3ca_status": "PASS"
+    "phase3ca_status": "PASS",
+    "phase3cb_status": "PASS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -459,9 +461,9 @@
     "overall_app_approval": false,
     "critic_agent": "/root/phase2j_critic"
   },
-  "last_completed_package": "0.3.2-phase3ca-preparation",
-  "next_open_gate": "Phase3C-B extended proposals and editor acceptance",
-  "next_bounded_task": "Finish3CB targeted runtime and visual evidence, independentcritic >9 and repair only failures/affected checks; retain100acceptedidentities.3CC actualreconciliation/preparationUI and3D remainopen.",
+  "last_completed_package": "0.3.3-phase3cb-extended-editors",
+  "next_open_gate": "Phase3C-C independent reconciliation and preparation UI",
+  "next_bounded_task": "Connect saved label and extended proposals to independently authoritative reconciliation and guarded preparation UI. Match every changed category to exact known before/proposed fields and eligible provenance; do not treat draft references as authority. Revalidate affected topology, geometry, overlap, building/member/label, assignment and address/telephone inventory dependencies using frozen validators and fresh providers. Preserve compound changes, exact source/draft/base/input/inventory binding, stale rejection and prior candidate on failure. Actual phone/wide Light/Dark preparation and blocked-path evidence required. Retain116 accepted identities; rerun only new/failed/concretely affected checks.3D integration remains open; six reserved territories stayPhase7.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -532,11 +534,12 @@
     "Verified57 connected cases, full frozen-source parity, APK/AAB integrity, source manifest and independent Phase2J acceptance.",
     "Phase3A durable isolated editing proposals, exact source/base bindings, optimistic revisions, atomic bounded history, restore/discard and integrity checks; ten new targeted cases. No UI or verified build bridge yet.",
     "Phase3B adaptive Light/Dark draft editor with complete proposal merge, revision history, guarded restore/discard, dirty-state restoration and optimistic conflict protection; ten new UI cases and14 actual captures. Verified preparation bridge remains3C.",
-    "Phase3C-A road-label preparation transaction: independently prepared baseline, fresh verification, exact draft/source/input/inventory binding, detached snapshots, single-use conditional installation and continued invalidation. Building/member/geometry/assignment/inventory edits and preparation UI remain mandatory3C-B/C work."
+    "Phase3C-A road-label preparation transaction: independently prepared baseline, fresh verification, exact draft/source/input/inventory binding, detached snapshots, single-use conditional installation and continued invalidation. Building/member/geometry/assignment/inventory edits and preparation UI remain mandatory3C-B/C work.",
+    "Phase3C-B seven typed nonauthoritative proposal categories: road geometry/work, building footprint/compound assignment-members-labels, Letter address, Telephone address/availability. Durable exact-baseline revision journal, eligible evidence references, controlled adaptive editors and current/proposed previews. Actual authoritative reconciliation/preparation remains mandatory3C-C."
   ],
-  "source_package": "TerritoryCardStudio-Android-0.3.2-phase3ca-source.tar.xz",
-  "source_package_sha256": "591b3674c46039b4b746bfbfb7fe947f5580630d5fa2aeade81abb926826735a",
-  "saved_at_utc": "2026-09-27T19:20:01.395782+00:00",
+  "source_package": "TerritoryCardStudio-Android-0.3.3-phase3cb-source.tar.xz",
+  "source_package_sha256": "32e8b8db875560a5cc47e8f270c776002ddf900f52a5d0554c9fcf85b778c09d",
+  "saved_at_utc": "2026-09-27T21:02:30.927932+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -854,7 +857,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase3ca-road-label-preparation-closeout",
+  "last_completed_task": "phase3cb-extended-proposals-editors-closeout",
   "phase2h_validation": {
     "status": "PASS",
     "version_name": "0.2.8",
@@ -1811,11 +1814,346 @@
       ]
     }
   },
-  "phase3cb_progress": {
+  "phase3cb_history": {
     "status": "IMPLEMENTED_PENDING_RUNTIME_AND_REVIEW",
     "requirements": ".tooling/tcs/phase3cb-evidence/requirements.md",
     "new_tests": 16,
     "frozen_tests": 100,
     "phase3c_complete": false
+  },
+  "phase3cb_freeze_evidence": {
+    "status": "PASS",
+    "run_id": 36349473357,
+    "source_commit": "992d5f5170764b87c0ce8fb2267bbbac0689a9c5",
+    "version": "0.3.3",
+    "code": 40,
+    "new_phase3cb_tests": 16,
+    "retained_phase3cb_tests": 15,
+    "fresh_phase3cb_tests": 1,
+    "retained_source_commit": "4f0d63f494bffa14384d7b021c481f2601ce2aa9",
+    "frozen_prior_tests": 100,
+    "frozen_phase3ca_run": 36341715486,
+    "combined_distinct_identities": 116,
+    "full_prior_suite_rerun": false,
+    "failures": 0,
+    "manifest_files": 2692,
+    "frozen_files": 132,
+    "source_sha256": "32e8b8db875560a5cc47e8f270c776002ddf900f52a5d0554c9fcf85b778c09d",
+    "apk_sha256": "7e941c74539f121b7e2ef556972d8a039182f0e8e379f1516bede8580b5886b0",
+    "aab_sha256": "c62723732d80d67a634750ad0559da5ed6e1c2fac1a7427d374ad201eb87e226",
+    "screenshots": [
+      {
+        "file": "phase3cb-building-form-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "af1c4dbe6e9e85074eaf3df42d9751d2cb3f87d95c1ef007e9b23034f6a4a068"
+      },
+      {
+        "file": "phase3cb-building-form-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "9bad5ccfc93acf2661754e62f452ca08733fb46e823e682edbc25e1635c41ca9"
+      },
+      {
+        "file": "phase3cb-building-preview-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "406090500d874cf150879911e74e4c25d1689cb8ccf247ab1340d248c63f76a4"
+      },
+      {
+        "file": "phase3cb-building-preview-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "5384778bd051a463f449cad3987e0bc0bb41b9420e203114d4f5ef9284bfc9d3"
+      },
+      {
+        "file": "phase3cb-geometry-form-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "14ce705225fbed6310475d4eacedbdf55ff6fe442ae0a212fdf2fea89eb9fa24"
+      },
+      {
+        "file": "phase3cb-geometry-form-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "4e6fb620a85661930fb622122848bb216cbcc542b3a184679b425ab83059a3e7"
+      },
+      {
+        "file": "phase3cb-geometry-preview-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "79bb5a3ca7f1c037f86c9f0a1be8973a160650e06f2df175dda7d7c63416be3e"
+      },
+      {
+        "file": "phase3cb-geometry-preview-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "01f2f37c772798ab330e1b4c6dd057bbc73426263c6fa8cfe1482c7f0141eb87"
+      },
+      {
+        "file": "phase3cb-history-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "d1bece2984dafa3a958ac65e3cdd9cd02907f38c32ff83182bc14f567cb87bdf"
+      },
+      {
+        "file": "phase3cb-history-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "418662942e2157d8562a6d0ac829b20bf51e11bab4de3757879eb605f4b621ef"
+      },
+      {
+        "file": "phase3cb-keyboard-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "3a2b516ee257202fcc5c2dd6ca985400b3d5721b4114acc64a0ddc6fb6354988"
+      },
+      {
+        "file": "phase3cb-keyboard-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "7e2cacd7a6a88c9c848f64ee354fc02dddd852d6e10feb27b00f60e6ad4f7a69"
+      },
+      {
+        "file": "phase3cb-letter-form-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "335d08bdfd123206fc0e6ffae72f6927ada6d48f21f6eb81b5c4078f9a0cbfc9"
+      },
+      {
+        "file": "phase3cb-letter-form-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "7a67f555b1ecd9f53b892b785c02040b49666ab9cf24ace884b7a631b932ede2"
+      },
+      {
+        "file": "phase3cb-phone-form-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "00054a7a28e2250ed1ac3ea01b796ead58e59deee95c0dfbe60fba76713c47e5"
+      },
+      {
+        "file": "phase3cb-phone-form-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "c1e52ef5e2ac616c6dc21d3606ab54517b511f8673c00a37414d955281f14955"
+      },
+      {
+        "file": "phase3cb-review-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "9bd30e12412bc0ca608984158719195e3b23e29638dac99e163fa03b45902d53"
+      },
+      {
+        "file": "phase3cb-review-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "259bc7557735380dbcefb9b6698447b1bdb88c5a82e09cb962525158dce6aad7"
+      },
+      {
+        "file": "phase3cb-wide-building-form-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "683cc3f3fd0875f90db0e1653c386248eafb114e6bc0df11bfa8caf382b0c6e6"
+      },
+      {
+        "file": "phase3cb-wide-building-form-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "bc424315619a54ad4967bcdcb1f9a55b736bdfe925368ce20e3c69c41c62eea4"
+      },
+      {
+        "file": "phase3cb-wide-building-preview-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "25d9d18d453a842eebc4b658de98a7859d360f333c4ad750cfc3b58c303d4cfa"
+      },
+      {
+        "file": "phase3cb-wide-building-preview-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "a9e4fd141b41d3565ce62602fff61c8fc54fc7bb3362ad28a9127c71107dcb0c"
+      },
+      {
+        "file": "phase3cb-wide-geometry-form-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "c47c53a9f7921fa7a52edb7056c8fb967f577a5bf4b13979659513ca891d220c"
+      },
+      {
+        "file": "phase3cb-wide-geometry-form-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "c75625fa5b2eaee856d12e996b44326a99ed8dbb19e1501aff0c441f93e2180b"
+      },
+      {
+        "file": "phase3cb-wide-geometry-preview-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "c47c53a9f7921fa7a52edb7056c8fb967f577a5bf4b13979659513ca891d220c"
+      },
+      {
+        "file": "phase3cb-wide-geometry-preview-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "c75625fa5b2eaee856d12e996b44326a99ed8dbb19e1501aff0c441f93e2180b"
+      },
+      {
+        "file": "phase3cb-wide-history-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "50ed8cc9abe4c37594c2e2c574933e852c3dc7a6c8d051df7443ede648080041"
+      },
+      {
+        "file": "phase3cb-wide-history-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "d4da5deeb79da881f3076a6664dd2db3995396247c0755a4601fe9b232743a19"
+      },
+      {
+        "file": "phase3cb-wide-letter-form-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "b7fdac4581bd66daa7e57e2f25570579c6541f1c302ec32451a6113255c591e4"
+      },
+      {
+        "file": "phase3cb-wide-letter-form-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "11f900fcfd53a125455c0815f2895439e6e77534d6ec12eb3d4bebd8170f7661"
+      },
+      {
+        "file": "phase3cb-wide-phone-form-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "4244f4e3821e3a5a1ce9f13e49e129c032f163256e0f7234c79443d4ffaab2e2"
+      },
+      {
+        "file": "phase3cb-wide-phone-form-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "2e833f72d622efc527754e2b06f55ec27d1c65d9d4d8f1a92df28597d626aba1"
+      },
+      {
+        "file": "phase3cb-wide-review-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "96bd6c3333d6607eff7b771a96b74f5c559d6980cb4131f03b8acada63fb91fd"
+      },
+      {
+        "file": "phase3cb-wide-review-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "bbe670c2f5d367fa6d8b0949dffac1e6482bd8a6905869b69c5f1fc35b7c6cc0"
+      }
+    ],
+    "reserved_territories": "UNTOUCHED",
+    "phase3": "IN_PROGRESS",
+    "next": "3C-C_independent_reconciliation_and_preparation_UI",
+    "phase3c_complete": false,
+    "run_head_sha": "992d5f5170764b87c0ce8fb2267bbbac0689a9c5",
+    "run_conclusion": "success",
+    "artifact_id": 10941698206,
+    "artifact_sha256": "acbf6d7b27c897563c4ddf05882234e078f59f1475f827f974a19dd1cae3dbd1",
+    "artifact_size": 59151962,
+    "independent_critic": {
+      "milestone": "Phase 3C-B",
+      "passed": true,
+      "score": 10,
+      "reviewer": "Independent critic /root/phase2j_critic",
+      "source_commit": "992d5f5170764b87c0ce8fb2267bbbac0689a9c5",
+      "run_id": 36349473357,
+      "artifact_id": 10941698206,
+      "artifact_sha256": "acbf6d7b27c897563c4ddf05882234e078f59f1475f827f974a19dd1cae3dbd1",
+      "scope": "Durable typed extended proposals and controlled editor only",
+      "mandatory_checks": {
+        "seven_categories_positive_persistence_and_restore": "PASS",
+        "exact_before_context_and_evidence_binding": "PASS",
+        "atomic_bounded_integrity_checked_journal": "PASS",
+        "immutable_detached_nested_views": "PASS",
+        "concurrent_optimistic_conflicts": "PASS",
+        "stale_missing_corrupt_fail_closed": "PASS",
+        "dirty_fields_recreation_back_reload_and_confirmation_token": "PASS",
+        "workspace_route_and_complete_proposal_merge": "PASS",
+        "finite_bounded_geometry_and_invalid_input_safety": "PASS",
+        "authority_build_core_and_reserved_territory_preservation": "PASS",
+        "actual_runtime_identity_mapping": "PASS",
+        "phone_wide_light_dark_visual_review": "PASS",
+        "package_manifest_hash_signature_version": "PASS"
+      },
+      "evidence": {
+        "new_identities": 16,
+        "retained_new_identities": 15,
+        "fresh_final_identity": 1,
+        "frozen_prior_identities": 100,
+        "combined_distinct_identities": 116,
+        "full_prior_suite_rerun": false,
+        "manifest_files": 2692,
+        "frozen_files": 132,
+        "version": "0.3.3",
+        "version_code": 40,
+        "source_sha256": "32e8b8db875560a5cc47e8f270c776002ddf900f52a5d0554c9fcf85b778c09d",
+        "apk_sha256": "7e941c74539f121b7e2ef556972d8a039182f0e8e379f1516bede8580b5886b0",
+        "aab_sha256": "c62723732d80d67a634750ad0559da5ed6e1c2fac1a7427d374ad201eb87e226",
+        "independent_checks": [
+          "All 16 aggregate XML identities mapped to actual status 0 in final and three retained raw logs.",
+          "Six packaged production files exactly match reviewed overlay.",
+          "All 18 previously individually inspected phone PNGs are byte-identical in final artifact.",
+          "All 16 wide PNGs individually opened and visually inspected.",
+          "Final evidence ZIP SHA independently recomputed."
+        ]
+      },
+      "images_reviewed": [
+        "phase3cb-building-form-dark.png",
+        "phase3cb-building-form-light.png",
+        "phase3cb-building-preview-dark.png",
+        "phase3cb-building-preview-light.png",
+        "phase3cb-geometry-form-dark.png",
+        "phase3cb-geometry-form-light.png",
+        "phase3cb-geometry-preview-dark.png",
+        "phase3cb-geometry-preview-light.png",
+        "phase3cb-history-dark.png",
+        "phase3cb-history-light.png",
+        "phase3cb-keyboard-dark.png",
+        "phase3cb-keyboard-light.png",
+        "phase3cb-letter-form-dark.png",
+        "phase3cb-letter-form-light.png",
+        "phase3cb-phone-form-dark.png",
+        "phase3cb-phone-form-light.png",
+        "phase3cb-review-dark.png",
+        "phase3cb-review-light.png",
+        "phase3cb-wide-building-form-dark.png",
+        "phase3cb-wide-building-form-light.png",
+        "phase3cb-wide-building-preview-dark.png",
+        "phase3cb-wide-building-preview-light.png",
+        "phase3cb-wide-geometry-form-dark.png",
+        "phase3cb-wide-geometry-form-light.png",
+        "phase3cb-wide-geometry-preview-dark.png",
+        "phase3cb-wide-geometry-preview-light.png",
+        "phase3cb-wide-history-dark.png",
+        "phase3cb-wide-history-light.png",
+        "phase3cb-wide-letter-form-dark.png",
+        "phase3cb-wide-letter-form-light.png",
+        "phase3cb-wide-phone-form-dark.png",
+        "phase3cb-wide-phone-form-light.png",
+        "phase3cb-wide-review-dark.png",
+        "phase3cb-wide-review-light.png"
+      ],
+      "visual_findings": [
+        "Readable Light/Dark forms, evidence, review and history; phone keyboard does not cover reason field or overlap status bar.",
+        "Wide bounded content column and full geometry/member controls remain readable.",
+        "Base/proposed geometry and inside-side arrow visible; full building before/after placement details preserved.",
+        "Wide geometry-form and geometry-preview pairs are byte-identical in each theme because both requested targets fit in the same viewport; both actual contents are visible. These are 34 named captures, 32 unique images, not 34 unique views."
+      ],
+      "issues": [],
+      "limitations": [
+        "Synthetic fixtures only; no reserved territory commissioning or field approval.",
+        "Proposals remain unvalidated and cannot prepare/build/approve.",
+        "Full Phase 3C is OPEN: 3C-C independent authoritative reconciliation and preparation UI remains mandatory.",
+        "Phase 3D aggregate integration audit remains OPEN.",
+        "Durable checkpoint, ledger persistence and remote readback are separate post-review closeout tasks."
+      ],
+      "closeout_status": "TECHNICAL_AND_VISUAL_ACCEPTED_PENDING_DURABLE_CLOSEOUT"
+    }
   }
 }
