@@ -52,7 +52,7 @@ class Phase2IDashboardUiInstrumentationTest {
         val base = TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId == "A320" }
         val hashes = (1..8).map { it.toString().padStart(64, '0') }
         val fixture = base.copy(assignment = base.assignment.copy(sourceHashes = hashes))
-        rule.activity.runOnUiThread { rule.activity.setContent {
+        rule.runOnIdle { rule.activity.setContent {
             TerritoryCardStudioTheme(AppearanceMode.DARK) {
                 ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(), fixture, kb.revision, {}, kb)
             }
