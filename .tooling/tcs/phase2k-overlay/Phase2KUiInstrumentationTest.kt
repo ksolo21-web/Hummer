@@ -120,7 +120,7 @@ class Phase2KUiInstrumentationTest {
                 reviewCandidateCount=f.kb.crossTerritoryOverlapAudit.reviewCandidateCount+1))
             val item=TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId==f.identity.displayId }
             val preview=AndroidPdfPreviewService(f.coordinator,File(f.root,"2k-finding-preview"),f.service)
-            rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(AppearanceMode.LIGHT) {
+            rule.activityRule.scenario.onActivity { activity -> activity.setContent { TerritoryCardStudioTheme(AppearanceMode.LIGHT) {
                 Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
                     ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(),item,kb.revision,{},kb,f.coordinator,preview)
                 }
@@ -142,7 +142,7 @@ class Phase2KUiInstrumentationTest {
             f.prepare();f.build();f.page2()
             val item=TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId==f.identity.displayId }
             val preview=AndroidPdfPreviewService(f.coordinator,File(f.root,"2k-preview"),f.service)
-            rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(theme) {
+            rule.activityRule.scenario.onActivity { activity -> activity.setContent { TerritoryCardStudioTheme(theme) {
                 Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
                     ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(),item,f.kb.revision,{},f.kb,f.coordinator,preview)
                 }
