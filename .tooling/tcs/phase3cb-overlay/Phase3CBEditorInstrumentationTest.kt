@@ -42,7 +42,7 @@ class Phase3CBEditorInstrumentationTest {
                 val viewport=rule.onNodeWithTag("extended-editor").fetchSemanticsNode().boundsInRoot
                 val bounds=rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
                 if(bounds.top<viewport.top+24 || bounds.bottom>viewport.bottom-24) {
-                    rule.onNodeWithTag("extended-editor").performScrollBy(0f,bounds.center.y-viewport.center.y);previous=null;false
+                    rule.onNodeWithTag("extended-editor").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy){it(0f,bounds.center.y-viewport.center.y)};previous=null;false
                 } else {
                     rule.onNodeWithTag(tag).assertIsDisplayed();val stable=previous==bounds;previous=bounds;stable
                 }

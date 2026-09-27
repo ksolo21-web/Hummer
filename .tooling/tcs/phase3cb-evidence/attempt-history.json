@@ -62,6 +62,12 @@
         ]
       ],
       "reason": "Exact text and immutability passed; two physical taps missed moving/offscreen controls"
+    },
+    {
+      "run_id": 36346123191,
+      "source_commit": "e6b228fad1898fc5d87bc4746f0d34fc067346c6",
+      "status": "TEST_COMPILE_FAILED",
+      "reason": "Test-only performScrollBy unavailable; use existing ScrollBy semantics action. No runtime identities reopened."
     }
   ]
 }
