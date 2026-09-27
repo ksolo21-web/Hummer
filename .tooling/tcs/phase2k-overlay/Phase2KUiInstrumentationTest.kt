@@ -165,7 +165,7 @@ class Phase2KUiInstrumentationTest {
             rule.onNodeWithText("← Back").performClick()
             wait("territory-workspace")
             scroll("workspace-tab-Map");rule.onNodeWithTag("workspace-tab-Map").performClick()
-            scroll("workspace-open-preview");wait("workspace-open-preview");rule.onNodeWithTag("workspace-open-preview").performClick()
+            scroll("workspace-surface-Map");wait("workspace-open-preview");scroll("workspace-open-preview");rule.onNodeWithTag("workspace-open-preview").performClick()
             wait("pdf-preview-screen");rule.onNodeWithTag("preview-findings").performClick()
             wait("findings-screen");rule.onNodeWithTag("finding-open-field_release").assertExists()
         }
