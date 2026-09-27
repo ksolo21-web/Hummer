@@ -219,6 +219,7 @@ jobs:
             mkdir -p evidence/ui
             sh -c 'set +e; (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1; rc=$?; mkdir -p evidence/android-test-results evidence/android-test-report; cp -R tcs-src/app/build/outputs/androidTest-results/connected/debug/. evidence/android-test-results/ 2>/dev/null || true; cp -R tcs-src/app/build/reports/androidTests/connected/debug/. evidence/android-test-report/ 2>/dev/null || true; cat evidence/connected-android-test.log; if [ "$rc" -ne 0 ]; then grep -R -n -E "failure|Assertion|Exception|FAILED|error" evidence/android-test-results evidence/android-test-report 2>/dev/null || true; fi; exit "$rc"'
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
+            adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
 
             adb shell cmd uimode night yes
             adb shell am force-stop com.koenterprises.territorycardstudio
