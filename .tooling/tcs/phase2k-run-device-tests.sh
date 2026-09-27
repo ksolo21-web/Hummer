@@ -7,14 +7,10 @@ echo '61197a5f9e7ac1eeaca85fc88d00f89ce386b6c365794d908a23245b73fbcd64  .tooling
 cp "$frozen" evidence/android-test-results/TEST-frozen-pass62.xml
 rm -rf tcs-src/app/build/outputs/androidTest-results/connected/debug
 selector='com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest#captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes'
-set +e
 (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=$selector") > evidence/connected-android-test.log 2>&1
-retry_rc=$?
-set -e
 xml="$(find tcs-src/app/build/outputs/androidTest-results/connected/debug -name 'TEST*.xml' -type f | head -n 1)"
 test -n "$xml"
 cp "$xml" evidence/android-test-results/TEST-retried-phase2k-capture.xml
-if [ "$retry_rc" -ne 0 ]; then exit "$retry_rc"; fi
 python3 - <<'PY'
 import xml.etree.ElementTree as E
 from pathlib import Path

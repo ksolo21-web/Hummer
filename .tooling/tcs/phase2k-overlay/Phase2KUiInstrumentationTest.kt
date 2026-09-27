@@ -138,7 +138,9 @@ class Phase2KUiInstrumentationTest {
     }
     @Test fun captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes() {
         wait("territories-dashboard")
-        for (theme in listOf(AppearanceMode.LIGHT,AppearanceMode.DARK)) Phase2DBFixture(false).use { f ->
+        for (theme in listOf(AppearanceMode.LIGHT,AppearanceMode.DARK)) {
+          rule.activityRule.scenario.recreate();wait("territories-dashboard")
+          Phase2DBFixture(false).use { f ->
             f.prepare();f.build();f.page2()
             val item=TerritoryDashboardModel.from(f.kb).items.first { it.assignment.displayId==f.identity.displayId }
             val preview=AndroidPdfPreviewService(f.coordinator,File(f.root,"2k-preview"),f.service)
@@ -168,6 +170,7 @@ class Phase2KUiInstrumentationTest {
             scroll("workspace-surface-Map");wait("workspace-open-preview");scroll("workspace-open-preview");rule.onNodeWithTag("workspace-open-preview").performClick()
             wait("pdf-preview-screen");rule.onNodeWithTag("preview-findings").performClick()
             wait("findings-screen");rule.onNodeWithTag("finding-open-field_release").assertExists()
+          }
         }
     }
 }
