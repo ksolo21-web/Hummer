@@ -41,7 +41,8 @@ class Phase3CBEditorInstrumentationTest {
         try {rule.waitUntil(20000) {
             runCatching {
                 val viewport=rule.onNodeWithTag("extended-editor").fetchSemanticsNode().boundsInRoot.intersect(rule.onRoot().fetchSemanticsNode().boundsInRoot)
-                val bounds=rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+                val node=rule.onNodeWithTag(tag).fetchSemanticsNode();val position=node.positionInRoot
+                val bounds=androidx.compose.ui.geometry.Rect(position.x,position.y,position.x+node.size.width,position.y+node.size.height)
                 diagnostics="tag=$tag viewport=$viewport bounds=$bounds";android.util.Log.i("Phase3CBChip",diagnostics)
                 if(bounds.height<=0 || bounds.width<=0 || bounds.center.y<viewport.top+8 || bounds.center.y>viewport.bottom-8) {
                     rule.onNodeWithTag("extended-editor").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy){val moved=it(0f,(bounds.center.y-viewport.center.y).coerceIn(-viewport.height/3,viewport.height/3));android.util.Log.i("Phase3CBChip","scroll accepted=$moved")};rule.waitForIdle();previous=null;false

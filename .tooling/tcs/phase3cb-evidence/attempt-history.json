@@ -82,6 +82,12 @@
         ]
       ],
       "reason": "Telephone physical flow passed; workspace scroll must await idle and reacquire uncomposed target"
+    },
+    {
+      "run_id": 36347047182,
+      "source_commit": "e19add15a73774627003b8a30ffb34bb6a5ff7ca",
+      "status": "15_RETAINED_WORKSPACE_SCROLL_FAILED",
+      "reason": "Diagnostic screenshot/log proves offscreen chip clipped bounds become zero, driving scroll backward. Repair uses actual SemanticsNode position and size; only workspace remains open."
     }
   ]
 }
