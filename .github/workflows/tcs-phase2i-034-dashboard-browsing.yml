@@ -333,9 +333,14 @@ jobs:
             cat evidence/capture-wide-test.log
             grep -F "OK (1 test)" evidence/capture-wide-test.log
             mkdir -p evidence/ui
-            for f in phase2i-dashboard-light phase2i-dashboard-dark phase2i-screening-light phase2i-screening-dark phase2i-roads-complete-dark phase2i-wide-dashboard-light phase2i-wide-dashboard-dark phase2i-wide-screening-dark; do
-              adb exec-out run-as com.koenterprises.territorycardstudio cat "files/$f.png" > "evidence/ui/$f.png"
-            done
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-dashboard-light.png > evidence/ui/phase2i-dashboard-light.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-dashboard-dark.png > evidence/ui/phase2i-dashboard-dark.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-screening-light.png > evidence/ui/phase2i-screening-light.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-screening-dark.png > evidence/ui/phase2i-screening-dark.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-roads-complete-dark.png > evidence/ui/phase2i-roads-complete-dark.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-wide-dashboard-light.png > evidence/ui/phase2i-wide-dashboard-light.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-wide-dashboard-dark.png > evidence/ui/phase2i-wide-dashboard-dark.png
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2i-wide-screening-dark.png > evidence/ui/phase2i-wide-screening-dark.png
 
       - name: Freeze Phase 2I validated source and evidence
         shell: bash
