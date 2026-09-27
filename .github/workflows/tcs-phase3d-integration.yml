@@ -54,10 +54,13 @@ jobs:
           sha256sum tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > evidence/test-apk.sha256
           # Old debug key is runner-local: sign a disposable copy, preserving accepted bytes.
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-          "$APKSIGNER" sign --ks "$HOME/.android/debug.keystore" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/emulator-app.apk tcs-src/app/build/outputs/apk/debug/app-debug.apk
+          keytool -genkeypair -keystore "$RUNNER_TEMP/phase3d-debug.jks" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 2 -dname "CN=Phase3D Emulator Debug" -noprompt
+          "$APKSIGNER" sign --ks "$RUNNER_TEMP/phase3d-debug.jks" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/emulator-app.apk tcs-src/app/build/outputs/apk/debug/app-debug.apk
+          "$APKSIGNER" sign --ks "$RUNNER_TEMP/phase3d-debug.jks" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/emulator-test.apk tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           "$APKSIGNER" verify --print-certs evidence/emulator-app.apk > evidence/emulator-signature.txt
-          "$APKSIGNER" verify --print-certs tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > evidence/test-signature.txt
+          "$APKSIGNER" verify --print-certs evidence/emulator-test.apk > evidence/test-signature.txt
           python3 .tooling/tcs/phase3d-verify-payload.py tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/emulator-app.apk evidence/apk-payload-parity.json
+          python3 .tooling/tcs/phase3d-verify-payload.py tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/emulator-test.apk evidence/test-payload-parity.json
           sha256sum evidence/emulator-app.apk > evidence/emulator-apk.sha256
       - name: Enable KVM
         run: sudo chmod 666 /dev/kvm
