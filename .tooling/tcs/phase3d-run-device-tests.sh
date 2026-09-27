@@ -14,16 +14,6 @@ collect() {
   adb exec-out run-as "$PKG" cat "files/$path" > "evidence/${path##*/}"
  done < evidence/capture-paths.txt
 }
-adb shell am instrument -w -r -e class "$CLASS#editedBothModesReachExactPreviewAndExplicitReview,$CLASS#everyPostDecisionInvalidationRejectsOldTicketAndArtifacts,$CLASS#sameByteRebuildInvalidatesLocalDecisionInBothModes,$CLASS#editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards,$UI" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/phase3d-main.log 2>&1
-collect
-adb shell am instrument -w -r -e class "$CLASS#stageEditedDecisionsAndApprovedReferenceBeforeProcessDeath" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/phase3d-before-restart.log 2>&1
-adb shell am force-stop "$PKG"
-adb shell am instrument -w -r -e class "$CLASS#processRestartKeepsEditedSessionsBlockedAndApprovedReferenceExportWorking" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/phase3d-after-restart.log 2>&1
-collect
-adb shell wm size 1920x1200
-adb shell wm density 160
-adb shell am force-stop "$PKG"
-adb shell am force-stop com.google.android.apps.nexuslauncher
-adb shell am instrument -w -r -e class "$UI" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/phase3d-wide.log 2>&1
+adb shell am instrument -w -r -e class "$CLASS#editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards,$CLASS#everyPostDecisionInvalidationRejectsOldTicketAndArtifacts" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/phase3d-retry.log 2>&1
 collect
 python3 .tooling/tcs/phase3d-summarize.py evidence

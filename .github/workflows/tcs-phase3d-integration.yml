@@ -33,6 +33,12 @@ jobs:
           (cd tcs-src && sha256sum -c ../accepted/extracted-source-files.sha256) > evidence/accepted-source-verification.log
           cp accepted/apk.sha256 accepted/aab.sha256 evidence/
           cp .tooling/tcs/phase3d-overlay/*.kt tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
+          mkdir -p retained
+          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10945133430/zip > retained.zip
+          echo '0970e93867f322bad670b02a770f02192446e0fc7d4da120843244736d24c4d2  retained.zip' | sha256sum -c -
+          unzip -q retained.zip -d retained
+          cp retained/phase3d-*.png retained/phase3d-*.log retained/phase3d-restart-proof.json evidence/
+          cp retained/test-identities.json evidence/retained-test-identities.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

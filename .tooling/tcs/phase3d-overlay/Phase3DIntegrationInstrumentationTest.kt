@@ -49,7 +49,7 @@ class Phase3DIntegrationInstrumentationTest {
             val preview=AndroidPdfPreviewService(x.coordinator,File(x.f.root,"preview"));val doc=preview.open(x.id,x.mode,PdfPreviewKind.PACKET)
             when(mutation) {
                 0->{val d=x.labels.read(x.id,x.mode)!!;x.labels.save(x.id,x.mode,d.latest.token,emptyList())}
-                1->{val d=x.extended.read(x.id,x.mode)!!;x.extended.save(x.id,x.mode,d.latest.token,d.latest.proposals.dropLast(1))}
+                1->{val d=x.extended.read(x.id,x.mode)!!;x.extended.discard(x.id,x.mode,d.latest.token)}
                 2->x.authority.revoke(x.id,x.mode,x.authority.status(x.id,x.mode).receiptId!!)
                 3->{x.now+=300001;assertTrue("Consumed ticket expiry must not alone expire authority",x.authority.status(x.id,x.mode).available);assertNotNull(s.state(x.id,x.mode).decision);x.now+=600000;assertFalse(x.authority.status(x.id,x.mode).available)}
                 4->x.f.importSource("phase3d-replaced")
@@ -74,13 +74,13 @@ class Phase3DIntegrationInstrumentationTest {
     }
     @Test fun editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards() {
         for(phone in listOf(false,true))Phase3CCFixture(phone).use {x->
-            val before=x.f.app.services.knowledgeBase;val reserved=before.assignments.filterKeys {it in setOf("250T","257A","297","298A","299","347TA")};assertEquals(6,reserved.size)
+            val before=x.f.app.services.knowledgeBase;val reserved=setOf("T250","A257","297","A298","299","TA347").associateWith {requireNotNull(before.assignments[it])};assertEquals(6,reserved.size)
             val roles=before.referenceRoles;build(x);val s=review(x);val t=requireNotNull(s.state(x.id,x.mode).ticket);s.record(t,"Reviewer",checks,true,true)
             val export=AndroidApprovedExportService(x.kb,x.pdf);assertFalse(export.state(x.id).canAttach);assertNull(export.state(x.id).ticket)
             denied{export.attach(x.id,x.coordinator.state(x.id,x.mode).packet!!.file.inputStream())}
             val forged=ApprovedExportTicket(x.id,t.manifest.canonicalFilename,t.manifest.packetPdfSha256,x.kb.revision,x.coordinator.state(x.id,x.mode).packet!!.file.length().toInt())
             val d=Destination();denied{export.exportCreated(forged,d)};assertEquals(0,d.opens);assertEquals(0,d.bytes.size());assertTrue(d.removed)
-            assertEquals(reserved,x.f.app.services.knowledgeBase.assignments.filterKeys {it in reserved.keys});assertEquals(roles,x.f.app.services.knowledgeBase.referenceRoles)
+            assertEquals(reserved,reserved.keys.associateWith {x.f.app.services.knowledgeBase.assignments[it]});assertEquals(roles,x.f.app.services.knowledgeBase.referenceRoles)
             for(id in reserved.keys){assertNull(x.f.app.services.approvedExport.state(id).ticket);assertFalse(x.f.app.services.approvedExport.state(id).canAttach)}
         }
     }
