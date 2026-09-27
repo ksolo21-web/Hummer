@@ -7,6 +7,8 @@ on:
     paths:
       - .github/workflows/tcs-phase2k-036-findings-audit.yml
       - .tooling/tcs/phase2k-overlay/**
+      - .tooling/tcs/phase2k-run-device-tests.sh
+      - .tooling/tcs/phase2k-evidence/frozen-run36323755251-pass62.xml
 
 permissions:
   contents: read
