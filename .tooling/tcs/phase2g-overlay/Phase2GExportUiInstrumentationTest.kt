@@ -114,7 +114,12 @@ class Phase2GExportUiInstrumentationTest {
             show("export-save"); composeRule.onNodeWithTag("export-save").assertIsEnabled()
             snapshot("phase2g-ready-dark.png")
             click("export-save"); picker(); snapshot("phase2g-system-picker.png", true)
-            assertTrue(inst.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK))
+            repeat(3) {
+                if (node { it.packageName?.toString()?.contains("documentsui") == true } != null) {
+                    assertTrue(inst.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK))
+                    SystemClock.sleep(400)
+                }
+            }
             ready(); show("export-message")
             composeRule.onNodeWithTag("export-message").assertTextContains("Save cancelled", substring = true)
             snapshot("phase2g-cancelled-dark.png")
