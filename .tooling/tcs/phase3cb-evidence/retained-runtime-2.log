@@ -1,0 +1,213 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest:
+INSTRUMENTATION_STATUS: test=corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest:
+INSTRUMENTATION_STATUS: test=missingInventoryStaleAndCorruptStatesRemainBlocked
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=missingInventoryStaleAndCorruptStatesRemainBlocked
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=phoneFormsPreserveUnavailableAndUnknownWithoutApproval
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Selected = 'true')
+The node is no longer in the tree, last known semantics:
+Node #303 at (l=53.0, t=2079.0, r=1027.0, b=2174.0)px, Tag: 'extended-evidence-ADDRESS_SOURCE-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+Focused = 'false'
+Role = 'Checkbox'
+Selected = 'false'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+Text = '[Synthetic authorized source, bbbbbbbbbbbbbbbb…]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 14 siblings
+Original selector: TestTag = 'extended-evidence-ADDRESS_SOURCE-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:165)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertIsSelected(Assertions.kt:88)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:38)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.evidence(Phase3CBEditorInstrumentationTest.kt:43)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:46)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.phoneFormsPreserveUnavailableAndUnknownWithoutApproval(Phase3CBEditorInstrumentationTest.kt:64)
+
+INSTRUMENTATION_STATUS: stream=
+Error in phoneFormsPreserveUnavailableAndUnknownWithoutApproval(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+java.lang.AssertionError: Failed to assert the following: (Selected = 'true')
+The node is no longer in the tree, last known semantics:
+Node #303 at (l=53.0, t=2079.0, r=1027.0, b=2174.0)px, Tag: 'extended-evidence-ADDRESS_SOURCE-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+Focused = 'false'
+Role = 'Checkbox'
+Selected = 'false'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+Text = '[Synthetic authorized source, bbbbbbbbbbbbbbbb…]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 14 siblings
+Original selector: TestTag = 'extended-evidence-ADDRESS_SOURCE-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:165)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertIsSelected(Assertions.kt:88)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:38)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.evidence(Phase3CBEditorInstrumentationTest.kt:43)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:46)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.phoneFormsPreserveUnavailableAndUnknownWithoutApproval(Phase3CBEditorInstrumentationTest.kt:64)
+
+INSTRUMENTATION_STATUS: test=phoneFormsPreserveUnavailableAndUnknownWithoutApproval
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=confirmationRaceAndOversizedGeometryFailWithoutLosingInput
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=confirmationRaceAndOversizedGeometryFailWithoutLosingInput
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Selected = 'true')
+Semantics of the node:
+Node #1440 at (l=321.0, t=2423.0, r=589.0, b=2507.0)px, Tag: 'extended-work-yellow-right'
+Focused = 'false'
+Role = 'Checkbox'
+Selected = 'false'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+Text = '[Inside right]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 4 siblings
+Selector used: (TestTag = 'extended-work-yellow-right')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertIsSelected(Assertions.kt:88)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:38)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:53)
+
+INSTRUMENTATION_STATUS: stream=
+Error in workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+java.lang.AssertionError: Failed to assert the following: (Selected = 'true')
+Semantics of the node:
+Node #1440 at (l=321.0, t=2423.0, r=589.0, b=2507.0)px, Tag: 'extended-work-yellow-right'
+Focused = 'false'
+Role = 'Checkbox'
+Selected = 'false'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+Text = '[Inside right]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 4 siblings
+Selector used: (TestTag = 'extended-work-yellow-right')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertIsSelected(Assertions.kt:88)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:38)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:53)
+
+INSTRUMENTATION_STATUS: test=workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 62.723
+There were 2 failures:
+1) phoneFormsPreserveUnavailableAndUnknownWithoutApproval(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+java.lang.AssertionError: Failed to assert the following: (Selected = 'true')
+The node is no longer in the tree, last known semantics:
+Node #303 at (l=53.0, t=2079.0, r=1027.0, b=2174.0)px, Tag: 'extended-evidence-ADDRESS_SOURCE-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+Focused = 'false'
+Role = 'Checkbox'
+Selected = 'false'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+Text = '[Synthetic authorized source, bbbbbbbbbbbbbbbb…]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 14 siblings
+Original selector: TestTag = 'extended-evidence-ADDRESS_SOURCE-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:165)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchSemanticsNode(SemanticsNodeInteraction.kt:84)
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:291)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertIsSelected(Assertions.kt:88)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:38)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.evidence(Phase3CBEditorInstrumentationTest.kt:43)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:46)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.phoneFormsPreserveUnavailableAndUnknownWithoutApproval(Phase3CBEditorInstrumentationTest.kt:64)
+2) workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+java.lang.AssertionError: Failed to assert the following: (Selected = 'true')
+Semantics of the node:
+Node #1440 at (l=321.0, t=2423.0, r=589.0, b=2507.0)px, Tag: 'extended-work-yellow-right'
+Focused = 'false'
+Role = 'Checkbox'
+Selected = 'false'
+Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+Text = '[Inside right]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+MergeDescendants = 'true'
+Has 4 siblings
+Selector used: (TestTag = 'extended-work-yellow-right')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertIsSelected(Assertions.kt:88)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.chip(Phase3CBEditorInstrumentationTest.kt:38)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:53)
+
+FAILURES!!!
+Tests run: 5,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1

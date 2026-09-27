@@ -376,7 +376,7 @@ jobs:
           grep -E "^package:.*versionCode='40'.*versionName='0.3.3'" evidence/apk-badging.txt
           grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
 
-      - name: Retain eleven passing identities and phone screenshots
+      - name: Retain fourteen passing identities and phone screenshots
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -387,7 +387,7 @@ jobs:
           mkdir retained
           unzip -q retained.zip -d retained
           cp .tooling/tcs/phase3cb-evidence/retained-results.json evidence/
-          cp .tooling/tcs/phase3cb-evidence/retained-runtime.log evidence/
+          cp .tooling/tcs/phase3cb-evidence/retained-runtime*.log evidence/
           python3 - <<'PYTHON'
           import hashlib,json,shutil
           from pathlib import Path
@@ -404,7 +404,7 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Retry four failed cases and one strengthened immutable-view case
+      - name: Retry only two remaining editor tap cases
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

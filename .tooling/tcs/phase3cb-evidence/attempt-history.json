@@ -44,6 +44,24 @@
           "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
         ]
       ]
+    },
+    {
+      "run_id": 36345502219,
+      "source_commit": "5104d7116349ecbd3bfbe6ef88a67d11ade12a7a",
+      "status": "14_PASS_2_FAIL",
+      "fresh_pass": 3,
+      "retained": 14,
+      "retry": [
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
+        ],
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
+        ]
+      ],
+      "reason": "Exact text and immutability passed; two physical taps missed moving/offscreen controls"
     }
   ]
 }

@@ -35,7 +35,21 @@ class Phase3CBEditorInstrumentationTest {
     private fun chip(tag:String) {
         rule.runOnIdle {rule.activity.currentFocus?.clearFocus();rule.activity.window.insetsController?.hide(android.view.WindowInsets.Type.ime())}
         rule.waitUntil(20000){rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())!=true}
-        scroll(tag);rule.onNodeWithTag(tag).performScrollTo();rule.waitForIdle();rule.onNodeWithTag(tag).performClick().assertIsSelected()
+        scroll(tag);rule.onNodeWithTag(tag).performScrollTo();rule.waitForIdle()
+        var previous:androidx.compose.ui.geometry.Rect?=null
+        rule.waitUntil(20000) {
+            runCatching {
+                val viewport=rule.onNodeWithTag("extended-editor").fetchSemanticsNode().boundsInRoot
+                val bounds=rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+                if(bounds.top<viewport.top+24 || bounds.bottom>viewport.bottom-24) {
+                    rule.onNodeWithTag("extended-editor").performScrollBy(0f,bounds.center.y-viewport.center.y);previous=null;false
+                } else {
+                    rule.onNodeWithTag(tag).assertIsDisplayed();val stable=previous==bounds;previous=bounds;stable
+                }
+            }.getOrDefault(false)
+        }
+        rule.onNodeWithTag(tag).performClick();rule.waitForIdle()
+        rule.waitUntil(20000){runCatching{rule.onNodeWithTag(tag).assertIsSelected()}.isSuccess}
     }
     private fun dialog(tag:String) {rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun type(index:Int,value:String) {scroll("extended-field-$index");rule.onNodeWithTag("extended-field-$index").performTextReplacement(value)}

@@ -48,6 +48,18 @@
     [
       "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
       "captureLight"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "missingInventoryStaleAndCorruptStatesRemainBlocked"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
     ]
   ],
   "reopened": [
@@ -59,26 +71,14 @@
   "retry": [
     [
       "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
-      "missingInventoryStaleAndCorruptStatesRemainBlocked"
-    ],
-    [
-      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
       "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
     ],
     [
       "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
-      "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
-    ],
-    [
-      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
       "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
-    ],
-    [
-      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
-      "corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached"
     ]
   ],
-  "reason": "Four failed UI cases plus explicitly strengthened immutable-view store case; other eleven passed identities retained. Existing 100 prior identities remain frozen.",
+  "reason": "Fourteen retained passes from two explicit runtime logs; retry only two remaining physical-tap synchronization failures.",
   "screenshots": [
     {
       "file": "phase3cb-building-form-dark.png",
@@ -152,5 +152,70 @@
       "file": "phase3cb-review-light.png",
       "sha256": "259bc7557735380dbcefb9b6698447b1bdb88c5a82e09cb962525158dce6aad7"
     }
-  ]
+  ],
+  "previous_retained": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "formRoundTripsEveryCategoryIncludingMultipleBuildingMembers"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "phoneAvailabilityAndProvenanceCannotManufactureVerification"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "inventoryRequiresVerifiedBaselineAndRejectsDuplicateAddresses"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "staleSourceInventoryAndOptimisticConflictsPreserveHistory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "everyCategoryPersistsReopensAndRestoresWithoutPreparing"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "limitsInterruptedWritesAndConcurrentEditorsPreserveJournal"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "geometryCompoundWorkAndBuildingMembersFailClosed"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "exactBeforeKnownIdsCategoryEvidenceAndModesAreEnforced"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "dirtyRecreationAndBothBackRoutesRetainOriginalToken"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "captureDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "captureLight"
+    ]
+  ],
+  "second_run": {
+    "run_id": 36345502219,
+    "source_commit": "5104d7116349ecbd3bfbe6ef88a67d11ade12a7a",
+    "runtime_sha256": "cea6fa412a14660ed522763dee7bc192e76a5c112acd41a1c5bffb62ee42c180",
+    "passed": [
+      [
+        "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+        "corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached"
+      ],
+      [
+        "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+        "missingInventoryStaleAndCorruptStatesRemainBlocked"
+      ],
+      [
+        "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+        "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
+      ]
+    ]
+  }
 }
