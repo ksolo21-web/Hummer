@@ -1,0 +1,16 @@
+{
+  "prior_main_files_checked": 63,
+  "unchanged_main_files": 60,
+  "changed_main_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt"
+  ],
+  "added_main_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/AndroidBuildWorkflowCoordinator.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/BuildWorkflowUi.kt"
+  ],
+  "removed_main_files": [],
+  "frozen_core_and_assets": "PASS_UNCHANGED",
+  "phase2da_pdf_service": "PASS_UNCHANGED"
+}

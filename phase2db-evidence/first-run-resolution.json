@@ -1,0 +1,12 @@
+{
+  "run_id": 36285877293,
+  "head_sha": "6f6c7110b6990ff4971cebf19b38aa5edc510c38",
+  "artifact_id": 10920373611,
+  "artifact_zip_sha256": "a73be1e44d37a7780cdbf340d29e66e5dd45d39179cf9fb8cb993b06ab5e1bb9",
+  "tests": 19,
+  "passed": 14,
+  "failed": 5,
+  "root_cause": "Synthetic androidTest Knowledge Base cloned assignment273 but retained ReferenceRole.displayId273, so frozen request factory correctly blocked synthetic999a.",
+  "repair_commit": "36d2b9711d0e8239ba38f85b523f2cd9130f4bbf",
+  "repair": "Bind test-only cloned reference role to synthetic identity; fieldReleaseAllowed remains false. No production guards changed."
+}

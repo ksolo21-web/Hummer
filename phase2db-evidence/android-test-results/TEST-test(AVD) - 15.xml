@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="19" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-09-27T02:02:43" hostname="localhost">
+  <testsuite name="com.koenterprises.territorycardstudio.Phase2BWorkspaceInstrumentationTest" tests="4" failures="0" errors="0" skipped="0" time="38.950" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="realKnowledgeBaseModesAndTabsMatchPlan" classname="com.koenterprises.territorycardstudio.Phase2BWorkspaceInstrumentationTest" time="22.311" />
+    <testcase name="needsNewCardReadinessStaysFailClosed" classname="com.koenterprises.territorycardstudio.Phase2BWorkspaceInstrumentationTest" time="5.512" />
+    <testcase name="telephoneWorkspaceUsesPhoneListAndNeverShowsRegularModeSwitch" classname="com.koenterprises.territorycardstudio.Phase2BWorkspaceInstrumentationTest" time="5.747" />
+    <testcase name="regularWorkspaceCanSwitchToLetterWritingTabsWithoutChangingAssignment" classname="com.koenterprises.territorycardstudio.Phase2BWorkspaceInstrumentationTest" time="5.380" />
+  </testsuite>
+  <testsuite name="com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest" tests="5" failures="0" errors="0" skipped="0" time="20.460" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="captureDarkImportAndVerificationScreens" classname="com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest" time="5.467" />
+    <testcase name="workspaceNavigatesImportToVerificationWithPersistedSource" classname="com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest" time="4.343" />
+    <testcase name="sourceMapIntakeIsPersistedHashBoundAndNeverAssignmentAuthority" classname="com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest" time="4.856" />
+    <testcase name="verificationModelUsesFrozenEngineStateAndRemainsFailClosed" classname="com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest" time="2.411" />
+    <testcase name="intakeRejectsMimeSignatureMismatch" classname="com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest" time="3.383" />
+  </testsuite>
+  <testsuite name="com.koenterprises.territorycardstudio.Phase2DBCaptureInstrumentationTest" tests="1" failures="0" errors="0" skipped="0" time="10.014" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="captureLightDarkBlockedAndGeneratedBuildScreens" classname="com.koenterprises.territorycardstudio.Phase2DBCaptureInstrumentationTest" time="10.014" />
+  </testsuite>
+  <testsuite name="com.koenterprises.territorycardstudio.Phase2DBCoordinatorInstrumentationTest" tests="4" failures="0" errors="0" skipped="0" time="8.417" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="corruptedSourceCanBeRecoveredByReimportingOriginal" classname="com.koenterprises.territorycardstudio.Phase2DBCoordinatorInstrumentationTest" time="2.864" />
+    <testcase name="changedSourceAndTamperedArtifactsInvalidateReadyState" classname="com.koenterprises.territorycardstudio.Phase2DBCoordinatorInstrumentationTest" time="0.838" />
+    <testcase name="coordinatorBuildsBothModesThroughProductionAdapterAndPreservesApprovalGate" classname="com.koenterprises.territorycardstudio.Phase2DBCoordinatorInstrumentationTest" time="3.078" />
+    <testcase name="mutablePreparedDataAndWrongBindingsCannotGenerate" classname="com.koenterprises.territorycardstudio.Phase2DBCoordinatorInstrumentationTest" time="1.637" />
+  </testsuite>
+  <testsuite name="com.koenterprises.territorycardstudio.Phase2DBNavigationInstrumentationTest" tests="1" failures="0" errors="0" skipped="0" time="3.911" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="realWorkspaceOpensBlockedBuildWithoutCommissioningTerritory" classname="com.koenterprises.territorycardstudio.Phase2DBNavigationInstrumentationTest" time="3.911" />
+  </testsuite>
+  <testsuite name="com.koenterprises.territorycardstudio.Phase2DPage2InstrumentationTest" tests="2" failures="0" errors="0" skipped="0" time="4.868" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="telephoneUsesFrozenPhonePageAndKeepsUnavailableNumbersExplicit" classname="com.koenterprises.territorycardstudio.Phase2DPage2InstrumentationTest" time="3.132" />
+    <testcase name="letterWritingUsesFrozenAssemblerAndRejectsStaleOrMismatchedInputs" classname="com.koenterprises.territorycardstudio.Phase2DPage2InstrumentationTest" time="1.736" />
+  </testsuite>
+  <testsuite name="com.koenterprises.territorycardstudio.UiFoundationInstrumentationTest" tests="2" failures="0" errors="0" skipped="0" time="6.553" timestamp="2026-09-27T02:02:43" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="dashboardUsesRealKnowledgeBaseAndNavigatesToWorkspace" classname="com.koenterprises.territorycardstudio.UiFoundationInstrumentationTest" time="3.414" />
+    <testcase name="appearancePreferencePersistsAcrossStoreInstances" classname="com.koenterprises.territorycardstudio.UiFoundationInstrumentationTest" time="3.139" />
+  </testsuite>
+</testsuites>

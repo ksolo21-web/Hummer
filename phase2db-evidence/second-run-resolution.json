@@ -1,0 +1,13 @@
+{
+  "run_id": 36286349289,
+  "head_sha": "36d2b9711d0e8239ba38f85b523f2cd9130f4bbf",
+  "artifact_id": 10919729614,
+  "artifact_zip_sha256": "0eeb89fbbd92ae9248f0df867c3def458db9992b5f59d5076d30dc334f8b6d16",
+  "connected_tests": 19,
+  "failures": 0,
+  "skipped": 0,
+  "dedicated_capture_test": "PASS",
+  "freeze": "BLOCKED_BY_BLANK_FIRST_DISPLAY_FRAME",
+  "repair_commit": "4e0eb218670f5565aca05416d297d0b9828b5ef8",
+  "repair": "Wait for actual node draw/PixelCopy and nonblank displayed pixels with expected theme; use production MainActivity host; capture both disabled controls. Freeze pixel-content requirement remains unchanged."
+}
