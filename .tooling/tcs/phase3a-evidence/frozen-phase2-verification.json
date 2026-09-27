@@ -1,0 +1,48 @@
+{
+  "status": "MECHANICAL_PASS_PENDING_INDEPENDENT_2K_AND_AGGREGATE_AUDIT",
+  "run_id": 36330985449,
+  "source_commit": "94320e092cf04b91dbe87062e8b54bc8b2c69536",
+  "version": "0.2.11",
+  "code": 36,
+  "connected_tests": 67,
+  "frozen_runtime_provenance": {
+    "original62_run": 36323755251,
+    "theme2_run": 36328681508,
+    "retained_unaffected": 59,
+    "reopened_cases": 5,
+    "new_regressions": 3,
+    "current_targeted": 8
+  },
+  "prior_visual_run": 36310455841,
+  "prior_visual_count": 20,
+  "failures": 0,
+  "skipped": 0,
+  "manifest_files": 2573,
+  "frozen_core_assets": 78,
+  "prior_tests": 21,
+  "app_changes": [
+    "WorkspaceModeUi.kt",
+    "BuildWorkflowUi.kt",
+    "PdfPreviewUi.kt",
+    "VerificationWorkflowUi.kt",
+    "AndroidBuildWorkflowCoordinator.kt"
+  ],
+  "source_sha256": "add0b3df59f5c9a2b08481325eda980607a30e4c9392329e367b71043b1b61a4",
+  "apk_sha256": "503466bebe57c2bad5d95495205c23e550e2ebaa954e7f863e6abc29bbcf3adf",
+  "aab_sha256": "f45a1eedb0573b3ea1c3b347cd6909d000b99358429d5027f739772fb376bae5",
+  "screenshots": {
+    "phase2k-audit-dark.png": "4e9299123ebd38d14493c88c9e62a7fd8d2361d8741e51e2ab2aac1c1c7ada77",
+    "phase2k-audit-light.png": "532dd5feb5a8a95be4df113fed53514203ce3ee690baff2704e0c3f8f4466ec2",
+    "phase2k-findings-dark.png": "4ab7283744a1527eee0756c2b7294784dfb0f1a31d88773d9279e329d00df2e3",
+    "phase2k-findings-light.png": "edd75536a044ad7ecbdcc8d68707bf7cafef87fe6c9015baabd3d13ecb3ac4a8",
+    "phase2k-preview-dark.png": "2988155db8c040323c6ae19e7f7802a75d5a8a31e598e663e2e9a7588e0ef1d8",
+    "phase2k-preview-light.png": "f7d35ef19e8f1725d2e88126ac10893f4c2fad8089351ff23421b0f5239cb113",
+    "phase2k-wide-audit-dark.png": "87a3a15344d4a90a447269c14d192894ead5f310f18ed01535a02f4555f49284",
+    "phase2k-wide-audit-light.png": "3510e68a6442ecea31f5ebac4deee7d1760a7d8d9245fe4e3cfa91b828972c60",
+    "phase2k-wide-findings-dark.png": "158d781e85bfd8ca2dab60d39e1935a41b4a30d70071075bede1f4be95845508",
+    "phase2k-wide-findings-light.png": "5ed37200eae5ca18eec599fe4b802532949d06fd0d8e581807c00a94e80baae0",
+    "phase2k-wide-preview-dark.png": "d201ff3a703860eaa922c975b7ad41b150948b2a795cf2d00ed8d91a412093ab",
+    "phase2k-wide-preview-light.png": "d4f14cd13d98b25608566b6378cd21b41e6a82ecae72afa3ec9b59b55a776d7e"
+  },
+  "reserved_pdf_sweep": 0
+}

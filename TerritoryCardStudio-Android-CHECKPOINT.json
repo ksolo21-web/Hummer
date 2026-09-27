@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "version": "0.2.11-phase2k-findings-audit",
   "milestone": "phase-2-production-ui-passed",
-  "status": "PHASE_2_PASSED_PHASE_3_OPEN_NOT_STARTED",
+  "status": "PHASE_3A_IN_PROGRESS_PHASE_2_FROZEN",
   "phase_milestone_before": "Phase2K and aggregate Phase2 IN_PROGRESS",
   "phase_milestone_after": "Phase2K and aggregate Phase2 PASSED; Phase3 OPEN_NOT_STARTED",
   "preserved_passed_milestones": [
@@ -453,8 +453,8 @@
     "critic_agent": "/root/phase2j_critic"
   },
   "last_completed_package": "0.2.11-phase2k-findings-audit",
-  "next_open_gate": "Phase 3 \u2014 controlled editing / commissioning workflow",
-  "next_bounded_task": "Define bounded Phase3 editing acceptance against the frozen engine and shared source contracts; no real reserved-card commissioning until Phase7. Keep all passed Phase1\u20132 gates frozen unless a changed dependency or exact defect reopens them.",
+  "next_open_gate": "Phase3A editing draft service acceptance",
+  "next_bounded_task": "Verify ten focused draft-service cases, independently review actual source/runtime/package evidence, then close3A and continue3B editorUI.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -526,7 +526,7 @@
   ],
   "source_package": "TerritoryCardStudio-Android-0.2.11-phase2k-source.tar.xz",
   "source_package_sha256": "add0b3df59f5c9a2b08481325eda980607a30e4c9392329e367b71043b1b61a4",
-  "saved_at_utc": "2026-09-27T16:01:52.707592+00:00",
+  "saved_at_utc": "2026-09-27T16:35:39.979221+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -1338,5 +1338,16 @@
     "real_territory_commissioning": "NOT_PERFORMED",
     "authority_promotion": "NOT_PERFORMED",
     "candidate_field_export": "BLOCKED_UNCHANGED"
+  },
+  "phase3a_in_progress": {
+    "status": "IMPLEMENTED_PENDING_TARGETED_RUNTIME_AND_INDEPENDENT_ACCEPTANCE",
+    "candidate_version": "0.3.0",
+    "candidate_code": 37,
+    "requirements": ".tooling/tcs/phase3a-evidence/requirements.md",
+    "planned_tests": 10,
+    "frozen_phase2_cases": 67,
+    "source_baseline": "a61f98f2ce92b0337970ee9bac93da32250b64ea",
+    "scope": "App-private revisioned unvalidated road/building label proposals; no UI/build bridge yet",
+    "reserved_territories": "UNTOUCHED"
   }
 }

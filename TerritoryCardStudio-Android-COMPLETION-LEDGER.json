@@ -12,7 +12,7 @@
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
-    "3_editing_commissioning_workflow": "OPEN_NOT_STARTED",
+    "3_editing_commissioning_workflow": "IN_PROGRESS_3A",
     "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
@@ -37,13 +37,17 @@
     "2I_dashboard_complete_browsing": "PASSED",
     "2J_workspace_inventory_verification_binding": "PASSED",
     "2K_defects_audit_output": "PASSED",
-    "2_final_integration_audit": "PASSED"
+    "2_final_integration_audit": "PASSED",
+    "3A_editing_draft_foundation": "IN_PROGRESS",
+    "3B_editor_ui": "NOT_STARTED_DEPENDS_3A",
+    "3C_validated_editing_preparation": "NOT_STARTED_DEPENDS_3B",
+    "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C"
   },
   "phase_milestone_before": "Phase2K and aggregate Phase2 IN_PROGRESS",
   "phase_milestone_after": "Phase2K and aggregate Phase2 PASSED; Phase3 OPEN_NOT_STARTED",
   "last_completed_package": "0.2.11-phase2k-findings-audit",
-  "next_open_gate": "Phase 3 \u2014 controlled editing / commissioning workflow",
-  "next_bounded_task": "Define bounded Phase3 editing acceptance against the frozen engine and shared source contracts; no real reserved-card commissioning until Phase7. Keep all passed Phase1\u20132 gates frozen unless a changed dependency or exact defect reopens them.",
+  "next_open_gate": "Phase3A editing draft service acceptance",
+  "next_bounded_task": "Verify ten focused draft-service cases, independently review actual source/runtime/package evidence, then close3A and continue3B editorUI.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -319,7 +323,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T16:01:52.710351+00:00",
+  "saved_at_utc": "2026-09-27T16:35:39.981044+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -1099,5 +1103,16 @@
     "2J": "NOT_STARTED_NEXT",
     "2K": "NOT_STARTED",
     "audit": "COMPLETED_GAPS_IDENTIFIED"
+  },
+  "phase3a_in_progress": {
+    "status": "IMPLEMENTED_PENDING_TARGETED_RUNTIME_AND_INDEPENDENT_ACCEPTANCE",
+    "candidate_version": "0.3.0",
+    "candidate_code": 37,
+    "requirements": ".tooling/tcs/phase3a-evidence/requirements.md",
+    "planned_tests": 10,
+    "frozen_phase2_cases": 67,
+    "source_baseline": "a61f98f2ce92b0337970ee9bac93da32250b64ea",
+    "scope": "App-private revisioned unvalidated road/building label proposals; no UI/build bridge yet",
+    "reserved_territories": "UNTOUCHED"
   }
 }
