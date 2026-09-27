@@ -5,7 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-internal class Phase3CCFixture(val phone:Boolean=false,val unknownPhone:Boolean=false,assignmentDocument:(ByteArray)->ByteArray={it},inventoryTransform:(Page2Inventory)->Page2Inventory={it}):AutoCloseable {
+internal class Phase3CCFixture(val phone:Boolean=false,val unknownPhone:Boolean=false,val phoneChange:Boolean=true,val omitPhoneFact:Boolean=false,assignmentDocument:(ByteArray)->ByteArray={it},inventoryTransform:(Page2Inventory)->Page2Inventory={it}):AutoCloseable {
     val f=Phase2DBFixture(phone);val id=f.identity.displayId;val mode=f.mode;val stamp=f.stamp
     val building=BuildingGeometry("building-1","1","apartment",true,"",listOf("1"),listOf(BuildingLabelItem("1",Point2D(350.0,165.0),null,0.0,10.0)),listOf(Point2D(300.0,140.0),Point2D(400.0,140.0),Point2D(400.0,190.0),Point2D(300.0,190.0)))
     fun fact(kind:String,item:String,value:JSONObject,verification:JSONObject=JSONObject())=JSONObject().put("kind",kind).put("item",item).put("value",value).put("verification",verification)
@@ -21,7 +21,7 @@ internal class Phase3CCFixture(val phone:Boolean=false,val unknownPhone:Boolean=
     val inventoryFacts=buildList {
         add(fact(if(phone)"PHONE_ADDRESS" else "LETTER_ADDRESS",if(phone)"phone-1" else "address-1",ExtendedValues.json(AddressValue("102 Verified Example Way","","","","","building-1")),
             JSONObject().put("status","VERIFIED").put("verifiedAt",stamp).put("boundary","INSIDE_LOCKED_WORKING_AREA").put("boundarySha",baseBoundary).put("conflicts",JSONArray())))
-        if(phone)add(fact("PHONE_NUMBER","phone-1",ExtendedValues.json(PhoneValue(if(unknownPhone)ProposedPhoneState.UNKNOWN else ProposedPhoneState.NUMBER,if(unknownPhone)"" else "2485550111")),
+        if(phone && !omitPhoneFact)add(fact("PHONE_NUMBER","phone-1",ExtendedValues.json(PhoneValue(if(unknownPhone)ProposedPhoneState.UNKNOWN else ProposedPhoneState.NUMBER,if(unknownPhone)"" else if(phoneChange)"2485550111" else "2025550101")),
             JSONObject().put("state",if(unknownPhone)"NEEDS_REVIEW" else "VERIFIED_NUMBER").put("verifiedAt",if(unknownPhone)"" else stamp).put("bindingVerified",!unknownPhone)))
     }
     val inventoryBytes=document(inventoryFacts);val inventoryHash=BundleIntegrity.sha256(inventoryBytes.inputStream())
@@ -59,7 +59,7 @@ internal class Phase3CCFixture(val phone:Boolean=false,val unknownPhone:Boolean=
     init {coordinator.prepare(id,mode,f.source.sha256,input,inventory)}
     fun seedLabels() {val d=labels.create(id,mode);labels.save(id,mode,d.latest.token,listOf(DraftLabelEdit(DraftLabelKind.ROAD,"adapter-alpha","Alpha Rd","Alpha Road","Independent source correction",assignmentHash)))}
     fun seedExtended() {val c=extended.catalog(id,mode);val d=extended.create(id,mode,c.binding)
-        val all=assignmentFacts.drop(1)+inventoryFacts
+        val all=assignmentFacts.drop(1)+inventoryFacts.filterNot {it.getString("kind")=="PHONE_NUMBER" && !phoneChange}
         extended.save(id,mode,d.latest.token,all.map {f->val kind=ExtendedKind.valueOf(f.getString("kind"));val item=c.items.single {it.kind==kind && it.id==f.getString("item")};val e=item.evidence.first {it.sha256==if(kind in setOf(ExtendedKind.LETTER_ADDRESS,ExtendedKind.PHONE_ADDRESS,ExtendedKind.PHONE_NUMBER))inventoryHash else assignmentHash}
             ExtendedProposal(kind,item.id,item.before,ExtendedValues.parse(kind,f.getJSONObject("value")),"Compare independently authored source facts",e.role,e.sha256)})
     }

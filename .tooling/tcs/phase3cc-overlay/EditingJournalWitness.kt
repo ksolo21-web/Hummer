@@ -4,7 +4,7 @@ import com.koenterprises.territorycardstudio.core.BundleIntegrity
 import java.io.File
 
 /** A lock-free, read-only check of previously integrity-validated committed journal bytes. */
-internal class EditingJournalWitness private constructor(private val file:File,private val limit:Int,private val expected:String?) {
+internal class EditingJournalWitness private constructor(internal val file:File,private val limit:Int,private val expected:String?) {
     companion object {
         private fun digest(file:File,limit:Int):String? {
             require(!File(file.path+".bak").exists() && !File(file.path+".new").exists()) {"Journal write/recovery in progress"}

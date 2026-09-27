@@ -32,15 +32,15 @@ fun EditingPreparationScreen(modifier:Modifier,id:String,mode:WorkspaceMode,auth
     var prepared by remember {mutableStateOf(false)}
     fun refresh() {scope.launch {val s=withContext(Dispatchers.IO){authority.status(id,mode)};status=s
         val t=ticket;if(t!=null && !withContext(Dispatchers.IO){preparation.ticketCurrent(t)} && ticket==t){ticket=null;message="Validation expired or its source/proposals changed. Validate again."}}}
-    fun action(success:String,operation:()->ExtendedPreparationTicket?) {
-        if(busy || !active)return
+    fun action(success:String,returnedDocument:Boolean=false,operation:()->ExtendedPreparationTicket?) {
+        if(busy || (!active && !returnedDocument))return
         val old=ticket;ticket=null;busy=true;message=null;prepared=false
         scope.launch {try {val result=withContext(Dispatchers.IO){runCatching {old?.let {runCatching{preparation.cancel(it)}};operation()}}
             result.onSuccess {ticket=it;message=success;prepared=success.startsWith("Prepared")}.onFailure {message=it.message ?: "Preparation blocked; existing candidate was preserved"}
         }finally{busy=false;refresh()}}
     }
     fun leave() {if(!busy){if(ticket!=null)confirm=PreparationConfirmation("back",ticket,status.receiptId) else onBack()}}
-    val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->if(uri!=null)action("Independent source facts imported. Review and validate before preparing.") {
+    val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->if(uri!=null)action("Independent source facts imported. Review and validate before preparing.",returnedDocument=true) {
         val bytes=requireNotNull(context.contentResolver.openInputStream(uri)).use {it.readBytesBounded(AndroidEditingAuthorityStore.MAX_BYTES)}
         authority.importFacts(id,mode,bytes);null
     }}

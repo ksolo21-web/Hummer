@@ -21,6 +21,11 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class Phase3CCPreparationInstrumentationTest {
+    @get:Rule val diagnostics=object:org.junit.rules.TestWatcher(){override fun failed(e:Throwable,d:org.junit.runner.Description){
+        val dir=InstrumentationRegistry.getInstrumentation().targetContext.filesDir
+        File(dir,"phase3cc-debug-${d.methodName}.txt").writeText(e.stackTraceToString()+"\n"+runCatching{rule.onRoot().printToString()}.getOrDefault("No Compose tree"))
+        InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let {b->File(dir,"phase3cc-debug-${d.methodName}.png").outputStream().use {b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
+    }}
     @get:Rule val rule=createAndroidComposeRule<ComponentActivity>()
     @Composable private fun Content(x:Phase3CCFixture,theme:AppearanceMode=AppearanceMode.LIGHT,onBack:()->Unit={}) {
         TerritoryCardStudioTheme(theme){Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){EditingPreparationScreen(Modifier.fillMaxSize().safeDrawingPadding(),x.id,x.mode,x.authority,x.preparation,onBack)}}
@@ -43,10 +48,36 @@ class Phase3CCPreparationInstrumentationTest {
             click("preparation-back");rule.onNodeWithTag("territory-workspace").assertExists()
         }
     }
+    private fun nativeNode(text:String):android.view.accessibility.AccessibilityNodeInfo? {
+        val root=InstrumentationRegistry.getInstrumentation().uiAutomation.rootInActiveWindow ?: return null
+        fun find(n:android.view.accessibility.AccessibilityNodeInfo):android.view.accessibility.AccessibilityNodeInfo? {
+            if(n.text?.toString()==text || n.contentDescription?.toString()==text)return n
+            for(i in 0 until n.childCount){val c=n.getChild(i) ?: continue;find(c)?.let {return it}}
+            return null
+        }
+        return find(root)
+    }
+    private fun nativeClick(text:String) {rule.waitUntil(15000){nativeNode(text)!=null};var n=nativeNode(text)!!;while(!n.isClickable && n.parent!=null)n=n.parent;assertTrue(n.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))}
+    private fun document(x:Phase3CCFixture,bytes:ByteArray):android.net.Uri {
+        val values=android.content.ContentValues().apply {put(android.provider.MediaStore.Downloads.DISPLAY_NAME,"phase3cc-${java.util.UUID.randomUUID()}.json");put(android.provider.MediaStore.Downloads.MIME_TYPE,"application/json");put(android.provider.MediaStore.Downloads.RELATIVE_PATH,"Download/")}
+        val uri=requireNotNull(x.f.app.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,values))
+        x.f.app.contentResolver.openOutputStream(uri)!!.use {it.write(bytes)};return uri
+    }
+    private fun selectDocument(x:Phase3CCFixture,uri:android.net.Uri) {
+        val name=x.f.app.contentResolver.query(uri,arrayOf(android.provider.MediaStore.Downloads.DISPLAY_NAME),null,null,null)!!.use {it.moveToFirst();it.getString(0)}
+        click("preparation-import")
+        rule.waitUntil(15000){nativeNode("Show roots")!=null || nativeNode(name)!=null}
+        if(nativeNode(name)==null){nativeClick("Show roots");nativeClick("Downloads")}
+        nativeClick(name);idle()
+    }
     @Test fun missingAuthorityAndFreshProviderFailurePreserveCandidate() {
         Phase3CCFixture().use {x->x.seed();val before=x.coordinator.currentCandidateVersion(x.id,x.mode);rule.setContent {Content(x)};ready(false)
             scroll("preparation-validate");rule.onNodeWithTag("preparation-validate").assertIsNotEnabled()
-            x.importAll();click("preparation-refresh");ready();x.evidenceTransform={emptyList()};click("preparation-validate");idle()
+            click("preparation-import");rule.waitUntil(15000){nativeNode("Show roots")!=null}
+            assertTrue(InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));rule.waitForIdle();ready(false)
+            val uris=listOf(document(x,"{}".toByteArray()),document(x,x.assignmentBytes),document(x,x.inventoryBytes))
+            try {selectDocument(x,uris[0]);ready(false);selectDocument(x,uris[1]);ready();selectDocument(x,uris[2]);ready();assertEquals(2,x.authority.status(x.id,x.mode).sourceCount)}finally{uris.forEach {x.f.app.contentResolver.delete(it,null,null)}}
+            x.evidenceTransform={emptyList()};click("preparation-validate");idle()
             scroll("preparation-message");rule.onNodeWithTag("preparation-message").assertTextContains("Fresh independent geometry verification blocked preparation")
             assertEquals(before,x.coordinator.currentCandidateVersion(x.id,x.mode));rule.onNodeWithTag("preparation-prepare").assertDoesNotExist()
         }

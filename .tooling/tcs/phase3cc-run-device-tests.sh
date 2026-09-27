@@ -42,6 +42,7 @@ for c,n in passed+failed:
 E.ElementTree(root).write('evidence/TEST-phase3cc.xml',encoding='UTF-8',xml_declaration=True)
 rows=[]
 for p in sorted(Path('evidence').glob('phase3cc-*.png')):
+ if '-debug-' in p.name:continue
  im=Image.open(p).convert('RGB');wide='-wide-' in p.name
  assert im.size==((1920,1200) if wide else (1080,2400)),(p,im.size)
  assert max(ImageStat.Stat(im).stddev)>5,p

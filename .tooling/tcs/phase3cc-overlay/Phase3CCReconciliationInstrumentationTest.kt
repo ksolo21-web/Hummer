@@ -41,6 +41,7 @@ class Phase3CCReconciliationInstrumentationTest {
             fails{x.authority.importFacts(x.id,x.mode,ByteArray(AndroidEditingAuthorityStore.MAX_BYTES+1))}
             assertFalse(x.authority.status(x.id,x.mode).available)
             x.importAll();fails{x.authority.importFacts(x.id,x.mode,x.assignmentBytes)}
+            repeat(3){x.authority.revoke(x.id,x.mode,x.authority.status(x.id,x.mode).receiptId!!);assertEquals(0,x.authorityRoot.listFiles()!!.size);x.importAll();assertEquals(2,x.authorityRoot.listFiles()!!.size)}
         }
         listOf<(ByteArray)->ByteArray>(
             {b->String(b).replace("\"schema\":1","\"schema\":1,\"schema\":1").toByteArray()},
@@ -53,6 +54,8 @@ class Phase3CCReconciliationInstrumentationTest {
             Page2Inventory.Telephone(inv.copy(provenance=inv.provenance+inv.provenance.first().copy(provenanceId="different",sourceSha256="d".repeat(64)),
                 records=inv.records.mapIndexed {i,r->if(i==0)r.copy(addressProvenanceIds=listOf("different"),phoneProvenanceIds=listOf("different"))else r}))
         }).use {x->fails{x.authority.importFacts(x.id,x.mode,x.inventoryBytes)}}
+        Phase3CCFixture(true,phoneChange=false,omitPhoneFact=true).use {x->x.seed();x.importAll();fails{x.validate()}}
+        Phase3CCFixture(true,phoneChange=false).use {x->x.seed();x.importAll();x.preparation.prepare(x.validate());val inv=(x.coordinator.editingBaseline(x.id,x.mode).third as Page2Inventory.Telephone).inventory;assertEquals("2025550101",inv.records.first().phoneNumber);assertTrue(inv.records.first().phoneRecordBindingVerified)}
         Phase3CCFixture(true,unknownPhone=true).use {x->x.seed();x.importAll();val previous=x.coordinator.currentCandidateVersion(x.id,x.mode);fails{x.validate()};assertEquals(previous,x.coordinator.currentCandidateVersion(x.id,x.mode))}
     }
     @Test fun exactBothJournalsRejectMissingExtraAndContradictoryChanges() {

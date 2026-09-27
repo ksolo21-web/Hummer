@@ -24,6 +24,12 @@ class AndroidEditingAuthorityStore internal constructor(private val root:File,pr
     private val clock:()->Long={SystemClock.elapsedRealtime()}) {
     companion object {const val MAX_BYTES=1024*1024;const val PARSER_REVISION="authority-facts-v1"}
     private val sessions=ConcurrentHashMap<String,EditingAuthorityReceipt>()
+    init { cleanup() }
+    @Synchronized private fun cleanup() {
+        sessions.entries.removeAll { !current(it.value) }
+        val retained=sessions.values.flatMap {it.witnesses}.map {it.file.canonicalPath}.toSet()
+        root.listFiles()?.filter {it.isFile && it.canonicalPath !in retained}?.forEach {require(it.delete()) {"Could not remove expired authority import"}}
+    }
     private fun key(id:String,mode:WorkspaceMode)="$id:${mode.name}"
     internal fun current(r:EditingAuthorityReceipt):Boolean=runCatching {
         val now=clock();sessions[key(r.territory,r.mode)]===r && now>=r.issued && now<=r.expires &&
@@ -38,7 +44,7 @@ class AndroidEditingAuthorityStore internal constructor(private val root:File,pr
         return if(r!=null && current(r))EditingAuthorityStatus(true,r.hashes.size,r.facts.size,"Independent source facts ready for reconciliation",r.id)
         else EditingAuthorityStatus(false,0,0,"Independent authority facts are unavailable. An imported map or draft reference alone cannot authorize these changes.")
     }
-    @Synchronized fun revoke(id:String,mode:WorkspaceMode,expectedReceiptId:String) {require(sessions[key(id,mode)]?.id==expectedReceiptId){"Authority receipt changed; refresh first"};sessions.remove(key(id,mode))}
+    @Synchronized fun revoke(id:String,mode:WorkspaceMode,expectedReceiptId:String) {require(sessions[key(id,mode)]?.id==expectedReceiptId){"Authority receipt changed; refresh first"};sessions.remove(key(id,mode));cleanup()}
     private fun parse(bytes:ByteArray):JSONObject {
         require(bytes.size in 1..MAX_BYTES) {"Authority file exceeds size limit"}
         val text=Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString()
@@ -50,6 +56,7 @@ class AndroidEditingAuthorityStore internal constructor(private val root:File,pr
         return o
     }
     @Synchronized fun importFacts(id:String,mode:WorkspaceMode,submittedBytes:ByteArray):EditingAuthorityStatus {
+        cleanup();require(sessions.size<16 || sessions.containsKey(key(id,mode))) {"Remove an unused territory authority import first"}
         val bytes=submittedBytes.copyOf()
         val source=requireNotNull(sources.verifiedRecord(id)) {"Import the current source map first"}
         val baseline=coordinator.editingBaseline(id,mode);val slot=requireNotNull(kb.assignments[id])
@@ -91,11 +98,13 @@ class AndroidEditingAuthorityStore internal constructor(private val root:File,pr
         require(old==null || old.facts.none {a->facts.any {it.key==a.key}}) {"Overlapping authority sources require explicit replacement, not precedence"}
         require(root.exists() || root.mkdirs());val file=File(root,"${UUID.randomUUID()}.json");val atomic=AtomicFile(file);val stream=atomic.startWrite()
         try {stream.write(bytes);atomic.finishWrite(stream)}catch(t:Throwable){atomic.failWrite(stream);throw t}
+        try {
         val witness=EditingJournalWitness.capture(file,MAX_BYTES)
         require(sources.verifiedRecord(id)==source && coordinator.editingBaseline(id,mode).second==baseline.second) {"Baseline changed during authority import"}
         val now=clock();val r=EditingAuthorityReceipt(UUID.randomUUID().toString(),id,mode,baseline.second,source,
             EditingSnapshots.detach(baseline.first),EditingSnapshots.detach(baseline.third),ExtendedValues.frozen(old?.facts.orEmpty()+facts),
             ExtendedValues.frozen(old?.hashes.orEmpty()+hash),ExtendedValues.frozen(old?.witnesses.orEmpty()+witness),now,now+900000)
-        sessions[key(id,mode)]=r;return status(id,mode)
+        sessions[key(id,mode)]=r;cleanup();return status(id,mode)
+        } finally {if(sessions.values.none {r->r.witnesses.any {it.file==file}})atomic.delete()}
     }
 }

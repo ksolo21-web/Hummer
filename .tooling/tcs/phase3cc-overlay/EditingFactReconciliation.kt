@@ -35,7 +35,12 @@ internal object EditingFactReconciliation {
             }
         }
         val changed=expected.filter {(k,v)->before[k]!=v}.keys
-        require(r.facts.none {it.kind in setOf("LETTER_ADDRESS","PHONE_ADDRESS","PHONE_NUMBER") && it.key !in changed}) {"Unrequested inventory verification changes are not allowed"}
+        val rebindings=when(val inventory=r.inventory) {
+            is Page2Inventory.Telephone->inventory.inventory.records.filter {it.phoneState==TelephoneNumberState.VERIFIED_NUMBER && "PHONE_ADDRESS:${it.recordId}" in changed}.map {"PHONE_NUMBER:${it.recordId}"}.toSet()
+            else->emptySet()
+        }
+        require(rebindings.all {key->r.facts.any {it.key==key && JSONObject(it.verification).getBoolean("bindingVerified")}}) {"Changed address requires independently authorized telephone binding verification"}
+        require(r.facts.none {it.kind in setOf("LETTER_ADDRESS","PHONE_ADDRESS","PHONE_NUMBER") && it.key !in changed && it.key !in rebindings}) {"Unrequested inventory verification changes are not allowed"}
         val actual=before.toMutableMap()
         r.facts.forEach {f->require(f.key in before) {"Unknown independent fact"};actual[f.key]=f.value ?: requireNotNull(f.text)}
         require(actual==expected) {"Independent source facts do not exactly match all saved changes; missing or undeclared changes remain"}
