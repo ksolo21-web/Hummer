@@ -90,7 +90,7 @@ fun DraftEditorScreen(modifier: Modifier, assignment: KnowledgeBaseAssignment, m
         val window=activity?.window
         val previousSoftInputMode=window?.attributes?.softInputMode
         previousSoftInputMode?.let { old ->
-            window.setSoftInputMode((old and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            window?.setSoftInputMode((old and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         }
         val observer=LifecycleEventObserver { _,event ->
             if(event==Lifecycle.Event.ON_PAUSE)active=false
@@ -99,7 +99,7 @@ fun DraftEditorScreen(modifier: Modifier, assignment: KnowledgeBaseAssignment, m
         activity?.lifecycle?.addObserver(observer)
         onDispose {
             activity?.lifecycle?.removeObserver(observer)
-            previousSoftInputMode?.let { window.setSoftInputMode(it) }
+            previousSoftInputMode?.let { window?.setSoftInputMode(it) }
         }
     }
     LaunchedEffect(id,mode,refresh,active) {
