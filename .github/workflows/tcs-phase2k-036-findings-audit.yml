@@ -344,7 +344,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
           script: |
             adb shell svc power stayon true
             adb shell settings put system screen_off_timeout 1800000
@@ -456,4 +456,3 @@ jobs:
           path: evidence
           if-no-files-found: error
           retention-days: 14
-
