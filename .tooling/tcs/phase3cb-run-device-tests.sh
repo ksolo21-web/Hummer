@@ -10,7 +10,7 @@ collect() {
   adb shell run-as com.koenterprises.territorycardstudio ls files > evidence/screenshot-paths.txt 2>/dev/null || true
   while IFS= read -r path; do
     path="${path//$'\r'/}"
-    [[ "$path" == phase3cb-*.png ]] || continue
+    [[ "$path" == phase3cb-*.png || "$path" == phase3cb-debug-*.txt ]] || continue
     adb exec-out run-as com.koenterprises.territorycardstudio cat "files/$path" > "evidence/${path##*/}"
   done < evidence/screenshot-paths.txt
 }

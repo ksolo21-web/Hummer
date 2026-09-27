@@ -31,7 +31,21 @@ class Phase3CBEditorInstrumentationTest {
     }
     private fun ready() {scroll("extended-status");rule.waitUntil(20000){rule.onAllNodesWithTag("extended-status").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.joinToString()?.let {!it.contains("Loading")}==true};rule.waitForIdle()}
     private fun scroll(tag:String) {rule.waitUntil(20000){runCatching{rule.onNodeWithTag("extended-editor").performScrollToNode(hasTestTag(tag))}.isSuccess}}
-    private fun click(tag:String) {scroll(tag);rule.waitUntil(20000){runCatching{rule.onNodeWithTag(tag).assertIsEnabled()}.isSuccess};rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
+    private fun click(tag:String) {
+        scroll(tag)
+        try {
+            rule.waitUntil(20000) {
+                if(rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()) {scroll(tag);rule.waitForIdle()}
+                runCatching{rule.onNodeWithTag(tag).assertIsEnabled()}.isSuccess
+            }
+            rule.onNodeWithTag(tag).performClick();rule.waitForIdle()
+        } catch(t:Throwable) {
+            File(rule.activity.filesDir,"phase3cb-debug-action.txt").writeText("Action $tag\n"+rule.onRoot().printToString())
+            val b=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            if(b!=null){File(rule.activity.filesDir,"phase3cb-debug-action.png").outputStream().use {b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
+            throw t
+        }
+    }
     private fun chip(tag:String) {
         rule.runOnIdle {rule.activity.currentFocus?.clearFocus();rule.activity.window.insetsController?.hide(android.view.WindowInsets.Type.ime())}
         rule.waitUntil(20000){rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())!=true}
@@ -63,7 +77,7 @@ class Phase3CBEditorInstrumentationTest {
     private fun type(index:Int,value:String) {scroll("extended-field-$index");rule.onNodeWithTag("extended-field-$index").performTextReplacement(value)}
     private fun select(kind:ExtendedKind,id:String) {click("extended-tab-Items");click("extended-item-${kind.name}:$id")}
     private fun evidence(x:Phase3CBFixture,kind:ExtendedKind,id:String) {val e=x.catalog().items.single {it.kind==kind && it.id==id}.evidence.first();chip("extended-evidence-${e.role}-${e.sha256}")}
-    private fun reason() {scroll("extended-reason");rule.onNodeWithTag("extended-reason").performTextReplacement("Checked source reference; independent reconciliation required")}
+    private fun reason() {scroll("extended-reason");rule.onNodeWithTag("extended-reason").performTextReplacement("Checked source reference; independent reconciliation required");rule.onNodeWithTag("extended-reason").assertTextContains("Checked source reference; independent reconciliation required")}
     private fun saved(x:Phase3CBFixture,n:Int) {rule.waitUntil(20000){runCatching{x.draft().latest.number==n}.getOrDefault(false)};rule.waitUntil(20000){rule.onAllNodesWithTag("extended-busy").fetchSemanticsNodes().isEmpty()};ready()}
     private fun commit(x:Phase3CBFixture,kind:ExtendedKind,id:String,n:Int) {reason();evidence(x,kind,id);click("extended-save");saved(x,n)}
     @Test fun workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals() {

@@ -94,6 +94,12 @@
       "source_commit": "31c3311319cb9bdb68d916cba296db880632c422",
       "status": "15_RETAINED_WORKSPACE_EVIDENCE_SCROLL_RACE",
       "reason": "Road-work chip physically selected; redundant performScrollTo immediately after lazy scroll lost evidence node. Remove redundant nested scroll and let bounded stable-position loop recover node."
+    },
+    {
+      "run_id": 36348271791,
+      "source_commit": "7be217607bfb0e8773e5bb088adaae421a01b031",
+      "status": "15_RETAINED_WORKSPACE_SAVE_ACTION_TIMEOUT",
+      "reason": "Both work and evidence physical selection passed; Save enabled assertion also hides missing node. Reacquire absent lazy target, assert entered reason, capture exact failure semantics and screen."
     }
   ]
 }
