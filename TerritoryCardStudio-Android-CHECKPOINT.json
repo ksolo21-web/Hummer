@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "version": "0.3.2-phase3ca-preparation",
   "milestone": "phase-3ca-road-label-preparation-passed",
-  "status": "PHASE_3CA_PASSED_PHASE_3_IN_PROGRESS",
+  "status": "PHASE_3CB_IN_PROGRESS",
   "phase_milestone_before": "Phase3C-A IN_PROGRESS",
   "phase_milestone_after": "Phase3C-A PASSED; aggregatePhase3C andPhase3 IN_PROGRESS;3C-B NEXT",
   "preserved_passed_milestones": [
@@ -460,8 +460,8 @@
     "critic_agent": "/root/phase2j_critic"
   },
   "last_completed_package": "0.3.2-phase3ca-preparation",
-  "next_open_gate": "Phase3C-B authority-aware expanded editing",
-  "next_bounded_task": "Implement typed durable geometry/assignment/building-member/address/telephone proposals and controlled editors with exact known-item/before-value and per-category authority bindings. Reconcile actual building label/member changes together;3C-A explicitly blocks these. Keep all proposals non-authoritative until independent validation. Then3C-C integrates preparation UI with phone/wide Light/Dark evidence and blocked paths;3D aggregate integration remains open. Retain100 accepted identities and retry only new/failed/concretely affected tests. Reserved six remain untouched untilPhase7.",
+  "next_open_gate": "Phase3C-B extended proposals and editor acceptance",
+  "next_bounded_task": "Finish3CB targeted runtime and visual evidence, independentcritic >9 and repair only failures/affected checks; retain100acceptedidentities.3CC actualreconciliation/preparationUI and3D remainopen.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -536,7 +536,7 @@
   ],
   "source_package": "TerritoryCardStudio-Android-0.3.2-phase3ca-source.tar.xz",
   "source_package_sha256": "591b3674c46039b4b746bfbfb7fe947f5580630d5fa2aeade81abb926826735a",
-  "saved_at_utc": "2026-09-27T18:55:31.391232+00:00",
+  "saved_at_utc": "2026-09-27T19:20:01.395782+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -1810,5 +1810,12 @@
         "Persist checkpoint, ledger, exact evidence and review; verify durable readback."
       ]
     }
+  },
+  "phase3cb_progress": {
+    "status": "IMPLEMENTED_PENDING_RUNTIME_AND_REVIEW",
+    "requirements": ".tooling/tcs/phase3cb-evidence/requirements.md",
+    "new_tests": 16,
+    "frozen_tests": 100,
+    "phase3c_complete": false
   }
 }

@@ -46,15 +46,15 @@
     "3C_B_extended_controlled_editing": "NOT_STARTED_DEPENDS_3CA",
     "3C_C_preparation_ui": "NOT_STARTED_DEPENDS_3CB",
     "3CA_road_label_preparation_transaction": "PASSED",
-    "3CB_authority_aware_expanded_editing": "OPEN_NOT_STARTED",
+    "3CB_authority_aware_expanded_editing": "IN_PROGRESS",
     "3CC_preparation_ui": "OPEN_NOT_STARTED",
     "3D_editing_integration": "OPEN_NOT_STARTED"
   },
   "phase_milestone_before": "Phase3C-A IN_PROGRESS",
   "phase_milestone_after": "Phase3C-A PASSED; aggregatePhase3C andPhase3 IN_PROGRESS;3C-B NEXT",
   "last_completed_package": "0.3.2-phase3ca-preparation",
-  "next_open_gate": "Phase3C-B authority-aware expanded editing",
-  "next_bounded_task": "Implement typed durable geometry/assignment/building-member/address/telephone proposals and controlled editors with exact known-item/before-value and per-category authority bindings. Reconcile actual building label/member changes together;3C-A explicitly blocks these. Keep all proposals non-authoritative until independent validation. Then3C-C integrates preparation UI with phone/wide Light/Dark evidence and blocked paths;3D aggregate integration remains open. Retain100 accepted identities and retry only new/failed/concretely affected tests. Reserved six remain untouched untilPhase7.",
+  "next_open_gate": "Phase3C-B extended proposals and editor acceptance",
+  "next_bounded_task": "Finish3CB targeted runtime and visual evidence, independentcritic >9 and repair only failures/affected checks; retain100acceptedidentities.3CC actualreconciliation/preparationUI and3D remainopen.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T18:55:31.394885+00:00",
+  "saved_at_utc": "2026-09-27T19:20:01.398123+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -1563,5 +1563,12 @@
         "Persist checkpoint, ledger, exact evidence and review; verify durable readback."
       ]
     }
+  },
+  "phase3cb_progress": {
+    "status": "IMPLEMENTED_PENDING_RUNTIME_AND_REVIEW",
+    "requirements": ".tooling/tcs/phase3cb-evidence/requirements.md",
+    "new_tests": 16,
+    "frozen_tests": 100,
+    "phase3c_complete": false
   }
 }
