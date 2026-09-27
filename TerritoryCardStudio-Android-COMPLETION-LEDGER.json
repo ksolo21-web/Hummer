@@ -40,14 +40,17 @@
     "2_final_integration_audit": "PASSED",
     "3A_editing_draft_foundation": "PASSED",
     "3B_editor_ui": "PASSED",
-    "3C_validated_editing_preparation": "OPEN_NOT_STARTED",
-    "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C"
+    "3C_validated_editing_preparation": "IN_PROGRESS_3CA",
+    "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C",
+    "3C_A_preparation_transaction": "IN_PROGRESS",
+    "3C_B_extended_controlled_editing": "NOT_STARTED_DEPENDS_3CA",
+    "3C_C_preparation_ui": "NOT_STARTED_DEPENDS_3CB"
   },
   "phase_milestone_before": "Phase3B IN_PROGRESS",
   "phase_milestone_after": "Phase3B PASSED; aggregatePhase3 IN_PROGRESS; Phase3C OPEN_NOT_STARTED",
   "last_completed_package": "0.3.1-phase3b-draft-editor",
-  "next_open_gate": "Phase3C \u2014 validated editing preparation bridge",
-  "next_bounded_task": "Implement controlled draft-to-preparation validation and expanded geometry/assignment/inventory editing per the original Phase3 scope. Keep proposals non-authoritative until validated, bind exact source/base/input context, reject stale conflicts, preserve approval/export locks. Add only targeted new/affected tests, retain87 accepted identities. Phase3D aggregate editing audit and reserved commissioning in Phase7 remain open.",
+  "next_open_gate": "Phase3C-A conditional preparation transaction acceptance",
+  "next_bounded_task": "Complete3C-A targeted runtime/independent review; then3C-B extended proposals and3C-C preparation UI. Full3C original scope remains open.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -323,7 +326,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T18:19:13.180528+00:00",
+  "saved_at_utc": "2026-09-27T18:35:42.533930+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -1459,5 +1462,13 @@
         "Persist checkpoint/ledger, final review, package and runtime/image provenance; verify durable readback."
       ]
     }
+  },
+  "phase3ca_progress": {
+    "status": "IMPLEMENTED_PENDING_RUNTIME_AND_INDEPENDENT_REVIEW",
+    "scope": "Conditional preparation transaction; first3C dependency",
+    "requirements": ".tooling/tcs/phase3ca-evidence/requirements.md",
+    "new_tests": 12,
+    "frozen_tests": 87,
+    "phase3c_complete": false
   }
 }
