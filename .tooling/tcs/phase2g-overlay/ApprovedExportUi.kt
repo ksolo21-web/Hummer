@@ -25,6 +25,11 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun ApprovedExportScreen(modifier: Modifier, territoryId: String, service: AndroidApprovedExportService, onBack: () -> Unit) {
+    key(territoryId, service) { ApprovedExportContent(modifier, territoryId, service, onBack) }
+}
+
+@Composable
+private fun ApprovedExportContent(modifier: Modifier, territoryId: String, service: AndroidApprovedExportService, onBack: () -> Unit) {
     val context = LocalContext.current
     val activity = context.exportActivity()
     val scope = rememberCoroutineScope()
