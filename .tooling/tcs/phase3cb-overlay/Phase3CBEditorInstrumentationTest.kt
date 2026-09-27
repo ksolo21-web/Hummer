@@ -74,10 +74,19 @@ class Phase3CBEditorInstrumentationTest {
         rule.waitUntil(20000){runCatching{rule.onNodeWithTag(tag).assertIsSelected()}.isSuccess}
     }
     private fun dialog(tag:String) {rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
-    private fun type(index:Int,value:String) {scroll("extended-field-$index");rule.onNodeWithTag("extended-field-$index").performTextReplacement(value)}
+    private fun enter(tag:String,value:String) {
+        scroll(tag)
+        rule.waitUntil(20000) {
+            runCatching {
+                rule.onNodeWithTag(tag).performTextReplacement(value);rule.waitForIdle()
+                rule.onNodeWithTag(tag).assertTextContains(value)
+            }.onFailure {scroll(tag);rule.waitForIdle()}.isSuccess
+        }
+    }
+    private fun type(index:Int,value:String)=enter("extended-field-$index",value)
     private fun select(kind:ExtendedKind,id:String) {click("extended-tab-Items");click("extended-item-${kind.name}:$id")}
     private fun evidence(x:Phase3CBFixture,kind:ExtendedKind,id:String) {val e=x.catalog().items.single {it.kind==kind && it.id==id}.evidence.first();chip("extended-evidence-${e.role}-${e.sha256}")}
-    private fun reason() {scroll("extended-reason");rule.onNodeWithTag("extended-reason").performTextReplacement("Checked source reference; independent reconciliation required");rule.onNodeWithTag("extended-reason").assertTextContains("Checked source reference; independent reconciliation required")}
+    private fun reason()=enter("extended-reason","Checked source reference; independent reconciliation required")
     private fun saved(x:Phase3CBFixture,n:Int) {rule.waitUntil(20000){runCatching{x.draft().latest.number==n}.getOrDefault(false)};rule.waitUntil(20000){rule.onAllNodesWithTag("extended-busy").fetchSemanticsNodes().isEmpty()};ready()}
     private fun commit(x:Phase3CBFixture,kind:ExtendedKind,id:String,n:Int) {reason();evidence(x,kind,id);click("extended-save");saved(x,n)}
     @Test fun workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals() {

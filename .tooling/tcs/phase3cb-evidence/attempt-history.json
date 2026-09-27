@@ -100,6 +100,12 @@
       "source_commit": "7be217607bfb0e8773e5bb088adaae421a01b031",
       "status": "15_RETAINED_WORKSPACE_SAVE_ACTION_TIMEOUT",
       "reason": "Both work and evidence physical selection passed; Save enabled assertion also hides missing node. Reacquire absent lazy target, assert entered reason, capture exact failure semantics and screen."
+    },
+    {
+      "run_id": 36348967967,
+      "source_commit": "d14e2f707da5dff06f7067717534993482f70529",
+      "status": "15_RETAINED_WORKSPACE_TEXT_FOCUS_RACE",
+      "reason": "Explicit text entry failure: focus changes lazy composition and removes captured reason node before SetText. Idempotent replacement now reacquires field and asserts exact entered value."
     }
   ]
 }
