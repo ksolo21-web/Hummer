@@ -5,11 +5,11 @@ adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
 adb install -r tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
 CLASS=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
 collect() {
-  adb shell run-as com.koenterprises.territorycardstudio sh -c 'ls files/phase3b-*.png' > evidence/screenshot-paths.txt 2>/dev/null || true
+  adb shell run-as com.koenterprises.territorycardstudio ls files > evidence/screenshot-paths.txt 2>/dev/null || true
   while IFS= read -r path; do
     path="${path//$'\r'/}"
-    [[ "$path" == files/phase3b-*.png ]] || continue
-    adb exec-out run-as com.koenterprises.territorycardstudio cat "$path" > "evidence/${path##*/}"
+    [[ "$path" == phase3b-*.png ]] || continue
+    adb exec-out run-as com.koenterprises.territorycardstudio cat "files/$path" > "evidence/${path##*/}"
   done < evidence/screenshot-paths.txt
 }
 adb shell am instrument -w -r -e class "$CLASS" com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase3b-runtime.log 2>&1

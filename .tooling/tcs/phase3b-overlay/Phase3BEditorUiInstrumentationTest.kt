@@ -10,6 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.StateRestorationTester
@@ -175,7 +177,7 @@ class Phase3BEditorUiInstrumentationTest {
             scroll("draft-proposed");rule.onNodeWithTag("draft-proposed").assertTextContains(" bad ")
             assertEquals(1,x.read().latest.number)
             type("draft-proposed","");scroll("draft-save");rule.onNodeWithTag("draft-save").assertIsNotEnabled()
-            type("draft-proposed","x".repeat(257));scroll("draft-proposed");rule.onNodeWithTag("draft-proposed").assertTextContains("")
+            type("draft-proposed","x".repeat(257));scroll("draft-proposed");rule.onNodeWithTag("draft-proposed").assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText,AnnotatedString("")))
             assertEquals(1,x.read().latest.number)
         }
     }
