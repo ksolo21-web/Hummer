@@ -1,0 +1,55 @@
+{
+  "passed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "lifecycleSourceChangeAndCorruptDraftFailClosed"
+    ]
+  ],
+  "failed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "captureDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "captureLight"
+    ]
+  ],
+  "retained": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "telephoneModeBindsCorrectDraft"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "confirmationsRejectRevisionChangedWhileOpenAndCleanFormRefreshes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "restorationRetainsDirtyFieldsAndOriginalToken"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "missingSourceAndEmptyItemsStayHonest"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "invalidInputKeepsDraftAndInput"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "workspaceEditsPreserveOthersAndSupportHistory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "dirtyInputGuardsItemAndBothBackRoutes"
+    ]
+  ],
+  "retained_run": 36337841251,
+  "frozenPrior": 77,
+  "run_id": 36338690162,
+  "source_commit": "d984efce0d454a14e035a289554dd63f4f830f99",
+  "artifact_id": 10938352623,
+  "artifact_sha256": "f9e975ac56f84e12ef48124dc2fd5a9a6527ba4a2287f38cc5a973a01bf18d65",
+  "reason": "Lifecycle/source/corruption functional case passed and frozen; only two capture cases remain. Production source unchanged for next run."
+}

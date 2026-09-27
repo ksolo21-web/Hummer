@@ -358,7 +358,7 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Retry two failed cases and affected Dark capture; retain seven passes
+      - name: Retry only captures; retain all eight functional editor passes
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

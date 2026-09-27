@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -51,8 +52,13 @@ class Phase3BEditorUiInstrumentationTest {
     }
     private fun show(x:Fixture) { rule.setContent { Content(x) };ready() }
     private fun wait(tag:String) { rule.waitUntil(20000) {rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()};rule.waitForIdle() }
-    private fun ready() { wait("draft-editor");scroll("draft-status");wait("draft-status");rule.waitUntil(20000) { runCatching {rule.onNodeWithTag("draft-status").assertTextContains("Checking",substring=true)}.isFailure };rule.waitForIdle() }
-    private fun scroll(tag:String) { rule.onNodeWithTag("draft-editor").performScrollToNode(hasTestTag(tag)) }
+    private fun ready() {
+        wait("draft-editor");scroll("draft-status")
+        rule.waitUntil(20000) {
+            rule.onAllNodesWithTag("draft-status").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.joinToString()?.let { !it.contains("Checking") }==true
+        };rule.waitForIdle()
+    }
+    private fun scroll(tag:String) { rule.waitUntil(20000) {runCatching {rule.onNodeWithTag("draft-editor").performScrollToNode(hasTestTag(tag))}.isSuccess} }
     private fun click(tag:String) {scroll(tag);rule.waitUntil(20000) {runCatching{rule.onNodeWithTag(tag).assertIsEnabled()}.isSuccess};rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun dialog(tag:String) {wait(tag);rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun select(kind:String="ROAD",id:String="adapter-alpha") {click("draft-tab-Items");click("draft-item-$kind-$id")}
@@ -214,7 +220,15 @@ class Phase3BEditorUiInstrumentationTest {
             shot("editor-"+theme.name.lowercase())
             if(rule.activity.resources.configuration.screenWidthDp<840) {
                 scroll("draft-rationale");rule.onNodeWithTag("draft-rationale").performClick()
-                rule.waitUntil(20000) {rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())==true};rule.waitForIdle();shot("keyboard-"+theme.name.lowercase())
+                rule.onNodeWithTag("draft-rationale").assertIsFocused()
+                rule.runOnIdle {
+                    val view=requireNotNull(rule.activity.currentFocus)
+                    val imm=rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                    imm.showSoftInput(view,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                    rule.activity.window.insetsController?.show(android.view.WindowInsets.Type.ime())
+                }
+                try { rule.waitUntil(20000) {rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())==true} }
+                finally { rule.waitForIdle();shot("keyboard-"+theme.name.lowercase()) }
                 click("draft-tab-Review");click("draft-tab-Edit")
             }
             click("draft-save");saved(x,2);scroll("draft-review-ROAD-adapter-alpha");shot("review-"+theme.name.lowercase())

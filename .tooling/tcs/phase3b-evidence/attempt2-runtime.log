@@ -1,0 +1,130 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest:
+INSTRUMENTATION_STATUS: test=captureDark
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.capture(Phase3BEditorUiInstrumentationTest.kt:217)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.captureDark(Phase3BEditorUiInstrumentationTest.kt:200)
+
+INSTRUMENTATION_STATUS: stream=
+Error in captureDark(com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.capture(Phase3BEditorUiInstrumentationTest.kt:217)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.captureDark(Phase3BEditorUiInstrumentationTest.kt:200)
+
+INSTRUMENTATION_STATUS: test=captureDark
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=captureLight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: No node found that matches TestTag = 'draft-tab-Items' in scrollable container
+Semantics of the node:
+Node #219 at (l=0.0, t=128.0, r=1080.0, b=2337.0)px, Tag: 'draft-editor'
+CollectionInfo = 'CollectionInfo(rowCount=4, columnCount=1)'
+IsTraversalGroup = 'true'
+Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@d1eb8e8'
+VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=0.0, reverseScrolling=false)'
+Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+Has 7 children
+Selector used: (TestTag = 'draft-editor')
+
+	at androidx.compose.ui.test.ActionsKt.performScrollToNode(Actions.kt:258)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.scroll(Phase3BEditorUiInstrumentationTest.kt:55)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.click(Phase3BEditorUiInstrumentationTest.kt:56)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.select(Phase3BEditorUiInstrumentationTest.kt:58)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.select$default(Phase3BEditorUiInstrumentationTest.kt:58)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.capture(Phase3BEditorUiInstrumentationTest.kt:210)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.captureLight(Phase3BEditorUiInstrumentationTest.kt:199)
+
+INSTRUMENTATION_STATUS: stream=
+Error in captureLight(com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest):
+java.lang.AssertionError: No node found that matches TestTag = 'draft-tab-Items' in scrollable container
+Semantics of the node:
+Node #219 at (l=0.0, t=128.0, r=1080.0, b=2337.0)px, Tag: 'draft-editor'
+CollectionInfo = 'CollectionInfo(rowCount=4, columnCount=1)'
+IsTraversalGroup = 'true'
+Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@d1eb8e8'
+VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=0.0, reverseScrolling=false)'
+Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+Has 7 children
+Selector used: (TestTag = 'draft-editor')
+
+	at androidx.compose.ui.test.ActionsKt.performScrollToNode(Actions.kt:258)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.scroll(Phase3BEditorUiInstrumentationTest.kt:55)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.click(Phase3BEditorUiInstrumentationTest.kt:56)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.select(Phase3BEditorUiInstrumentationTest.kt:58)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.select$default(Phase3BEditorUiInstrumentationTest.kt:58)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.capture(Phase3BEditorUiInstrumentationTest.kt:210)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.captureLight(Phase3BEditorUiInstrumentationTest.kt:199)
+
+INSTRUMENTATION_STATUS: test=captureLight
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=lifecycleSourceChangeAndCorruptDraftFailClosed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=3
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=lifecycleSourceChangeAndCorruptDraftFailClosed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 45.412
+There were 2 failures:
+1) captureDark(com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.capture(Phase3BEditorUiInstrumentationTest.kt:217)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.captureDark(Phase3BEditorUiInstrumentationTest.kt:200)
+2) captureLight(com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest)
+java.lang.AssertionError: No node found that matches TestTag = 'draft-tab-Items' in scrollable container
+Semantics of the node:
+Node #219 at (l=0.0, t=128.0, r=1080.0, b=2337.0)px, Tag: 'draft-editor'
+CollectionInfo = 'CollectionInfo(rowCount=4, columnCount=1)'
+IsTraversalGroup = 'true'
+Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@d1eb8e8'
+VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=0.0, reverseScrolling=false)'
+Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+Has 7 children
+Selector used: (TestTag = 'draft-editor')
+
+	at androidx.compose.ui.test.ActionsKt.performScrollToNode(Actions.kt:258)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.scroll(Phase3BEditorUiInstrumentationTest.kt:55)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.click(Phase3BEditorUiInstrumentationTest.kt:56)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.select(Phase3BEditorUiInstrumentationTest.kt:58)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.select$default(Phase3BEditorUiInstrumentationTest.kt:58)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.capture(Phase3BEditorUiInstrumentationTest.kt:210)
+	at com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest.captureLight(Phase3BEditorUiInstrumentationTest.kt:199)
+
+FAILURES!!!
+Tests run: 3,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1
