@@ -71,7 +71,21 @@ class Phase3CBStoreInstrumentationTest {
         }
     }
     @Test fun corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached() {
-        Phase3CBFixture().use {x->x.create();val p=x.proposal(ExtendedKind.ROAD_PATH);val points=(p.proposed as PathValue).points.toMutableList();x.store.save(x.id,x.mode,x.draft().latest.token,listOf(p.copy(proposed=PathValue(points))));points.clear();assertTrue((x.draft().latest.proposals.single().proposed as PathValue).points.isNotEmpty())
+        Phase3CBFixture().use {x->
+            x.create();val p=x.proposal(ExtendedKind.ROAD_PATH);val points=(p.proposed as PathValue).points.toMutableList()
+            x.store.save(x.id,x.mode,x.draft().latest.token,listOf(p.copy(proposed=PathValue(points)),x.proposal(ExtendedKind.BUILDING_MEMBERS)))
+            points.clear();val draft=x.draft();val catalog=x.catalog()
+            val path=draft.latest.proposals.first {it.kind==ExtendedKind.ROAD_PATH}
+            assertTrue((path.proposed as PathValue).points.isNotEmpty())
+            val encoded=ExtendedValues.canonical(ExtendedValues.json(path.proposed))
+            fails{(draft.revisions as MutableList<*>).clear()};fails{(draft.latest.proposals as MutableList<*>).clear()}
+            fails{((path.before as PathValue).points as MutableList<*>).clear()};fails{((path.proposed as PathValue).points as MutableList<*>).clear()}
+            fails{(catalog.items as MutableList<*>).clear()};fails{(catalog.items.first().evidence as MutableList<*>).clear()}
+            val building=draft.latest.proposals.first {it.kind==ExtendedKind.BUILDING_MEMBERS}
+            listOf(building.before,building.proposed,catalog.items.first {it.kind==ExtendedKind.BUILDING_MEMBERS}.before).forEach {v->
+                val value=v as BuildingValue;fails{(value.members as MutableList<*>).clear()};fails{(value.labels as MutableList<*>).clear()}
+            }
+            assertEquals(draft,x.draft());assertEquals(catalog,x.catalog());assertEquals(encoded,ExtendedValues.canonical(ExtendedValues.json(path.proposed)))
             val file=x.root.listFiles()!!.single {it.extension=="json"};file.appendText("garbage");fails{x.store.read(x.id,x.mode)};fails{x.store.create(x.id,x.mode,x.catalog().binding)}
         }
     }

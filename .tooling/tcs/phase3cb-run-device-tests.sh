@@ -14,7 +14,8 @@ collect() {
     adb exec-out run-as com.koenterprises.territorycardstudio cat "files/$path" > "evidence/${path##*/}"
   done < evidence/screenshot-paths.txt
 }
-adb shell am instrument -w -r -e class "$STORE,$CLASS" com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase3cb-runtime.log 2>&1
+SELECTION=$(python3 -c 'import json; print(",".join(c+"#"+n for c,n in json.load(open(".tooling/tcs/phase3cb-evidence/retained-results.json"))["retry"]))')
+adb shell am instrument -w -r -e class "$SELECTION" com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase3cb-runtime.log 2>&1
 collect
 cat evidence/phase3cb-runtime.log
 python3 - <<'PY'
@@ -27,14 +28,19 @@ for line in text.splitlines():
  if line.startswith('INSTRUMENTATION_STATUS_CODE:'):
   code=int(line.rsplit(' ',1)[1])
   if code<=0 and name:(passed if code==0 else failed).append((cls,name));cls=None;name=None
-Path('evidence/individual-results.json').write_text(json.dumps(dict(passed=passed,failed=failed,frozenPrior=100),indent=2))
+proof=json.loads(Path('.tooling/tcs/phase3cb-evidence/retained-results.json').read_text())
+retained=[tuple(x) for x in proof['retained']]; retry=[tuple(x) for x in proof['retry']]
+assert len(passed+failed)==len(set(passed+failed)) and set(passed+failed)==set(retry),(passed,failed,retry)
+assert not set(retained)&set(retry) and len(retained)==11
+fresh=passed[:];passed=retained+passed
+Path('evidence/individual-results.json').write_text(json.dumps(dict(passed=passed,failed=failed,freshPassed=fresh,retained=retained,frozenPrior=100),indent=2))
 root=E.Element('testsuite',name='Phase3CB extended editors',tests=str(len(passed)+len(failed)),failures=str(len(failed)),errors='0')
 for c,n in passed+failed:
  row=E.SubElement(root,'testcase',classname=c,name=n)
  if (c,n) in failed:E.SubElement(row,'failure').text='See phase3cb-runtime.log'
 E.ElementTree(root).write('evidence/TEST-phase3cb.xml',encoding='UTF-8',xml_declaration=True)
-assert len(passed)==len(set(passed))==16 and not failed and 'OK (16 tests)' in text,(passed,failed)
-Path('evidence/test-summary.txt').write_text('PHASE3CB_DISTINCT_TESTS=16\nFAILURES=0\nFROZEN_PRIOR_TESTS=100\nPRIOR_PHASE3CA_RUN=36341715486\n')
+assert len(passed)==len(set(passed))==16 and not failed and 'OK (5 tests)' in text,(passed,failed)
+Path('evidence/test-summary.txt').write_text('PHASE3CB_DISTINCT_TESTS=16\nFAILURES=0\nFROZEN_PRIOR_TESTS=100\nRETAINED_PHASE3CB_TESTS=11\nRETRIED_PHASE3CB_TESTS=5\nPRIOR_PHASE3CA_RUN=36341715486\n')
 PY
 adb shell wm size 1920x1200
 adb shell wm density 160

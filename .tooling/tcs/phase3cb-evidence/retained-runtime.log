@@ -1,0 +1,366 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest:
+INSTRUMENTATION_STATUS: test=formRoundTripsEveryCategoryIncludingMultipleBuildingMembers
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=formRoundTripsEveryCategoryIncludingMultipleBuildingMembers
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=phoneAvailabilityAndProvenanceCannotManufactureVerification
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=phoneAvailabilityAndProvenanceCannotManufactureVerification
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=inventoryRequiresVerifiedBaselineAndRejectsDuplicateAddresses
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=inventoryRequiresVerifiedBaselineAndRejectsDuplicateAddresses
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=staleSourceInventoryAndOptimisticConflictsPreserveHistory
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=staleSourceInventoryAndOptimisticConflictsPreserveHistory
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=everyCategoryPersistsReopensAndRestoresWithoutPreparing
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=everyCategoryPersistsReopensAndRestoresWithoutPreparing
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=limitsInterruptedWritesAndConcurrentEditorsPreserveJournal
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=limitsInterruptedWritesAndConcurrentEditorsPreserveJournal
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=geometryCompoundWorkAndBuildingMembersFailClosed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=geometryCompoundWorkAndBuildingMembersFailClosed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=exactBeforeKnownIdsCategoryEvidenceAndModesAreEnforced
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=exactBeforeKnownIdsCategoryEvidenceAndModesAreEnforced
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest:
+INSTRUMENTATION_STATUS: test=dirtyRecreationAndBothBackRoutesRetainOriginalToken
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=dirtyRecreationAndBothBackRoutesRetainOriginalToken
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=captureDark
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=captureDark
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=missingInventoryStaleAndCorruptStatesRemainBlocked
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Stale' (ignoreCase: false))
+Semantics of the node:
+Node #1544 at (l=95.0, t=675.0, r=625.0, b=738.0)px, Tag: 'extended-status'
+Text = '[Stale draft • saving blocked]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 2 siblings
+Selector used: (TestTag = 'extended-status')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.missingInventoryStaleAndCorruptStatesRemainBlocked(Phase3CBEditorInstrumentationTest.kt:89)
+
+INSTRUMENTATION_STATUS: stream=
+Error in missingInventoryStaleAndCorruptStatesRemainBlocked(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Stale' (ignoreCase: false))
+Semantics of the node:
+Node #1544 at (l=95.0, t=675.0, r=625.0, b=738.0)px, Tag: 'extended-status'
+Text = '[Stale draft • saving blocked]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 2 siblings
+Selector used: (TestTag = 'extended-status')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.missingInventoryStaleAndCorruptStatesRemainBlocked(Phase3CBEditorInstrumentationTest.kt:89)
+
+INSTRUMENTATION_STATUS: test=missingInventoryStaleAndCorruptStatesRemainBlocked
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=captureLight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=captureLight
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=phoneFormsPreserveUnavailableAndUnknownWithoutApproval
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.click(Phase3CBEditorInstrumentationTest.kt:34)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:41)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.phoneFormsPreserveUnavailableAndUnknownWithoutApproval(Phase3CBEditorInstrumentationTest.kt:61)
+
+INSTRUMENTATION_STATUS: stream=
+Error in phoneFormsPreserveUnavailableAndUnknownWithoutApproval(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.click(Phase3CBEditorInstrumentationTest.kt:34)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:41)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.phoneFormsPreserveUnavailableAndUnknownWithoutApproval(Phase3CBEditorInstrumentationTest.kt:61)
+
+INSTRUMENTATION_STATUS: test=phoneFormsPreserveUnavailableAndUnknownWithoutApproval
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=confirmationRaceAndOversizedGeometryFailWithoutLosingInput
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Draft changed' (ignoreCase: false))
+Semantics of the node:
+Node #3808 at (l=53.0, t=1049.0, r=481.0, b=1112.0)px, Tag: 'extended-message'
+Text = '[Draft changed; reload]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 11 siblings
+Selector used: (TestTag = 'extended-message')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.confirmationRaceAndOversizedGeometryFailWithoutLosingInput(Phase3CBEditorInstrumentationTest.kt:83)
+
+INSTRUMENTATION_STATUS: stream=
+Error in confirmationRaceAndOversizedGeometryFailWithoutLosingInput(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Draft changed' (ignoreCase: false))
+Semantics of the node:
+Node #3808 at (l=53.0, t=1049.0, r=481.0, b=1112.0)px, Tag: 'extended-message'
+Text = '[Draft changed; reload]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 11 siblings
+Selector used: (TestTag = 'extended-message')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.confirmationRaceAndOversizedGeometryFailWithoutLosingInput(Phase3CBEditorInstrumentationTest.kt:83)
+
+INSTRUMENTATION_STATUS: test=confirmationRaceAndOversizedGeometryFailWithoutLosingInput
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=16
+INSTRUMENTATION_STATUS: stack=androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.click(Phase3CBEditorInstrumentationTest.kt:34)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:41)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:48)
+
+INSTRUMENTATION_STATUS: stream=
+Error in workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest):
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.click(Phase3CBEditorInstrumentationTest.kt:34)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:41)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:48)
+
+INSTRUMENTATION_STATUS: test=workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 176.321
+There were 4 failures:
+1) missingInventoryStaleAndCorruptStatesRemainBlocked(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Stale' (ignoreCase: false))
+Semantics of the node:
+Node #1544 at (l=95.0, t=675.0, r=625.0, b=738.0)px, Tag: 'extended-status'
+Text = '[Stale draft • saving blocked]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 2 siblings
+Selector used: (TestTag = 'extended-status')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.missingInventoryStaleAndCorruptStatesRemainBlocked(Phase3CBEditorInstrumentationTest.kt:89)
+2) phoneFormsPreserveUnavailableAndUnknownWithoutApproval(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.click(Phase3CBEditorInstrumentationTest.kt:34)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:41)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.phoneFormsPreserveUnavailableAndUnknownWithoutApproval(Phase3CBEditorInstrumentationTest.kt:61)
+3) confirmationRaceAndOversizedGeometryFailWithoutLosingInput(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains 'Draft changed' (ignoreCase: false))
+Semantics of the node:
+Node #3808 at (l=53.0, t=1049.0, r=481.0, b=1112.0)px, Tag: 'extended-message'
+Text = '[Draft changed; reload]'
+Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+Has 11 siblings
+Selector used: (TestTag = 'extended-message')
+
+	at androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:293)
+	at androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:283)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:237)
+	at androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:233)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.confirmationRaceAndOversizedGeometryFailWithoutLosingInput(Phase3CBEditorInstrumentationTest.kt:83)
+4) workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest)
+androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:901)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:500)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.click(Phase3CBEditorInstrumentationTest.kt:34)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.commit(Phase3CBEditorInstrumentationTest.kt:41)
+	at com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest.workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals(Phase3CBEditorInstrumentationTest.kt:48)
+
+FAILURES!!!
+Tests run: 16,  Failures: 4
+
+
+INSTRUMENTATION_CODE: -1

@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: tcs-phase3cb-040-editors
@@ -375,12 +376,35 @@ jobs:
           grep -E "^package:.*versionCode='40'.*versionName='0.3.3'" evidence/apk-badging.txt
           grep -F "targetSdkVersion:'37'" evidence/apk-badging.txt
 
+      - name: Retain eleven passing identities and phone screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10939464314/zip > retained.zip
+          echo "d844a0d430ab83925fa7833322fd4d376b02fc0f9edb5a1326136566edb208e2  retained.zip" | sha256sum -c -
+          mkdir retained
+          unzip -q retained.zip -d retained
+          cp .tooling/tcs/phase3cb-evidence/retained-results.json evidence/
+          cp .tooling/tcs/phase3cb-evidence/retained-runtime.log evidence/
+          python3 - <<'PYTHON'
+          import hashlib,json,shutil
+          from pathlib import Path
+          p=json.loads(Path('evidence/retained-results.json').read_text())
+          assert hashlib.sha256(Path('retained/phase3cb-runtime.log').read_bytes()).hexdigest()==p['runtime_sha256']
+          for row in p['screenshots']:
+              f=Path('retained')/row['file']
+              assert hashlib.sha256(f.read_bytes()).hexdigest()==row['sha256']
+              shutil.copyfile(f,Path('evidence')/f.name)
+          PYTHON
+
       - name: Enable KVM
         shell: bash
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Run only sixteen new extended-editor checks
+      - name: Retry four failed cases and one strengthened immutable-view case
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

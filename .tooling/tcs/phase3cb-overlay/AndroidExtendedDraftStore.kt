@@ -77,12 +77,12 @@ class AndroidExtendedDraftStore internal constructor(private val root:File,priva
         val invHash=when(inventory) {is Page2Inventory.LetterWriting->inventory.inventory.canonicalSha256();is Page2Inventory.Telephone->inventory.inventory.canonicalSha256();null->""}
         val binding=hash(ExtendedValues.canonical(JSONObject().put("territory",id).put("mode",mode.name).put("kb",kb.revision).put("slot",slot.toString()).put("source",source.toString()).put("inventory",invHash).put("items",canonicalItems)))
         require(sources.verifiedRecord(id)==source && verifiedInventory(id,mode)==inventory) {"Source or inventory changed while loading items"}
-        return ExtendedCatalog(binding,items.map {it.copy(before=ExtendedValues.detached(it.kind,it.before),evidence=it.evidence.toList())},inventory!=null)
+        return ExtendedCatalog(binding,ExtendedValues.frozen(items.map {it.copy(before=ExtendedValues.detached(it.kind,it.before),evidence=ExtendedValues.frozen(it.evidence))}),inventory!=null)
     }
     fun catalog(id:String,mode:WorkspaceMode):ExtendedCatalog=synchronized(LOCK) {capture(id,mode)}
     private fun file(id:String,mode:WorkspaceMode):AtomicFile {ExtendedValues.text(id,80);require(root.exists() || root.mkdirs());return AtomicFile(File(root,hash(id+":"+mode.name)+".json"))}
     private fun proposal(p:ExtendedProposal)=JSONObject().put("kind",p.kind.name).put("item",p.itemId).put("before",ExtendedValues.json(p.before)).put("proposed",ExtendedValues.json(p.proposed)).put("reason",p.reason).put("role",p.evidenceRole).put("evidence",p.evidenceSha256)
-    private fun proposals(a:JSONArray):List<ExtendedProposal> {require(a.length()<=MAX_PROPOSALS);return (0 until a.length()).map {i->val p=a.getJSONObject(i);ExtendedValues.keys(p,"kind","item","before","proposed","reason","role","evidence");val k=ExtendedKind.valueOf(p.getString("kind"));ExtendedProposal(k,p.getString("item"),ExtendedValues.parse(k,p.getJSONObject("before")),ExtendedValues.parse(k,p.getJSONObject("proposed")),p.getString("reason"),p.getString("role"),p.getString("evidence"))}}
+    private fun proposals(a:JSONArray):List<ExtendedProposal> {require(a.length()<=MAX_PROPOSALS);return ExtendedValues.frozen((0 until a.length()).map {i->val p=a.getJSONObject(i);ExtendedValues.keys(p,"kind","item","before","proposed","reason","role","evidence");val k=ExtendedKind.valueOf(p.getString("kind"));ExtendedProposal(k,p.getString("item"),ExtendedValues.parse(k,p.getJSONObject("before")),ExtendedValues.parse(k,p.getJSONObject("proposed")),p.getString("reason"),p.getString("role"),p.getString("evidence"))})}
     private fun validate(ps:List<ExtendedProposal>,catalog:ExtendedCatalog?=null) {
         require(ps.size<=MAX_PROPOSALS && ps.map {it.key}.toSet().size==ps.size) {"Duplicate or excessive proposals"}
         ps.forEach {p->
@@ -120,7 +120,14 @@ class AndroidExtendedDraftStore internal constructor(private val root:File,priva
         };return raw
     }
     private fun view(raw:JSONObject,catalog:ExtendedCatalog?):ExtendedDraft {
-        val a=raw.getJSONArray("revisions");return ExtendedDraft(raw.getString("id"),raw.getString("territory"),WorkspaceMode.valueOf(raw.getString("mode")),raw.getString("binding"),(0 until a.length()).map {i->val r=a.getJSONObject(i);ExtendedRevision(i,r.getString("token"),r.getString("action"),r.getString("at"),if(r.isNull("restoredFrom"))null else r.getInt("restoredFrom"),proposals(r.getJSONArray("proposals")))},catalog?.binding!=raw.getString("binding"))
+        val a=raw.getJSONArray("revisions")
+        val revisions=(0 until a.length()).map {i->
+            val r=a.getJSONObject(i)
+            ExtendedRevision(i,r.getString("token"),r.getString("action"),r.getString("at"),
+                if(r.isNull("restoredFrom"))null else r.getInt("restoredFrom"),proposals(r.getJSONArray("proposals")))
+        }
+        return ExtendedDraft(raw.getString("id"),raw.getString("territory"),WorkspaceMode.valueOf(raw.getString("mode")),
+            raw.getString("binding"),ExtendedValues.frozen(revisions),catalog?.binding!=raw.getString("binding"))
     }
     fun load(id:String,mode:WorkspaceMode):ExtendedEditorState=synchronized(LOCK) {
         val raw=readRaw(id,mode);val c=runCatching {capture(id,mode)};ExtendedEditorState(c.getOrNull(),raw?.let {view(it,c.getOrNull())},c.exceptionOrNull()?.let {it.message ?: "Current editing catalog could not be loaded"})

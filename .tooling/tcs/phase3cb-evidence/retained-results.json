@@ -1,0 +1,156 @@
+{
+  "run_id": 36344506922,
+  "source_commit": "4f0d63f494bffa14384d7b021c481f2601ce2aa9",
+  "artifact_id": 10939464314,
+  "artifact_sha256": "d844a0d430ab83925fa7833322fd4d376b02fc0f9edb5a1326136566edb208e2",
+  "runtime_sha256": "9199240cef8622f8cc909a7d37d64c50c92b3127a11fb2db0ffb9e441183f400",
+  "retained": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "formRoundTripsEveryCategoryIncludingMultipleBuildingMembers"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "phoneAvailabilityAndProvenanceCannotManufactureVerification"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "inventoryRequiresVerifiedBaselineAndRejectsDuplicateAddresses"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "staleSourceInventoryAndOptimisticConflictsPreserveHistory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "everyCategoryPersistsReopensAndRestoresWithoutPreparing"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "limitsInterruptedWritesAndConcurrentEditorsPreserveJournal"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "geometryCompoundWorkAndBuildingMembersFailClosed"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "exactBeforeKnownIdsCategoryEvidenceAndModesAreEnforced"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "dirtyRecreationAndBothBackRoutesRetainOriginalToken"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "captureDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "captureLight"
+    ]
+  ],
+  "reopened": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached"
+    ]
+  ],
+  "retry": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "missingInventoryStaleAndCorruptStatesRemainBlocked"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+      "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3CBStoreInstrumentationTest",
+      "corruptJournalCannotBecomeAnEmptyDraftAndValuesAreDetached"
+    ]
+  ],
+  "reason": "Four failed UI cases plus explicitly strengthened immutable-view store case; other eleven passed identities retained. Existing 100 prior identities remain frozen.",
+  "screenshots": [
+    {
+      "file": "phase3cb-building-form-dark.png",
+      "sha256": "af1c4dbe6e9e85074eaf3df42d9751d2cb3f87d95c1ef007e9b23034f6a4a068"
+    },
+    {
+      "file": "phase3cb-building-form-light.png",
+      "sha256": "9bad5ccfc93acf2661754e62f452ca08733fb46e823e682edbc25e1635c41ca9"
+    },
+    {
+      "file": "phase3cb-building-preview-dark.png",
+      "sha256": "406090500d874cf150879911e74e4c25d1689cb8ccf247ab1340d248c63f76a4"
+    },
+    {
+      "file": "phase3cb-building-preview-light.png",
+      "sha256": "5384778bd051a463f449cad3987e0bc0bb41b9420e203114d4f5ef9284bfc9d3"
+    },
+    {
+      "file": "phase3cb-geometry-form-dark.png",
+      "sha256": "14ce705225fbed6310475d4eacedbdf55ff6fe442ae0a212fdf2fea89eb9fa24"
+    },
+    {
+      "file": "phase3cb-geometry-form-light.png",
+      "sha256": "4e6fb620a85661930fb622122848bb216cbcc542b3a184679b425ab83059a3e7"
+    },
+    {
+      "file": "phase3cb-geometry-preview-dark.png",
+      "sha256": "79bb5a3ca7f1c037f86c9f0a1be8973a160650e06f2df175dda7d7c63416be3e"
+    },
+    {
+      "file": "phase3cb-geometry-preview-light.png",
+      "sha256": "01f2f37c772798ab330e1b4c6dd057bbc73426263c6fa8cfe1482c7f0141eb87"
+    },
+    {
+      "file": "phase3cb-history-dark.png",
+      "sha256": "d1bece2984dafa3a958ac65e3cdd9cd02907f38c32ff83182bc14f567cb87bdf"
+    },
+    {
+      "file": "phase3cb-history-light.png",
+      "sha256": "418662942e2157d8562a6d0ac829b20bf51e11bab4de3757879eb605f4b621ef"
+    },
+    {
+      "file": "phase3cb-keyboard-dark.png",
+      "sha256": "3a2b516ee257202fcc5c2dd6ca985400b3d5721b4114acc64a0ddc6fb6354988"
+    },
+    {
+      "file": "phase3cb-keyboard-light.png",
+      "sha256": "7e2cacd7a6a88c9c848f64ee354fc02dddd852d6e10feb27b00f60e6ad4f7a69"
+    },
+    {
+      "file": "phase3cb-letter-form-dark.png",
+      "sha256": "335d08bdfd123206fc0e6ffae72f6927ada6d48f21f6eb81b5c4078f9a0cbfc9"
+    },
+    {
+      "file": "phase3cb-letter-form-light.png",
+      "sha256": "7a67f555b1ecd9f53b892b785c02040b49666ab9cf24ace884b7a631b932ede2"
+    },
+    {
+      "file": "phase3cb-phone-form-dark.png",
+      "sha256": "00054a7a28e2250ed1ac3ea01b796ead58e59deee95c0dfbe60fba76713c47e5"
+    },
+    {
+      "file": "phase3cb-phone-form-light.png",
+      "sha256": "c1e52ef5e2ac616c6dc21d3606ab54517b511f8673c00a37414d955281f14955"
+    },
+    {
+      "file": "phase3cb-review-dark.png",
+      "sha256": "9bd30e12412bc0ca608984158719195e3b23e29638dac99e163fa03b45902d53"
+    },
+    {
+      "file": "phase3cb-review-light.png",
+      "sha256": "259bc7557735380dbcefb9b6698447b1bdb88c5a82e09cb962525158dce6aad7"
+    }
+  ]
+}

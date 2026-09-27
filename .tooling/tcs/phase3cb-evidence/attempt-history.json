@@ -1,0 +1,49 @@
+{
+  "frozen_prior_identities": 100,
+  "full_prior_suite_rerun": false,
+  "attempts": [
+    {
+      "run_id": 36343993109,
+      "source_commit": "dac9b2cd0144a4cae4d633a71677cbd9b5be95e6",
+      "status": "CANCELLED_SUPERSEDED",
+      "reason": "Test readiness must scroll LazyColumn status into view"
+    },
+    {
+      "run_id": 36344062780,
+      "source_commit": "9e04a5804ae101503b67c837aa0bf6b5d40115eb",
+      "status": "COMPILE_FAILED",
+      "reason": "Extra parenthesis in new building-form formatter; runtime not reached"
+    },
+    {
+      "run_id": 36344261955,
+      "source_commit": "1f7268156ccb7349888633656486516a57322dfd",
+      "status": "TEST_COMPILE_FAILED",
+      "reason": "App compiled; extra parenthesis in new negative test assertion prevented runtime"
+    },
+    {
+      "run_id": 36344506922,
+      "source_commit": "4f0d63f494bffa14384d7b021c481f2601ce2aa9",
+      "status": "12_PASS_4_FAIL",
+      "retained": 11,
+      "reopened": 1,
+      "failed": [
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "missingInventoryStaleAndCorruptStatesRemainBlocked"
+        ],
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "phoneFormsPreserveUnavailableAndUnknownWithoutApproval"
+        ],
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "confirmationRaceAndOversizedGeometryFailWithoutLosingInput"
+        ],
+        [
+          "com.koenterprises.territorycardstudio.Phase3CBEditorInstrumentationTest",
+          "workspaceRouteEditsAllLetterCategoriesAndPreservesOtherProposals"
+        ]
+      ]
+    }
+  ]
+}

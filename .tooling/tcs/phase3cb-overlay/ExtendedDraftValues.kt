@@ -25,6 +25,7 @@ sealed interface ExtendedValue
     val reason:String,val evidenceRole:String,val evidenceSha256:String) { val key:String get()=kind.name+":"+itemId }
 
 internal object ExtendedValues {
+    fun <T> frozen(values:List<T>):List<T> = java.util.Collections.unmodifiableList(values.toList())
     fun text(v:String,max:Int=256,blank:Boolean=false) {require((blank || v.isNotBlank()) && v==v.trim() && v.length<=max && v.none {it.isISOControl()}) {"Use trimmed text within $max characters"}}
     fun keys(o:JSONObject,vararg names:String) {require(o.keys().asSequence().toSet()==names.toSet()) {"Unknown or missing proposal fields"}}
     fun canonical(v:Any?):String=when(v) {
@@ -48,11 +49,11 @@ internal object ExtendedValues {
         is PhoneValue -> JSONObject().put("state",v.state.name).put("number",v.number)
     }
     fun parse(kind:ExtendedKind,o:JSONObject):ExtendedValue=when(kind) {
-        ExtendedKind.ROAD_PATH,ExtendedKind.BUILDING_PATH -> {keys(o,"points");val a=o.getJSONArray("points");require(a.length()<=512);PathValue((0 until a.length()).map {point(a.getJSONArray(it))})}
+        ExtendedKind.ROAD_PATH,ExtendedKind.BUILDING_PATH -> {keys(o,"points");val a=o.getJSONArray("points");require(a.length()<=512);PathValue(frozen((0 until a.length()).map {point(a.getJSONArray(it))}))}
         ExtendedKind.ROAD_WORK -> {keys(o,"status","role","inside","access");WorkValue(o.getString("status"),o.getString("role"),o.getString("inside"),o.getBoolean("access"))}
         ExtendedKind.BUILDING_MEMBERS -> {keys(o,"assigned","label","members","labels");val m=o.getJSONArray("members");val a=o.getJSONArray("labels");require(m.length()<=128 && a.length()<=128)
-            BuildingValue(o.getBoolean("assigned"),o.getString("label"),(0 until m.length()).map {m.getString(it)},(0 until a.length()).map {i-> val l=a.getJSONObject(i);keys(l,"text","center","origin","rotation","font")
-                BuildingLabelItem(l.getString("text"),point(l.getJSONArray("center")),if(l.isNull("origin"))null else point(l.getJSONArray("origin")),l.getDouble("rotation"),l.getDouble("font"))})}
+            BuildingValue(o.getBoolean("assigned"),o.getString("label"),frozen((0 until m.length()).map {m.getString(it)}),frozen((0 until a.length()).map {i-> val l=a.getJSONObject(i);keys(l,"text","center","origin","rotation","font")
+                BuildingLabelItem(l.getString("text"),point(l.getJSONArray("center")),if(l.isNull("origin"))null else point(l.getJSONArray("origin")),l.getDouble("rotation"),l.getDouble("font"))}))}
         ExtendedKind.LETTER_ADDRESS,ExtendedKind.PHONE_ADDRESS -> {keys(o,"street","unit","city","state","postal","building");AddressValue(o.getString("street"),o.getString("unit"),o.getString("city"),o.getString("state"),o.getString("postal"),o.getString("building"))}
         ExtendedKind.PHONE_NUMBER -> {keys(o,"state","number");PhoneValue(ProposedPhoneState.valueOf(o.getString("state")),o.getString("number"))}
     }

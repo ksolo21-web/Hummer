@@ -32,10 +32,15 @@ class Phase3CBEditorInstrumentationTest {
     private fun ready() {scroll("extended-status");rule.waitUntil(20000){rule.onAllNodesWithTag("extended-status").fetchSemanticsNodes().singleOrNull()?.config?.getOrNull(SemanticsProperties.Text)?.joinToString()?.let {!it.contains("Loading")}==true};rule.waitForIdle()}
     private fun scroll(tag:String) {rule.waitUntil(20000){runCatching{rule.onNodeWithTag("extended-editor").performScrollToNode(hasTestTag(tag))}.isSuccess}}
     private fun click(tag:String) {scroll(tag);rule.waitUntil(20000){runCatching{rule.onNodeWithTag(tag).assertIsEnabled()}.isSuccess};rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
+    private fun chip(tag:String) {
+        rule.runOnIdle {rule.activity.currentFocus?.clearFocus();rule.activity.window.insetsController?.hide(android.view.WindowInsets.Type.ime())}
+        rule.waitUntil(20000){rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())!=true}
+        scroll(tag);rule.onNodeWithTag(tag).performScrollTo();rule.waitForIdle();rule.onNodeWithTag(tag).performClick().assertIsSelected()
+    }
     private fun dialog(tag:String) {rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun type(index:Int,value:String) {scroll("extended-field-$index");rule.onNodeWithTag("extended-field-$index").performTextReplacement(value)}
     private fun select(kind:ExtendedKind,id:String) {click("extended-tab-Items");click("extended-item-${kind.name}:$id")}
-    private fun evidence(x:Phase3CBFixture,kind:ExtendedKind,id:String) {val e=x.catalog().items.single {it.kind==kind && it.id==id}.evidence.first();click("extended-evidence-${e.role}-${e.sha256}")}
+    private fun evidence(x:Phase3CBFixture,kind:ExtendedKind,id:String) {val e=x.catalog().items.single {it.kind==kind && it.id==id}.evidence.first();chip("extended-evidence-${e.role}-${e.sha256}")}
     private fun reason() {scroll("extended-reason");rule.onNodeWithTag("extended-reason").performTextReplacement("Checked source reference; independent reconciliation required")}
     private fun saved(x:Phase3CBFixture,n:Int) {rule.waitUntil(20000){runCatching{x.draft().latest.number==n}.getOrDefault(false)};rule.waitUntil(20000){rule.onAllNodesWithTag("extended-busy").fetchSemanticsNodes().isEmpty()};ready()}
     private fun commit(x:Phase3CBFixture,kind:ExtendedKind,id:String,n:Int) {reason();evidence(x,kind,id);click("extended-save");saved(x,n)}
@@ -45,7 +50,7 @@ class Phase3CBEditorInstrumentationTest {
             rule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-mode-Letter-Writing"));rule.onNodeWithTag("workspace-mode-Letter-Writing").performClick()
             rule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-extended-editor"));rule.onNodeWithTag("workspace-extended-editor").performClick();ready();click("extended-create");saved(x,0)
             select(ExtendedKind.ROAD_PATH,"adapter-alpha");type(0,"227");commit(x,ExtendedKind.ROAD_PATH,"adapter-alpha",1)
-            select(ExtendedKind.ROAD_WORK,"adapter-alpha");click("extended-work-yellow-right");commit(x,ExtendedKind.ROAD_WORK,"adapter-alpha",2)
+            select(ExtendedKind.ROAD_WORK,"adapter-alpha");chip("extended-work-yellow-right");commit(x,ExtendedKind.ROAD_WORK,"adapter-alpha",2)
             select(ExtendedKind.BUILDING_PATH,"building-1");type(0,"302");commit(x,ExtendedKind.BUILDING_PATH,"building-1",3)
             select(ExtendedKind.BUILDING_MEMBERS,"building-1");type(1,"2");type(2,"2");commit(x,ExtendedKind.BUILDING_MEMBERS,"building-1",4)
             select(ExtendedKind.LETTER_ADDRESS,"address-1");type(0,"102 Verified Example Way");commit(x,ExtendedKind.LETTER_ADDRESS,"address-1",5)
@@ -58,7 +63,7 @@ class Phase3CBEditorInstrumentationTest {
         Phase3CBFixture(true).use {x->x.create();rule.setContent {Content(x)};ready()
             select(ExtendedKind.PHONE_ADDRESS,"phone-1");type(0,"102 Verified Example Way");commit(x,ExtendedKind.PHONE_ADDRESS,"phone-1",1)
             select(ExtendedKind.PHONE_NUMBER,"phone-2");scroll("extended-field-1");rule.onNodeWithTag("extended-field-1").assertIsNotEnabled()
-            click("extended-phone-UNKNOWN");commit(x,ExtendedKind.PHONE_NUMBER,"phone-2",2)
+            chip("extended-phone-UNKNOWN");commit(x,ExtendedKind.PHONE_NUMBER,"phone-2",2)
             assertEquals(ProposedPhoneState.UNKNOWN,(x.draft().latest.proposals.last().proposed as PhoneValue).state);assertFalse(x.draft().grantsAuthority)
             click("extended-remove-PHONE_NUMBER:phone-2");dialog("extended-cancel");assertEquals(2,x.draft().latest.proposals.size)
             click("extended-remove-PHONE_NUMBER:phone-2");dialog("extended-confirm");saved(x,3);assertEquals(1,x.draft().latest.proposals.size)
@@ -80,13 +85,13 @@ class Phase3CBEditorInstrumentationTest {
             select(ExtendedKind.ROAD_PATH,"adapter-alpha");type(0,"1e300");scroll("extended-input-error");rule.onNodeWithTag("extended-input-error").assertExists();scroll("extended-save");rule.onNodeWithTag("extended-save").assertIsNotEnabled()
             click("extended-tab-Items");click("extended-item-BUILDING_MEMBERS:building-1");dialog("extended-cancel");click("extended-tab-Edit");scroll("extended-field-0");rule.onNodeWithTag("extended-field-0").assertTextContains("1e300")
             click("extended-tab-History");click("extended-restore-0");val d=x.draft();x.store.save(x.id,x.mode,d.latest.token,d.latest.proposals.dropLast(1));dialog("extended-confirm");ready()
-            scroll("extended-message");rule.onNodeWithTag("extended-message").assertTextContains("Draft changed");assertEquals(2,x.draft().latest.number)
+            scroll("extended-message");rule.onNodeWithTag("extended-message").assertTextEquals("Draft changed; reload");assertEquals(2,x.draft().latest.number)
             click("extended-reload");dialog("extended-confirm");ready();click("extended-discard");dialog("extended-confirm");rule.waitUntil(20000){x.store.read(x.id,x.mode)==null};ready();rule.onNodeWithTag("extended-create").assertExists()
         }
     }
     @Test fun missingInventoryStaleAndCorruptStatesRemainBlocked() {
         Phase3CBFixture(inventory=false).use {x->x.create();rule.setContent {Content(x)};ready();scroll("extended-no-inventory");rule.onNodeWithTag("extended-no-inventory").assertExists()
-            x.f.importSource("changed");rule.activityRule.scenario.moveToState(Lifecycle.State.CREATED);rule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED);ready();scroll("extended-status");rule.onNodeWithTag("extended-status").assertTextContains("Stale")
+            x.f.importSource("changed");rule.activityRule.scenario.moveToState(Lifecycle.State.CREATED);rule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED);ready();scroll("extended-status");rule.onNodeWithTag("extended-status").assertTextEquals("Stale draft • saving blocked")
             x.root.listFiles()!!.single {it.extension=="json"}.appendText("bad");click("extended-reload");ready();scroll("extended-error");rule.onNodeWithTag("extended-error").assertExists();rule.onNodeWithTag("extended-create").assertDoesNotExist()
         }
     }
