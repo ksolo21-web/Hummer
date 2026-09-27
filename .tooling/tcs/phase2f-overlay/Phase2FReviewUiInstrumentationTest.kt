@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.Lifecycle
@@ -32,6 +33,14 @@ class Phase2FReviewUiInstrumentationTest {
         composeRule.waitUntil(20000) { composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
         composeRule.waitForIdle()
     }
+    private fun awaitReady() {
+        composeRule.waitUntil(20000) {
+            composeRule.onNodeWithTag("candidate-review-screen").fetchSemanticsNode()
+                .config.getOrElse(SemanticsProperties.StateDescription) { "" } == "ready"
+        }
+        composeRule.waitForIdle()
+    }
+    private fun awaitDecision() { awaitReady(); show("review-decision"); await("review-decision") }
     private fun show(tag: String) { composeRule.onNodeWithTag("review-list").performScrollToNode(hasTestTag(tag)) }
     private fun click(tag: String) { show(tag); composeRule.onNodeWithTag(tag).performClick() }
     private fun open() {
@@ -59,7 +68,7 @@ class Phase2FReviewUiInstrumentationTest {
             composeRule.onNodeWithTag("review-cancel").performClick()
             composeRule.onNodeWithTag("review-decision").assertDoesNotExist()
             click("review-approve"); composeRule.onNodeWithTag("review-confirm").performClick()
-            await("review-decision")
+            awaitDecision()
             show("review-decision"); composeRule.onNodeWithText("Local approval recorded").assertIsDisplayed()
             show("review-pages"); composeRule.onNodeWithTag("review-pages").assertIsOff()
             click("review-preview"); await("preview-page")
@@ -78,7 +87,7 @@ class Phase2FReviewUiInstrumentationTest {
             ready(f); content(f, AppearanceMode.LIGHT); open(); checks(); click("review-approve")
             await("review-confirmation"); f.page2()
             composeRule.onNodeWithTag("review-confirm").performClick()
-            await("review-error")
+            awaitReady(); show("review-error"); await("review-error")
             show("review-error"); composeRule.onNodeWithTag("review-error").assertTextContains("Candidate changed", substring = true)
             composeRule.onNodeWithTag("review-decision").assertDoesNotExist()
             show("review-pages"); composeRule.onNodeWithTag("review-pages").assertIsOff()
@@ -92,10 +101,10 @@ class Phase2FReviewUiInstrumentationTest {
             checks(); show("review-approve"); capture("phase2f-checklist-dark.png", true)
             click("review-approve"); await("review-confirmation")
             capture("phase2f-confirm-dark.png", true)
-            composeRule.onNodeWithTag("review-confirm").performClick(); await("review-decision")
+            composeRule.onNodeWithTag("review-confirm").performClick(); awaitDecision()
             show("review-decision"); capture("phase2f-approved-local-dark.png", true)
             show("review-actor"); composeRule.onNodeWithTag("review-actor").performTextInput("Synthetic Reviewer")
-            click("review-reject"); composeRule.onNodeWithTag("review-confirm").performClick(); await("review-decision")
+            click("review-reject"); composeRule.onNodeWithTag("review-confirm").performClick(); awaitDecision()
             show("review-decision"); composeRule.onNodeWithText("Candidate rejected").assertIsDisplayed()
             capture("phase2f-rejected-dark.png", true)
             f.state().packet!!.file.appendText("tampered")
@@ -106,7 +115,7 @@ class Phase2FReviewUiInstrumentationTest {
             ready(f); content(f, AppearanceMode.LIGHT); open()
             capture("phase2f-ready-light.png", false)
             checks(); click("review-approve"); composeRule.onNodeWithTag("review-confirm").performClick()
-            await("review-decision"); show("review-decision")
+            awaitDecision(); show("review-decision")
             capture("phase2f-approved-local-light.png", false)
         }
     }

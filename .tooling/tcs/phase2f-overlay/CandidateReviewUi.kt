@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -51,7 +53,7 @@ fun CandidateReviewScreen(modifier: Modifier, territoryId: String, mode: Workspa
         busy = false
     }
     val ticket = state?.ticket
-    Surface(modifier.fillMaxSize().testTag("candidate-review-screen"), color = MaterialTheme.colorScheme.background) {
+    Surface(modifier.fillMaxSize().testTag("candidate-review-screen").semantics { stateDescription = if (busy) "busy" else "ready" }, color = MaterialTheme.colorScheme.background) {
         LazyColumn(Modifier.fillMaxSize().testTag("review-list"), contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
