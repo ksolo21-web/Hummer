@@ -1,5 +1,6 @@
 package com.koenterprises.territorycardstudio
 
+import android.graphics.Bitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -16,6 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayInputStream
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class Phase2CImportVerificationInstrumentationTest {
@@ -150,6 +153,59 @@ class Phase2CImportVerificationInstrumentationTest {
         }
         assertTrue(failure.isFailure)
         assertTrue(failure.exceptionOrNull()?.message?.contains("signature") == true)
+    }
+
+    @Test
+    fun captureDarkImportAndVerificationScreens() {
+        val app = ApplicationProvider.getApplicationContext<TerritoryCardStudioApplication>()
+        val dashboard = TerritoryDashboardModel.from(app.services.knowledgeBase)
+        val item = dashboard.items.first { it.assignment.displayId == "1" }
+        val store = SourceMapIntakeStore(app)
+        store.clear(item.assignment.displayId)
+        store.importFromStream(
+            assignment = item.assignment,
+            sourceFilename = "territory-1-capture-source.pdf",
+            mimeType = "application/pdf",
+            input = ByteArrayInputStream("%PDF-1.4\nsynthetic capture source".toByteArray()),
+            importedAtUtc = "2026-09-27T00:30:00Z"
+        )
+
+        composeRule.onNodeWithTag("territories-dashboard").assertIsDisplayed()
+        composeRule.onNodeWithTag("territories-dashboard").performScrollToNode(hasTestTag("territory-row-1"))
+        composeRule.onNodeWithTag("territory-row-1").performClick()
+        composeRule.onNodeWithTag("territory-workspace").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-import-map"))
+        composeRule.onNodeWithTag("workspace-import-map").performClick()
+        composeRule.onNodeWithTag("import-map-screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("import-map-screen").performScrollToNode(hasTestTag("import-source-card"))
+        composeRule.onNodeWithTag("import-source-card").assertIsDisplayed()
+        saveFullDisplayScreenshot("phase2c-import-map-dark.png")
+
+        composeRule.onNodeWithTag("import-map-screen").performScrollToNode(hasTestTag("continue-verification"))
+        composeRule.onNodeWithTag("continue-verification").performClick()
+        composeRule.onNodeWithTag("verification-screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("verification-screen").performScrollToNode(hasTestTag("verification-field_release"))
+        composeRule.onNodeWithTag("verification-field_release").assertIsDisplayed()
+        saveFullDisplayScreenshot("phase2c-verification-dark.png")
+    }
+
+    private fun saveFullDisplayScreenshot(name: String) {
+        composeRule.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot()) {
+            "Unable to capture display screenshot"
+        }
+        val output = File(instrumentation.targetContext.filesDir, name)
+        output.outputStream().use { stream ->
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                "Unable to encode screenshot " + name
+            }
+        }
+        check(output.isFile && output.length() > 0L) {
+            "Screenshot was not written: " + output
+        }
     }
 
     @Test
