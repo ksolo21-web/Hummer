@@ -39,7 +39,7 @@ class Phase2HKnowledgeUiInstrumentationTest {
         rule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-export"))
         rule.onNodeWithTag("workspace-export").performClick(); waitFor("approved-export-screen")
         open()
-        rule.onNodeWithTag("knowledge-selected").assertTextContains("T250").performClick()
+        rule.onNodeWithTag("knowledge-selected").assertTextEquals("Open selected territory T250").performClick()
         rule.onNodeWithTag("knowledge-identity").assertExists()
         rule.onNodeWithTag("knowledge-close").performClick()
         waitFor("approved-export-screen")
