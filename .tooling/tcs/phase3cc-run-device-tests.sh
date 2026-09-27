@@ -12,6 +12,9 @@ collect() {
     adb exec-out run-as com.koenterprises.territorycardstudio cat "files/$path" > "evidence/${path##*/}"
   done < evidence/screenshot-paths.txt
 }
+# Stop the unrelated emulator launcher before capturing the target activity.
+# Target-app failures are not suppressed. Foreign dialogs are rejected by the capture gate.
+adb shell am force-stop com.google.android.apps.nexuslauncher
 # Functional passes and all unaffected images are retained with exact hashes.
 adb shell am instrument -w -r -e class "$CLASS#captureDark,$CLASS#captureLight" -e captureOnly repair com.koenterprises.territorycardstudio.test/androidx.test.runner.AndroidJUnitRunner > evidence/phase3cc-runtime.log 2>&1
 collect

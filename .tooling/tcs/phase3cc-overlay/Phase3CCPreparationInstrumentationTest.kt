@@ -108,7 +108,8 @@ class Phase3CCPreparationInstrumentationTest {
             val background=b.getPixel(8,b.height/2);val luminance=(android.graphics.Color.red(background)+android.graphics.Color.green(background)+android.graphics.Color.blue(background))/3
             var stable=prior!=null && prior!!.width==b.width && prior!!.height==b.height && (if(dark)luminance<80 else luminance>180)
             val insets=rule.activity.window.decorView.rootWindowInsets
-            stable=stable && insets?.isVisible(android.view.WindowInsets.Type.statusBars())==true
+            stable=stable && insets?.isVisible(android.view.WindowInsets.Type.statusBars())==true &&
+                automation.rootInActiveWindow?.packageName?.toString()==rule.activity.packageName
             if(stable)for(y in 0 until b.height step 4)for(x in 0 until b.width step 8)if(prior!!.getPixel(x,y)!=b.getPixel(x,y))stable=false
             val now=android.os.SystemClock.elapsedRealtime()
             if(!stable)stableSince=0L else if(stableSince==0L)stableSince=now
