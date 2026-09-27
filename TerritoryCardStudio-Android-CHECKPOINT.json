@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
   "version": "0.2.4-phase2db-build-workflow",
-  "milestone": "phase-2db-build-ui-coordinator-passed",
-  "status": "PHASE_2D_PASSED_PHASE_2_IN_PROGRESS",
-  "phase_milestone_before": "Phase 2D-B IN_PROGRESS",
-  "phase_milestone_after": "Phase 2D-B PASSED; Phase 2D Build/Generate Page 2 integration PASSED",
+  "milestone": "phase-2e-exact-pdf-preview-validation",
+  "status": "PHASE_2E_IN_PROGRESS",
+  "phase_milestone_before": "Phase 2D PASSED",
+  "phase_milestone_after": "Phase 2E IN_PROGRESS",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -500,7 +500,7 @@
   ],
   "source_package": "TerritoryCardStudio-Android-0.2.4-phase2db-source.tar.xz",
   "source_package_sha256": "e7ca7ae20f1c79a6cfc9ed533463bc59abc1c8bfb5f99c0063dfb88eed09dd45",
-  "saved_at_utc": "2026-09-27T02:08:45.584Z",
+  "saved_at_utc": "2026-09-27T02:27:17.077Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -619,5 +619,10 @@
     "reserved_pdf_sweep": 0,
     "real_territory_commissioning": "NOT_PERFORMED",
     "scope": "Phase2D-B_Build_UI_coordinator"
+  },
+  "phase2e_validation": {
+    "status": "IN_PROGRESS",
+    "version_name": "0.2.5",
+    "version_code": 30
   }
 }
