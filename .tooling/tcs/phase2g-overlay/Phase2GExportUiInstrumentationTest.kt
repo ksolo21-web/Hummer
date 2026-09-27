@@ -71,7 +71,12 @@ class Phase2GExportUiInstrumentationTest {
         File(inst.targetContext.filesDir, name).outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         bitmap.recycle()
     }
-    private fun shell(command: String): ByteArray = ParcelFileDescriptor.AutoCloseInputStream(inst.uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+    private fun shell(command: String): ByteArray {
+        // Send script through stdin: executeShellCommand does not parse shell quoting/operators.
+        val pipes = inst.uiAutomation.executeShellCommandRw("sh")
+        ParcelFileDescriptor.AutoCloseOutputStream(pipes[1]).use { it.write((command + "\n").toByteArray()) }
+        return ParcelFileDescriptor.AutoCloseInputStream(pipes[0]).use { it.readBytes() }
+    }
 
     @Test fun realWorkspaceNavigatesToGuardedExportWithoutCommissioning() {
         composeRule.onNodeWithTag("territories-dashboard").performScrollToNode(hasTestTag("territory-row-1"))
