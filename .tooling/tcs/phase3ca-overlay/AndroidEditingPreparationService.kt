@@ -60,6 +60,18 @@ class AndroidEditingPreparationService internal constructor(
         }
         val roadEdits=d.latest.edits.filter {it.kind==DraftLabelKind.ROAD}.associateBy {it.itemId}
         val buildingEdits=d.latest.edits.filter {it.kind==DraftLabelKind.BUILDING}.associateBy {it.itemId}
+        val baseInput=baseline.first
+        require(input.copy(assignment=baseInput.assignment,liveRequest=baseInput.liveRequest,liveResult=baseInput.liveResult,
+            topologySignature=baseInput.topologySignature,topologyValidation=baseInput.topologyValidation,
+            overlapDecision=baseInput.overlapDecision,labels=baseInput.labels)==baseInput) {
+            "Detail geometry or layout changes require the extended editing gate"
+        }
+        val expectedLabels=baseInput.labels.map {label ->
+            val edit=roadEdits[label.segmentId]
+            if(edit==null)label else label.copy(text=edit.proposed,
+                placement=label.placement.copy(navigationLock=label.placement.navigationLock.copy(streetName=edit.proposed)))
+        }
+        require(input.labels==expectedLabels) { "Label changes must exactly match saved road proposals without placement changes" }
         require(input.assignment.roads.map{it.segmentId}.toSet()==slot.roads.map{it.segmentId}.toSet()) { "Unexpected road additions/removals" }
         require(input.assignment.buildings.map{it.buildingId}.toSet()==slot.buildings.map{it.buildingId}.toSet()) { "Unexpected building additions/removals" }
         input.assignment.roads.forEach { road ->

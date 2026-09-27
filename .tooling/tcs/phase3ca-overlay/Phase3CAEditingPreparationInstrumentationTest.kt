@@ -121,6 +121,9 @@ class Phase3CAEditingPreparationInstrumentationTest {
             fails{x.validate(input.copy(assignment=input.assignment.copy(locality="Changed")))}
             val wrong=input.assignment.roads.first().copy(normalizedName="unrelated")
             fails{x.validate(input.copy(assignment=input.assignment.copy(roads=listOf(wrong)+input.assignment.roads.drop(1))))}
+            val label=input.labels.last()
+            fails{x.validate(input.copy(labels=input.labels.dropLast(1)+label.copy(text="Undeclared label")))}
+            fails{x.validate(input.copy(buildingValidation=input.buildingValidation.copy(applicable=true)))}
             assertEquals(0,x.calls)
         }
     }

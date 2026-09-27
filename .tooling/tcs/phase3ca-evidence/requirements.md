@@ -19,3 +19,5 @@ No new UI acceptance is claimed in3C-A. Existing label editor does not expose pr
 Building-label preparation remains explicitly blocked until3C-B: changing an actual rendered single-building label also changes its verified member inventory. The frozen adapter requires these to agree.3C-A must reject building proposals before provider execution or candidate replacement; no display-only fixture may be used to claim this capability.3C-B retains authority-aware building reconciliation as mandatory scope.
 
 Inventory is snapshotted atomically with the independently prepared baseline and must remain structurally identical for this road-label transaction. Null inventory is an explicit front-only reduction; it blocks Page2. Changed address/telephone records require3C-B authority-aware reconciliation even when structurally valid.
+
+All detail/layout fields and building validation must equal the detached prepared baseline. Labels may change only the saved road text and corresponding navigation-lock street text; placement and unrelated labels stay exact. Wider layout/placement editing remains3C-B.
