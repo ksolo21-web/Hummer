@@ -84,7 +84,7 @@ class Phase2KAuditService(private val kb: TerritoryKnowledgeBase, private val co
         return Phase2KAuditSnapshot(a.displayId, mode, bytes, BundleIntegrity.sha256(bytes.inputStream()),
             intake?.sha256, prepared?.inputHash, prepared?.inventory?.hash, front, packet, kb.revision)
     }
-    fun exportCreated(ticket: Phase2KAuditSnapshot, destination: CreatedExportDestination): String {
+    internal fun exportCreated(ticket: Phase2KAuditSnapshot, destination: CreatedExportDestination): String {
         try {
             require(ticket.bytes.size in 1..(2 * 1024 * 1024) && BundleIntegrity.sha256(ticket.bytes.inputStream()) == ticket.sha256) { "Audit ticket bytes changed" }
             val currentItem = TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId == ticket.territoryId }

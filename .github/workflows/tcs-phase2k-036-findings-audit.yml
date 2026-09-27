@@ -407,13 +407,13 @@ jobs:
           assert files
           cases=[c for p in files for c in ET.parse(p).getroot().iter('testcase')]
           required={'realRecordsKeepAuthorityAndEverySourcePatchAndFinding', 'missingReferenceAndScopedConflictsRemainTruthful', 'workspaceAndExportStateSurviveReadOnlyDestination', 'allSourceHashesAndMissingSearchRemainAccessible', 'captureKnowledgeLightDarkRecordsRulesAndConflicts'}
-          required.update({'scopedAuditKeepsExactIdentityAndReadbackWithoutFieldAuthority','staleAuditNeverWritesAndUnpreparedEvidenceIsHonest','actualOverlapRoadAndBuildingAreItemLinkedWithoutInferredIdentifiers','captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes','actualSystemPickerCancelsSavesAndRejectsStaleAudit'})
-          assert len(cases) == 62
+          required.update({'scopedAuditKeepsExactIdentityAndReadbackWithoutFieldAuthority','staleAuditNeverWritesAndUnpreparedEvidenceIsHonest','actualOverlapRoadAndBuildingAreItemLinkedWithoutInferredIdentifiers','captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes','actualSystemPickerCancelsSavesAndRejectsStaleAudit','affectedRoadFindingOpensStreetsWithActualItemContext'})
+          assert len(cases) == 63
           required.update({'realDashboardFiltersAssignmentsAndHonestScreeningRecords', 'readinessUsesEveryScopedFindingNotBooleanConflictPresence', 'completeWorkspaceCollectionsHaveNoPresentationCeiling', 'combinedSearchFilterNoMatchAndCompleteScreeningAreReachable', 'roadsBuildingsAndSyntheticSourcesRemainCompletelyBrowsable', 'captureDashboardFiltersScreeningAndCompleteRoadBrowsing'})
           required.update({'snapshotsBindBothInventoriesAndVerificationToCurrentSource', 'mutableInventoryInvalidatesSnapshotAndTerritoryModeCannotLeak', 'approvedPreviewIsExactAndIndependentOfCandidatePreparation', 'resumeRemovesStalePreviewAndInventory', 'captureCurrentWorkspacePreviewInventoriesAndVerification'})
           assert required <= {c.get('name') for c in cases}
           assert all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases)
-          Path('evidence/test-summary.txt').write_text('CONNECTED_TESTS='+str(len(cases))+'\nFAILURES=0\nSKIPPED=0\nPHASE2J_TESTS=5\nPHASE2K_TESTS=5\n')
+          Path('evidence/test-summary.txt').write_text('CONNECTED_TESTS='+str(len(cases))+'\nFAILURES=0\nSKIPPED=0\nPHASE2J_TESTS=5\nPHASE2K_TESTS=6\n')
           from PIL import Image,ImageStat
           import hashlib
           shots=list(Path('evidence/ui').glob('*.png'))
@@ -437,7 +437,7 @@ jobs:
           AGGREGATE_PHASE_2=PENDING_FINAL_AUDIT
           VERSION_NAME=0.2.11
           VERSION_CODE=36
-          CONNECTED_TESTS=62
+          CONNECTED_TESTS=63
           EXPLICIT_STATUS_FILTERS=PASS_RUNTIME
           UNASSIGNED_SCREENING_AUTHORITY=PASS_RUNTIME
           TRUE_FINDING_COUNTS=PASS_RUNTIME

@@ -9,6 +9,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
+import com.koenterprises.territorycardstudio.core.OverlapCandidate
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -107,6 +108,28 @@ class Phase2KUiInstrumentationTest {
             rule.waitUntil(20000) { runCatching { rule.onNodeWithTag("audit-message").assertTextContains("changed",substring=true) }.isSuccess }
             assertTrue(shell("test ! -e '$path' && echo absent").toString(Charsets.UTF_8).contains("absent"))
             shell("rm -f '$path'")
+        }
+    }
+    @Test fun affectedRoadFindingOpensStreetsWithActualItemContext() {
+        Phase2DBFixture(false).use { f ->
+            val overlap=OverlapCandidate("Alpha Rd",listOf(f.identity.displayId,"273"),"review","Review the shared junction")
+            val kb=f.kb.copy(crossTerritoryOverlapAudit=f.kb.crossTerritoryOverlapAudit.copy(reviewCandidates=listOf(overlap)))
+            val item=TerritoryDashboardModel.from(kb).items.first { it.assignment.displayId==f.identity.displayId }
+            val preview=AndroidPdfPreviewService(f.coordinator,File(f.root,"2k-finding-preview"),f.service)
+            rule.runOnIdle { rule.activity.setContent { TerritoryCardStudioTheme(AppearanceMode.LIGHT) {
+                Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
+                    ModeAwareTerritoryWorkspace(Modifier.fillMaxSize().safeDrawingPadding(),item,kb.revision,{},kb,f.coordinator,preview)
+                }
+            } } }
+            wait("territory-workspace")
+            scroll("workspace-findings");rule.onNodeWithTag("workspace-findings").performClick()
+            wait("findings-screen")
+            rule.onNodeWithTag("finding-overlap-Alpha Rd").assertExists()
+            rule.onNodeWithTag("finding-open-overlap").performClick()
+            wait("finding-target")
+            rule.onNodeWithTag("workspace-tab-Streets").assertExists()
+            rule.onNodeWithText("Finding • overlap • Alpha Rd").assertExists()
+            rule.onNodeWithText("Review the shared junction").assertExists()
         }
     }
     @Test fun captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes() {
