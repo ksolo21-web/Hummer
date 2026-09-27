@@ -1,0 +1,19 @@
+{
+  "verified_archive_files": 2424,
+  "prior_main_and_instrumentation_files": 82,
+  "unchanged_prior_files": 79,
+  "changed_files": [
+    "./app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase2FReviewUiInstrumentationTest.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt"
+  ],
+  "added_main_files": [
+    "./app/src/main/java/com/koenterprises/territorycardstudio/AndroidApprovedExportService.kt",
+    "./app/src/main/java/com/koenterprises/territorycardstudio/ApprovedExportUi.kt"
+  ],
+  "prior_test_cases_and_assertions_preserved": true,
+  "prior_capture_sync_fix": "Phase2FReviewUiInstrumentationTest waits for keyboard dismissal and confirmation",
+  "frozen_renderer_service_intake_preview_unchanged": true,
+  "connected_tests": 41,
+  "source_package_sha256": "b8460bf1c3b3bbfec0a8783c632b512dcd35812013a09e822804fa90e753d3b1"
+}

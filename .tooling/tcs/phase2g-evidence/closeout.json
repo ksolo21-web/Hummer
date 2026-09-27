@@ -1,0 +1,62 @@
+{
+  "run_id": 36292365557,
+  "run_head_sha": "c75f34998e6d0d9054502828a5ecc1e2edcd54fb",
+  "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36292365557",
+  "run_conclusion": "success",
+  "artifact_id": 10922653369,
+  "artifact_zip_sha256": "cd3618471a76e943cc22383566bedfe7876f65d93cac66edd64532f56a261844",
+  "artifact_expires_at": "2026-10-11T03:57:33Z",
+  "version_name": "0.2.7",
+  "version_code": 32,
+  "target_sdk": 37,
+  "source_package_sha256": "b8460bf1c3b3bbfec0a8783c632b512dcd35812013a09e822804fa90e753d3b1",
+  "apk_sha256": "974b2ffeed0b1373a903f231af62094639b4d8e200cc67bdac8fe018de7ae85f",
+  "aab_sha256": "c85b17966d90f98aca03f939002e9f9439eb3008361bec12bcb025e507c024a0",
+  "extracted_source_manifest_sha256": "64aebd787e8bd4a5c10c7cd6f0e92e5dddf070544c5657267683c2a341a4405b",
+  "connected_tests": 41,
+  "new_export_tests": 8,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "dedicated_capture_test": "PASS",
+  "screenshots": {
+    "phase2g-cancelled-dark.png": "9df115c0e9d6c35458316de38330d409ee41d0e30f66e5446b066857f836585f",
+    "phase2g-missing-dark.png": "44c315859ca1ed6b53b22238c97d510fae66786b3929416250e979bff9791e1f",
+    "phase2g-ready-dark.png": "9af762b519b619f24fd99871f9c091f3a24f61091b49448405fa81d519fc566e",
+    "phase2g-ready-light.png": "aa0cf76be7932f1cec5351e5e2940f333dc511f7e6835d0f662cdbb86f2d521a",
+    "phase2g-reserved-blocked-light.png": "ba127e29950b9e4edeb2165534c19c7aa5e77e4cef17041309c53288db9b9642",
+    "phase2g-saved-dark.png": "2b7cfaf40a15dec7e61af1a59aef66cb9f71dd51eed9c811b7c247b9666c178c",
+    "phase2g-saved-light.png": "8b4b4dbdd303b02c793d8b14d275e6fcc8e1e52ad1677af19974009030f10771",
+    "phase2g-stale-blocked-dark.png": "b4eca395ab223fb77291e4e64a59b84b0f91778986fe410de9dfe170a7bb1241",
+    "phase2g-system-picker.png": "079d49469a0968b9c8d4a9404bf20a322d791f157f10d1e61df10023fcead99e"
+  },
+  "synthetic_export_pdf": {
+    "sha256": "8a9d452727931e4c42ed51db647a7aeb760274c9de55b84720a3652af40973b6",
+    "bytes": 81696
+  },
+  "exact_authority_hash_passthrough": "PASS_RUNTIME",
+  "actual_system_picker_save_cancel_attach": "PASS_RUNTIME",
+  "destination_readback_exact_bytes": "PASS_RUNTIME",
+  "stale_expired_recreated_ticket_no_write": "PASS_RUNTIME",
+  "write_readback_cleanup_failures": "PASS_RUNTIME",
+  "local_candidate_approval_export": "BLOCKED",
+  "frozen_renderer_artifact_intake_build_preview_review_services": "PASS_UNCHANGED",
+  "prior_instrumentation_assertions_preserved": true,
+  "prior_review_capture_synchronization_repair": "Keyboard dismissal and confirmation wait; no assertions removed",
+  "archived_manifest_files_verified": 2424,
+  "reserved_pdf_sweep": 0,
+  "real_territory_commissioning": "NOT_PERFORMED",
+  "authority_promotion": "NOT_ENABLED",
+  "scope": "Phase2G_guarded_existing_approved_export",
+  "previous_failed_run": 36291770655,
+  "previous_run_repairs": [
+    "Use sh for quoted paths and shell operators in test helper",
+    "Wait for keyboard dismissal and review confirmation in preserved UI test"
+  ],
+  "status": "PASS",
+  "independent_critic": {
+    "agent": "/root/phase2da_critic",
+    "score": 10,
+    "passed": true
+  }
+}
