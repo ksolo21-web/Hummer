@@ -181,6 +181,7 @@ class Phase3CAEditingPreparationInstrumentationTest {
             val previous=x.co.currentCandidateVersion(x.id,x.mode)
             val inv=(x.f.inventory as Page2Inventory.LetterWriting).inventory
             fails{x.validate(inventory=Page2Inventory.LetterWriting(inv.copy(records=inv.records+inv.records)))}
+            fails{x.validate(inventory=Page2Inventory.LetterWriting(inv.copy(records=inv.records.map {it.copy(streetAddress="999 Undeclared Way")})))}
             fails{x.bridge.validate(x.id,WorkspaceMode.TELEPHONE,x.draft().latest.token,x.input(),x.f.inventory)}
             assertEquals(previous,x.co.currentCandidateVersion(x.id,x.mode))
         }

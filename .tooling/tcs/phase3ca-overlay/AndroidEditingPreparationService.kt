@@ -52,6 +52,7 @@ class AndroidEditingPreparationService internal constructor(
         val input=EditingSnapshots.detach(reconciledInput)
         val detachedInventory=EditingSnapshots.detach(inventory)
         val baseline=coordinator.editingBaseline(id,mode)
+        require(detachedInventory==null || detachedInventory==baseline.third) { "Inventory changes require the authority-aware editing gate" }
         require(input.assignment.copy(roads=baseline.first.assignment.roads,buildings=baseline.first.assignment.buildings)==baseline.first.assignment &&
             input.sourceTruth==baseline.first.sourceTruth) { "Assignment metadata or authority differs from the independently verified baseline" }
         require(input.assignment.displayId==id && input.assignment.authoritySha256 in slot.sourceHashes) {

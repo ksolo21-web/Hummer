@@ -59,10 +59,10 @@ class AndroidBuildWorkflowCoordinator(
     }
 
     @Synchronized
-    internal fun editingBaseline(id:String,mode:WorkspaceMode):Pair<ProductionRenderModelInput,String> {
+    internal fun editingBaseline(id:String,mode:WorkspaceMode):Triple<ProductionRenderModelInput,String,Page2Inventory?> {
         require(state(id,mode).inputReady) { "Independently verified baseline must be prepared first" }
         val p=requireNotNull(prepared[key(id,mode)])
-        return EditingSnapshots.detach(p.input) to p.candidateVersion
+        return Triple(EditingSnapshots.detach(p.input),p.candidateVersion,EditingSnapshots.detach(p.inventory))
     }
 
     internal fun validateEditingInventory(id:String,mode:WorkspaceMode,input:ProductionRenderModelInput,inventory:Page2Inventory?) {
