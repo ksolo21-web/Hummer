@@ -2,9 +2,9 @@
   "project": "Territory Card Studio Android",
   "version": "0.2.6-phase2f-candidate-review-local-approval",
   "milestone": "phase-2f-candidate-review-local-approval-passed",
-  "status": "PHASE_2F_PASSED_PHASE_2_IN_PROGRESS",
-  "phase_milestone_before": "Phase 2F IN_PROGRESS",
-  "phase_milestone_after": "Phase 2F PASSED",
+  "status": "PHASE_2G_IN_PROGRESS_PHASE_2_IN_PROGRESS",
+  "phase_milestone_before": "Phase 2F PASSED",
+  "phase_milestone_after": "Phase 2G IN_PROGRESS",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -748,5 +748,10 @@
     "real_territory_commissioning": "NOT_PERFORMED",
     "authority_promotion_export": "NOT_ENABLED",
     "scope": "Phase2F_candidate_review_and_local_approval"
+  },
+  "phase2g_validation": {
+    "status": "IN_PROGRESS",
+    "version_name": "0.2.7",
+    "version_code": 32
   }
 }

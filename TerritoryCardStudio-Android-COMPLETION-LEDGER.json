@@ -31,7 +31,8 @@
     "2D_A_page2_service": "PASSED",
     "2D_B_build_ui_coordinator": "PASSED",
     "2E_exact_pdf_preview": "PASSED",
-    "2F_candidate_review": "PASSED"
+    "2F_candidate_review": "PASSED",
+    "2G_guarded_export": "IN_PROGRESS"
   },
   "phase_milestone_before": "Phase 2F IN_PROGRESS",
   "phase_milestone_after": "Phase 2F PASSED",
@@ -271,7 +272,8 @@
     "2D_A": "PASSED",
     "2D_B": "PASSED",
     "2E": "PASSED",
-    "2F": "PASSED"
+    "2F": "PASSED",
+    "2G": "IN_PROGRESS"
   },
   "phase2a_freeze_evidence": {
     "full_build_run_id": 36273476116,
