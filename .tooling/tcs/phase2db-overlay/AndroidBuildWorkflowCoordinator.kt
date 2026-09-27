@@ -88,7 +88,7 @@ class AndroidBuildWorkflowCoordinator(
         if (mode != WorkspaceMode.REGULAR && entry?.inventory == null) pageBlockers += "Attach a verified territory-specific inventory."
         if (entry?.front == null) pageBlockers += "Build the front candidate first."
         val summary = when (val inventory = entry?.inventory) {
-            is Page2Inventory.LetterWriting -> "${inventory.inventory.records.size} verified addresses"
+            is Page2Inventory.LetterWriting -> "${inventory.inventory.records.size} verified " + if (inventory.inventory.records.size == 1) "address" else "addresses"
             is Page2Inventory.Telephone -> "${inventory.inventory.records.size} verified address records; unavailable numbers remain explicit"
             null -> if (mode == WorkspaceMode.REGULAR) "Not required for the front candidate" else "No verified inventory attached"
         }

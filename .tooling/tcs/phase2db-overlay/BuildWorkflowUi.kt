@@ -49,7 +49,7 @@ fun BuildWorkflowScreen(
                 Text("Territory $territoryId • ${mode.label}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Candidate only", fontWeight = FontWeight.SemiBold)
                         Text("Building does not approve or replace a field card. Review and explicit approval are still required.")
@@ -61,7 +61,8 @@ fun BuildWorkflowScreen(
                 item { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Checking build inputs…") }
             } else {
                 item {
-                    Card(Modifier.fillMaxWidth().testTag("build-readiness")) {
+                    Card(Modifier.fillMaxWidth().testTag("build-readiness"),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text("Build readiness", style = MaterialTheme.typography.titleLarge)
                             Text("Source map: " + if (current.sourceReady) "verified local copy" else "not ready")
@@ -83,8 +84,9 @@ fun BuildWorkflowScreen(
                     }
                 }
                 if (mode != WorkspaceMode.REGULAR) {
-                    if (current.page2Blockers.isNotEmpty()) item {
-                        Text(current.page2Blockers.joinToString("\n"), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    val additionalPageBlockers = current.page2Blockers - current.buildBlockers.toSet()
+                    if (additionalPageBlockers.isNotEmpty()) item {
+                        Text(additionalPageBlockers.joinToString("\n"), color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.testTag("page2-blockers"))
                     }
                     item {
@@ -97,7 +99,8 @@ fun BuildWorkflowScreen(
                 if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                 current.error?.let { error -> item { Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("build-error")) } }
                 if (current.front != null) item {
-                    Card(Modifier.fillMaxWidth().testTag("build-result")) {
+                    Card(Modifier.fillMaxWidth().testTag("build-result"),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(if (current.packet != null) "Two-page candidate generated" else "Front candidate built", style = MaterialTheme.typography.titleLarge)
                             Text("Awaiting review and explicit approval", color = MaterialTheme.colorScheme.primary)

@@ -257,6 +257,10 @@ jobs:
             adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2db-generated-letter-dark.png > evidence/ui/phase2db-generated-letter-dark.png
             adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2db-generated-telephone-light.png > evidence/ui/phase2db-generated-telephone-light.png
 
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2db-blocked-controls-dark.png > evidence/ui/phase2db-blocked-controls-dark.png
+
+            adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2db-blocked-controls-light.png > evidence/ui/phase2db-blocked-controls-light.png
+
       - name: Freeze Phase 2D-B validated source and evidence
         shell: bash
         run: |
@@ -274,14 +278,14 @@ jobs:
           from PIL import Image,ImageStat
           import hashlib
           shots=list(Path('evidence/ui').glob('*.png'))
-          assert len(shots)==4
+          assert len(shots)==6
           hashes=[]
           for p in shots:
               im=Image.open(p).convert('RGB')
               assert im.size==(1080,2400), (p, im.size)
               assert max(ImageStat.Stat(im).stddev)>15, str(p)
               hashes.append(hashlib.sha256(p.read_bytes()).hexdigest())
-          assert len(set(hashes))==4
+          assert len(set(hashes))==6
           Path('evidence/screenshots.sha256').write_text(''.join(h+'  '+str(p)+'\n' for p,h in zip(shots,hashes)))
           CHECK
           sha256sum evidence/core-test.log evidence/app-compile.log evidence/package-build.log evidence/connected-android-test.log > evidence/build-logs.sha256
