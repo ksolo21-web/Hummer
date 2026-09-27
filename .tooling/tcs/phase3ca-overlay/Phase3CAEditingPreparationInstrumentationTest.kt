@@ -23,7 +23,7 @@ class Phase3CAEditingPreparationInstrumentationTest {
         var now=1000L
         var calls=0
         var onFetch:()->Unit={}
-        var evidenceTransform:(List<ProviderVerificationEvidence>)->List<ProviderVerificationEvidence>={it}
+        var evidenceTransform:(List<ProviderVerificationEvidence>)->List<ProviderVerificationEvidence> = {it}
         val bridge=AndroidEditingPreparationService(kb,f.app.services.activePolicy,drafts,f.sources,co,models,
             {request -> calls++;onFetch()
                 val targets=request.roadTargets.mapTo(linkedSetOf()){it.targetId}
@@ -53,6 +53,25 @@ class Phase3CAEditingPreparationInstrumentationTest {
         override fun close()=f.close()
     }
     private fun fails(block:()->Unit) {assertTrue("Must reject",runCatching(block).isFailure)}
+    @Test fun buildingMemberChangesStayBlockedUntilAuthorityAwareReconciliation() {
+        Fixture().use {x->
+            val building=BuildingGeometry("building-1","1","apartment",true,"",listOf("1"),
+                listOf(BuildingLabelItem("1",Point2D(350.0,165.0),null,0.0,10.0)),
+                listOf(Point2D(300.0,140.0),Point2D(400.0,140.0),Point2D(400.0,190.0),Point2D(300.0,190.0)))
+            val kb=x.kb.copy(assignments=x.kb.assignments+(x.id to x.slot.copy(housingType="apartment",buildings=listOf(building),buildingCount=1)))
+            val drafts=AndroidEditingDraftStore(File(x.f.root,"building-drafts"),kb,x.f.sources)
+            val d=drafts.create(x.id,x.mode)
+            val saved=drafts.save(x.id,x.mode,d.latest.token,listOf(DraftLabelEdit(DraftLabelKind.BUILDING,
+                "building-1","1","2","Member change requires independent authority",x.f.source.sha256)))
+            val bridge=AndroidEditingPreparationService(kb,x.f.app.services.activePolicy,drafts,x.f.sources,x.co,AndroidRenderModelService(kb),
+                fetchEvidence={error("Blocked building proposal must not reach providers")})
+            val previous=x.co.currentCandidateVersion(x.id,x.mode)
+            val failure=runCatching {bridge.validate(x.id,x.mode,saved.latest.token,x.input(),x.f.inventory)}.exceptionOrNull()
+            assertTrue(failure is IllegalArgumentException)
+            assertTrue(failure!!.message!!.contains("authority-aware building"))
+            assertEquals(previous,x.co.currentCandidateVersion(x.id,x.mode))
+        }
+    }
     @Test fun letterPreparationBuildAndPacketStayUnapproved() {
         Fixture().use {x->
             val before=x.co.state(x.id,x.mode)
@@ -166,7 +185,7 @@ class Phase3CAEditingPreparationInstrumentationTest {
             assertEquals(previous,x.co.currentCandidateVersion(x.id,x.mode))
         }
     }
-    @Test fun mutablePayloadAfterValidationRejectsAndNullInventoryOnlyPermitsFront() {
+    @Test fun mutablePayloadIsDetachedAndNullInventoryOnlyPermitsFront() {
         Fixture().use {x->
             val labels=x.input().labels.toMutableList()
             val t=x.validate(x.input().copy(labels=labels))

@@ -12,7 +12,7 @@ data class EditingPreparationTicket internal constructor(
 /**
  * Receives a complete independently reconciled input, not input manufactured from draft strings.
  * Fresh provider execution and the frozen production adapter remain mandatory.
- * This bounded gate supports existing label drafts. Extended edit journals are a separate dependency.
+ * This bounded gate prepares road-label drafts. Building member edits require the next authority-aware dependency.
  */
 class AndroidEditingPreparationService internal constructor(
     private val kb:TerritoryKnowledgeBase,private val policy:OnlineSourcePolicy,
@@ -44,6 +44,7 @@ class AndroidEditingPreparationService internal constructor(
         require(pending.size<16) { "Too many pending validations; cancel an unused validation" }
         val d=requireNotNull(drafts.read(id,mode)) { "Save a draft first" }
         require(!d.stale && d.latest.token==expectedToken && d.latest.edits.isNotEmpty()) { "Draft changed, stale, or empty" }
+        require(d.latest.edits.none {it.kind==DraftLabelKind.BUILDING}) { "Preparation requires authority-aware building reconciliation in Phase 3C-B" }
         val slot=requireNotNull(kb.assignments[id])
         require(slot.needsNewCard) { "Approved artifacts remain locked" }
         val source=requireNotNull(sources.verifiedRecord(id))

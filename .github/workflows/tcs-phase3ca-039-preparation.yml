@@ -370,7 +370,7 @@ jobs:
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
 
-      - name: Run only twelve new preparation transaction tests
+      - name: Run only thirteen new preparation transaction tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
