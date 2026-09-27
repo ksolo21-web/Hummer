@@ -1,0 +1,62 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.6.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :core:processTestResources
+> Task :core:compileKotlin
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar
+> Task :core:compileTestKotlin
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses
+
+> Task :core:test
+
+CoreGradleTestBridge > fullCoreContractSmoke() STANDARD_OUT
+    PASS production render-model adapter
+    adapter_input_sha256=9e8b43359ab6c2117caab6130d91815015b2d63e1f63d3f5500ba17c76a9fcc1
+    adapter_output_spec_sha256=52830a0869a78788efb3dc78f3466fe1b3494190271cbeeb8bf7fc241586e596
+    adapter_non_field_pdf_sha256=5e88a940f81495bf5a42ea99a8ba58c67cc7b867fa581ad99fede5e2953c5ecf
+    adapter_fail_closed_mutations=32
+    canonical_front_back_pdf=PASS
+    canonical_front_back_fail_closed_mutations=7
+    canonical_front_back_pdf_sha256=9d5e8c89c5ec27f197b3ffec7ce9607b64926f35917726b01b71fda120025cdc
+    canonical_back_spec_sha256=cbe0347667b3111e90af4a0e61749b4f9bc52b99cf44d1d29780fb1f2cbe4bed
+    phase1d_b_letter_writing_inventory_contract=PASS
+    phase1d_b_verified_records=3
+    phase1d_b_fail_closed_mutations=11
+    phase1d_b_change_tracking=PASS
+    phase1d_b_natural_address_ordering=PASS
+    phase1d_b_inventory_sha256=7eaae268ee22962ccc7104d575034fc2637763cf0d4fa88d3bc5177d6cbce2e1
+    PASS core contract smoke test
+    identity cases=12
+    invalid identity vetoes=10
+    shared assets verified=19
+    assignments=225
+    needs_new_card=6
+    kb assignments=225
+    kb roads=6930
+    kb buildings=364
+    kb topology segments=3802
+    kb overlap review=6
+    kb fail-closed mutations=4
+    topology/overlap decision engine=PASS
+    300/301 building validation engine=PASS
+    road/street label placement engine=PASS
+    live GIS/source verification reconciliation=PASS
+    provider query planning/response parsing=PASS
+    provider execution coordinator/cache/retry=PASS
+    live verification execution pipeline=PASS
+    provider endpoint service-switch config=PASS
+    PDF render/release boundary + exact-approved passthrough=PASS
+    deterministic R48 candidate PDF renderer=PASS
+    production render-model adapter=PASS
+    building locked_300_301 current=23
+    building re-audit current=43
+    building not-applicable current=153
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_12-1790493252943.json
+
+BUILD SUCCESSFUL in 1m 40s
+5 actionable tasks: 5 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html

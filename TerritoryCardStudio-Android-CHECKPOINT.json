@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.2.8-phase2h-knowledge-base-provenance",
-  "milestone": "phase-2h-knowledge-base-provenance-passed",
-  "status": "PHASE_2H_PASSED_PHASE_2_IN_PROGRESS",
-  "phase_milestone_before": "Phase 2H IN_PROGRESS",
-  "phase_milestone_after": "Phase 2H PASSED",
+  "version": "0.2.9-phase2i-dashboard-filtering-complete-browsing",
+  "milestone": "phase-2i-dashboard-filtering-complete-browsing-passed",
+  "status": "PHASE_2I_PASSED_PHASE_2_IN_PROGRESS",
+  "phase_milestone_before": "Phase 2I IN_PROGRESS",
+  "phase_milestone_after": "Phase 2I PASSED",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -24,7 +24,8 @@
     "2E_exact_pdf_preview",
     "2F_candidate_review_local_approval",
     "2G_guarded_export",
-    "2H_knowledge_base_provenance"
+    "2H_knowledge_base_provenance",
+    "2I_dashboard_complete_browsing"
   ],
   "validation": {
     "shared_authority_hashes": "19/19 PASS",
@@ -431,8 +432,9 @@
     "phase2e_status": "PASS",
     "phase2f_status": "PASS",
     "phase2g_status": "PASS",
-    "phase2_aggregate_status": "IN_PROGRESS_PHASE_2I_NEXT",
-    "phase2h_status": "PASS"
+    "phase2_aggregate_status": "IN_PROGRESS_PHASE_2J_NEXT",
+    "phase2h_status": "PASS",
+    "phase2i_status": "PASS"
   },
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -444,11 +446,11 @@
     "overall_app_approval": false,
     "independent_critic_runtime_available": true,
     "critic_agent": "/root/phase2da_critic",
-    "reason": "Read-only Knowledge Base passed 46 tests, eight actual phone/wide/light/dark captures, source/APK/AAB verification and independent10/10 review. Aggregate Phase2 still requires2I–2K and final audit."
+    "reason": "Phase 2I passed 52 tests, eight unobstructed phone/wide Light/Dark captures, source/APK/AAB verification and independent 10/10 review. Aggregate Phase 2 still requires 2J, 2K and final audit."
   },
-  "last_completed_package": "0.2.8-phase2h-knowledge-base-provenance",
-  "next_open_gate": "Phase 2I — dashboard filtering and complete browsing",
-  "next_bounded_task": "Implement Phase 2I dashboard status filters, real screening-candidate browsing and complete road/building/source access per .tooling/tcs/phase2h-evidence/next-phase2i.md. Preserve all passed Phase 2A–2H behavior, existing 46 tests, frozen services and both themes. Show true conflict finding counts and no invented territory assignments. Validate runtime, actual phone/wide/light/dark captures, independent critic >9 with all mandatory checks and next version source/APK/AAB freeze. No real commissioning; 2J, 2K and final aggregate Phase 2 audit remain open.",
+  "last_completed_package": "0.2.9-phase2i-dashboard-filtering-complete-browsing",
+  "next_open_gate": "Phase 2J — Workspace exact preview, populated inventory and current verification binding",
+  "next_bounded_task": "Implement Phase 2J Workspace exact approved/candidate PDF preview binding, populate Letter Writing/Telephone inventories from current verified data, and bind visible readiness to the current verification/source/hash state per .tooling/tcs/phase2i-evidence/next-phase2j.md. Preserve all passed Phase 2A–2I behavior, 52 tests, frozen renderer/approval/export authority and both themes. Validate runtime, phone/wide Light/Dark captures, independent critic >9 and the next version source/APK/AAB freeze. No real commissioning; 2K and final aggregate Phase 2 audit remain open.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -510,11 +512,12 @@
     "Completed Phase 2F candidate review and explicit local approval/rejection. Reused frozen cross-mode manifest and exact receipt contracts; fresh versions and current identity/source/input/inventory/PDF validation reject stale decisions. Atomic local records require named review checks plus confirmation; persistence, rejection, corruption/disk failure and lifecycle revalidation tested. 33 tests, eight real captures, 0.2.6 source/APK/AAB freeze and independent critic 10/10 passed. All prior instrumentation and frozen render/artifact/intake/preview services preserved; field release remains blocked pending authority promotion; no real commissioning.",
     "Completed Phase 2G guarded export of exact existing KB-approved PDFs. Revalidates identity/authority/hash around the actual system picker; closes and reads back output before success, rejects stale/restored tickets and cleans up failed new destinations. 41 tests, nine real captures, exact-byte synthetic PDF, 0.2.7 freeze and independent critic 10/10 passed. Prior Review capture synchronization repaired without removing assertions. Local candidate approval cannot enable export; reserved territories untouched.",
     "Completed independent Phase 2 integration/closeout audit against recovered authoritative port plan. Identified remaining Knowledge Base, filtering/browsing, Workspace preview, inventory/verification binding, defect navigation and audit-output requirements; recorded bounded2H–2K packages. Preserved0.2.7 and all2A–2G passes; no code/binary/authority changes or new runtime claims.",
-    "Completed Phase 2H read-only Knowledge Base navigation and complete provenance, reference/source hashes, permanent patches, conflict warnings and loaded policy revisions. Modal destination preserves Workspace/export state; legacy references explicitly marked not-current; no authority mutations. 46 tests, eight phone/wide/light/dark captures, 0.2.8 source/APK/AAB freeze and independent10/10 passed. All prior instrumentation and core/services/workspace/export byte unchanged."
+    "Completed Phase 2H read-only Knowledge Base navigation and complete provenance, reference/source hashes, permanent patches, conflict warnings and loaded policy revisions. Modal destination preserves Workspace/export state; legacy references explicitly marked not-current; no authority mutations. 46 tests, eight phone/wide/light/dark captures, 0.2.8 source/APK/AAB freeze and independent10/10 passed. All prior instrumentation and core/services/workspace/export byte unchanged.",
+    "Completed Phase 2I dashboard filtering, screening and complete browsing. Added explicit All/Approved/Re-audit/Needs new/Conflicts/Screening filters, combined search/filter/no-match behavior, truthful unassigned screening records with None — unassigned and Blocked authority, real scoped finding counts, and complete road/building/source access without presentation ceilings. 52 tests, eight unobstructed phone/wide Light/Dark captures, 0.2.9 source/APK/AAB freeze and independent critic 10/10 passed. Frozen core renderer/approval/export protections and all prior assertions remain; reserved territories untouched; no commissioning or authority promotion."
   ],
-  "source_package": "TerritoryCardStudio-Android-0.2.8-phase2h-source.tar.xz",
-  "source_package_sha256": "8397cbe140aa55361c2086728ad1b39ce4b3f4d1c572537655fabe33b927b040",
-  "saved_at_utc": "2026-09-27T05:13:05.165Z",
+  "source_package": "TerritoryCardStudio-Android-0.2.9-phase2i-source.tar.xz",
+  "source_package_sha256": "32e4d3497037da12a90cd3d6389d4fd890c106976e4a3bbbe8788ee73d43fb08",
+  "saved_at_utc": "2026-09-27T07:25:42Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -875,7 +878,7 @@
       "phase2h-requirements.md": "7b3158d8b8102292c3242e8e2ee4741b9f9b8a3bf3599389e15ce69a162f0880"
     }
   },
-  "last_completed_task": "phase2h-knowledge-base-closeout",
+  "last_completed_task": "phase2i-dashboard-filtering-complete-browsing-closeout",
   "phase2h_validation": {
     "status": "PASS",
     "version_name": "0.2.8",
@@ -937,5 +940,100 @@
     "scope": "Phase2H_read_only_Knowledge_Base",
     "previous_failed_run": 36295234950,
     "test_repair": "Exact-text expectation now matches complete selected-territory label; production unchanged"
+  },
+  "phase2i_validation": {
+    "status": "PASS",
+    "version_name": "0.2.9",
+    "version_code": 34,
+    "connected_tests": 52,
+    "screenshots": 8,
+    "independent_critic_score": 10
+  },
+  "phase2i_freeze_evidence": {
+    "status": "PASS",
+    "run_id": 36302386950,
+    "run_head_sha": "a8df14b97d7cf3aaa27feeadfaa16d540cc705a0",
+    "run_url": "https://github.com/ksolo21-web/Hummer/actions/runs/36302386950",
+    "run_conclusion": "success",
+    "artifact_id": 10926431681,
+    "artifact_zip_sha256": "f7a50f6c9e9ec25e5878fa0de162402e161cc7dfc1ca917f6f740bbe1cc5ea19",
+    "artifact_expires_at": "2026-10-11T07:25:39Z",
+    "version_name": "0.2.9",
+    "version_code": 34,
+    "target_sdk": 37,
+    "source_package_sha256": "32e4d3497037da12a90cd3d6389d4fd890c106976e4a3bbbe8788ee73d43fb08",
+    "apk_sha256": "1cedf6a692812fa24f6f2d3a4e1a982170761532c3d57f5ac361c72539579622",
+    "aab_sha256": "ab26ac45262872697410dbff49e78cb57260a90fa4908ed61fb996f5f0833509",
+    "extracted_source_manifest_sha256": "eb95971a5c6f58087170789262762fdf787e653b4d50912883c4bdd10fbb78a4",
+    "archived_manifest_files_verified": 2564,
+    "frozen_core_source_files_unchanged": 51,
+    "connected_tests": 52,
+    "new_phase2i_tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "dedicated_phone_capture_test": "PASS",
+    "dedicated_wide_capture_test": "PASS",
+    "screenshots": {
+      "phase2i-wide-dashboard-light.png": "eb666000c626db6f8806c6a7feeee1e86774e07b53c5351da362e0dd856129c8",
+      "phase2i-dashboard-light.png": "bd180b9225b87efc39bf8916b19dbd2bda027ace69f717e440941df280c8e122",
+      "phase2i-screening-dark.png": "a4e387e90b2566892eebaf9e9ad193f1ebe48340efe7856852eff4e3f71f3228",
+      "phase2i-dashboard-dark.png": "b0bbc79fcab7b7041dae36fb6903d2d8a93f41ecc3c999b498d3bd01da805fe7",
+      "phase2i-screening-light.png": "99076f281ff41f4a853efec15c23d3c1e64ab9ce3e0c48a3783d0a9d0f858147",
+      "phase2i-wide-dashboard-dark.png": "cc7d89569094bf78e41c502b3840f79db4c0e35bd0af9f9f36ff177215567da8",
+      "phase2i-wide-screening-dark.png": "abd40384936e88baee35f0c77b5cd5592e0bf67eddecb086021d776f979d340f",
+      "phase2i-roads-complete-dark.png": "1f0ebe14a84686eb95d0ea99edfe95d5dbb47b6deb14cd4039b6df7a12eb5040"
+    },
+    "explicit_status_filters": "PASS_RUNTIME",
+    "combined_search_filter_no_match": "PASS_RUNTIME",
+    "real_unassigned_screening_records": "PASS_RUNTIME_NONE_UNASSIGNED_BLOCKED_WITH_PROVENANCE",
+    "true_scoped_finding_counts": "PASS_RUNTIME",
+    "complete_road_building_source_access": "PASS_RUNTIME_NO_PRESENTATION_CEILINGS",
+    "phone_wide_light_dark_visuals": "PASS",
+    "frozen_core_renderer_services_approval_export": "PASS_UNCHANGED",
+    "prior_assertions_preserved": true,
+    "reserved_pdf_sweep": 0,
+    "real_territory_commissioning": "NOT_PERFORMED",
+    "authority_promotion": "NOT_PERFORMED",
+    "local_candidate_approval_field_export": "BLOCKED_UNCHANGED",
+    "scope": "Phase2I_dashboard_filtering_screening_complete_browsing",
+    "independent_critic": {
+      "agent": "/root/phase2da_critic",
+      "score": 10,
+      "passed": true
+    },
+    "reopened_defects_closed": [
+      "Existing Phase 2E Compose test setup race stabilized without removing assertions",
+      "Existing Phase 2F tagged click uses exact unmerged semantics node without removing assertions",
+      "CI screenshot pull loop replaced with explicit adb pulls",
+      "0.2.9 source archive hash filename corrected",
+      "Phone screening captures dismiss IME and show complete authority/provenance record"
+    ],
+    "previous_runs": [
+      {
+        "run_id": 36299262252,
+        "result": "FAIL_PHASE2E_COMPOSE_TEST_RACE"
+      },
+      {
+        "run_id": 36299738121,
+        "result": "FAIL_TWO_PHASE2I_SELECTOR_PRECISION"
+      },
+      {
+        "run_id": 36300307965,
+        "result": "TESTS_AND_CAPTURES_PASS_ARTIFACT_PULL_FAILED"
+      },
+      {
+        "run_id": 36300810227,
+        "result": "FAIL_PHASE2F_MERGED_SEMANTICS_CLICK"
+      },
+      {
+        "run_id": 36301484325,
+        "result": "TESTS_AND_CAPTURES_PASS_FREEZE_FILENAME_AND_VISUAL_EVIDENCE_REJECTED"
+      },
+      {
+        "run_id": 36302122636,
+        "result": "CANCELLED_BY_CONCURRENCY_BEFORE_REPLACEMENT"
+      }
+    ]
   }
 }

@@ -1,0 +1,10 @@
+[toolchain][PASS] Java runtime 17 (minimum 17)
+[toolchain][PASS] Gradle 9.6.0
+[toolchain][PASS] Android SDK root: /usr/local/lib/android/sdk
+[toolchain][PASS] SDK API 37 platform (android-37.0)
+[toolchain][PASS] Build Tools 36.0.0
+[toolchain][PASS] AGP pin 9.4.0
+[toolchain][PASS] compileSdk 37 pin
+[toolchain][PASS] targetSdk 37 pin
+[toolchain][PASS] Java source target 17
+[toolchain] Toolchain is ready for Android Gradle build.
