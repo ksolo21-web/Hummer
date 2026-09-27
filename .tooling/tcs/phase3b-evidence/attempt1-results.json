@@ -1,0 +1,85 @@
+{
+  "passed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "telephoneModeBindsCorrectDraft"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "confirmationsRejectRevisionChangedWhileOpenAndCleanFormRefreshes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "restorationRetainsDirtyFieldsAndOriginalToken"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "captureDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "missingSourceAndEmptyItemsStayHonest"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "invalidInputKeepsDraftAndInput"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "workspaceEditsPreserveOthersAndSupportHistory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "dirtyInputGuardsItemAndBothBackRoutes"
+    ]
+  ],
+  "failed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "captureLight"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "lifecycleSourceChangeAndCorruptDraftFailClosed"
+    ]
+  ],
+  "frozenPrior": 77,
+  "run_id": 36337841251,
+  "source_commit": "51418721f13ed1374ed57562f0413e5ac5dcebef",
+  "artifact_id": 10938181757,
+  "artifact_sha256": "bd48c27e6cdf3934d1c225177b0c51999ac41bc526a6532f3cd148d1995568c2",
+  "retained": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "telephoneModeBindsCorrectDraft"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "confirmationsRejectRevisionChangedWhileOpenAndCleanFormRefreshes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "restorationRetainsDirtyFieldsAndOriginalToken"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "missingSourceAndEmptyItemsStayHonest"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "invalidInputKeepsDraftAndInput"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "workspaceEditsPreserveOthersAndSupportHistory"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3BEditorUiInstrumentationTest",
+      "dirtyInputGuardsItemAndBothBackRoutes"
+    ]
+  ],
+  "reopened_affected": [
+    "captureDark"
+  ],
+  "reason": "Seven functional identities retained. Two failures retried after test synchronization repair. Dark capture reopened only for scoped production keyboard-resize correction; all14 final captures refreshed. Prior77 remain frozen."
+}

@@ -1,5 +1,6 @@
 package com.koenterprises.territorycardstudio
 
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -86,12 +87,20 @@ fun DraftEditorScreen(modifier: Modifier, assignment: KnowledgeBaseAssignment, m
         }
     }
     DisposableEffect(activity) {
+        val window=activity?.window
+        val previousSoftInputMode=window?.attributes?.softInputMode
+        previousSoftInputMode?.let { old ->
+            window.setSoftInputMode((old and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
         val observer=LifecycleEventObserver { _,event ->
             if(event==Lifecycle.Event.ON_PAUSE)active=false
             if(event==Lifecycle.Event.ON_RESUME) { active=true;refresh++ }
         }
         activity?.lifecycle?.addObserver(observer)
-        onDispose { activity?.lifecycle?.removeObserver(observer) }
+        onDispose {
+            activity?.lifecycle?.removeObserver(observer)
+            previousSoftInputMode?.let { window.setSoftInputMode(it) }
+        }
     }
     LaunchedEffect(id,mode,refresh,active) {
         if(active) {

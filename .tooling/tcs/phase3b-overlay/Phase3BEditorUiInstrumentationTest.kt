@@ -51,9 +51,9 @@ class Phase3BEditorUiInstrumentationTest {
     }
     private fun show(x:Fixture) { rule.setContent { Content(x) };ready() }
     private fun wait(tag:String) { rule.waitUntil(20000) {rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()};rule.waitForIdle() }
-    private fun ready() { wait("draft-status");rule.waitUntil(20000) { runCatching {rule.onNodeWithTag("draft-status").assertTextContains("Checking",substring=true)}.isFailure };rule.waitForIdle() }
+    private fun ready() { wait("draft-editor");scroll("draft-status");wait("draft-status");rule.waitUntil(20000) { runCatching {rule.onNodeWithTag("draft-status").assertTextContains("Checking",substring=true)}.isFailure };rule.waitForIdle() }
     private fun scroll(tag:String) { rule.onNodeWithTag("draft-editor").performScrollToNode(hasTestTag(tag)) }
-    private fun click(tag:String) {scroll(tag);rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
+    private fun click(tag:String) {scroll(tag);rule.waitUntil(20000) {runCatching{rule.onNodeWithTag(tag).assertIsEnabled()}.isSuccess};rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun dialog(tag:String) {wait(tag);rule.onNodeWithTag(tag).performClick();rule.waitForIdle()}
     private fun select(kind:String="ROAD",id:String="adapter-alpha") {click("draft-tab-Items");click("draft-item-$kind-$id")}
     private fun type(tag:String,value:String) { scroll(tag);rule.onNodeWithTag(tag).performTextReplacement(value) }
@@ -185,7 +185,7 @@ class Phase3BEditorUiInstrumentationTest {
         var old:Bitmap?=null;var accepted:Bitmap?=null
         try {
             rule.waitUntil(20000) {
-                rule.waitForIdle();rule.onRoot().captureToImage()
+                rule.waitForIdle()
                 val b=requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
                 var stable=old!=null && old!!.width==b.width && old!!.height==b.height
                 if(stable)for(y in 80 until b.height-48 step 8)for(x in 0 until b.width step 8)if(old!!.getPixel(x,y)!=b.getPixel(x,y))stable=false
@@ -214,7 +214,7 @@ class Phase3BEditorUiInstrumentationTest {
             shot("editor-"+theme.name.lowercase())
             if(rule.activity.resources.configuration.screenWidthDp<840) {
                 scroll("draft-rationale");rule.onNodeWithTag("draft-rationale").performClick()
-                rule.waitForIdle();shot("keyboard-"+theme.name.lowercase())
+                rule.waitUntil(20000) {rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())==true};rule.waitForIdle();shot("keyboard-"+theme.name.lowercase())
                 click("draft-tab-Review");click("draft-tab-Edit")
             }
             click("draft-save");saved(x,2);scroll("draft-review-ROAD-adapter-alpha");shot("review-"+theme.name.lowercase())
