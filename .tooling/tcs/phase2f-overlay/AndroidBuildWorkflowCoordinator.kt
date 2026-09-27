@@ -152,7 +152,7 @@ class AndroidBuildWorkflowCoordinator(
         val p = requireNotNull(prepared[key(id, mode)])
         val front = requireNotNull(p.front)
         val receipt = requireNotNull(p.receipt)
-        require(artifact.file.length() in 1..(300L * 1024 - 1)) { "Candidate must be under 300 KB" }
+        require(artifact.file.length() in 1..(300L * 1024 - 1)) { "Candidate must be under 300 KiB" }
         val frontBytes = front.file.readBytes()
         val result = when (mode) {
             WorkspaceMode.REGULAR -> CrossModePacketValidator.validateRegular(frontBytes, receipt, p.candidateVersion)

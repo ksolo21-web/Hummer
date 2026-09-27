@@ -74,8 +74,17 @@ class AndroidCandidateReviewService(
     private fun read(ticket: CandidateReviewTicket): ExactPacketApprovalReceipt? {
         val file = store(ticket)
         if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) return null
-        val bytes = file.openRead().use { it.readBytes() }
-        require(bytes.size <= 16384) { "Review record is too large" }
+        val bytes = file.openRead().use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(4096)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                require(output.size() + count <= 16384) { "Review record is too large" }
+                output.write(buffer, 0, count)
+            }
+            output.toByteArray()
+        }
         val j = JSONObject(bytes.toString(Charsets.UTF_8))
         require(j.getInt("schema") == 1 && j.getString("source") == ticket.sourceSha256 &&
             j.getString("input") == ticket.preparedInputSha256) { "Review provenance changed" }

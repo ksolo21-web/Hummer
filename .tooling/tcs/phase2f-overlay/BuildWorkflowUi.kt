@@ -121,7 +121,7 @@ fun BuildWorkflowScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(if (current.packet != null) "Two-page candidate generated" else "Front candidate built", style = MaterialTheme.typography.titleLarge)
-                            Text("Awaiting review and explicit approval", color = MaterialTheme.colorScheme.primary)
+                            Text(if (reviewService == null) "Awaiting review and explicit approval" else "Field release blocked • See candidate review", color = MaterialTheme.colorScheme.primary)
                             Text(current.front.canonicalFilename)
                             if (previewService != null) {
                                 OutlinedButton(onClick = { previewKind = PdfPreviewKind.FRONT }, enabled = !busy,
