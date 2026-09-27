@@ -1,0 +1,23 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest:
+INSTRUMENTATION_STATUS: test=letterRoadFindingKeepsItemContextInDetails
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase2KUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=letterRoadFindingKeepsItemContextInDetails
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 8.143
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

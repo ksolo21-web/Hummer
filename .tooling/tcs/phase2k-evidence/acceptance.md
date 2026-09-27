@@ -1,3 +1,5 @@
+Final outcome: Phase2K and aggregate Phase2 accepted10/10. See independent-final-review.md, aggregate-audit.md and verification.json for run/source provenance.
+
 # Phase 2K and aggregate Phase 2 acceptance
 
 Source: phase2-audit/audit.md and ANDROID_PORT_PLAN.md at accepted Phase 2J commit 436a631a0a74614c3adbe4d8f528a8cd232f158e.

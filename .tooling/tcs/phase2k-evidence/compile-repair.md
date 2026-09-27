@@ -15,3 +15,8 @@ Sixth run 36324399439 showed the all-classes session still carries lifecycle sta
 Seventh run 36325244005 stopped after the known full-session failure because android-emulator-runner executes each YAML script line in a separate shell; set +e did not persist to the Gradle line. Move the full session, stable57 extraction, six fresh invocations, and exact63 merge into one committed Bash script. Preserve failure diagnostics through an EXIT trap. This is workflow control repair; no app or assertion change.
 
 User correction after run8 start: freeze the62 passing case identities from run36323755251 and retry only its single failed Phase2K capture. Durable sanitized JUnit XML hash 61197a5f9e7ac1eeaca85fc88d00f89ce386b6c365794d908a23245b73fbcd64 contains exactly62 unique passing cases; it excludes only captureFindingsAndAuditAndNavigateFromPreviewAcrossThemes. The gate now executes that one failed case, merges62+1, and requires exactly63 unique passes. No passing case is rerun.
+
+
+## Final resolution (run36330985449)
+
+Final repaired source94320e092cf04b91dbe87062e8b54bc8b2c69536 compiled, packaged and completed the focused evidence pipeline.67 distinct case identities pass:59 unaffected retained results, five reopened dependency cases and three new regressions. Current12 screenshots cover findings, audit and exact PDF preview in both themes and phone/wide layouts. The earlier passing cases were not reset. Raw targeted and visual logs are preserved with exact artifact hashes. Independent review and aggregate closeout are recorded separately.
