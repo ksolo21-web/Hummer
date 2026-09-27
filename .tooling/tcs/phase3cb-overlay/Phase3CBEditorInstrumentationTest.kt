@@ -35,7 +35,7 @@ class Phase3CBEditorInstrumentationTest {
     private fun chip(tag:String) {
         rule.runOnIdle {rule.activity.currentFocus?.clearFocus();rule.activity.window.insetsController?.hide(android.view.WindowInsets.Type.ime())}
         rule.waitUntil(20000){rule.activity.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime())!=true}
-        scroll(tag);rule.onNodeWithTag(tag).performScrollTo();rule.waitForIdle()
+        scroll(tag);rule.waitForIdle()
         var previous:androidx.compose.ui.geometry.Rect?=null
         var diagnostics="not sampled"
         try {rule.waitUntil(20000) {

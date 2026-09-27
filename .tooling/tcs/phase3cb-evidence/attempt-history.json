@@ -88,6 +88,12 @@
       "source_commit": "e19add15a73774627003b8a30ffb34bb6a5ff7ca",
       "status": "15_RETAINED_WORKSPACE_SCROLL_FAILED",
       "reason": "Diagnostic screenshot/log proves offscreen chip clipped bounds become zero, driving scroll backward. Repair uses actual SemanticsNode position and size; only workspace remains open."
+    },
+    {
+      "run_id": 36347630765,
+      "source_commit": "31c3311319cb9bdb68d916cba296db880632c422",
+      "status": "15_RETAINED_WORKSPACE_EVIDENCE_SCROLL_RACE",
+      "reason": "Road-work chip physically selected; redundant performScrollTo immediately after lazy scroll lost evidence node. Remove redundant nested scroll and let bounded stable-position loop recover node."
     }
   ]
 }
