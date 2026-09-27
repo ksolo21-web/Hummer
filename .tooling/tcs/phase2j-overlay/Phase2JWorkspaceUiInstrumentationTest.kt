@@ -1,6 +1,8 @@
 package com.koenterprises.territorycardstudio
 
 import android.graphics.Bitmap
+import android.graphics.Color
+import kotlin.math.roundToInt
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -31,10 +33,59 @@ class Phase2JWorkspaceUiInstrumentationTest {
         if (!f.telephoneMode) { scroll("workspace-mode-Letter-Writing"); rule.onNodeWithTag("workspace-mode-Letter-Writing").performClick() }
     }
     private fun shot(name: String) {
-        rule.waitForIdle(); InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-        val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
-        val wide = rule.activity.resources.configuration.screenWidthDp >= 840
-        File(rule.activity.filesDir, "phase2j-${if (wide) "wide-" else ""}$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }; bitmap.recycle()
+        val pdf = name.startsWith("candidate-") || name.startsWith("approved-")
+        if (pdf) {
+            // Frame both the identity label and the entire PDF, including its footer.
+            scroll("workspace-pdf-hash"); scroll("workspace-preview-kind")
+            waitFor("workspace-pdf-page")
+        }
+        var accepted: Bitmap? = null
+        var previous: Bitmap? = null
+        try {
+            rule.waitUntil(20000) {
+                rule.waitForIdle()
+                // PixelCopy waits for a drawn Compose frame, not only semantics publication.
+                rule.onRoot().captureToImage()
+                val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+                var ready = true
+                if (pdf) {
+                    val node = rule.onNodeWithTag("workspace-pdf-page").fetchSemanticsNode()
+                    val position = node.positionInWindow
+                    val left = position.x.roundToInt(); val top = position.y.roundToInt()
+                    val right = left + node.size.width; val bottom = top + node.size.height
+                    val label = rule.onNodeWithTag("workspace-preview-kind").fetchSemanticsNode()
+                    ready = label.positionInWindow.y >= 24 &&
+                        label.positionInWindow.y + label.size.height < bitmap.height - 24 && left >= 0 && top >= 0 &&
+                        right <= bitmap.width && bottom < bitmap.height - 24 && node.size.height > 200
+                    if (ready) {
+                        val colors = IntArray(3)
+                        for (y in top until bottom) for (x in left until right) {
+                            val c = bitmap.getPixel(x,y)
+                            val r = Color.red(c); val g = Color.green(c); val b = Color.blue(c)
+                            if (r > 200 && g > 170 && b < 90) colors[0]++
+                            if (g > 140 && r < 130 && b < 130) colors[1]++
+                            if (r > 210 && g < 100 && b < 140) colors[2]++
+                        }
+                        ready = colors.all { it > 40 }
+                    }
+                }
+                // Two successive actual frames must agree below system chrome.
+                val before = previous
+                var stable = before != null && before.width == bitmap.width && before.height == bitmap.height
+                if (stable) {
+                    for (y in 80 until bitmap.height - 48 step 8) for (x in 0 until bitmap.width step 8) {
+                        if (before!!.getPixel(x,y) != bitmap.getPixel(x,y)) stable = false
+                    }
+                }
+                previous?.recycle(); previous = bitmap
+                if (ready && stable) { accepted = bitmap; previous = null; true } else false
+            }
+            val bitmap = requireNotNull(accepted)
+            val wide = rule.activity.resources.configuration.screenWidthDp >= 840
+            File(rule.activity.filesDir, "phase2j-${if (wide) "wide-" else ""}$name.png").outputStream().use {
+                check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))
+            }
+        } finally { previous?.recycle(); accepted?.recycle() }
     }
     @Test fun resumeRemovesStalePreviewAndInventory() {
         waitFor("territories-dashboard")

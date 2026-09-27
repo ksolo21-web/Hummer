@@ -1,0 +1,50 @@
+{
+  "phase": "2J",
+  "source_sha": "6e1aa9c662a34e772f213cad8afe3465620849ef",
+  "run_id": 36307042923,
+  "passed": false,
+  "score": 8.8,
+  "mandatory_checks": {
+    "source_review": "pass",
+    "regression_runtime": "57/57, zero failures/skips",
+    "visual_evidence": "FAIL: phone candidate light is loading frame",
+    "theme_content_contrast": "pass",
+    "approved_candidate_distinction": "pass in rendered frames",
+    "inventory_identity_provenance": "pass",
+    "final_freeze": "blocked"
+  },
+  "images_reviewed": [
+    "phase2j-addresses-dark.png",
+    "phase2j-addresses-light.png",
+    "phase2j-approved-dark.png",
+    "phase2j-approved-light.png",
+    "phase2j-candidate-dark.png",
+    "phase2j-candidate-light.png",
+    "phase2j-telephone-dark.png",
+    "phase2j-telephone-light.png",
+    "phase2j-verification-dark.png",
+    "phase2j-verification-light.png",
+    "phase2j-wide-addresses-dark.png",
+    "phase2j-wide-addresses-light.png",
+    "phase2j-wide-approved-dark.png",
+    "phase2j-wide-approved-light.png",
+    "phase2j-wide-candidate-dark.png",
+    "phase2j-wide-candidate-light.png",
+    "phase2j-wide-telephone-dark.png",
+    "phase2j-wide-telephone-light.png",
+    "phase2j-wide-verification-dark.png",
+    "phase2j-wide-verification-light.png"
+  ],
+  "unresolved_issues": [
+    {
+      "severity": "mandatory",
+      "file": "phase2j-candidate-light.png",
+      "finding": "Checking current PDF text, no PDF bitmap despite semantic readiness; compositor lag invalidates evidence."
+    },
+    {
+      "severity": "evidence_quality",
+      "file": "phase2j-wide-candidate-dark.png",
+      "finding": "Capture shows earlier scroll position; PDF bottom cropped. Need capture at stable presented scroll position."
+    }
+  ]
+}
