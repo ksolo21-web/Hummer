@@ -126,7 +126,11 @@ fun ApprovedExportScreen(modifier: Modifier, territoryId: String, service: Andro
                     Text(reason, modifier = Modifier.testTag("export-blocker"))
                 } }
                 if (current.canAttach) item {
-                    OutlinedButton(onClick = { message = null; error = null; attachPicker.launch(arrayOf("application/pdf")) },
+                    OutlinedButton(onClick = {
+                        message = null; error = null
+                        try { attachPicker.launch(arrayOf("application/pdf")) }
+                        catch (e: Exception) { error = e.message ?: "Document picker unavailable" }
+                    },
                         enabled = !busy && resumed && !pickerActive, modifier = Modifier.fillMaxWidth().testTag("export-attach")) { Text("Attach exact approved PDF") }
                 }
                 item {
