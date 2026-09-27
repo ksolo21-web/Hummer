@@ -332,7 +332,11 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            sh -c 'set +e; (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1; rc=$?; mkdir -p evidence/android-test-results; cp -R tcs-src/app/build/outputs/androidTest-results/connected/debug/. evidence/android-test-results/ 2>/dev/null || true; cat evidence/connected-android-test.log; exit "$rc"'
+            adb shell svc power stayon true
+            adb shell settings put system screen_off_timeout 1800000
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell wm dismiss-keyguard
+            sh -c 'set +e; (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1; rc=$?; mkdir -p evidence/android-test-results; cp -R tcs-src/app/build/outputs/androidTest-results/connected/debug/. evidence/android-test-results/ 2>/dev/null || true; cat evidence/connected-android-test.log; if [ "$rc" -ne 0 ]; then adb exec-out screencap -p > evidence/runtime-failure-screen.png; adb shell dumpsys window > evidence/runtime-failure-window.txt; adb shell dumpsys power > evidence/runtime-failure-power.txt; fi; exit "$rc"'
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
 
             adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk

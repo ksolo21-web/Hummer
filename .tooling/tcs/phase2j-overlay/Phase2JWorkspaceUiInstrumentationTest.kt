@@ -81,6 +81,9 @@ class Phase2JWorkspaceUiInstrumentationTest {
                 } } }
                 waitFor("territory-workspace"); scroll("workspace-surface-Map"); waitFor("workspace-pdf-page")
                 scroll("workspace-pdf-page"); shot("approved-$suffix")
+                scroll("workspace-open-preview"); rule.onNodeWithTag("workspace-open-preview").performClick()
+                waitFor("preview-page"); rule.onNodeWithText("Original approved document • page 1").assertExists()
+                rule.onNodeWithTag("preview-back").performClick(); waitFor("territory-workspace")
             }
         }
     }

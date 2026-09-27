@@ -114,7 +114,7 @@ fun PdfPreviewScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Preview unavailable", style = MaterialTheme.typography.titleLarge)
                         Text(reason)
-                        Text("Return to Build to verify and open the current candidate.")
+                        Text(if (kind == PdfPreviewKind.APPROVED) "Return to the workspace and attach the exact approved PDF from Export." else "Return to Build to verify and open the current candidate.")
                     }
                 }
                 bitmap?.let { rendered ->
@@ -125,7 +125,7 @@ fun PdfPreviewScreen(
                     }
                 }
             }
-            Text(if (page == 0) "Front map" else if (mode == WorkspaceMode.TELEPHONE) "Address and telephone list" else "Address list",
+            Text(if (kind == PdfPreviewKind.APPROVED) "Original approved document • page ${page + 1}" else if (page == 0) "Front map" else if (mode == WorkspaceMode.TELEPHONE) "Address and telephone list" else "Address list",
                 style = MaterialTheme.typography.labelLarge)
             document?.let { Text("SHA-256 ${it.sha256}", style = MaterialTheme.typography.labelSmall, modifier = Modifier.testTag("preview-hash")) }
         }
