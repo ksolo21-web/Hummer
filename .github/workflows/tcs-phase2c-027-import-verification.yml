@@ -219,19 +219,16 @@ jobs:
             mkdir -p evidence/ui
             sh -c 'set +e; (cd tcs-src && gradle --no-daemon :app:connectedDebugAndroidTest) > evidence/connected-android-test.log 2>&1; rc=$?; mkdir -p evidence/android-test-results evidence/android-test-report; cp -R tcs-src/app/build/outputs/androidTest-results/connected/debug/. evidence/android-test-results/ 2>/dev/null || true; cp -R tcs-src/app/build/reports/androidTests/connected/debug/. evidence/android-test-report/ 2>/dev/null || true; cat evidence/connected-android-test.log; if [ "$rc" -ne 0 ]; then grep -R -n -E "failure|Assertion|Exception|FAILED|error" evidence/android-test-results evidence/android-test-report 2>/dev/null || true; fi; exit "$rc"'
             grep -F "BUILD SUCCESSFUL" evidence/connected-android-test.log
-            TARGET_APK="tcs-src/app/build/outputs/apk/debug/app-debug.apk"
-            TEST_APK="$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)"
-            test -s "$TARGET_APK"
-            test -n "$TEST_APK" && test -s "$TEST_APK"
-            adb install -r "$TARGET_APK" >/dev/null
-            adb install -r "$TEST_APK" >/dev/null
+            test -s tcs-src/app/build/outputs/apk/debug/app-debug.apk
+            test -s "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)"
+            adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
+            adb install -r "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)" >/dev/null
             adb shell pm clear com.koenterprises.territorycardstudio >/dev/null
             adb shell cmd uimode night yes
-            TEST_PACKAGE="$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$TEST_APK" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
-            test -n "$TEST_PACKAGE"
+            test -n "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)"
             adb shell am instrument -w -r \
               -e class 'com.koenterprises.territorycardstudio.Phase2CImportVerificationInstrumentationTest#captureDarkImportAndVerificationScreens' \
-              "$TEST_PACKAGE/androidx.test.runner.AndroidJUnitRunner" > evidence/capture-instrumentation.log 2>&1
+              "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$(find tcs-src/app/build/outputs/apk/androidTest -type f -name '*.apk' -print -quit)" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -n 1)/androidx.test.runner.AndroidJUnitRunner" > evidence/capture-instrumentation.log 2>&1
             cat evidence/capture-instrumentation.log
             grep -F "OK (1 test)" evidence/capture-instrumentation.log
             adb exec-out run-as com.koenterprises.territorycardstudio cat files/phase2c-import-map-dark.png > evidence/ui/import-map-dark.png
