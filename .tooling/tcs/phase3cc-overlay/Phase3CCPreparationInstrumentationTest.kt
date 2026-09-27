@@ -99,18 +99,30 @@ class Phase3CCPreparationInstrumentationTest {
         }
     }
     private fun shot(name:String) {
-        rule.waitForIdle();val b=requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
-        try {val wide=rule.activity.resources.configuration.screenWidthDp>=840;File(rule.activity.filesDir,"phase3cc-${if(wide)"wide-" else ""}$name.png").outputStream().use {assertTrue(b.compress(Bitmap.CompressFormat.PNG,100,it))}}finally{b.recycle()}
+        if(InstrumentationRegistry.getArguments().getString("captureOnly")=="repair" && name !in setOf("blocked-dark","prepared-light"))return
+        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
+        rule.waitForIdle();automation.waitForIdle(500,10000)
+        var prior:Bitmap?=null;var accepted:Bitmap?=null
+        try {rule.waitUntil(20000) {
+            val b=requireNotNull(automation.takeScreenshot());val dark=name.endsWith("-dark")
+            val background=b.getPixel(8,b.height/2);val luminance=(android.graphics.Color.red(background)+android.graphics.Color.green(background)+android.graphics.Color.blue(background))/3
+            var stable=prior!=null && prior!!.width==b.width && prior!!.height==b.height && (if(dark)luminance<80 else luminance>180)
+            if(stable)for(y in 80 until b.height-48 step 8)for(x in 0 until b.width step 8)if(prior!!.getPixel(x,y)!=b.getPixel(x,y))stable=false
+            prior?.recycle();prior=b;if(stable){accepted=b;prior=null;true}else false
+        }
+        val b=requireNotNull(accepted);val wide=rule.activity.resources.configuration.screenWidthDp>=840
+        File(rule.activity.filesDir,"phase3cc-${if(wide)"wide-" else ""}$name.png").outputStream().use {assertTrue(b.compress(Bitmap.CompressFormat.PNG,100,it))}
+        }finally{prior?.recycle();accepted?.recycle()}
     }
     @Test fun captureLight()=capture(AppearanceMode.LIGHT)
     @Test fun captureDark()=capture(AppearanceMode.DARK)
     private fun capture(theme:AppearanceMode) {
         Phase3CCFixture().use {x->x.seed();rule.activity.runOnUiThread {rule.activity.enableEdgeToEdge()};rule.setContent {Content(x,theme)};ready(false)
             rule.runOnIdle {val mask=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;rule.activity.window.insetsController?.setSystemBarsAppearance(if(theme==AppearanceMode.LIGHT)mask else 0,mask)}
-            val suffix=theme.name.lowercase();shot("blocked-$suffix")
+            val suffix=theme.name.lowercase();shot("blocked-$suffix");if(InstrumentationRegistry.getArguments().getString("captureOnly")=="repair" && theme==AppearanceMode.DARK)return
             x.importAll();click("preparation-refresh");ready();shot("authority-$suffix")
             validated();scroll("preparation-ticket");shot("validated-$suffix")
-            click("preparation-prepare");shot("confirmation-$suffix");dialog("preparation-confirm");scroll("preparation-message");rule.onNodeWithTag("preparation-message").assertTextEquals("Prepared for build • not approved");shot("prepared-$suffix")
+            click("preparation-prepare");shot("confirmation-$suffix");dialog("preparation-confirm");scroll("preparation-message");rule.onNodeWithTag("preparation-message").assertTextEquals("Prepared for build • not approved");shot("prepared-$suffix");if(InstrumentationRegistry.getArguments().getString("captureOnly")=="repair")return
             click("preparation-validate");idle();scroll("preparation-message");rule.onNodeWithTag("preparation-message").assertTextContains("Prepared baseline changed; import authority facts again");shot("stale-$suffix")
         }
     }
