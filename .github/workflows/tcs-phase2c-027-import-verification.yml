@@ -226,7 +226,8 @@ jobs:
             adb shell am start -W -n com.koenterprises.territorycardstudio/.MainActivity >/dev/null
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-dash.xml evidence/ui/tcs-dash.xml "Territories" "Search territories"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Territory 1"
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-workspace.xml evidence/ui/tcs-workspace.xml "Verification & readiness" "Import Map" "Verification"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-workspace.xml evidence/ui/tcs-workspace.xml "Verification & readiness"
+            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-workspace-actions.xml evidence/ui/tcs-workspace-actions.xml UP "Import Map"
 
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Import Map"
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-import-top.xml evidence/ui/tcs-import-top.xml "Import Map" "Assignment authority stays locked"
@@ -235,7 +236,8 @@ jobs:
 
             sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-import-back.xml evidence/ui/tcs-import-back.xml DOWN "Back to workspace"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Back to workspace" --contains
-            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-workspace2.xml evidence/ui/tcs-workspace2.xml "Verification & readiness" "Import Map" "Verification"
+            sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-workspace2.xml evidence/ui/tcs-workspace2.xml "Verification & readiness"
+            sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-workspace2-actions.xml evidence/ui/tcs-workspace2-actions.xml UP "Verification"
             python3 .tooling/tcs/phase2b-overlay/tap-ui-text.py "Verification"
             sh .tooling/tcs/phase2a-overlay/wait-for-ui.sh tcs-verify-top.xml evidence/ui/tcs-verify-top.xml "Verification" "Build remains locked" "Source truth"
             sh .tooling/tcs/phase2c-overlay/scroll-until-ui.sh tcs-verify.xml evidence/ui/tcs-verify.xml UP "Exact field release"
