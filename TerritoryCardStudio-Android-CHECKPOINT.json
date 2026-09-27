@@ -2,7 +2,7 @@
   "project": "Territory Card Studio Android",
   "version": "0.2.7-phase2g-guarded-approved-export",
   "milestone": "phase-2-integration-audit-completed-gaps-open",
-  "status": "PHASE_2_IN_PROGRESS_PHASE_2H_NEXT",
+  "status": "PHASE_2H_IN_PROGRESS_PHASE_2_IN_PROGRESS",
   "phase_milestone_before": "Phase 2A–2G PASSED; aggregate Phase 2 audit open",
   "phase_milestone_after": "Phase 2 audit COMPLETED; aggregate Phase 2 INCOMPLETE; 2H next",
   "preserved_passed_milestones": [
@@ -872,5 +872,10 @@
       "phase2h-requirements.md": "7b3158d8b8102292c3242e8e2ee4741b9f9b8a3bf3599389e15ce69a162f0880"
     }
   },
-  "last_completed_task": "phase2-integration-audit-0.2.7"
+  "last_completed_task": "phase2-integration-audit-0.2.7",
+  "phase2h_validation": {
+    "status": "IN_PROGRESS",
+    "version_name": "0.2.8",
+    "version_code": 33
+  }
 }
