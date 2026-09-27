@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-adb install -r tcs-src/app/build/outputs/apk/debug/app-debug.apk >/dev/null
-adb install -r tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
+adb install -r evidence/emulator-app.apk > evidence/app-install.log
+adb install -r tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > evidence/test-install.log
 adb shell am force-stop com.google.android.apps.nexuslauncher
 PKG=com.koenterprises.territorycardstudio
 CLASS=$PKG.Phase3DIntegrationInstrumentationTest

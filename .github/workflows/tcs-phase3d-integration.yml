@@ -52,6 +52,13 @@ jobs:
           sha256sum -c evidence/apk.sha256
           sha256sum -c evidence/aab.sha256
           sha256sum tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > evidence/test-apk.sha256
+          # Old debug key is runner-local: sign a disposable copy, preserving accepted bytes.
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$APKSIGNER" sign --ks "$HOME/.android/debug.keystore" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/emulator-app.apk tcs-src/app/build/outputs/apk/debug/app-debug.apk
+          "$APKSIGNER" verify --print-certs evidence/emulator-app.apk > evidence/emulator-signature.txt
+          "$APKSIGNER" verify --print-certs tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk > evidence/test-signature.txt
+          python3 .tooling/tcs/phase3d-verify-payload.py tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/emulator-app.apk evidence/apk-payload-parity.json
+          sha256sum evidence/emulator-app.apk > evidence/emulator-apk.sha256
       - name: Enable KVM
         run: sudo chmod 666 /dev/kvm
       - name: Execute only new Phase 3D cases
