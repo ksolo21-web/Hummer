@@ -16,7 +16,10 @@ internal class Phase2DBFixture(val telephoneMode: Boolean) : AutoCloseable {
         baseNumber = identity.baseNumber, cardClass = identity.territoryClass.token, suffix = "a", slot = identity.displayId,
         canonicalFilename = identity.canonicalFilename, needsNewCard = true, newCardApproved = false,
         fieldReleaseAllowedForExactArtifact = false, legacyReferenceFile = "SYNTHETIC-NOT-FOR-FIELD-USE")
-    val kb = original.copy(assignments = original.assignments - "273" + (identity.displayId to slot))
+    val kb = original.copy(
+        assignments = original.assignments - "273" + (identity.displayId to slot),
+        referenceRoles = original.referenceRoles + (slot.referenceFile to
+            original.referenceRoles.getValue(slot.referenceFile).copy(displayId = identity.displayId, fieldReleaseAllowed = false)))
     val root = File(app.cacheDir, "phase2db-test-${identity.displayId}").apply { deleteRecursively(); check(mkdirs()) }
     val service = AndroidPdfArtifactService(kb, root, app.assets.open("territory/render-authority/Canonical-New-Designed-Template-R48.pdf").use { it.readBytes() })
     val sources = SourceMapIntakeStore(app)
