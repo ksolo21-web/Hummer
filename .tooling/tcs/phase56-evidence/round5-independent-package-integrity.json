@@ -1,0 +1,36 @@
+{
+  "production_files_compared": 96,
+  "production_changes": [],
+  "packages": [
+    {
+      "file": "TerritoryCardStudio-Android-0.6.0.aab",
+      "sha256": "45b21390e5079c30e460f4b8c0a046cdcbb2f955add2e626e2b435f51a410b72",
+      "bytes": 12416034,
+      "authority_assets_verified": 25,
+      "mismatch": [],
+      "zip_crc_error": null
+    },
+    {
+      "file": "TerritoryCardStudio-Android-0.6.0.apk",
+      "sha256": "8a89ba86261351a6c5b1bf1479bf056372c716520e9c00b8c16e5efbe2184de9",
+      "bytes": 34769075,
+      "authority_assets_verified": 25,
+      "mismatch": [],
+      "zip_crc_error": null
+    }
+  ],
+  "build_hash_checks": [
+    {
+      "file": "TerritoryCardStudio-Android-0.6.0.apk",
+      "matches": true
+    },
+    {
+      "file": "emulator-test.apk",
+      "matches": true
+    },
+    {
+      "file": "TerritoryCardStudio-Android-0.6.0.aab",
+      "matches": true
+    }
+  ]
+}

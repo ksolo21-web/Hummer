@@ -1,0 +1,75 @@
+{
+  "phase": 5,
+  "status": "PASS",
+  "score": 9.5,
+  "all_mandatory_checks_passed": true,
+  "scope": "Phase5 acceptance in .tooling/tcs/phase56-evidence/requirements.md; synthetic component/export validation, not production commissioning",
+  "checklist": [
+    {
+      "id": "exact_approved_candidate",
+      "status": "PASS",
+      "evidence": "Round4 approval/rejection/new-version/source-change tests; exact export service binding."
+    },
+    {
+      "id": "fresh_verification_and_stale_sessions",
+      "status": "PASS",
+      "evidence": "Round4 offline, expired, unknown, tampered and changed-source checks; real process restart proof."
+    },
+    {
+      "id": "strict_pdf_size_identity_dimensions_roles",
+      "status": "PASS",
+      "evidence": "Critic independently reopened provider bytes: 81696/84548/84682 bytes; all five pages 768x480.5 pt; canonical identities/page roles match audits; frozen decimal-boundary check retained."
+    },
+    {
+      "id": "native_provider_readback_and_cleanup",
+      "status": "PASS",
+      "evidence": "Round5 actualDocumentProviderReadbackPreservesAllModesAndPairedAudit; round4 write/readback/rename/cleanup failure tests."
+    },
+    {
+      "id": "paired_audit",
+      "status": "PASS",
+      "evidence": "All three actual provider PDFs match paired audit SHA256, byte count, page count, roles; audits contain approval/source/input/assignment/inventory/provider bindings."
+    },
+    {
+      "id": "durable_receipt_failure_race",
+      "status": "PASS",
+      "evidence": "Round5 post-receipt invalidation regression passes, requiring deleted receipt/destination and inactive approval."
+    },
+    {
+      "id": "phone_wide_light_dark_cancellation",
+      "status": "PASS",
+      "evidence": "16 actual screenshots reviewed; four UI executions across layouts; real SAF cancellation; UI portion9.3."
+    },
+    {
+      "id": "exact_export_render_text",
+      "status": "PASS",
+      "evidence": "All five pages inspected full-page; independent closeups of road labels/address/phone lines; extracted text has expected identities and no replacement characters; no clipping/overlap observed."
+    },
+    {
+      "id": "immutable_reference_export_and_authority",
+      "status": "PASS",
+      "evidence": "Affected baseline two checks frozen round3; production96-file hash equality independently verified round4\u2192round5; six reserved assignments unchanged by implementation and reserved-card test passes."
+    }
+  ],
+  "evidence": {
+    "round4_passing_executions": 27,
+    "round5_passing_executions": 2,
+    "round4_wide_duplicate_executions": 2,
+    "provider_pdf_checks": "round5/independent/critic-exact-checks.json",
+    "production_files_unchanged_round4_to_round5": 96,
+    "screenshots_reviewed": 16,
+    "pdf_pages_reviewed": 5,
+    "distinct_new_phase56_checks": 28,
+    "affected_frozen_baseline_rechecked": 2,
+    "frozen_baseline_checks": 159,
+    "package_integrity": "round5/independent/package-integrity.json",
+    "authority_assets_verified_in_each_apk_aab": 25,
+    "accepted_identities": "accepted-identities.json"
+  },
+  "limitations": [
+    "Phase6 remains BLOCKED: no usable authorized production registered-project inputs/producer and no complete all-mode native commissioning UI evidence.",
+    "All outputs are explicitly synthetic NOT FOR FIELD USE; no geographic correctness or six-real-card completion claimed.",
+    "Wide UI reading width and redundant ready-state validation instruction are minor polish issues; no required action obscured.",
+    "This Phase5 score is not APK release/signing/install approval or a real territory-card visual quality score."
+  ]
+}

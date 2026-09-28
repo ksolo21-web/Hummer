@@ -1,8 +1,8 @@
 {
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
-  "current_phase": 5,
-  "current_checkpoint": "0.4.0-phase4-complete",
+  "current_phase": 6,
+  "current_checkpoint": "0.6.0-phase5-complete-phase6-blocked",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -14,8 +14,8 @@
     "2_production_ui": "PASSED",
     "3_editing_commissioning_workflow": "PASSED",
     "4_candidate_lifecycle_approval": "PASSED",
-    "5_pdf_output_validation_completion": "IN_PROGRESS",
-    "6_end_to_end_android_integration": "IN_PROGRESS_DEPENDS_PHASE5",
+    "5_pdf_output_validation_completion": "PASSED",
+    "6_end_to_end_android_integration": "BLOCKED_SOURCE_REGISTRATION_AND_NATIVE_COMMISSIONING",
     "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
     "8_release_hardening": "NOT_STARTED_DEPENDS_PHASE7",
     "9_final_release_gate": "NOT_STARTED_DEPENDS_PHASE8",
@@ -51,10 +51,10 @@
     "3D_editing_integration": "PASSED"
   },
   "phase_milestone_before": "Phase3 PASSED; Phase4 IN_PROGRESS",
-  "phase_milestone_after": "Phase4 PASSED; Phase5 next",
-  "last_completed_package": "0.4.0-phase4-complete",
-  "next_open_gate": "Combined Phase5-6 verification and integration",
-  "next_bounded_task": "Complete Phase5 final PDF/output validation against the accepted local-reference lifecycle: exact packet integrity, print readiness, canonical naming, guarded export and audit evidence. Preserve159 accepted distinct identities; rerun only new/failed/affected checks. Kaleb personally creates the six real replacement cards; agent tests synthetic fixtures only.",
+  "phase_milestone_after": "Phase5 PASSED; Phase6 BLOCKED_NOT_ACCEPTED",
+  "last_completed_package": "0.6.0-phase5-complete-phase6-blocked",
+  "next_open_gate": "Phase6 production source registration and complete native commissioning",
+  "next_bounded_task": "Resolve the supported independently authorized current-source/assignment producer and registration contract without weakening shared Python/Android authority. Then prove initial native authoring through successful picker export in all three modes. Keep six real cards untouched for Kaleb. Preserve187 accepted identities; rerun only new/failed/affected checks.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-28T01:39:16.683127+00:00",
+  "saved_at_utc": "2026-09-28T03:06:25.809Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -614,7 +614,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase4-complete-candidate-lifecycle-approval-closeout",
+  "last_completed_task": "phase5-final-pdf-output-validation",
   "phase2h_freeze_evidence": {
     "status": "PASS",
     "run_id": 36295828394,
@@ -1086,7 +1086,7 @@
       ],
       "limits": [
         "No real territory geography certification is inferred from synthetic runtime fixtures.",
-        "Phases 3\u20139, reserved commissioning and final generated field PDF release remain open."
+        "Phases 3–9, reserved commissioning and final generated field PDF release remain open."
       ]
     },
     "real_territory_commissioning": "NOT_PERFORMED",
@@ -2338,7 +2338,7 @@
       "artifact_id": 10945627989,
       "artifact_sha256": "ae6058f9ffdbb9ac4e8dbdb79dbd1bef687dd017cbfea4563cddcbe4c666ee5a",
       "status": "TECHNICAL_AND_VISUAL_ACCEPTED_PENDING_DURABLE_CLOSEOUT",
-      "scope": "Full documented Phase3 editing workflow: accepted3A/3B/3CA/3CB/3CC plus3D aggregate integration; excludes Phases4\u20139",
+      "scope": "Full documented Phase3 editing workflow: accepted3A/3B/3CA/3CB/3CC plus3D aggregate integration; excludes Phases4–9",
       "mandatory_checks": {
         "prior_3A_3B_3CA_3CB_3CC_acceptance_preserved": "PASS",
         "both_modes_edited_input_packet_preview_exact_local_review": "PASS",
@@ -2483,7 +2483,7 @@
         "Emulator installed disposable resign derivatives with identical application payload; release signing remains later phase.",
         "This critic reviewed recorded runtime evidence and actualpixels; did not operate an independent emulator.",
         "Durable checkpoint/ledger commit and remote readback remain parent closeout tasks.",
-        "Phases4\u20139 and overall apprelease remain open."
+        "Phases4–9 and overall apprelease remain open."
       ]
     },
     "apk_sha256": "70d635ada9d2b1a9ca9a4ae205565e71c019830145aa7411b36ff3244bfce641",
@@ -2717,7 +2717,7 @@
       "critic": "/root/phase3cc_critic",
       "independent": true,
       "passed": true,
-      "score": 10.0,
+      "score": 10,
       "scale": 10,
       "scope": "Whole Phase4 candidate lifecycle technical and visual acceptance",
       "all_mandatory_technical_visual_gates_passed": true,
@@ -2907,11 +2907,104 @@
     "next": "5_pdf_output_validation_completion"
   },
   "phase56_in_progress": {
-    "status": "IMPLEMENTING_NOT_ACCEPTED",
-    "baseline": "b9ab59b45a5f6884d2d60fe90cc2c22d907a2e1d",
-    "scope": "Phase5 final validation/export and Phase6 full native integration",
-    "six_real_cards": "Reserved for Kaleb; synthetic-only tests",
-    "frozen_prior_identities": 159,
-    "remaining": "Device compilation/runtime, full native SAF workflow, independent output/source review, final acceptance"
+    "status": "PHASE5_PASSED_PHASE6_BLOCKED",
+    "phase5": {
+      "status": "PASSED",
+      "score": 9.5,
+      "all_mandatory_checks_passed": true,
+      "source_commit": "9b8c3ed15e3d8e86670621c29f70181b7b963768",
+      "frozen_prior_distinct_checks": 159,
+      "new_distinct_checks": 28,
+      "cumulative_distinct_checks": 187,
+      "affected_prior_checks_revalidated": 2,
+      "screenshots_reviewed": 16,
+      "provider_pdfs_reviewed": 3,
+      "pdf_pages_reviewed": 5,
+      "production_files_unchanged_between_final_runs": 96,
+      "authority_assets_verified_in_each_apk_aab": 25,
+      "run_ids": [
+        36368557994,
+        36370230860,
+        36370898098,
+        36371562780
+      ],
+      "independent_review": ".tooling/tcs/phase56-evidence/phase5-final-review.json",
+      "durable_evidence": {
+        "library_file_id": "libfile_12a6575e5c008191bbbfa2f3632a75c0",
+        "file_name": "Territory-Android-Phase5-Verified-Evidence-2026-09-27.zip",
+        "sha256": "0b5b0efc34887d9beb7fcbcba5f83b0bb2b051e82f4693304d82121b52f8ad34",
+        "bytes": 28372157
+      },
+      "scope": "Final validation/export component gates; not full native commissioning, source registration, production signing or field release",
+      "reserved_real_cards": "USER_OWNED_UNTOUCHED"
+    },
+    "phase6": {
+      "status": "BLOCKED_NOT_ACCEPTED",
+      "completed_components": [
+        "Native intake and final output screens",
+        "Three-mode service integration",
+        "Actual Android document-provider readback",
+        "Three-mode process restart revalidation/rebuild/reapproval"
+      ],
+      "blockers": [
+        "No usable independently authorized current-source/project producer and registration path; six reserved assignments register legacy PDF hashes only.",
+        "No complete all-mode native dashboard/intake/authoring/build/preview/approval/successful SAF save/knowledge-base journey evidence."
+      ],
+      "constraints": [
+        "Do not promote legacy reference geometry or invent source authority.",
+        "Do not require Kaleb to build the six cards outside the app.",
+        "Preserve all accepted checks except affected dependencies or concrete defects.",
+        "Kaleb personally creates all six real cards."
+      ]
+    }
+  },
+  "phase5_freeze_evidence": {
+    "status": "PASSED",
+    "score": 9.5,
+    "all_mandatory_checks_passed": true,
+    "source_commit": "9b8c3ed15e3d8e86670621c29f70181b7b963768",
+    "frozen_prior_distinct_checks": 159,
+    "new_distinct_checks": 28,
+    "cumulative_distinct_checks": 187,
+    "affected_prior_checks_revalidated": 2,
+    "screenshots_reviewed": 16,
+    "provider_pdfs_reviewed": 3,
+    "pdf_pages_reviewed": 5,
+    "production_files_unchanged_between_final_runs": 96,
+    "authority_assets_verified_in_each_apk_aab": 25,
+    "run_ids": [
+      36368557994,
+      36370230860,
+      36370898098,
+      36371562780
+    ],
+    "independent_review": ".tooling/tcs/phase56-evidence/phase5-final-review.json",
+    "durable_evidence": {
+      "library_file_id": "libfile_12a6575e5c008191bbbfa2f3632a75c0",
+      "file_name": "Territory-Android-Phase5-Verified-Evidence-2026-09-27.zip",
+      "sha256": "0b5b0efc34887d9beb7fcbcba5f83b0bb2b051e82f4693304d82121b52f8ad34",
+      "bytes": 28372157
+    },
+    "scope": "Final validation/export component gates; not full native commissioning, source registration, production signing or field release",
+    "reserved_real_cards": "USER_OWNED_UNTOUCHED"
+  },
+  "phase6_in_progress": {
+    "status": "BLOCKED_NOT_ACCEPTED",
+    "completed_components": [
+      "Native intake and final output screens",
+      "Three-mode service integration",
+      "Actual Android document-provider readback",
+      "Three-mode process restart revalidation/rebuild/reapproval"
+    ],
+    "blockers": [
+      "No usable independently authorized current-source/project producer and registration path; six reserved assignments register legacy PDF hashes only.",
+      "No complete all-mode native dashboard/intake/authoring/build/preview/approval/successful SAF save/knowledge-base journey evidence."
+    ],
+    "constraints": [
+      "Do not promote legacy reference geometry or invent source authority.",
+      "Do not require Kaleb to build the six cards outside the app.",
+      "Preserve all accepted checks except affected dependencies or concrete defects.",
+      "Kaleb personally creates all six real cards."
+    ]
   }
 }

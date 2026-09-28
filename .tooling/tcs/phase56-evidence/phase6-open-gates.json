@@ -1,0 +1,19 @@
+{
+  "status": "BLOCKED_NOT_ACCEPTED",
+  "completed_components": [
+    "Native intake and final output screens",
+    "Three-mode service integration",
+    "Actual Android document-provider readback",
+    "Three-mode process restart revalidation/rebuild/reapproval"
+  ],
+  "blockers": [
+    "No usable independently authorized current-source/project producer and registration path; six reserved assignments register legacy PDF hashes only.",
+    "No complete all-mode native dashboard/intake/authoring/build/preview/approval/successful SAF save/knowledge-base journey evidence."
+  ],
+  "constraints": [
+    "Do not promote legacy reference geometry or invent source authority.",
+    "Do not require Kaleb to build the six cards outside the app.",
+    "Preserve all accepted checks except affected dependencies or concrete defects.",
+    "Kaleb personally creates all six real cards."
+  ]
+}

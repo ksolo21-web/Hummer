@@ -1,0 +1,46 @@
+[
+  {
+    "mode": "regular",
+    "bytes": 81696,
+    "sha256": "8a9d452727931e4c42ed51db647a7aeb760274c9de55b84720a3652af40973b6",
+    "pages": 1,
+    "dimensions": [
+      768,
+      480.5
+    ],
+    "roles": [
+      "FRONT_MAP"
+    ],
+    "audit_bound": true
+  },
+  {
+    "mode": "letter_writing",
+    "bytes": 84548,
+    "sha256": "19c53c4daa1a8bce25d295a2330d60f43bcc5b82db4c8d8d83f0efe375af9758",
+    "pages": 2,
+    "dimensions": [
+      768,
+      480.5
+    ],
+    "roles": [
+      "FRONT_MAP",
+      "BACK_ADDRESS_LIST"
+    ],
+    "audit_bound": true
+  },
+  {
+    "mode": "telephone",
+    "bytes": 84682,
+    "sha256": "e6e62b8634ba5faf1cd5a976d82309ea124dc4823bd319340b7c18815528f5f9",
+    "pages": 2,
+    "dimensions": [
+      768,
+      480.5
+    ],
+    "roles": [
+      "FRONT_MAP",
+      "BACK_PHONE_LIST"
+    ],
+    "audit_bound": true
+  }
+]

@@ -1,0 +1,140 @@
+{
+  "new_phase56_distinct_passes": 28,
+  "affected_prior_distinct_passes": 2,
+  "new_passes": [
+    [
+      "com.koenterprises.territorycardstudio.Phase56CodecRegressionInstrumentationTest",
+      "failedReplacementPreparationPreservesRecoveryAndCurrentApproval"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56CodecRegressionInstrumentationTest",
+      "invalidationAfterReceiptCreationRemovesSuccessRecordAndDestination"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56CodecRegressionInstrumentationTest",
+      "malformedAndOversizedProviderMapsFailClosed"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56DocumentsInstrumentationTest",
+      "actualDocumentProviderReadbackPreservesAllModesAndPairedAudit"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "allModesStartUnpreparedAndExportExactApprovedPacketAndAudit"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "arbitraryOrWrongModeProjectCannotCreateBaseline"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "auditWriteIsBoundToSameApprovalAndProviderEvidence"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "changedSourceAndSameCandidateRejectionInvalidateExport"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "cleanupFailureReportsResidualFile"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "exactDecimalPdfLimitIsEnforced"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "expiredAndUnknownSessionTicketsFailClosed"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "expiredImportAndSourceChangedDuringValidationCannotPrepare"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "failedWritesAndCorruptReadbackDeleteNewDocument"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "freshServiceCannotRestoreExportAuthority"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "importedProviderClaimsDoNotReplaceFreshVerification"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "newVersionWithIdenticalBytesInvalidatesExport"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "offlineFinalVerificationCannotReuseEarlierApproval"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "preparedBaselineSurvivesImportTicketExpiry"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "projectTamperAfterPreparationInvalidatesApproval"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "realReplacementCardsRemainUncommissioned"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "registeredProjectCodecRoundTripAcrossModes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "renamedOutputFailsWithoutSaving"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "repeatedProjectImportUsesOneDurableSlot"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56OutputInstrumentationTest",
+      "unapprovedRejectedAndPartialPacketsCannotExport"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56RestartInstrumentationTest",
+      "recoverSavedProjectRebuildReapproveAndExportInNewProcess"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56RestartInstrumentationTest",
+      "stageBeforeProcessDeath"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56UiInstrumentationTest",
+      "outputDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase56UiInstrumentationTest",
+      "outputLight"
+    ]
+  ],
+  "rounds": [
+    {
+      "round": "round2",
+      "pass_executions": 1,
+      "distinct_passes": 1
+    },
+    {
+      "round": "round3",
+      "pass_executions": 2,
+      "distinct_passes": 2
+    },
+    {
+      "round": "round4",
+      "pass_executions": 27,
+      "distinct_passes": 25
+    },
+    {
+      "round": "round5",
+      "pass_executions": 2,
+      "distinct_passes": 2
+    }
+  ]
+}
