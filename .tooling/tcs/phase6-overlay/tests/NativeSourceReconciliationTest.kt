@@ -55,8 +55,8 @@ class NativeSourceReconciliationTest {
         val curve=producer.labels(a.copy(roads=listOf(road.copy(name="Curve Ct",normalizedName="curve ct",status="green",role="interior",insideSide="",points=listOf(Point2D(320.0,180.0),Point2D(360.0,182.0),Point2D(400.0,190.0),Point2D(440.0,205.0)))))).single().placement
         assertEquals(LabelPlacementMode.CURVED_ROAD_FOLLOWING,curve.mode)
         assertNotNull(curve.sideEvidence)
-        val regular=producer.labels(a.copy(roads=listOf(road.copy(role="interior",status="green",insideSide="")))) .single()
-        assertTrue(regular.placement.center.y<road.points.first().y,"horizontal tie must place label north")
+        val regular=producer.labels(a.copy(roads=listOf(road.copy(role="interior",status="green",insideSide="",points=listOf(Point2D(225.0,191.5),Point2D(650.0,191.5)))))) .single()
+        assertTrue(regular.placement.center.y<191.5,"horizontal tie must place label north")
         val horizontal=producer.labels(a).single()
         assertTrue(horizontal.placement.center.y>road.points.first().y,"left inside requires right exterior in top-origin geometry")
     }
