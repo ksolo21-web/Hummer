@@ -28,6 +28,12 @@ class AndroidNativeAuthoringService internal constructor(private val kb:Territor
         val input=ProductionRenderModelInput(a,assessment.truth,request,LiveVerificationExecutionResult(request.requestFingerprint,evidence,decision,emptyList()),topology,color,overlap,buildings,labels.labels(a))
         val adapted=ProductionRenderModelAdapter.adaptProduction(kb,input,drafts.ledger)
         require(adapted is RenderModelAdaptationResult.Renderable) {(adapted as RenderModelAdaptationResult.Blocked).reasons.joinToString("; ")}
+        val inventoryBuildings=when(inv) {
+            is Page2Inventory.LetterWriting->inv.inventory.records.mapNotNull {it.buildingId?.takeIf(String::isNotBlank)}
+            is Page2Inventory.Telephone->inv.inventory.records.mapNotNull {it.buildingId?.takeIf(String::isNotBlank)}
+            null->emptyList()
+        }
+        require(inventoryBuildings.all {building->a.buildings.any {it.buildingId==building && it.assigned}}) {"Inventory refers to an unknown or unassigned building"}
         coordinator.validateEditingInventory(id,mode,input,inv)
         coordinator.prepareEditing(id,mode,source.sha256,input,inv,prior) {
             runCatching {drafts.read(id,mode)?.revisionSha256==d.revisionSha256 && sources.verifiedRecord(id)==source && drafts.ledger.current(id,a.authoritySha256)!=null}.getOrDefault(false)

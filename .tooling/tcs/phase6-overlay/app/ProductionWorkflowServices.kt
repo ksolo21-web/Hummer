@@ -23,3 +23,5 @@ interface ProductionWorkflowServices {
     val finalOutput:AndroidFinalOutputService
     val approvedExport:AndroidApprovedExportService
 }
+
+internal val LocalProductionWorkflowServices=androidx.compose.runtime.staticCompositionLocalOf<ProductionWorkflowServices?> {null}

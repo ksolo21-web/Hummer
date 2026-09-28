@@ -190,8 +190,10 @@ fun TerritoryCardStudioProductionApp(
         val route = ProductionRoute.valueOf(routeName)
         val selected = selectedId?.let { id -> dashboard.items.firstOrNull { it.assignment.displayId == id } }
 
-        if (knowledgeOpen) KnowledgeBaseDestination(knowledgeBase, services.activePolicy.revision,
-            services.endpointConfig.revision, services.approvedExport, selectedId) { knowledgeOpen = false }
+        if (knowledgeOpen) androidx.compose.runtime.CompositionLocalProvider(LocalProductionWorkflowServices provides services) {
+            KnowledgeBaseDestination(knowledgeBase, services.activePolicy.revision,
+                services.endpointConfig.revision, services.approvedExport, selectedId) { knowledgeOpen = false }
+        }
 
         Scaffold(
             topBar = {

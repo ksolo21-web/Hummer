@@ -40,6 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           cp .tooling/tcs/phase6-overlay/app/*.kt tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/
+          cp .tooling/tcs/phase6-overlay/androidTest/* tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
           cp .tooling/tcs/phase6-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase6-overlay/core/*.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/
           cp .tooling/tcs/phase6-overlay/tests/*.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/
@@ -58,6 +59,18 @@ jobs:
           cp tcs-src/app/build/outputs/bundle/debug/app-debug.aab evidence/TerritoryCardStudio-Android-0.6.1.aab
           cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/emulator-test.apk
           sha256sum evidence/*.apk evidence/*.aab > evidence/builds.sha256
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Native Android authoring and export
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: bash .tooling/tcs/phase6-overlay/run-device-tests.sh
       - name: Preserve evidence and rebuildable source
         if: always()
         run: |
