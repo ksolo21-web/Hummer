@@ -1,0 +1,58 @@
+name: TCS Phase 6 Native Authoring
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-phase6-native.yml
+      - .tooling/tcs/phase6-overlay/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase6-native
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover frozen source and apply integration
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo '12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965  .tooling/tcs/phase4-evidence/Phase4-Android-0.4.0-source.tar.xz' | sha256sum -c -
+          tar -xJf .tooling/tcs/phase4-evidence/Phase4-Android-0.4.0-source.tar.xz -C tcs-src
+          for f in .tooling/tcs/phase56-overlay/*.kt; do
+            case "$f" in *InstrumentationTest.kt) target=androidTest;; *) target=main;; esac
+            cp "$f" "tcs-src/app/src/$target/java/com/koenterprises/territorycardstudio/"
+          done
+          cp .tooling/tcs/phase56-overlay/*.java tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
+          cp .tooling/tcs/phase56-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
+          cp .tooling/tcs/phase56-overlay/AndroidTestManifest.xml tcs-src/app/src/androidTest/AndroidManifest.xml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Apply native authoring foundation and test affected contracts
+        run: |
+          set -euo pipefail
+          cp .tooling/tcs/phase6-overlay/core/*.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/
+          cp .tooling/tcs/phase6-overlay/tests/*.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/
+          (cd tcs-src && gradle --no-daemon :core:test --tests '*NativeSourceReconciliationTest') > evidence/core-tests.log 2>&1 || { cat evidence/core-tests.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/core-results
+          python .tooling/tcs/phase6-overlay/python/native_source_reconciliation.py evidence/reconciliation-golden.json > evidence/python-parity.json
+      - name: Preserve evidence and rebuildable source
+        if: always()
+        run: |
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/source-files.sha256
+          tar -cJf evidence/phase6-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+          sha256sum evidence/phase6-source.tar.xz > evidence/source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase6-native-evidence
+          path: evidence
+          retention-days: 14
