@@ -82,12 +82,15 @@ class Phase6NativeUiInstrumentationTest {
     @Test fun fullLetterLight()=flow(WorkspaceMode.LETTER_WRITING,AppearanceMode.LIGHT)
     @Test fun fullTelephoneDark()=flow(WorkspaceMode.TELEPHONE,AppearanceMode.DARK)
 
-    private fun flow(mode:WorkspaceMode,theme:AppearanceMode) {Phase6NativeFixture(mode).use {x->
+    @Test fun fullMultiUnitLight()=flow(WorkspaceMode.LETTER_WRITING,AppearanceMode.LIGHT,true)
+    @Test fun pictureGeneratesNativeDraftAndExports()=flow(WorkspaceMode.REGULAR,AppearanceMode.LIGHT,automatic=true)
+    private fun flow(mode:WorkspaceMode,theme:AppearanceMode,multiUnit:Boolean=false,automatic:Boolean=false) {Phase6NativeFixture(mode,multiUnit=multiUnit).use {x->
         grant()
-        val sourceName="phase6-${mode.name}-${theme.name}-current.pdf";val contactsName="phase6-${mode.name}-${theme.name}-records.txt"
-        document(sourceName,"application/pdf",x.sourcePdf())
-        document(contactsName,"text/plain","SYNTHETIC USER PROVIDED RECORDS - NOT FOR FIELD USE\n100 Example Way | 2025550101\n101 Example Way | UNAVAILABLE\n".toByteArray())
-        val prefix="${mode.name.lowercase()}-${theme.name.lowercase()}"
+        val nonce=java.util.UUID.randomUUID().toString().take(8)
+        val sourceName="phase6-$nonce-current.${if(automatic)"png" else "pdf"}";val contactsName="phase6-$nonce-records.txt"
+        val sourceUri=document(sourceName,if(automatic)"image/png" else "application/pdf",if(automatic)x.sourcePng() else x.sourcePdf())
+        val contactUri=document(contactsName,"text/plain","SYNTHETIC USER PROVIDED RECORDS - NOT FOR FIELD USE\n100 Example Way | 2025550101\n101 Example Way | UNAVAILABLE\n".toByteArray())
+        val prefix="${mode.name.lowercase()}-${theme.name.lowercase()}${if(multiUnit)"-multiunit" else ""}${if(automatic)"-automatic" else ""}"
         x.app.appearancePreferences.setMode(theme)
         rule.activity.runOnUiThread {rule.activity.enableEdgeToEdge()}
         rule.setContent {TerritoryCardStudioProductionApp(x.kb,x.app.appearancePreferences,x.services)}
@@ -104,21 +107,41 @@ class Phase6NativeUiInstrumentationTest {
         text(native,"native-locality","Oakland Township");text(native,"native-updated","9/28/2026")
         text(native,"native-directions","Directions: Synthetic source only.\nNOT FOR FIELD USE.")
         text(native,"native-author","Synthetic author");text(native,"native-county","Oakland County");text(native,"native-state","Michigan");text(native,"native-country","United States")
+        if(automatic) {
+            click(native,"native-generate-picture");statusContains("Generated 3 road traces")
+            screenshot("$prefix-generated-map")
+            click(native,"native-tab-Roads");textClick(native,"Edit image-road-1")
+            click(native,"native-road-side-right");click(native,"native-end-a-junction");click(native,"native-end-b-junction")
+            click(native,"native-item-confirmed");click(native,"native-save-item");statusContains("Draft saved")
+            click(native,"native-tab-Review")
+            val findings=requireNotNull(x.drafts.read(x.id,mode)?.imageReview).findings()
+            findings.indices.forEach {click(native,"native-image-finding-$it")}
+            click(native,"native-confirm-generated")
+        } else {
         click(native,"native-tab-Roads")
         listOf(Triple("alpha","Alpha Rd",115),Triple("beta","Beta Dr",200),Triple("gamma","Gamma Ct",285)).forEachIndexed {i,(id,name,y)->
             text(native,"native-points","225,$y;650,$y");textClick(native,"Apply points")
             text(native,"native-item-id",id);text(native,"native-road-name",name)
             click(native,"native-road-status-"+listOf("yellow","green","red")[i]);click(native,"native-road-role-"+listOf("perimeter","interior","excluded")[i])
-            if(i==0)click(native,"native-road-side-left")
+            if(i==0)click(native,"native-road-side-right")
             click(native,"native-end-a-"+if(i==0)"junction" else "termination");click(native,"native-end-b-"+if(i==0)"junction" else "termination")
             text(native,"native-evidence-note","Page 1, $name: explicit work instruction and endpoints")
             click(native,"native-item-confirmed");click(native,"native-save-item");statusContains("Draft saved")
         }
+        }
         assertFalse(x.coordinator.state(x.id,mode).inputReady)
+        if(multiUnit) {
+            click(native,"native-tab-Buildings")
+            text(native,"native-points","550,220;620,220;620,260;550,260");textClick(native,"Apply points")
+            text(native,"native-item-id","condo-1");text(native,"native-building-members","9001,9002")
+            click(native,"native-building-assigned");text(native,"native-evidence-note","Page 1 assigned condo footprint and both member identifiers")
+            click(native,"native-item-confirmed");click(native,"native-save-item");statusContains("Draft saved")
+        }
         if(mode!=WorkspaceMode.REGULAR) {
             click(native,"native-tab-Addresses");click(native,"native-import-contacts");chooseContact(contactsName)
             val count=if(mode==WorkspaceMode.TELEPHONE)2 else 1
             repeat(count) {i->text(native,"native-contact-id","record-$i");text(native,"native-address","${100+i} Example Way")
+                if(multiUnit)text(native,"native-address-building","condo-1")
                 click(native,"native-address-confirmed");click(native,"native-boundary-confirmed")
                 if(i==0)click(native,"native-address-authorized")
                 if(mode==WorkspaceMode.TELEPHONE) {
@@ -163,6 +186,7 @@ class Phase6NativeUiInstrumentationTest {
         rule.onNodeWithTag("nav-knowledge").performClick();waitTag("knowledge-selected");rule.onNodeWithTag("knowledge-selected").performClick()
         rule.onNodeWithTag("knowledge-detail-list").performScrollToNode(hasTestTag("knowledge-local-cards"));rule.onNodeWithText("Current approved local reference",substring=true).assertExists();screenshot("$prefix-knowledge")
         x.original.knowledgeBase.needsNewCardQueue.keys.forEach {assertEquals(x.original.knowledgeBase.assignments[it],x.kb.assignments[it])}
+        DocumentsContract.deleteDocument(resolver,sourceUri);DocumentsContract.deleteDocument(resolver,contactUri)
         assertEquals(2,File(x.root,"output").listFiles().orEmpty().count {it.extension=="json"})
     }}
 }

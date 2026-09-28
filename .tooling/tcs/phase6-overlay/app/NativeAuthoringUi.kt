@@ -137,6 +137,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     var buildingFacts by remember(id,mode) {mutableStateOf<List<SourceBuildingObservation>>(emptyList())}
     var contacts by remember(id,mode) {mutableStateOf<List<NativeContactDraft>>(emptyList())}
     var coverage by remember(id,mode) {mutableStateOf(false)}
+    var imageReview by remember(id,mode) {mutableStateOf<NativeImageReview?>(null)}
     val scope=rememberCoroutineScope()
     val source=runCatching {sources.verifiedRecord(id)}.getOrNull()
     val sourceFile=source?.let {runCatching {sources.verifiedFile(id)}.getOrNull()}
@@ -155,7 +156,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     }
     LaunchedEffect(id,mode) {
         runCatching {withContext(Dispatchers.IO) {store.read(id,mode)}}.onSuccess {d->
-            draft=d
+            draft=d;imageReview=d?.imageReview
             if(d!=null) {locality=d.assignment.locality;updated=d.assignment.updated;directions=d.assignment.directionsLines.joinToString("\n");author=d.reconciliation.author
                 county=d.jurisdiction.county.orEmpty();state=d.jurisdiction.state;country=d.jurisdiction.country;roads=d.assignment.roads;buildings=d.assignment.buildings
                 roadFacts=d.reconciliation.segments;buildingFacts=d.reconciliation.buildings;contacts=d.contacts;coverage=d.reconciliation.sourceCoverageComplete}
@@ -164,7 +165,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     LaunchedEffect(loaded,source?.sha256) {
         if(loaded && draft!=null && source!=null && draft!!.reconciliation.importedSourceSha256!=source.sha256) {
             roadFacts=roadFacts.map {it.copy(confirmed=false)};buildingFacts=buildingFacts.map {it.copy(confirmed=false)}
-            contacts=contacts.map {it.copy(boundaryConfirmed=false)};coverage=false
+            contacts=contacts.map {it.copy(boundaryConfirmed=false)};coverage=false;imageReview=null
             message="Source changed. Save the reset draft, then review every source item and address boundary again."
         }
     }
@@ -174,8 +175,8 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             locality.trim(),updated.trim(),directions.lines().filter {it.isNotBlank()},"full_map",assignment.housingType,RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,roads,buildings)
         val r=NativeSourceReconciliation(id,mode.name,kb.revision,src.sha256,assignment.referenceSha256,"current_assignment_map",author.trim(),
             draft?.reconciliation?.reviewedAtUtc ?: Instant.now().truncatedTo(ChronoUnit.SECONDS).toString(),NativeSourceReconciliationContract.assignmentContentSha256(a),null,
-            coverage,false,false,false,roadFacts,buildingFacts,draft?.reconciliation?.registrationId ?: UUID.randomUUID().toString(),null)
-        return NativeAuthoringDraft(a,r,VerificationJurisdiction(county.trim().ifBlank {null},state.trim(),country.trim()),contacts)
+            coverage,false,false,false,roadFacts,buildingFacts,draft?.reconciliation?.registrationId ?: UUID.randomUUID().toString(),null,imageReview?.sha256)
+        return NativeAuthoringDraft(a,r,VerificationJurisdiction(county.trim().ifBlank {null},state.trim(),country.trim()),contacts,imageReview=imageReview)
     }
     fun save() {
         runCatching {store.save(proposal(),draft?.revisionSha256)}.onSuccess {draft=it;message="Draft saved. Review source facts before registering."}.onFailure {message=it.message.orEmpty()}
@@ -229,6 +230,20 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
         if(sourceFile==null) item {Text("Import a current source map from the workspace before authoring.")}
         else item {NativeSourcePreview(sourceFile){}}
         if(section=="Map") {
+            item {
+                Text("Generate from your map picture",style=MaterialTheme.typography.titleLarge)
+                Text("Territory $id • ${mode.label}. Read street labels and colored roads on this device, then review the generated draft.")
+                Button(enabled=sourceReadable && !busy && roads.isEmpty(),onClick={scope.launch {
+                    busy=true;val original=source
+                    runCatching {withContext(Dispatchers.IO) {AndroidMapImageInterpreter().interpret(requireNotNull(sourceFile),requireNotNull(original).sha256)}}
+                        .onSuccess {generated->
+                            if(sources.verifiedRecord(id)?.sha256!=original?.sha256)message="Source changed. Generate again from the current picture."
+                            else {roads=generated.roads;roadFacts=generated.observations;imageReview=NativeImageReview.from(generated);coverage=false;section="Review"
+                                message="Generated ${roads.size} road traces from the picture. Review ${generated.findings.size} findings and confirm source facts before registration."}
+                        }.onFailure {message=it.message ?: "The map could not be interpreted"};busy=false
+                }},modifier=Modifier.testTag("native-generate-picture")){Text(if(busy)"Reading map…" else "Generate card draft from picture")}
+                if(roads.isNotEmpty())Text("A draft already exists. Edit it below; automatic generation will not overwrite your work.")
+            }
             item {Text("Describe the new card",style=MaterialTheme.typography.titleLarge);Text("Enter current source facts. Legacy geometry is not copied into this draft.")}
             item {NativeField("Locality",locality,"native-locality"){locality=it}}
             item {NativeField("Updated date",updated,"native-updated"){updated=it}}
@@ -299,15 +314,28 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
         if(section=="Review") {
             item {Text("Reconcile the complete source",style=MaterialTheme.typography.titleLarge);Text("${roads.size} roads, ${buildings.size} footprints, ${contacts.size} working records. This records your local assignment authorization; it does not approve a PDF.")}
             item {NativeTrace(roads,buildings,emptyList()) {}}
+            imageReview?.let {review->
+                items(review.findings().size) {i->val finding=review.findings()[i]
+                    NativeCheck("Resolved against the source: ${finding.second}",finding.first in review.acknowledged,"native-image-finding-$i") {checked->
+                        imageReview=review.copy(acknowledged=if(checked)review.acknowledged+finding.first else review.acknowledged-finding.first);coverage=false
+                    }
+                }
+                item {OutlinedButton(onClick={runCatching {
+                    require(roads.none {it.name.startsWith("Unresolved road") || it.role=="perimeter" && it.insideSide !in setOf("left","right")}) {"Resolve missing road names and worked sides in Roads first"}
+                    require(imageReview?.complete()==true) {"Resolve each image finding first"}
+                    roadFacts=roadFacts.map {it.copy(confirmed=true)};message="Detected road facts confirmed. Save the complete reconciliation draft."
+                }.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-confirm-generated")){Text("I checked the generated roads against the source")}}
+            }
+
             item {NativeCheck("I reviewed all source pages and accounted for every road, worked side, exclusion and building",coverage,"native-source-complete"){coverage=it}}
             item {Button(enabled=sourceReadable && !busy,onClick={save()},modifier=Modifier.testTag("native-save-draft")){Text("Save reconciliation draft")}}
             item {Button(enabled=sourceReadable && !busy && draft!=null,onClick={scope.launch {busy=true
-                runCatching {val proposed=proposal();val current=requireNotNull(draft);require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction){"Save all changes before registering"}
+                runCatching {val proposed=proposal();val current=requireNotNull(draft);require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction && proposed.imageReview==current.imageReview){"Save all changes before registering"}
                     withContext(Dispatchers.IO) {store.register(id,mode,current.revisionSha256)}
                 }.onSuccess {message="Local assignment registered. Verify fresh sources to prepare the card."+(store.ledger.durabilityWarning?.let {" Storage warning: $it"} ?: "")}.onFailure {message=it.message.orEmpty()};busy=false
             }},modifier=Modifier.testTag("native-register")){Text("Register this reconciled assignment")}}
             item {Button(enabled=!busy && draft!=null,onClick={scope.launch {busy=true
-                runCatching {val current=requireNotNull(draft);val proposed=proposal();require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction){"Save all changes before preparation"};withContext(Dispatchers.IO) {service.prepare(id,mode,current.revisionSha256)}}.onSuccess {message="Prepared using fresh independent sources. Build the candidate, inspect its PDF and explicitly approve it in the workspace."}.onFailure {message=it.message.orEmpty()};busy=false
+                runCatching {val current=requireNotNull(draft);val proposed=proposal();require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction && proposed.imageReview==current.imageReview){"Save all changes before preparation"};withContext(Dispatchers.IO) {service.prepare(id,mode,current.revisionSha256)}}.onSuccess {message="Prepared using fresh independent sources. Build the candidate, inspect its PDF and explicitly approve it in the workspace."}.onFailure {message=it.message.orEmpty()};busy=false
             }},modifier=Modifier.testTag("native-prepare")){Text("Verify sources and prepare")}}
             item {OutlinedButton(enabled=!busy && !archivePickerOwned,onClick={archivePickerOwned=true;archivePicker.launch("Territory-native-evidence.zip")},modifier=Modifier.testTag("native-export-history")){Text("Export all native source evidence")}}
             item {OutlinedButton(onClick={runCatching {val head=store.ledger.history(id,mode.name).lastOrNull() ?: error("No registration history");store.ledger.archiveRevokedHistory(id,mode.name,head.eventSha256)}.onSuccess {message="Revoked history preserved. Review and register again to begin a new cycle."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-archive-registration")){Text("Archive revoked registration history")}}

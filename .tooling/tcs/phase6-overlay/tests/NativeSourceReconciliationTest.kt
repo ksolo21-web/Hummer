@@ -52,7 +52,7 @@ class NativeSourceReconciliationTest {
         assertTrue(requireNotNull(callout.calloutEvidence).calloutJustified)
         assertEquals(LabelSide.NEGATIVE_NORMAL,callout.calloutEvidence?.directCandidateSide)
         assertTrue(requireNotNull(callout.callout).roadAnchor.y>0.0)
-        val curve=producer.labels(a.copy(roads=listOf(road.copy(name="Curve Ct",normalizedName="curve ct",status="green",role="interior",insideSide="",points=listOf(Point2D(320.0,180.0),Point2D(360.0,182.0),Point2D(400.0,190.0),Point2D(440.0,205.0)))))).single().placement
+        val curve=producer.labels(a.copy(roads=listOf(road.copy(name="Curving Terrace",normalizedName="curving terrace",status="green",role="interior",insideSide="",points=listOf(Point2D(320.0,180.0),Point2D(360.0,182.0),Point2D(400.0,190.0),Point2D(440.0,205.0)))))).single().placement
         assertEquals(LabelPlacementMode.CURVED_ROAD_FOLLOWING,curve.mode)
         assertNotNull(curve.sideEvidence)
         val regular=producer.labels(a.copy(roads=listOf(road.copy(role="interior",status="green",insideSide="",points=listOf(Point2D(225.0,191.5),Point2D(650.0,191.5)))))) .single()
@@ -72,6 +72,24 @@ class NativeSourceReconciliationTest {
             """{"reconciliation":${NativeSourceReconciliationContract.encode(v).toString(Charsets.UTF_8)},"assignment":${NativeAssignmentCodec.encode(a).toString(Charsets.UTF_8)},"expected":$expected}"""
         }
         File(root,"../evidence/structural-parity.json").also {it.parentFile.mkdirs()}.writeText(rows.joinToString(",","[","]"))
+    }
+
+    @Test fun automaticImageExtractionFindsLabeledColoredRoadsAndMissingText() {
+        val w=500;val h=300;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 98..102)for(x in 50..450)pixels[y*w+x]=0xff00bb30.toInt()
+        for(y in 198..202)for(x in 50..450)pixels[y*w+x]=0xffdd2020.toInt()
+        val names=listOf(MapImageText("Alpha Rd",AxisAlignedRect(190.0,75.0,270.0,92.0)),MapImageText("Missing Ct",AxisAlignedRect(20.0,250.0,90.0,270.0)))
+        val result=MapImageDraftExtractor.extract(w,h,pixels,names)
+        assertEquals(2,result.roads.size)
+        assertTrue(result.roads.any {it.name=="Alpha Rd" && it.status=="green"})
+        assertTrue(result.roads.any {it.name==null && it.status=="red"})
+        assertTrue(result.findings.any {it.id.startsWith("unmatched-label-")})
+        assertTrue(result.roads.all {it.points.size>=2})
+    }
+    @Test fun imageInterpretationReceiptIsBoundToRegistrationFacts() {
+        val interpreted=r.copy(imageInterpretationSha256="d".repeat(64))
+        assertNotEquals(NativeSourceReconciliationContract.draftFactsSha256(r),NativeSourceReconciliationContract.draftFactsSha256(interpreted))
+        assertEquals(interpreted,NativeSourceReconciliationContract.decode(NativeSourceReconciliationContract.encode(interpreted)))
     }
 
     @Test fun canonicalRoundTripAndPortableGolden() {

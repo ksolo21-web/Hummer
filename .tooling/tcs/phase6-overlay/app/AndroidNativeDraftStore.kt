@@ -16,7 +16,7 @@ data class NativeContactDraft(val id:String,val address:String,val unit:String,v
     val sourceSha256:String,val sourceLabel:String,val verifiedAt:String,val addressConfirmed:Boolean,val boundaryConfirmed:Boolean,
     val addressUseAuthorized:Boolean,val telephoneUseAuthorized:Boolean,val phoneState:String,val phone:String,val phoneBindingConfirmed:Boolean)
 data class NativeAuthoringDraft(val assignment:CurrentAuthoritativeAssignmentState,val reconciliation:NativeSourceReconciliation,
-    val jurisdiction:VerificationJurisdiction,val contacts:List<NativeContactDraft>,val revisionSha256:String="")
+    val jurisdiction:VerificationJurisdiction,val contacts:List<NativeContactDraft>,val revisionSha256:String="",val imageReview:NativeImageReview?=null)
 data class NativeInventoryDocument(val sha256:String,val label:String)
 
 /** Initial drafts and separately imported contact evidence. Drafts grant no authority. */
@@ -80,7 +80,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         {id->sources.verifiedRecord(id)?.sha256},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {inventoryContentSha256(it)}},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {NativeSourceReconciliationContract.assignmentContentSha256(it.assignment)}},
-        {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {NativeSourceReconciliationContract.draftFactsSha256(it.reconciliation)}})
+        {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {d->require(d.imageReview?.complete()!=false) {"Review the automatic image findings first"};NativeSourceReconciliationContract.draftFactsSha256(d.reconciliation)}})
     private fun hash(b:ByteArray)=BundleIntegrity.sha256(b.inputStream())
     private fun file(id:String,mode:WorkspaceMode):AtomicFile {
         val slot=requireNotNull(kb.assignments[id]);require(mode in WorkspaceModePolicy.allowedModes(slot))
@@ -100,7 +100,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         val o=JSONObject().put("schema","native-draft-v2").put("assignment",NativeAssignmentCodec.encode(d.assignment).toString(Charsets.UTF_8))
             .put("reconciliation",NativeSourceReconciliationContract.encode(d.reconciliation).toString(Charsets.UTF_8))
             .put("jurisdiction",JSONObject().put("county",d.jurisdiction.county ?: JSONObject.NULL).put("state",d.jurisdiction.state).put("country",d.jurisdiction.country))
-            .put("contacts",JSONArray(d.contacts.map(::contact)))
+            .put("contacts",JSONArray(d.contacts.map(::contact))).put("imageReview",d.imageReview?.let {org.json.JSONObject().put("analysis",it.analysisJson).put("acknowledged",org.json.JSONArray(it.acknowledged.sorted()))} ?: org.json.JSONObject.NULL)
         return ExtendedValues.canonical(o).toByteArray().also {require(it.size<=MAX_DRAFT_BYTES)}
     }
     @Synchronized fun read(id:String,mode:WorkspaceMode):NativeAuthoringDraft? {
@@ -110,12 +110,17 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         var depth=0;var quoted=false;var escaped=false
         for(c in text){if(quoted){if(escaped)escaped=false else if(c=='\\')escaped=true else if(c=='"')quoted=false}else when(c){'"'->quoted=true;'[','{'->{depth++;require(depth<=16)};']','}'->{depth--;require(depth>=0)}}};require(!quoted && depth==0)
         val o=JSONObject(text)
-        ExtendedValues.keys(o,"schema","assignment","reconciliation","jurisdiction","contacts");require(o.getString("schema")=="native-draft-v2")
+        ExtendedValues.keys(o,"schema","assignment","reconciliation","jurisdiction","contacts","imageReview");require(o.getString("schema")=="native-draft-v2")
         val a=NativeAssignmentCodec.decode(o.getString("assignment").toByteArray(Charsets.UTF_8))
         val r=NativeSourceReconciliationContract.decode(o.getString("reconciliation").toByteArray(Charsets.UTF_8))
         val j=o.getJSONObject("jurisdiction");ExtendedValues.keys(j,"county","state","country")
         val contacts=o.getJSONArray("contacts");require(contacts.length()<=240)
-        val d=NativeAuthoringDraft(a,r,VerificationJurisdiction(if(j.isNull("county"))null else j.getString("county"),j.getString("state"),j.getString("country")),(0 until contacts.length()).map {contact(contacts.getJSONObject(it))},hash(bytes))
+        val image=if(o.isNull("imageReview"))null else o.getJSONObject("imageReview").let {v->
+            ExtendedValues.keys(v,"analysis","acknowledged");val ack=v.getJSONArray("acknowledged");require(ack.length()<=4096)
+            NativeImageReview(v.getString("analysis"),(0 until ack.length()).map {ack.getString(it)}.toSet())
+        }
+        require(image?.sha256==r.imageInterpretationSha256)
+        val d=NativeAuthoringDraft(a,r,VerificationJurisdiction(if(j.isNull("county"))null else j.getString("county"),j.getString("state"),j.getString("country")),(0 until contacts.length()).map {contact(contacts.getJSONObject(it))},hash(bytes),image)
         require(a.displayId==id && r.territory==id && r.mode==mode.name && a.knowledgeBaseRevision==kb.revision && r.knowledgeBaseRevision==kb.revision)
         require(encode(d).contentEquals(bytes)) {"Native draft encoding changed"};return d
     }
@@ -129,6 +134,8 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         if(previous!=null && previous.reconciliation.importedSourceSha256!=source.sha256) {
             require(!d.reconciliation.sourceCoverageComplete && d.reconciliation.segments.none {it.confirmed} && d.reconciliation.buildings.none {it.confirmed} && d.contacts.none {it.boundaryConfirmed}) {"Source changed; clear prior item and boundary confirmations before reconciling the replacement"}
         }
+        require(d.imageReview?.sha256==d.reconciliation.imageInterpretationSha256)
+        d.imageReview?.let {require(JSONObject(it.analysisJson).getString("sourceSha256")==source.sha256)}
         val reset=d.copy(assignment=d.assignment.copy(authoritySha256="0".repeat(64)),reconciliation=d.reconciliation.copy(
             assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(d.assignment),explicitAssignmentConfirmation=false))
         previous?.let(::archive);archive(reset);preserveMap(id,source.sha256)

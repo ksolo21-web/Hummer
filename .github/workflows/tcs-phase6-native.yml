@@ -81,5 +81,27 @@ jobs:
         if: always()
         with:
           name: tcs-phase6-native-evidence
-          path: evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.aab
+            !evidence/phase6-source.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase6-native-apk
+          path: evidence/TerritoryCardStudio-Android-0.6.1.apk
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase6-native-bundle
+          path: evidence/TerritoryCardStudio-Android-0.6.1.aab
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase6-native-source
+          path: evidence/phase6-source.tar.xz
           retention-days: 14

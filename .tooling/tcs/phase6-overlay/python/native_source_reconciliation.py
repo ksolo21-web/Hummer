@@ -9,9 +9,9 @@ import hashlib
 import json
 import re
 
-SCHEMA = 'native-source-reconciliation-v1'
+SCHEMA = 'native-source-reconciliation-v2'
 MAX_BYTES = 1024 * 1024
-ROOT = {'schema','registrationId','predecessorEventSha256','territory','mode','knowledgeBaseRevision','importedSourceSha256',
+ROOT = {'imageInterpretationSha256','schema','registrationId','predecessorEventSha256','territory','mode','knowledgeBaseRevision','importedSourceSha256',
         'lockedReferenceSha256','sourceClass','author','reviewedAtUtc',
         'assignmentContentSha256','inventorySha256','sourceCoverageComplete',
         'explicitAssignmentConfirmation','crossTerritoryInferenceUsed',
@@ -46,6 +46,7 @@ def validate(r):
     text(r['knowledgeBaseRevision']);text(r['author'],120)
     for name in ('importedSourceSha256','lockedReferenceSha256','assignmentContentSha256'):
         require(type(r[name]) is str and SHA.fullmatch(r[name]),'Invalid hash')
+    require(r['imageInterpretationSha256'] is None or (type(r['imageInterpretationSha256']) is str and SHA.fullmatch(r['imageInterpretationSha256'])),'Invalid image interpretation hash')
     require(r['inventorySha256'] is None or (type(r['inventorySha256']) is str and SHA.fullmatch(r['inventorySha256'])),'Invalid inventory hash')
     require(r['sourceClass'] in {'current_assignment_map','legacy_reference','style_only'},'Invalid source class')
     require(type(r['reviewedAtUtc']) is str and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z',r['reviewedAtUtc']),'Invalid timestamp')

@@ -21,7 +21,7 @@ data class NativeSourceReconciliation(
     val sourceCoverageComplete: Boolean, val explicitAssignmentConfirmation: Boolean,
     val crossTerritoryInferenceUsed: Boolean, val styleOnlyGeographyUsed: Boolean,
     val segments: List<SourceSegmentObservation>, val buildings: List<SourceBuildingObservation>,
-    val registrationId: String, val predecessorEventSha256: String?
+    val registrationId: String, val predecessorEventSha256: String?, val imageInterpretationSha256:String?=null
 )
 
 data class NativeReconciliationAssessment(val truth: CandidateSourceTruthState, val failures: List<String>) {
@@ -34,7 +34,7 @@ data class NativeReconciliationAssessment(val truth: CandidateSourceTruthState, 
  * source and proposed facts before recording explicitAssignmentConfirmation.
  */
 object NativeSourceReconciliationContract {
-    const val SCHEMA = "native-source-reconciliation-v1"
+    const val SCHEMA = "native-source-reconciliation-v2"
     const val MAX_BYTES = 1024 * 1024
     private val hash = Regex("[0-9a-f]{64}")
     private val modes = setOf("REGULAR", "LETTER_WRITING", "TELEPHONE")
@@ -143,6 +143,7 @@ object NativeSourceReconciliationContract {
         listOf(r.importedSourceSha256, r.lockedReferenceSha256, r.assignmentContentSha256).forEach { require(hash.matches(it)) }
         r.inventorySha256?.let { require(hash.matches(it)) }
         require(r.sourceClass in setOf("current_assignment_map", "legacy_reference", "style_only"))
+        require(r.imageInterpretationSha256==null || r.imageInterpretationSha256.matches(Regex("[0-9a-f]{64}")))
         text(r.author, 120); require(r.reviewedAtUtc.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")))
         require(!r.reviewedAtUtc.startsWith("0000") && Instant.parse(r.reviewedAtUtc).toString() == r.reviewedAtUtc)
         require(r.segments.size in 1..512 && r.buildings.size <= 512)
@@ -165,7 +166,7 @@ object NativeSourceReconciliationContract {
         fun s(v: String) = JsonValue.Str(v)
         fun b(v: Boolean) = JsonValue.Bool(v)
         fun obj(vararg values: Pair<String, JsonValue>) = JsonValue.Obj(linkedMapOf(*values))
-        val root = obj("schema" to s(SCHEMA), "registrationId" to s(r.registrationId), "predecessorEventSha256" to (r.predecessorEventSha256?.let(::s) ?: JsonValue.Null), "territory" to s(r.territory), "mode" to s(r.mode),
+        val root = obj("imageInterpretationSha256" to (r.imageInterpretationSha256?.let(::s) ?: JsonValue.Null), "schema" to s(SCHEMA), "registrationId" to s(r.registrationId), "predecessorEventSha256" to (r.predecessorEventSha256?.let(::s) ?: JsonValue.Null), "territory" to s(r.territory), "mode" to s(r.mode),
             "knowledgeBaseRevision" to s(r.knowledgeBaseRevision), "importedSourceSha256" to s(r.importedSourceSha256),
             "lockedReferenceSha256" to s(r.lockedReferenceSha256), "sourceClass" to s(r.sourceClass),
             "author" to s(r.author), "reviewedAtUtc" to s(r.reviewedAtUtc), "assignmentContentSha256" to s(r.assignmentContentSha256),
@@ -192,7 +193,7 @@ object NativeSourceReconciliationContract {
         fun Map<String, JsonValue>.str(k: String) = getValue(k).string(k)
         fun Map<String, JsonValue>.bool(k: String) = getValue(k).bool(k)
         fun keys(v: Map<String, JsonValue>, vararg expected: String) { require(v.keys == expected.toSet()) { "Reconciliation schema drift" } }
-        keys(o, "schema", "registrationId", "predecessorEventSha256", "territory", "mode", "knowledgeBaseRevision", "importedSourceSha256", "lockedReferenceSha256", "sourceClass", "author", "reviewedAtUtc", "assignmentContentSha256", "inventorySha256", "sourceCoverageComplete", "explicitAssignmentConfirmation", "crossTerritoryInferenceUsed", "styleOnlyGeographyUsed", "segments", "buildings")
+        keys(o, "imageInterpretationSha256", "schema", "registrationId", "predecessorEventSha256", "territory", "mode", "knowledgeBaseRevision", "importedSourceSha256", "lockedReferenceSha256", "sourceClass", "author", "reviewedAtUtc", "assignmentContentSha256", "inventorySha256", "sourceCoverageComplete", "explicitAssignmentConfirmation", "crossTerritoryInferenceUsed", "styleOnlyGeographyUsed", "segments", "buildings")
         require(o.str("schema") == SCHEMA)
         val roads = o.getValue("segments").arr("segments").map { v -> val x = v.obj("segment")
             keys(x, "segmentId", "name", "status", "role", "insideSide", "accessOnly", "endpointAKind", "endpointBKind", "evidenceNote", "confirmed")
@@ -200,7 +201,7 @@ object NativeSourceReconciliationContract {
         val buildings = o.getValue("buildings").arr("buildings").map { v -> val x = v.obj("building")
             keys(x, "buildingId", "sourceMembers", "assigned", "evidenceNote", "confirmed")
             SourceBuildingObservation(x.str("buildingId"), x.getValue("sourceMembers").arr("members").map { it.string("member") }, x.bool("assigned"), x.str("evidenceNote"), x.bool("confirmed")) }
-        val r = NativeSourceReconciliation(o.str("territory"), o.str("mode"), o.str("knowledgeBaseRevision"), o.str("importedSourceSha256"), o.str("lockedReferenceSha256"), o.str("sourceClass"), o.str("author"), o.str("reviewedAtUtc"), o.str("assignmentContentSha256"), if (o["inventorySha256"] == JsonValue.Null) null else o.str("inventorySha256"), o.bool("sourceCoverageComplete"), o.bool("explicitAssignmentConfirmation"), o.bool("crossTerritoryInferenceUsed"), o.bool("styleOnlyGeographyUsed"), roads, buildings, o.str("registrationId"), if (o["predecessorEventSha256"] == JsonValue.Null) null else o.str("predecessorEventSha256"))
+        val r = NativeSourceReconciliation(o.str("territory"), o.str("mode"), o.str("knowledgeBaseRevision"), o.str("importedSourceSha256"), o.str("lockedReferenceSha256"), o.str("sourceClass"), o.str("author"), o.str("reviewedAtUtc"), o.str("assignmentContentSha256"), if (o["inventorySha256"] == JsonValue.Null) null else o.str("inventorySha256"), o.bool("sourceCoverageComplete"), o.bool("explicitAssignmentConfirmation"), o.bool("crossTerritoryInferenceUsed"), o.bool("styleOnlyGeographyUsed"), roads, buildings, o.str("registrationId"), if (o["predecessorEventSha256"] == JsonValue.Null) null else o.str("predecessorEventSha256"), if(o["imageInterpretationSha256"]==JsonValue.Null)null else o.str("imageInterpretationSha256"))
         require(encode(r).contentEquals(bytes)) { "Use canonical reconciliation encoding" }
         return r
     }

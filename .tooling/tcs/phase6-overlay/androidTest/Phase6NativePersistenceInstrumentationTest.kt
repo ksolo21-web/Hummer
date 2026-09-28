@@ -11,10 +11,10 @@ import java.io.File
 class Phase6NativePersistenceInstrumentationTest {
     private fun create(x:Phase6NativeFixture):NativeAuthoringDraft {
         val source=x.sources.importFromStream(x.slot,"synthetic-current.pdf","application/pdf",x.sourcePdf().inputStream())
-        val road=RoadGeometry("alpha","Alpha Rd","alpha rd","yellow","perimeter","left",false,"junction","junction",4.0,listOf(Point2D(225.0,115.0),Point2D(650.0,115.0)))
+        val road=RoadGeometry("alpha","Alpha Rd","alpha rd","yellow","perimeter","right",false,"junction","junction",4.0,listOf(Point2D(225.0,115.0),Point2D(650.0,115.0)))
         val a=CurrentAuthoritativeAssignmentState(x.id,x.identity,x.identity.canonicalFilename,x.kb.revision,"current_authoritative_assignment","0".repeat(64),source.sourceFilename,"Oakland Township","9/28/2026",listOf("Directions: Synthetic regression only."),"full_map",x.slot.housingType,RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,listOf(road),emptyList())
         val r=NativeSourceReconciliation(x.id,x.mode.name,x.kb.revision,source.sha256,x.slot.referenceSha256,"current_assignment_map","Synthetic reviewer","2026-09-28T04:00:00Z",NativeSourceReconciliationContract.assignmentContentSha256(a),null,true,false,false,false,
-            listOf(SourceSegmentObservation(road.segmentId,road.name,road.status,road.role,road.insideSide,false,road.endpointAKind,road.endpointBKind,"Page 1 explicit inside-left source",true)),emptyList(),"00000000-0000-0000-0000-000000000001",null)
+            listOf(SourceSegmentObservation(road.segmentId,road.name,road.status,road.role,road.insideSide,false,road.endpointAKind,road.endpointBKind,"Page 1 explicit inside-right source",true)),emptyList(),"00000000-0000-0000-0000-000000000001",null)
         return x.drafts.save(NativeAuthoringDraft(a,r,VerificationJurisdiction("Oakland County","Michigan","United States"),emptyList()),null)
     }
     private fun rejected(block:()->Unit){assertTrue(runCatching(block).isFailure)}
