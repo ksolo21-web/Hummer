@@ -47,11 +47,21 @@ object MapImageDraftExtractor {
             for(y in max(0,b.top.toInt()-4)..min(height-1,b.bottom.toInt()+4))
                 for(x in max(0,b.left.toInt()-80)..min(width-1,b.right.toInt()+5)) colors[y*width+x]=0
         }
+        // Different numeric readings at the same source location are a conflict, not two members.
+        fun overlap(a:AxisAlignedRect,b:AxisAlignedRect):Double {
+            val intersection=max(0.0,min(a.right,b.right)-max(a.left,b.left))*max(0.0,min(a.bottom,b.bottom)-max(a.top,b.top))
+            return intersection/max(1.0,min((a.right-a.left)*(a.bottom-a.top),(b.right-b.left)*(b.bottom-b.top)))
+        }
+        fun numberKey(s:String)=s.replace(Regex("\\s+"),"").replace('–','-').replace('—','-').replace('−','-')
         val memberPattern=Regex("^[0-9]+(?:\\s*[-/–—−]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
         val numberLabels=mapText.map {it.copy(text=it.text.trim().trim('|').trim().replace(Regex("\\s*([-/–—−])\\s*")){m->m.groupValues[1]})}.filter {memberPattern.matches(it.text)}.fold(mutableListOf<MapImageText>()) {out,t->
-            if(out.none {it.text==t.text && hypot((it.bounds.left+it.bounds.right-t.bounds.left-t.bounds.right)/2,(it.bounds.top+it.bounds.bottom-t.bounds.top-t.bounds.bottom)/2)<8.0})out+=t
+            if(out.none {numberKey(it.text)==numberKey(t.text) && (overlap(it.bounds,t.bounds)>=0.6 || hypot((it.bounds.left+it.bounds.right-t.bounds.left-t.bounds.right)/2,(it.bounds.top+it.bounds.bottom-t.bounds.top-t.bounds.bottom)/2)<8.0)})out+=t
             out
         }
+        numberLabels.forEachIndexed {i,a->numberLabels.drop(i+1).forEachIndexed {j,b->
+            if(numberKey(a.text)!=numberKey(b.text) && overlap(a.bounds,b.bounds)>=0.6)
+                findings+=MapImageFinding("member-conflict-$i-$j","Conflicting number readings ${a.text} and ${b.text} at the same source location.",a.bounds)
+        }}
         val usedBuildingLabels=HashSet<MapImageText>()
         val mask=BooleanArray(colors.size){colors[it]!=0}
         val seen=BooleanArray(mask.size);val queue=IntArray(mask.size)

@@ -40,7 +40,11 @@ class Phase6NativeUiInstrumentationTest {
         rule.waitUntil(30000){runCatching {rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).assertIsEnabled();true}.getOrDefault(false)}
         rule.onNodeWithTag(tag).performClick();rule.waitForIdle()
     }
-    private fun text(list:String,tag:String,value:String){rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).performTextReplacement(value)
+    private fun text(list:String,tag:String,value:String){
+        rule.waitUntil(30000){runCatching {
+            rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.waitForIdle()
+            rule.onNodeWithTag(tag).performTextReplacement(value);rule.onNodeWithTag(tag).assertTextContains(value);true
+        }.getOrDefault(false)}
         rule.activity.runOnUiThread {(rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(rule.activity.window.decorView.windowToken,0)};rule.waitForIdle()}
     private fun textClick(list:String,label:String){rule.onNodeWithTag(list).performScrollToNode(hasText(label));rule.onNodeWithText(label).performClick();rule.waitForIdle()}
     private fun statusContains(text:String){rule.onNodeWithTag(native).performScrollToNode(hasTestTag("native-status"));rule.waitUntil(30000){runCatching {rule.onNodeWithTag("native-status").assertTextContains(text,substring=true);true}.getOrDefault(false)}}

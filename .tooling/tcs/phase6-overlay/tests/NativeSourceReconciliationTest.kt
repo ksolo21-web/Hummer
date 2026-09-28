@@ -112,6 +112,17 @@ class NativeSourceReconciliationTest {
             assertEquals(listOf(label.replace(" ","")),result.buildings.single().labels.map {it.text})
         }
     }
+    @Test fun conflictingRotatedNumberReadingsCannotSilentlyBecomeMembers() {
+        val w=200;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 30..80)for(x in 30..150)pixels[y*w+x]=0xff00aa30.toInt()
+        val text=listOf(MapImageText("494",AxisAlignedRect(70.0,45.0,105.0,65.0)),MapImageText("767",AxisAlignedRect(72.0,44.0,106.0,66.0)))
+        val result=MapImageDraftExtractor.extract(w,h,pixels,text)
+        assertTrue(result.findings.any {it.id.startsWith("member-conflict-")})
+        val agreement=MapImageDraftExtractor.extract(w,h,pixels,text.map {it.copy(text="494")})
+        assertFalse(agreement.findings.any {it.id.startsWith("member-conflict-")})
+        assertEquals(listOf("494"),agreement.buildings.single().labels.map {it.text})
+    }
+
     @Test fun numberedCaptionExposesMemberMissedByOcr() {
         val w=200;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
         for(y in 30..80)for(x in 30..150)pixels[y*w+x]=0xff00aa30.toInt()

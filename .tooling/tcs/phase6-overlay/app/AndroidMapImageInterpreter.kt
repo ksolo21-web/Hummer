@@ -72,7 +72,7 @@ class AndroidMapImageInterpreter {
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
                 fun recognized(rotation:Int):List<MapImageText> {
-                    val bitmap=if(rotation==0)source else Bitmap.createBitmap(source,0,0,source.width,source.height,Matrix().apply {postRotate(rotation.toFloat())},true)
+                    val bitmap=if(rotation==0)source else Bitmap.createBitmap(source,0,0,source.width,source.height,Matrix().apply {postScale(2f,2f);postRotate(rotation.toFloat())},true)
                     val task=recognizer.process(InputImage.fromBitmap(bitmap,0))
                     inFlight=task
                     // Timeout does not cancel ML Kit. Release its bitmap only after completion.
@@ -80,14 +80,14 @@ class AndroidMapImageInterpreter {
                     val result=Tasks.await(task,60,TimeUnit.SECONDS)
                     val numeric=Regex("^[| ]*[0-9]+(?:[ \t]*[-/–—−][ \t]*[0-9]+)*(?:[ \t]*[A-Z])?[| ]*$")
                     fun box(b:android.graphics.Rect):AxisAlignedRect=when(rotation) {
-                        90->AxisAlignedRect(b.top.toDouble(),source.height-b.right.toDouble(),b.bottom.toDouble(),source.height-b.left.toDouble())
-                        270->AxisAlignedRect(source.width-b.bottom.toDouble(),b.left.toDouble(),source.width-b.top.toDouble(),b.right.toDouble())
+                        90->AxisAlignedRect(b.top/2.0,source.height-b.right/2.0,b.bottom/2.0,source.height-b.left/2.0)
+                        270->AxisAlignedRect(source.width-b.bottom/2.0,b.left/2.0,source.width-b.top/2.0,b.right/2.0)
                         else->AxisAlignedRect(b.left.toDouble(),b.top.toDouble(),b.right.toDouble(),b.bottom.toDouble())
                     }
                     return result.textBlocks.flatMap {block->block.lines.flatMap {line->
                         val pieces=if(line.elements.size>1 && line.elements.all {numeric.matches(it.text)})line.elements.mapNotNull {e->e.boundingBox?.let {MapImageText(e.text,box(it))}}
                             else listOfNotNull(line.boundingBox?.let {MapImageText(line.text,box(it))})
-                        pieces.filter {rotation==0 || numeric.matches(it.text) && (it.bounds.bottom-it.bounds.top)>(it.bounds.right-it.bounds.left)*1.2}
+                        pieces.filter {rotation==0 || numeric.matches(it.text)}
                     }}
                 }
                 val normal=recognized(0)

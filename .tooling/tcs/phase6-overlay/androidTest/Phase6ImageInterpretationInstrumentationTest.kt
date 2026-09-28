@@ -35,8 +35,15 @@ class Phase6ImageInterpretationInstrumentationTest {
             File(context.filesDir,"phase6-reference-image-analysis.json").writeText(report.toString(2))
             val assigned=result.buildings.filter {it.assigned}
             assertEquals("Three connected assigned footprints must survive image interpretation",3,assigned.size)
-            val members=assigned.flatMap {it.sourceMembers}.joinToString(" ")
-            listOf("500","481","495","445","475","488","490","492","494").forEach {assertTrue("Missing source member $it",members.contains(it))}
+            fun normalized(value:String)=value.replace(Regex("\\s+"),"").replace('–','-').replace('—','-').replace('−','-')
+            fun inventory(assigned:Boolean)=result.buildings.filter {it.assigned==assigned}.map {b->b.sourceMembers.map(::normalized).toSet()}.toSet()
+            assertEquals("Every assigned member must remain associated with its source footprint",setOf(
+                setOf("500E","481-495"),setOf("445-475"),setOf("488","490","492","494")),inventory(true))
+            assertEquals("Eight excluded connected footprints must survive image interpretation",8,result.buildings.count {!it.assigned})
+            result.buildings.forEach {b->assertEquals("Duplicate member in footprint ${b.buildingId}",b.sourceMembers.size,b.sourceMembers.map(::normalized).toSet().size)}
+            val excluded=setOf(setOf("415-439"),setOf("401-409"),setOf("440-456"),setOf("424-434","401B"),setOf("447-459"),setOf("433-445"),setOf("417-425"),setOf("418"))
+            assertEquals("Every excluded footprint must survive without becoming a road",excluded,inventory(false))
+            assertFalse("Direction annotations are not street names",result.roads.any {it.name.startsWith("To ",true)})
             assertTrue("Concave footprint lost",assigned.any {it.polygon.size>=6})
             assertTrue(result.roads.any {it.name.contains("Elizabeth",true)})
             assertTrue(result.roads.any {it.name.contains("Miller",true)})
