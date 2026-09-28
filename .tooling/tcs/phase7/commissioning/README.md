@@ -14,7 +14,7 @@ After applying the Phase 4, 5/6, 6 and boundary overlays used by `tcs-outlined-n
 python .tooling/tcs/phase7/commissioning/apply.py tcs-src
 ```
 
-The seven readable unified patches are verified individually and together. The tool checks all twelve original and resulting source files by SHA-256; it fails on a different source baseline. Git recounts edited patch-header counts and file-header transport whitespace is normalized, without changing Kotlin code. The workflow source artifact contains the fully integrated ordinary Kotlin files, not runtime patches.
+The nine readable unified patches are verified individually and together. The tool checks all fourteen original and resulting source files by SHA-256; it fails on a different source baseline. Git recounts edited patch-header counts and file-header transport whitespace is normalized, without changing Kotlin code. The workflow source artifact contains the fully integrated ordinary Kotlin files, not runtime patches.
 
 ## Regression coverage and exact observed results
 
@@ -25,3 +25,10 @@ Run 36491525561, code commit 64223400cab3f634a9e32e5c7f8adf2b2bbee346: 95 JUnit 
 The one failed commissioning test attempted to create a lazy guarded service for the first time after its source had been invalidated. Construction correctly rejected the stale source. Patch 07 corrects the test's lifecycle assumptions without changing production code: retain one coordinator while current, retain a second uninitialized service instance, then prove that the first returns a blocked state and refuses an actual build while the second rejects construction. Repeat after scope closure. Both lifetimes must fail closed; neither is accepted as a card.
 
 The subsequent full CI run must verify Patch 07 and the wide-layout suites. Do not carry a passing claim forward without checking its actual results.
+
+
+## Patch 09 — practical real-source reconstruction
+
+Patch 09 adds a locked-reference comparison action to native authoring. Existing roads/buildings are loaded only as unconfirmed comparison geometry: every item remains unconfirmed, source coverage is reset, image-review authority is cleared, and current-source reconciliation, native registration, fresh GIS checks, exact PDF review and explicit approval remain mandatory.
+
+It also adds a real A265 candidate gate using the exact uploaded A265 image and exact locked A265 reference. The gate registers the current source, requires fresh Oakland County roads/site-address/building checks plus Census road confirmation, builds the native PDF and retains its exact bytes and rendered PNG. It intentionally stops at CANDIDATE-UNAPPROVED so visual review cannot be bypassed by instrumentation. A later approval run is allowed only after that exact candidate has been inspected.
