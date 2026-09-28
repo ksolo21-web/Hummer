@@ -8,8 +8,8 @@ data class OutlinedMapExtraction(val boundary:OutlinedMapBoundary,val roads:List
 
 /** Only proposes visible neutral road paint. Source colors never enter the work-status classifier. */
 object OutlinedMapRoadExtractor {
-    fun extract(width:Int,height:Int,pixels:IntArray,text:List<MapImageText>):OutlinedMapExtraction {
-        val boundary=OutlinedMapBoundaryDetector.detect(width,height,pixels)
+    fun extract(width:Int,height:Int,pixels:IntArray,text:List<MapImageText>,proposeShortGaps:Boolean=false):OutlinedMapExtraction {
+        val boundary=OutlinedMapBoundaryDetector.detect(width,height,pixels,proposeShortGaps)
         val pad=max(32.0,(boundary.sourceBounds.bottom-boundary.sourceBounds.top)*0.4)
         val roi=AxisAlignedRect(max(0.0,boundary.sourceBounds.left-pad),max(0.0,boundary.sourceBounds.top-pad),min(width.toDouble(),boundary.sourceBounds.right+pad),min(height.toDouble(),boundary.sourceBounds.bottom+pad))
         val interior=BooleanArray(pixels.size);val luminance=IntArray(pixels.size);val neutral=BooleanArray(pixels.size)

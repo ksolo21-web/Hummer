@@ -107,6 +107,33 @@ class OutlinedMapBoundaryTest {
         for(x in 20..120)p[120*w+x]=0xFF000000.toInt()
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
     }
+    @Test fun shortGapIsARecordedProposalAndNeverChangesSourcePixels() {
+        val w=400;val h=300;val pixels=IntArray(w*h){0xFFFFFFFF.toInt()}
+        fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){pixels[t*w+x]=0xFF000000.toInt();pixels[b*w+x]=0xFF000000.toInt()};for(y in t..b){pixels[y*w+l]=0xFF000000.toInt();pixels[y*w+r]=0xFF000000.toInt()}}
+        rect(30,30,360,260)
+        val exact=OutlinedMapBoundaryDetector.detect(w,h,pixels,true)
+        assertTrue(exact.gapRepairs.isEmpty())
+        for(x in 140..145)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        val before=pixels.copyOf()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels)}
+        val proposal=OutlinedMapBoundaryDetector.detect(w,h,pixels,true)
+        assertArrayEquals(before,pixels)
+        assertEquals(1,proposal.gapRepairs.size)
+        assertEquals(exact.enclosedPixels,proposal.enclosedPixels)
+        assertEquals((140..145).map {Point2D(it.toDouble(),30.0)},proposal.gapRepairs.single().addedPixels)
+        for(x in 130..175)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
+    }
+    @Test fun repairProposalsDoNotCloseClippedOrCompetingBoundaries() {
+        val w=500;val h=300;val pixels=IntArray(w*h){0xFFFFFFFF.toInt()}
+        fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){pixels[t*w+x]=0xFF000000.toInt();pixels[b*w+x]=0xFF000000.toInt()};for(y in t..b){pixels[y*w+l]=0xFF000000.toInt();pixels[y*w+r]=0xFF000000.toInt()}}
+        rect(0,30,200,260)
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
+        pixels.fill(0xFFFFFFFF.toInt());rect(20,30,220,260);rect(270,30,470,260)
+        for(x in 100..105)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        for(x in 350..355)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
+    }
     @Test fun neutralColoredAreasDoNotEstablishBoundaryOrWorkStatus() {
         val w=300;val h=200;val p=IntArray(w*h){when(it%w/75){0->0xFF51C72B.toInt();1->0xFFFF1435.toInt();2->0xFF22CCFF.toInt();else->0xFFFFDC18.toInt()}}
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}

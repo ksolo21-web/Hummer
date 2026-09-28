@@ -12,18 +12,27 @@ data class OutlinedNativeReview(val document:String) {
     val sourceSha256:String
     val spans:List<OutlinedSourceSpan>
     val boundaryConfirmed:Boolean
+    val boundaryRepairEvidence:Map<String,String>
     init {
         require(document.toByteArray().size<=2*1024*1024)
         var depth=0;var quoted=false;var escaped=false
         for(c in document){if(quoted){if(escaped)escaped=false else if(c=='\\')escaped=true else if(c=='"')quoted=false}else when(c){'"'->quoted=true;'[','{'->{depth++;require(depth<=12)};']','}'->{depth--;require(depth>=0)}}};require(!quoted && depth==0)
         root=JSONObject(document)
-        ExtendedValues.keys(root,"schema","sourceSha256","analysis","transform","analysisSha256","boundaryConfirmed","spans","resolutions")
+        ExtendedValues.keys(root,*(listOf("schema","sourceSha256","analysis","transform","analysisSha256","boundaryConfirmed","spans","resolutions")+if(root.has("repairReviews"))listOf("repairReviews")else emptyList()).toTypedArray())
         require(root.getString("schema")=="outlined-native-review-v1")
         sourceSha256=root.getString("sourceSha256");require(sourceSha256.matches(Regex("[0-9a-f]{64}")))
-        val a=root.getJSONObject("analysis");ExtendedValues.keys(a,"width","height","polygon","enclosedPixels","bounds","roads","findings","recognizedText")
+        val a=root.getJSONObject("analysis");ExtendedValues.keys(a,*(listOf("width","height","polygon","enclosedPixels","bounds","roads","findings","recognizedText")+if(a.has("repairs"))listOf("repairs")else emptyList()).toTypedArray())
         val width=a.getInt("width");val height=a.getInt("height");require(width in 16..1400 && height in 16..1400)
         val polygon=points(a.getJSONArray("polygon"));require(polygon.size in 3..2048)
-        val boundary=OutlinedMapBoundary(width,height,polygon,a.getInt("enclosedPixels"),bounds(a.getJSONArray("bounds")))
+        val repairRows=a.optJSONArray("repairs") ?: JSONArray();require(repairRows.length()<=1)
+        val repairs=(0 until repairRows.length()).map {i->val r=repairRows.getJSONObject(i);ExtendedValues.keys(r,"id","algorithm","ends","addedPixels")
+            val ends=points(r.getJSONArray("ends"));require(ends.size==2)
+            BoundaryGapRepair(r.getString("id"),ends[0],ends[1],points(r.getJSONArray("addedPixels")),r.getString("algorithm"))}
+        require(root.has("repairReviews")==repairs.isNotEmpty() && a.has("repairs")==repairs.isNotEmpty())
+        val boundary=OutlinedMapBoundary(width,height,polygon,a.getInt("enclosedPixels"),bounds(a.getJSONArray("bounds")),repairs)
+        val repairReviews=root.optJSONObject("repairReviews") ?: JSONObject()
+        boundaryRepairEvidence=repairReviews.keys().asSequence().associateWith {id->
+            require(repairs.any {it.id==id});repairReviews.getString(id).also {require(it.trim().length in 8..2000)}}
         require(boundary.enclosedPixels in 1..width*height)
         val raw=a.getJSONArray("roads");require(raw.length()<=4096)
         val roads=(0 until raw.length()).map {i->val r=raw.getJSONObject(i);ExtendedValues.keys(r,"id","name","points","junctionA","junctionB","relation")
@@ -54,7 +63,18 @@ data class OutlinedNativeReview(val document:String) {
     private fun changed(block:(JSONObject)->Unit):OutlinedNativeReview {
         val value=JSONObject(document);block(value);return OutlinedNativeReview(ExtendedValues.canonical(value))
     }
-    fun confirmBoundary(confirmed:Boolean)=changed {it.put("boundaryConfirmed",confirmed)}
+    fun confirmBoundary(confirmed:Boolean):OutlinedNativeReview {
+        require(!confirmed || extraction.boundary.gapRepairs.all {it.id in boundaryRepairEvidence}){"Review the suggested boundary connection first"}
+        return changed {it.put("boundaryConfirmed",confirmed)}
+    }
+    fun reviewBoundaryRepair(id:String,evidence:String):OutlinedNativeReview {
+        require(extraction.boundary.gapRepairs.any {it.id==id} && evidence.trim().length in 8..2000)
+        return changed {it.getJSONObject("repairReviews").put(id,evidence.trim());it.put("boundaryConfirmed",false)}
+    }
+    fun rejectBoundaryRepair(id:String):OutlinedNativeReview {
+        require(extraction.boundary.gapRepairs.any {it.id==id})
+        return changed {it.getJSONObject("repairReviews").remove(id);it.put("boundaryConfirmed",false)}
+    }
     fun reviewCandidate(id:String,disposition:OutlinedSpanDisposition,evidence:String,roads:List<RoadGeometry>):OutlinedNativeReview {
         return reviewSpan(id,0.0,1.0,disposition,evidence,roads,if(disposition==OutlinedSpanDisposition.ROAD)id else null)
     }
@@ -117,7 +137,7 @@ data class OutlinedNativeReview(val document:String) {
         else->emptySet()
     }
     fun coverageFailures(roads:List<RoadGeometry>):List<String> = OutlinedCoverageContract.assess(sourceSha256,extraction,transform,
-        OutlinedCoverageDecision(root.getString("analysisSha256"),OutlinedCoverageContract.outputSha256(roads),boundaryConfirmed,spans),roads).failures
+        OutlinedCoverageDecision(root.getString("analysisSha256"),OutlinedCoverageContract.outputSha256(roads),boundaryConfirmed,spans,boundaryRepairEvidence),roads).failures
     fun unresolvedFindings(roads:List<RoadGeometry>):List<MapImageFinding> {
         val a=root.getJSONArray("resolutions");val resolutions=(0 until a.length()).map {a.getJSONObject(it)}.associateBy {it.getString("id")}
         return extraction.findings.filter {f->
@@ -159,6 +179,10 @@ data class OutlinedNativeReview(val document:String) {
             val root=JSONObject().put("schema","outlined-native-review-v1").put("sourceSha256",result.sourceSha256).put("analysis",analysis)
                 .put("transform",JSONArray(listOf(t.scale,t.offsetX,t.offsetY))).put("analysisSha256",OutlinedCoverageContract.analysisSha256(result.sourceSha256,e,t))
                 .put("boundaryConfirmed",false).put("spans",JSONArray()).put("resolutions",JSONArray())
+            if(b.gapRepairs.isNotEmpty()) {
+                analysis.put("repairs",JSONArray(b.gapRepairs.map {r->JSONObject().put("id",r.id).put("algorithm",r.algorithm).put("ends",path(listOf(r.start,r.end))).put("addedPixels",path(r.addedPixels))}))
+                root.put("repairReviews",JSONObject())
+            }
             return OutlinedNativeReview(ExtendedValues.canonical(root))
         }
     }

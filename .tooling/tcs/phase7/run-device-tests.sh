@@ -10,7 +10,7 @@ adb logcat -b crash -d > evidence/phase7-crash.log
 adb shell run-as "$PKG" ls files > evidence/phase7-capture-paths.txt
 while IFS= read -r path; do
   path="${path//$'\r'/}"
-  [[ "$path" == phase7-*-intake.json ]] || continue
+  [[ "$path" == phase7-*.json || "$path" == phase7-*.png ]] || continue
   adb exec-out run-as "$PKG" cat "files/$path" > "evidence/${path##*/}"
 done < evidence/phase7-capture-paths.txt
 python3 - <<'PY'

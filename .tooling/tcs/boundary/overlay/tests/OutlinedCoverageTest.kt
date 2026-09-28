@@ -19,6 +19,17 @@ class OutlinedCoverageTest {
         spans.map {s->s.copy(reviewedOutputSha256=roads.firstOrNull {it.segmentId==s.outputId}?.let {OutlinedCoverageContract.outputSha256(listOf(it))}.orEmpty())})
     private fun assess(e:OutlinedMapExtraction,roads:List<RoadGeometry>,spans:List<OutlinedSourceSpan>)=
         OutlinedCoverageContract.assess(source,e,transform,review(e,roads,spans),roads)
+    @Test fun repairedBoundaryNeedsSeparateReviewAndBindsItsEvidenceToTheAnalysis() {
+        val repair=BoundaryGapRepair("gap-1",Point2D(40.0,10.0),Point2D(45.0,10.0),listOf(Point2D(42.0,10.0)))
+        val e=extraction(p).copy(boundary=boundary.copy(gapRepairs=listOf(repair)))
+        val roads=listOf(road("a",p.road.points));val decision=review(e,roads,listOf(span("source-a",0.0,1.0,"a")))
+        assertTrue(OutlinedCoverageContract.assess(source,e,transform,decision,roads).failures.contains("BOUNDARY_REPAIR_UNREVIEWED:gap-1"))
+        val reviewed=decision.copy(boundaryRepairEvidence=mapOf("gap-1" to "Verified continuation across the obscuring street label"))
+        assertTrue(OutlinedCoverageContract.assess(source,e,transform,reviewed,roads).passed)
+        val moved=e.copy(boundary=e.boundary.copy(gapRepairs=listOf(repair.copy(addedPixels=listOf(Point2D(43.0,10.0))))))
+        assertTrue(OutlinedCoverageContract.assess(source,moved,transform,reviewed,roads).failures.contains("SOURCE_ANALYSIS_CHANGED"))
+        assertTrue(OutlinedCoverageContract.assess("b".repeat(64),e,transform,reviewed,roads).failures.contains("SOURCE_ANALYSIS_CHANGED"))
+    }
     @Test fun neutralContextIsRenderedWithoutAWorkColor() {
         val root=generateSequence(java.io.File(System.getProperty("user.dir")).absoluteFile){it.parentFile}.first {java.io.File(it,"app/src/main/assets/territory").isDirectory}
         val template=java.io.File(root,"app/src/main/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()

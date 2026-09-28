@@ -4,10 +4,24 @@ import kotlin.math.*
 
 /** Neutral basemap colors carry no assignment meaning. A boundary is a source proposal only. */
 data class OutlinedMapBoundary(val width:Int,val height:Int,val polygon:List<Point2D>,val enclosedPixels:Int,
-    val sourceBounds:AxisAlignedRect)
+    val sourceBounds:AxisAlignedRect,val gapRepairs:List<BoundaryGapRepair> = emptyList()) {
+    init {
+        require(gapRepairs.size<=1)
+        require(gapRepairs.flatMap {listOf(it.start,it.end)+it.addedPixels}.all {it.x in 1.0..(width-2).toDouble() && it.y in 1.0..(height-2).toDouble()})
+    }
+}
+
+/** A review-only bridge. Original image pixels are never changed. */
+data class BoundaryGapRepair(val id:String,val start:Point2D,val end:Point2D,val addedPixels:List<Point2D>,val algorithm:String="thin-endpoints-v1") {
+    init {
+        require(id=="gap-1" && algorithm=="thin-endpoints-v1" && addedPixels.size in 1..33)
+        require((listOf(start,end)+addedPixels).all {it.x.isFinite() && it.y.isFinite() && it.x==round(it.x) && it.y==round(it.y)})
+        require(addedPixels.distinct().size==addedPixels.size && hypot(start.x-end.x,start.y-end.y)<=32.0)
+    }
+}
 
 object OutlinedMapBoundaryDetector {
-    fun detect(width:Int,height:Int,pixels:IntArray):OutlinedMapBoundary {
+    fun detect(width:Int,height:Int,pixels:IntArray,proposeShortGaps:Boolean=false):OutlinedMapBoundary {
         require(width in 16..1400 && height in 16..1400 && pixels.size==width*height)
         val dark=BooleanArray(pixels.size){val p=pixels[it];max((p ushr 16)and 255,max((p ushr 8)and 255,p and 255))<80}
         val seen=BooleanArray(dark.size);val queue=IntArray(dark.size);val candidates=mutableListOf<OutlinedMapBoundary>()
@@ -26,13 +40,21 @@ object OutlinedMapBoundaryDetector {
                 throw IllegalArgumentException("Black outline touches the image edge. Supply the complete closed boundary.")
             }
             val edge=BooleanArray(pixels.size);for(i in 0 until tail)edge[queue[i]]=true
-            val exterior=BooleanArray(pixels.size);head=0;tail=0;queue[tail++]=0;exterior[0]=true
-            while(head<tail){val p=queue[head++];val x=p%width;val y=p/width
-                for(n in intArrayOf(if(x>0)p-1 else -1,if(x<width-1)p+1 else -1,if(y>0)p-width else -1,if(y<height-1)p+width else -1))
-                    if(n>=0&&!edge[n]&&!exterior[n]){exterior[n]=true;queue[tail++]=n}}
-            val interior=BooleanArray(pixels.size){!exterior[it]&&!edge[it]};val count=interior.count{it}
+            fun enclosed():BooleanArray {
+                val exterior=BooleanArray(pixels.size);head=0;tail=0;queue[tail++]=0;exterior[0]=true
+                while(head<tail){val p=queue[head++];val x=p%width;val y=p/width
+                    for(n in intArrayOf(if(x>0)p-1 else -1,if(x<width-1)p+1 else -1,if(y>0)p-width else -1,if(y<height-1)p+width else -1))
+                        if(n>=0&&!edge[n]&&!exterior[n]){exterior[n]=true;queue[tail++]=n}}
+                return BooleanArray(pixels.size){!exterior[it]&&!edge[it]}
+            }
+            var interior=enclosed();var count=interior.count{it}
+            var repair:BoundaryGapRepair?=null
+            if(count==0 && proposeShortGaps && right-left>=width/5 && bottom-top>=height/5) {
+                repair=shortGap(width,height,edge,dark,left,top,right,bottom)
+                if(repair!=null){repair.addedPixels.forEach {edge[it.y.toInt()*width+it.x.toInt()]=true};interior=enclosed();count=interior.count{it}}
+            }
             if(count<max(64,pixels.size/100))continue
-            // Trace exact pixel edges of the enclosed region; never close or bridge a broken outline.
+            // Trace source pixels plus only the separately recorded pending bridge, when present.
             val edges=HashMap<Int,MutableList<Int>>()
             fun add(x:Int,y:Int,a:Int,b:Int){edges.getOrPut(y*(width+1)+x){mutableListOf()}.add(b*(width+1)+a)}
             for(p in interior.indices)if(interior[p]){val x=p%width;val y=p/width
@@ -51,10 +73,44 @@ object OutlinedMapBoundaryDetector {
             val polygon=simplify(outer+outer.first(),1.0).dropLast(1)
             require(polygon.size in 3..2048){"Boundary complexity needs a clearer source."}
             require(abs(area(polygon)-count)<=max(8.0,count*0.005)){"Boundary simplification changed source coverage."}
-            candidates+=OutlinedMapBoundary(width,height,polygon,count,AxisAlignedRect(left.toDouble(),top.toDouble(),right+1.0,bottom+1.0))
+            candidates+=OutlinedMapBoundary(width,height,polygon,count,AxisAlignedRect(left.toDouble(),top.toDouble(),right+1.0,bottom+1.0),listOfNotNull(repair))
         }
         require(candidates.size==1){if(candidates.isEmpty())"No single closed black boundary was recovered. Use a clearer, complete outlined-area map." else "Several closed black boundaries were found. Select a map containing one territory."}
         return candidates.single()
+    }
+    private fun shortGap(width:Int,height:Int,edge:BooleanArray,dark:BooleanArray,left:Int,top:Int,right:Int,bottom:Int):BoundaryGapRepair? {
+        // Thin only this component to locate two unique open ends. Complex branches,
+        // large missing sections and clipped outlines cannot acquire a bridge proposal.
+        val active=edge.indices.filter {edge[it]}
+        if(active.size.toDouble()/((right-left+1)*(bottom-top+1))>0.15)return null
+        val thin=edge.copyOf();val offsets=intArrayOf(-width,-width+1,1,width+1,width,width-1,-1,-width-1)
+        var converged=false
+        for(iteration in 0 until 64) {
+            var changed=false
+            for(step in 0..1) {
+                val remove=mutableListOf<Int>()
+                for(p in active)if(thin[p]) {
+                    val n=offsets.map {if(thin[p+it])1 else 0};val total=n.sum()
+                    val turns=(0..7).count {n[it]==0 && n[(it+1)%8]==1}
+                    val shape=if(step==0)n[0]*n[2]*n[4]==0 && n[2]*n[4]*n[6]==0 else n[0]*n[2]*n[6]==0 && n[0]*n[4]*n[6]==0
+                    if(total in 2..6 && turns==1 && shape)remove+=p
+                }
+                if(remove.isNotEmpty()){changed=true;remove.forEach {thin[it]=false}}
+            }
+            if(!changed){converged=true;break}
+        }
+        if(!converged)return null
+        val ends=active.filter {thin[it] && offsets.count {d->thin[it+d]}==1}
+        if(ends.size!=2)return null
+        val a=Point2D((ends[0]%width).toDouble(),(ends[0]/width).toDouble())
+        val b=Point2D((ends[1]%width).toDouble(),(ends[1]/width).toDouble())
+        if(hypot(a.x-b.x,a.y-b.y)>min(32.0,max(width,height)*0.025))return null
+        val steps=max(abs(b.x-a.x),abs(b.y-a.y)).toInt();if(steps<2)return null
+        val path=(0..steps).map {i->Point2D(round(a.x+(b.x-a.x)*i/steps),round(a.y+(b.y-a.y)*i/steps))}.distinct()
+        if(path.any {val p=it.y.toInt()*width+it.x.toInt();dark[p]&&!edge[p]})return null
+        val added=path.filter {!edge[it.y.toInt()*width+it.x.toInt()]}
+        if(added.isEmpty())return null
+        return BoundaryGapRepair("gap-1",a,b,added)
     }
     fun inside(p:Point2D,polygon:List<Point2D>):Boolean {
         var hit=false;var j=polygon.lastIndex

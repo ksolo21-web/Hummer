@@ -1,5 +1,14 @@
 package com.koenterprises.territorycardstudio
 
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.Rule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.koenterprises.territorycardstudio.core.BundleIntegrity
@@ -14,6 +23,7 @@ import java.io.File
  * These tests measure intake and fail-closed behavior; they do not certify a field card. */
 @RunWith(AndroidJUnit4::class)
 class Phase7RealImageIntakeInstrumentationTest {
+    @get:Rule val rule=createAndroidComposeRule<ComponentActivity>()
     private fun inspect(caseId: String, asset: String, expectedHash: String): InterpretedMapDraft? {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -42,6 +52,9 @@ class Phase7RealImageIntakeInstrumentationTest {
                     .put("bounds", JSONArray(listOf(b.sourceBounds.left, b.sourceBounds.top,
                         b.sourceBounds.right, b.sourceBounds.bottom)))
                     .put("points", JSONArray(b.polygon.map { JSONArray(listOf(it.x, it.y)) }))
+                    .put("repairs",JSONArray(b.gapRepairs.map {r->JSONObject().put("id",r.id).put("algorithm",r.algorithm)
+                        .put("start",JSONArray(listOf(r.start.x,r.start.y))).put("end",JSONArray(listOf(r.end.x,r.end.y)))
+                        .put("addedPixels",JSONArray(r.addedPixels.map {JSONArray(listOf(it.x,it.y))}))}))
                 } ?: JSONObject.NULL)
                 .put("recognizedText", JSONArray(result?.recognizedText.orEmpty().map { text ->
                     JSONObject().put("text", text.text).put("bounds", JSONArray(listOf(
@@ -66,6 +79,42 @@ class Phase7RealImageIntakeInstrumentationTest {
         assertNotNull("A-265 exact source could not be interpreted; see the saved intake report", result)
         val boundary = requireNotNull(result!!.outlined?.boundary)
         assertTrue("A-265 source polygon was not recovered", boundary.polygon.size >= 4)
+        assertEquals("Exact A265 must expose one repair, never hide it",1,boundary.gapRepairs.size)
+        val pending=OutlinedNativeReview.from(result)
+        assertEquals(pending,OutlinedNativeReview(pending.document))
+        assertTrue(runCatching {pending.confirmBoundary(true)}.isFailure)
+        assertTrue(pending.coverageFailures(result.roads).contains("BOUNDARY_REPAIR_UNREVIEWED:gap-1"))
+        val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
+        val source=File(context.cacheDir,"a265-review-source.jpg")
+        instrumentation.context.assets.open("phase7-03-26175.jpg").use {input->source.outputStream().use {input.copyTo(it)}}
+        val ui=mutableStateOf(pending)
+        rule.setContent {Column(Modifier.verticalScroll(rememberScrollState())) {
+            OutlinedNativeReviewPanel(ui.value,result.roads,source){r,_->ui.value=r}
+        }}
+        rule.onNodeWithTag("outlined-boundary-confirm").assertIsNotEnabled()
+        rule.onNodeWithTag("boundary-repair-evidence").performScrollTo().performTextInput("Reviewed the short connection across the Timberlea Dr label against both visible stroke ends")
+        rule.waitUntil(30000){runCatching {rule.onNodeWithTag("boundary-repair-accept").assertIsEnabled();true}.getOrDefault(false)}
+        rule.onNodeWithTag("boundary-repair-closeup").performScrollTo()
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        rule.waitForIdle()
+        requireNotNull(instrumentation.uiAutomation.takeScreenshot()).let {bitmap->File(context.filesDir,"phase7-a265-repair-pending.png").outputStream().use {assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
+        rule.onNodeWithTag("boundary-repair-accept").performScrollTo().performClick()
+        rule.onNodeWithTag("outlined-boundary-confirm").performScrollTo().performClick()
+        rule.runOnIdle {assertTrue(ui.value.boundaryConfirmed);assertFalse(ui.value.complete(result.roads))}
+        val reviewed=ui.value
+        val retained=File(context.filesDir,"phase7-a265-review.json");retained.writeText(reviewed.document)
+        assertEquals(reviewed,OutlinedNativeReview(retained.readText()))
+        val tampered=JSONObject(reviewed.document)
+        tampered.getJSONObject("analysis").getJSONArray("repairs").getJSONObject(0).getJSONArray("addedPixels").getJSONArray(0).put(0,1.0)
+        assertTrue(runCatching {OutlinedNativeReview(ExtendedValues.canonical(tampered))}.isFailure)
+        rule.onNodeWithTag("boundary-repair-reject").performScrollTo().performClick()
+        rule.runOnIdle {assertFalse(ui.value.boundaryConfirmed);assertTrue(ui.value.boundaryRepairEvidence.isEmpty())}
+        rule.onNodeWithTag("outlined-boundary-confirm").assertIsNotEnabled()
+        assertEquals(result.sourceSha256,source.inputStream().use(BundleIntegrity::sha256))
+        File(context.filesDir,"phase7-a265-repair-review.json").writeText(JSONObject().put("sourceSha256",result.sourceSha256)
+            .put("pendingBlocked",true).put("explicitReviewEnabledBoundaryConfirmation",true).put("roundTripMatched",true)
+            .put("tamperRejected",true).put("rejectionInvalidatedConfirmation",true).put("cardApproved",false).toString(2))
+
         assertTrue("Gray basemap must not imply work status", result.roads.all {
             it.status == "context" && it.role == "context"
         })
@@ -90,7 +139,8 @@ class Phase7RealImageIntakeInstrumentationTest {
     @Test fun clippedOccludedSourceCannotProduceAnApprovedAssignment() {
         val result = inspect("clipped", "phase7-04-26215.jpg",
             "122322dc29130ff1cd37c6884b7f27cb8b8c7be1616ce6d77c5e3c85ccbc3190")
-        if (result != null) assertFalse("Clipped, occluded source was marked ready",
-            result.outlined?.let { OutlinedNativeReview.from(result).complete(result.roads) } ?: false)
+        assertNull("Clipped source must never receive a completed outline proposal",result)
+        val report=JSONObject(File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir,"phase7-clipped-intake.json").readText())
+        assertTrue(report.getString("decoderError").contains("touches the image edge"))
     }
 }

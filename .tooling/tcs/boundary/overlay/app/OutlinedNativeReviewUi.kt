@@ -24,7 +24,18 @@ import java.io.File
         Text("Outlined-map source review",style=MaterialTheme.typography.titleLarge)
         Text("${reviewed.size} of ${review.extraction.roads.size} traces have a recorded disposition. Uncertain marks remain separate findings.")
         if(source!=null)NativeSourcePreview(source,outline=review.extraction.boundary.polygon,sourceRoad=current?.road?.points.orEmpty()){sourceReadable=it}
-        Row {Checkbox(review.boundaryConfirmed,{onChanged(review.confirmBoundary(it),roads)},enabled=sourceReadable,modifier=Modifier.testTag("outlined-boundary-confirm"));Text("The blue outline matches the complete territory boundary",Modifier.padding(top=12.dp))}
+        review.extraction.boundary.gapRepairs.forEach {repair->
+            var repairReadable by remember(review.sourceSha256,repair){mutableStateOf(false)}
+            var repairEvidence by remember(review.sourceSha256,repair){mutableStateOf(review.boundaryRepairEvidence[repair.id].orEmpty())}
+            Text("Boundary connection needs review",style=MaterialTheme.typography.titleMedium)
+            Text("The image has a short break in its outline. Orange shows a suggested connection; it does not establish which buildings are assigned. Compare both closeups and confirm the intended boundary.")
+            if(source!=null)BoundaryRepairPreview(source,review.sourceSha256,repair){repairReadable=it}
+            OutlinedTextField(repairEvidence,{repairEvidence=it},label={Text("Evidence supporting this boundary connection")},modifier=Modifier.fillMaxWidth().testTag("boundary-repair-evidence"))
+            Button(onClick={onChanged(review.reviewBoundaryRepair(repair.id,repairEvidence),roads)},enabled=repairReadable && repairEvidence.trim().length in 8..2000,modifier=Modifier.testTag("boundary-repair-accept")){Text("Confirm this connection")}
+            TextButton(onClick={onChanged(review.rejectBoundaryRepair(repair.id),roads)},modifier=Modifier.testTag("boundary-repair-reject")){Text("Reject this connection")}
+            Text(if(repair.id in review.boundaryRepairEvidence)"Connection reviewed. Check the full boundary next." else "Connection pending. Registration remains blocked.",modifier=Modifier.testTag("boundary-repair-status"))
+        }
+        Row {Checkbox(review.boundaryConfirmed,{onChanged(review.confirmBoundary(it),roads)},enabled=sourceReadable && review.extraction.boundary.gapRepairs.all {it.id in review.boundaryRepairEvidence},modifier=Modifier.testTag("outlined-boundary-confirm"));Text("The blue outline matches the complete territory boundary",Modifier.padding(top=12.dp))}
         listOf("TERRITORY","CONNECTED_APPROACH","SURROUNDING_CONTEXT").forEach {value->FilterChip(group==value,{group=value},label={Text(value.replace('_',' '))})}
         Row {TextButton(onClick={index--},enabled=index>0){Text("Previous trace")};Text("${if(candidates.isEmpty())0 else index.coerceAtMost(candidates.lastIndex)+1} / ${candidates.size}");TextButton(onClick={index++},enabled=index<candidates.lastIndex){Text("Next trace")}}
         current?.let {p->
