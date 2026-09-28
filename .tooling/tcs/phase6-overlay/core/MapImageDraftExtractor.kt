@@ -14,8 +14,13 @@ object MapImageDraftExtractor {
     fun streetText(text:String):String? {
         val clean=text.trim().replace(Regex("\\s+")," ")
         if(clean.length !in 3..100 || clean.any {it.code !in 32..126})return null
-        val match=suffix.findAll(clean).lastOrNull() ?: return null
-        return clean.substring(0,match.range.last+1).takeIf {it.any(Char::isLetter)}
+        val matches=suffix.findAll(clean).toList()
+        if(matches.size!=1 || clean.contains('=') || clean.startsWith("Directions",true) || clean.startsWith("Enter ",true) || clean.startsWith("Work ",true))return null
+        val match=matches.single()
+        val trailing=clean.substring(match.range.last+1).trim()
+        if(trailing.isNotEmpty() && trailing!="." && !trailing.startsWith(':'))return null
+        val name=clean.substring(0,match.range.last+1)
+        return name.takeIf {it.split(' ').size in 2..6 && it.any(Char::isLetter)}
     }
     private fun color(p:Int):Int {
         val r=(p ushr 16) and 255;val g=(p ushr 8) and 255;val b=p and 255
@@ -42,6 +47,9 @@ object MapImageDraftExtractor {
             for(y in max(0,b.top.toInt()-4)..min(height-1,b.bottom.toInt()+4))
                 for(x in max(0,b.left.toInt()-80)..min(width-1,b.right.toInt()+5)) colors[y*width+x]=0
         }
+        val memberPattern=Regex("^[0-9]+(?:\\s*[-/]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
+        val numberLabels=mapText.filter {memberPattern.matches(it.text.trim())}
+        val usedBuildingLabels=HashSet<MapImageText>()
         val mask=BooleanArray(colors.size){colors[it]!=0}
         val seen=BooleanArray(mask.size);val queue=IntArray(mask.size)
         fun near(i:Int):List<Int> {
@@ -57,9 +65,8 @@ object MapImageDraftExtractor {
                 for(n in near(p))if(mask[n]&&!seen[n] && colors[n]==colors[start]){seen[n]=true;queue[tail++]=n}}
             val bounds=AxisAlignedRect(left.toDouble(),top.toDouble(),(right+1).toDouble(),(bottom+1).toDouble())
             val solid=tail.toDouble()/((right-left+1)*(bottom-top+1))
-            val memberPattern=Regex("^[0-9]+(?:\\s*[-/]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
-            val members=mapText.filter {t->memberPattern.matches(t.text.trim()) && (t.bounds.left+t.bounds.right)/2 in bounds.left..bounds.right && (t.bounds.top+t.bounds.bottom)/2 in bounds.top..bounds.bottom}
-            val numbered=members.isNotEmpty() && (right-left)*(bottom-top)<width*height*0.20 && solid>0.06
+            val members=numberLabels.filter {t->(t.bounds.left+t.bounds.right)/2 in bounds.left..bounds.right && (t.bounds.top+t.bounds.bottom)/2 in bounds.top..bounds.bottom}
+            val numbered=members.isNotEmpty() && solid>0.06
             if(numbered) {
                 val component=(0 until tail).map {queue[it]}.toHashSet()
                 val edges=HashMap<Long,MutableList<Long>>()
@@ -93,18 +100,20 @@ object MapImageDraftExtractor {
                 val contained=polygon?.let {poly->members.filter {inside(Point2D((it.bounds.left+it.bounds.right)/2,(it.bounds.top+it.bounds.bottom)/2),poly)}}.orEmpty()
                 val roadEvidence=polygon!=null && mapText.any {streetText(it.text)!=null && inside(Point2D((it.bounds.left+it.bounds.right)/2,(it.bounds.top+it.bounds.bottom)/2),polygon)}
                 if(polygon!=null && polygon.size>=3 && contained.isNotEmpty() && !roadEvidence) {
-                    if(contained.size!=members.size)findings+=MapImageFinding("building-members-$start","Nearby member labels fall outside the recovered footprint; review the source crop.",bounds)
+                    usedBuildingLabels+=contained
                     buildings+=MapImageBuilding("image-building-$start",when(colors[start]){2->"green";3->"red";else->"yellow"},polygon,contained)
                     for(i in 0 until tail)mask[queue[i]]=false
                     continue
                 }
-                findings+=MapImageFinding("building-$start","Numbered footprint could not be recovered as a closed polygon.",bounds)
+                if(polygon==null || contained.isNotEmpty())findings+=MapImageFinding("building-$start","Numbered footprint could not be distinguished reliably from road geometry.",bounds)
             }
-            val mark=tail<12 || max(right-left,bottom-top)<12
+            val touchesOtherColor=(0 until tail).any {i->near(queue[i]).any {n->colors[n]!=0 && colors[n]!=colors[start]}}
+            val mark=!touchesOtherColor && (tail<12 || max(right-left,bottom-top)<12)
             val area=solid>0.65 && min(right-left,bottom-top)>20 && max(right-left,bottom-top)<min(right-left,bottom-top)*3
             if(mark||area){for(i in 0 until tail)mask[queue[i]]=false
                 if(tail>=5)findings+=MapImageFinding("component-$start",if(area)"Review this filled area or building footprint; it was not converted into a road." else "Review this small colored mark.",bounds)}
         }
+        numberLabels.filter {it !in usedBuildingLabels}.forEachIndexed {i,t->findings+=MapImageFinding("unmatched-member-$i","Number ${t.text} has no reliable containing building footprint.",t.bounds)}
         // Zhang–Suen thinning preserves the topology of the combined color mask.
         val remove=IntArray(mask.size)
         var changed=true;var iterations=0

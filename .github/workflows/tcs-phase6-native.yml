@@ -46,7 +46,7 @@ jobs:
           cp .tooling/tcs/phase6-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase6-overlay/core/*.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/
           cp .tooling/tcs/phase6-overlay/tests/*.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/
-          (cd tcs-src && gradle --no-daemon :core:test --tests '*NativeSourceReconciliationTest') > evidence/core-tests.log 2>&1 || { cat evidence/core-tests.log; exit 1; }
+          (cd tcs-src && gradle --no-daemon :core:test --tests '*NativeSourceReconciliationTest') > evidence/core-tests.log 2>&1 || { cp -r tcs-src/core/build/test-results/test evidence/core-results; cat evidence/core-tests.log; exit 1; }
           cp -r tcs-src/core/build/test-results/test evidence/core-results
           python .tooling/tcs/phase6-overlay/python/native_source_reconciliation.py evidence/reconciliation-golden.json evidence/assignment-golden.json evidence/assignment-content.sha256 evidence/structural-parity.json > evidence/python-parity.json
       - name: Compile native application and device tests

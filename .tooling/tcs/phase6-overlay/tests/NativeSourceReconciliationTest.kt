@@ -95,7 +95,13 @@ class NativeSourceReconciliationTest {
         assertEquals(1,result.buildings.size)
         assertEquals(listOf("101"),result.buildings.single().labels.map {it.text})
         assertTrue(result.buildings.single().polygon.size>=6)
-        assertTrue(result.findings.any {it.id.startsWith("building-members-")})
+        assertTrue(result.findings.any {it.id.startsWith("unmatched-member-")})
+    }
+    @Test fun mapNarrativeIsNotMistakenForRoadLabel() {
+        assertNull(MapImageDraftExtractor.streetText("E = Elizabeth St B = Baldwin Ave. Numbers identify buildings"))
+        assertNull(MapImageDraftExtractor.streetText("Enter Miller Ave. Work only the three green buildings"))
+        assertEquals("Alpha Rd",MapImageDraftExtractor.streetText("Alpha Rd: inside RIGHT"))
+        assertEquals("To Meadow Ln",MapImageDraftExtractor.streetText("To Meadow Ln"))
     }
     @Test fun shortContiguousWorkColorChangeCannotDisappearInMajority() {
         val w=500;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
