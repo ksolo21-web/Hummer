@@ -1,0 +1,185 @@
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7A265CandidateInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7A265CandidateInstrumentationTest.kt
+new file mode 100644
+index 0000000..280c678
+--- /dev/null
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7A265CandidateInstrumentationTest.kt
+@@ -0,0 +1,150 @@
++package com.koenterprises.territorycardstudio
++
++import android.graphics.Bitmap
++import android.graphics.pdf.PdfRenderer
++import android.net.Uri
++import android.os.ParcelFileDescriptor
++import androidx.test.core.app.ApplicationProvider
++import androidx.test.ext.junit.runners.AndroidJUnit4
++import androidx.test.platform.app.InstrumentationRegistry
++import com.koenterprises.territorycardstudio.core.*
++import org.json.JSONArray
++import org.json.JSONObject
++import org.junit.Assert.*
++import org.junit.Test
++import org.junit.runner.RunWith
++import java.io.File
++import java.util.UUID
++
++/** First real Phase 7 positive candidate: exact user A265 screenshot + its locked A265
++ * reference, actual installed identity and fresh production GIS providers. This test stops
++ * before approval so the exact produced PDF can be visually reviewed as an independent gate. */
++@RunWith(AndroidJUnit4::class)
++class Phase7A265CandidateInstrumentationTest {
++    companion object {
++        private const val ID="A265"
++        private const val SOURCE="8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d"
++        private const val REFERENCE="2220b772daef3aff751a4fcffddfdbf385944af9cffad9378e2aaccb0bc81a94"
++    }
++
++    @Test fun exactA265BuildsARealUnapprovedCandidateForVisualGate() {
++        val app=ApplicationProvider.getApplicationContext<TerritoryCardStudioApplication>()
++        val baseline=app.services.knowledgeBase
++        val slot=baseline.assignments.getValue(ID)
++        assertEquals(REFERENCE,slot.referenceSha256)
++        assertFalse(slot.needsNewCard)
++        val sources=SourceMapIntakeStore(app)
++        val previous=sources.verifiedRecord(ID)
++        val previousBytes=previous?.let {sources.verifiedFile(ID).readBytes()}
++        val commissioningRoot=File(app.cacheDir,"phase7-a265-e2e-${UUID.randomUUID()}").apply {mkdirs()}
++        val store=AndroidCommissioningStore(app,baseline,commissioningRoot,sources)
++        var candidateRoot:File?=null
++        val retainedReference=File(app.filesDir,"supplemental-building-references/$REFERENCE.reference")
++        val referenceExisted=retainedReference.isFile
++        try {
++            val imported=sources.importFromStream(slot,"phase7-real-a265.jpg","image/jpeg",
++                InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-03-26175.jpg"))
++            assertEquals(SOURCE,imported.sha256)
++            val scope=store.start(ID,SOURCE,"Phase 7 acceptance reviewer",
++                "Exact uploaded A265 Timberlea Village source is visibly identified and is being reconciled only to the same A265 assignment",ID,true,null)
++            candidateRoot=File(app.noBackupFilesDir,"territory-card-studio/commissioned/${scope.sha256}")
++            val services=TerritoryCardStudioServices(app,scope,store)
++            val candidateSlot=services.knowledgeBase.assignments.getValue(ID)
++            assertTrue(candidateSlot.needsNewCard)
++            assertEquals(slot.identity,candidateSlot.identity)
++            assertEquals(slot.canonicalFilename,candidateSlot.canonicalFilename)
++
++            val referenceInput=File(app.cacheDir,"phase7-a265-reference-${UUID.randomUUID()}.pdf")
++            InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-reference-a265.pdf").use {input->referenceInput.outputStream().use {input.copyTo(it)}}
++            try {
++                val retained=SupplementalBuildingReferenceStore(app).importReference(Uri.fromFile(referenceInput),REFERENCE,SOURCE)
++                assertEquals(REFERENCE,retained.inputStream().use(BundleIntegrity::sha256))
++            } finally {referenceInput.delete()}
++
++            // The current screenshot clearly labels this entrance as Timberlea Dr. It is context
++            // for this apartment assignment, not a worked residential street. Coordinates are in
++            // the locked R48 page space and correspond to the visible source entrance/curve.
++            val road=RoadGeometry("current-timberlea-context","Timberlea Dr","timberlea dr","context","context","",true,
++                "termination","termination",4.0,listOf(
++                    Point2D(591.2,164.6),Point2D(569.7,181.8),Point2D(548.2,203.4),Point2D(535.3,216.3)))
++            val buildings=slot.buildings
++            assertEquals(6,buildings.size)
++            assertTrue(buildings.all {it.assigned && it.sourceMembers.isNotEmpty()})
++            val assignment=CurrentAuthoritativeAssignmentState(ID,candidateSlot.identity,candidateSlot.canonicalFilename,services.knowledgeBase.revision,
++                "current_authoritative_assignment","0".repeat(64),imported.sourceFilename,"Rochester Hills","9/28/2026",listOf(
++                    "Directions: From Walton Blvd, south on S Livernois Rd; west on Timberlea Dr.",
++                    "Work green buildings only: 492/494, 498/500, 510-524, 528-542, 543/545, 546-556.",
++                    "Gray structures and drives are nonresidential/access only."),"full_map",candidateSlot.housingType,
++                RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,listOf(road),buildings)
++            val segmentFacts=listOf(SourceSegmentObservation(road.segmentId,road.name,road.status,road.role,road.insideSide,road.accessOnly,
++                road.endpointAKind,road.endpointBKind,"Exact uploaded A265 screenshot visibly labels Timberlea Dr at the Timberlea Village entrance; retained as context/access only",true))
++            val buildingFacts=buildings.map {b->
++                val supplemental=SupplementalBuildingReference(REFERENCE,SOURCE,SupplementalBuildingReferenceContract.contentSha256(b),
++                    "Locked A265 page 1, ${b.label} footprint",
++                    "Matched the current Timberlea Village building cluster to the locked A265 reference using footprint shape, relative position, loop/entrance-road relationship and visible site layout",true)
++                SourceBuildingObservation(b.buildingId,b.sourceMembers,b.assigned,
++                    "Current uploaded A265 map shows the same Timberlea Village building cluster; locked A265 supplies only the verified member labels/work instruction after visible correspondence review",true,supplemental)
++            }
++            val reconciliation=NativeSourceReconciliation(ID,WorkspaceMode.REGULAR.name,services.knowledgeBase.revision,SOURCE,REFERENCE,
++                "current_assignment_map","Phase 7 acceptance reviewer","2026-09-28T23:00:00Z",
++                NativeSourceReconciliationContract.assignmentContentSha256(assignment),null,true,false,false,false,
++                segmentFacts,buildingFacts,UUID.randomUUID().toString(),null,null)
++            val saved=services.nativeDrafts.save(NativeAuthoringDraft(assignment,reconciliation,
++                VerificationJurisdiction("Oakland County","Michigan","United States"),emptyList()),null)
++            val registration=services.nativeDrafts.register(ID,WorkspaceMode.REGULAR,saved.revisionSha256)
++            assertEquals(SOURCE,registration.assignment.authoritySha256)
++            assertTrue(registration.reconciliation.explicitAssignmentConfirmation)
++
++            val providers=services.nativeAuthoring.prepare(ID,WorkspaceMode.REGULAR,saved.revisionSha256)
++            assertTrue("Oakland County roads must participate in real A265 verification",providers.contains("oakland_county_roads"))
++            assertTrue("Census road authority must participate in real A265 verification",providers.contains("census_tigerweb_transportation"))
++            assertTrue("Oakland site addresses must participate in real A265 verification",providers.contains("oakland_county_site_addresses"))
++            assertTrue("Oakland building outlines must participate in real A265 verification",providers.contains("oakland_county_buildings"))
++
++            val built=services.buildWorkflow.buildFront(ID,WorkspaceMode.REGULAR)
++            assertNull(built.error)
++            val front=requireNotNull(built.front)
++            assertEquals(candidateSlot.canonicalFilename,front.canonicalFilename)
++            val candidateBytes=front.file.readBytes()
++            assertTrue(candidateBytes.isNotEmpty())
++            assertEquals(front.sha256,candidateBytes.inputStream().use(BundleIntegrity::sha256))
++            val pdfOut=File(app.filesDir,"phase7-a265-candidate.pdf");pdfOut.writeBytes(candidateBytes)
++            assertEquals(front.sha256,pdfOut.inputStream().use(BundleIntegrity::sha256))
++
++            val lifecycleCandidate=services.candidateLifecycle.capture(ID,WorkspaceMode.REGULAR)
++            val lifecycleState=services.candidateLifecycle.state(ID,WorkspaceMode.REGULAR)
++            assertFalse("Visual review must happen before approval",lifecycleState.active)
++            assertEquals("CANDIDATE-UNAPPROVED",lifecycleCandidate.status)
++            assertNotNull(services.candidateReview.state(ID,WorkspaceMode.REGULAR).ticket)
++            assertFalse(services.finalOutput.state(ID,WorkspaceMode.REGULAR).approved)
++
++            val renderFile=File(app.filesDir,"phase7-a265-candidate.png")
++            PdfRenderer(ParcelFileDescriptor.open(pdfOut,ParcelFileDescriptor.MODE_READ_ONLY)).use {renderer->
++                assertEquals(1,renderer.pageCount)
++                renderer.openPage(0).use {page->
++                    val scale=2;val bitmap=Bitmap.createBitmap(page.width*scale,page.height*scale,Bitmap.Config.ARGB_8888)
++                    bitmap.eraseColor(android.graphics.Color.WHITE)
++                    page.render(bitmap,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
++                    renderFile.outputStream().use {assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))}
++                    bitmap.recycle()
++                }
++            }
++            val report=JSONObject().put("schema","phase7-a265-real-candidate-v1").put("territory",ID)
++                .put("sourceSha256",SOURCE).put("referenceSha256",REFERENCE).put("candidatePdfSha256",front.sha256)
++                .put("candidatePdfBytes",candidateBytes.size).put("providers",JSONArray(providers))
++                .put("buildingCount",buildings.size).put("roadCount",1).put("candidateStatus","CANDIDATE-UNAPPROVED")
++                .put("freshProviderVerificationPassed",true).put("saveReadbackVerified",true)
++                .put("cardApproved",false).put("visualReviewRequired",true)
++            File(app.filesDir,"phase7-a265-candidate.json").writeText(report.toString(2))
++        } finally {
++            runCatching {
++                val head=store.headSha256(ID);if(head!=null && store.recordedScope(ID)!=null)store.close(ID,"Phase 7 acceptance reviewer",head)
++            }
++            candidateRoot?.deleteRecursively();commissioningRoot.deleteRecursively()
++            if(!referenceExisted)retainedReference.delete()
++            if(previous==null)runCatching {sources.clear(ID)} else runCatching {
++                sources.importFromStream(slot,previous.sourceFilename,previous.mimeType,requireNotNull(previousBytes).inputStream(),previous.importedAtUtc)
++            }
++        }
++    }
++}
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+index d5e0c0e..0443353 100644
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+@@ -307,9 +307,23 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+                                 message="Generated ${roads.size} road traces from the picture. Review ${generated.findings.size} findings and confirm source facts before registration."}
+                         }.onFailure {message=it.message ?: "The map could not be interpreted"};busy=false
+                 }},modifier=Modifier.testTag("native-generate-picture")){Text(if(busy)"Reading map…" else "Generate card draft from picture")}
++                if(assignment.roads.isNotEmpty() || assignment.buildings.isNotEmpty()) {
++                    OutlinedButton(enabled=sourceReadable && !busy && roads.isEmpty() && buildings.isEmpty(),onClick={
++                        roads=assignment.roads
++                        buildings=assignment.buildings
++                        roadFacts=roads.map {r->SourceSegmentObservation(r.segmentId,r.name,r.status,r.role,r.insideSide,r.accessOnly,r.endpointAKind,r.endpointBKind,
++                            "Locked reference comparison only; verify this exact segment against the current uploaded source before confirmation",false)}
++                        buildingFacts=buildings.map {b->SourceBuildingObservation(b.buildingId,b.sourceMembers,b.assigned,
++                            "Locked reference comparison only; trace/match this footprint against the current uploaded source before confirmation",false)}
++                        imageReview=null;outlinedReview=null;coverage=false
++                        section=if(roads.isNotEmpty())"Roads" else if(buildings.isNotEmpty())"Buildings" else "Map"
++                        message="Loaded the locked card only as unconfirmed comparison geometry. Nothing was accepted as current. Reconcile every retained item against the uploaded source; remove stale items and trace missing current items before registration."
++                    },modifier=Modifier.testTag("native-seed-reference-comparison")){Text("Use locked card as unconfirmed comparison")}
++                    Text("This shortcut never approves old geometry. Every retained road/building starts unconfirmed, and current-source coverage, fresh GIS verification and exact PDF approval remain required.")
++                }
+                 if(roads.isNotEmpty() || buildings.isNotEmpty())TextButton(enabled=!busy,onClick={replacePictureDraft=true},modifier=Modifier.testTag("native-replace-picture")){Text("Preserve draft and generate again…")}
+             }
+-            item {Text("Describe the new card",style=MaterialTheme.typography.titleLarge);Text("Enter current source facts. Legacy geometry is not copied into this draft.")}
++            item {Text("Describe the new card",style=MaterialTheme.typography.titleLarge);Text("Enter current source facts. Locked-card geometry can be loaded only as unconfirmed comparison data; it never becomes current until you reconcile it against this uploaded source.")}
+             item {NativeField("Locality",locality,"native-locality"){locality=it}}
+             item {NativeField("Updated date",updated,"native-updated"){updated=it}}
+             item {NativeField("Directions (one to three lines)",directions,"native-directions"){directions=it}}
