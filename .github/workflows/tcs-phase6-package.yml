@@ -1,0 +1,70 @@
+name: TCS Phase 6 Verified Package
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths: [.github/workflows/tcs-phase6-package.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tcs-phase6-native-apk
+          run-id: 36435295587
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: package
+      - uses: actions/download-artifact@v4
+        with:
+          name: tcs-phase6-native-bundle
+          run-id: 36435295587
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: package
+      - uses: actions/download-artifact@v4
+        with:
+          name: tcs-phase6-native-source
+          run-id: 36435295587
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: package
+      - name: Verify exact tested bytes and immutable assets
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,tarfile,zipfile
+          from pathlib import Path
+          sha=lambda b:hashlib.sha256(b).hexdigest()
+          root=Path('package')
+          expected={'TerritoryCardStudio-Android-0.6.1.apk':'31920acf188379bf35c64d06f8521c373ba88f1bf14ab1df7d0b57445ed5ccc2','TerritoryCardStudio-Android-0.6.1.aab':'ddba7c24c06567c4b104fb1358c07c2e63f513c0f1da490feff05b9a6f34c4de','phase6-source.tar.xz':'3e11018d80273866855440d10a111c00da7e711e20d6f20feb3a75dd737bf201'}
+          for name,h in expected.items():assert sha((root/name).read_bytes())==h,name
+          frozen=Path('.tooling/tcs/phase4-evidence/Phase4-Android-0.4.0-source.tar.xz')
+          assert sha(frozen.read_bytes())=='12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965'
+          prefix='app/src/main/assets/territory/'
+          with tarfile.open(frozen) as t:
+            assets={m.name.removeprefix('./').removeprefix(prefix):t.extractfile(m).read() for m in t if m.isfile() and m.name.removeprefix('./').startswith(prefix) and '__pycache__' not in m.name}
+          assert len(assets)==25,len(assets)
+          with zipfile.ZipFile(root/'TerritoryCardStudio-Android-0.6.1.apk') as apk, zipfile.ZipFile(root/'TerritoryCardStudio-Android-0.6.1.aab') as aab,tarfile.open(root/'phase6-source.tar.xz') as source:
+            members={m.name.removeprefix('./'):m for m in source if m.isfile()}
+            for n,data in assets.items():
+              assert apk.read('assets/territory/'+n)==data,n
+              assert aab.read('base/assets/territory/'+n)==data,n
+              assert source.extractfile(members[prefix+n]).read()==data,n
+          proof={'status':'PASS','sourceCommit':'e851c625b73dee83737810767856a741e9468d26','testedRun':36435295587,'files':expected,'immutableAssetCount':25,'assetHashes':{n:sha(data) for n,data in assets.items()},'reservedAssignments':'UNCHANGED_IN_EXACT_KB_AND_QUEUE'}
+          (root/'package-verification.json').write_text(json.dumps(proof,indent=2))
+          data=(root/'TerritoryCardStudio-Android-0.6.1.apk').read_bytes()
+          for i,start in enumerate(range(0,len(data),20*1024*1024)):(root/f'apk-part-{i}').write_bytes(data[start:start+20*1024*1024])
+          print(json.dumps({'status':'PASS','immutableAssets':len(assets),'apkBytes':len(data)}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase6-apk-part-0
+          path: package/apk-part-0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase6-apk-part-1
+          path: package/apk-part-1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase6-package-verification
+          path: package/package-verification.json
