@@ -40,15 +40,16 @@ class Phase6NativeUiInstrumentationTest {
         rule.waitUntil(15000){
             val selected=nodes().firstOrNull {it.isVisibleToUser && find(it)}
             if(selected==null)false else {
-                var n=selected
-                while(!n.isClickable && n.parent!=null)n=n.parent
+                var n:AccessibilityNodeInfo=requireNotNull(selected)
+                while(!n.isClickable && n.parent!=null)n=requireNotNull(n.parent)
                 n.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
         automation.waitForIdle(500,10000)
     }
     private fun chooseRoot() {
-        systemClick {it.contentDescription?.toString()?.let {s->s.contains("Show roots",true)||s.contains("navigation drawer",true)}==true || it.viewIdResourceName=="android:id/home"}
+        if(nodes().none {it.isVisibleToUser && it.viewIdResourceName?.endsWith(":id/roots_list")==true})
+            systemClick {it.contentDescription?.toString()?.let {s->s.contains("Show roots",true)||s.contains("navigation drawer",true)}==true || it.viewIdResourceName=="android:id/home"}
         systemClick {it.text?.toString()=="Synthetic test files"}
     }
     private fun chooseInput(name:String) {

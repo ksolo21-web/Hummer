@@ -83,8 +83,18 @@ object MapImageDraftExtractor {
                 }
                 fun area(poly:List<Point2D>)=abs((poly+poly.first()).zipWithNext().sumOf {(a,b)->a.x*b.y-b.x*a.y})/2
                 val polygon=loops.maxByOrNull(::area)?.let {simplify(it+it.first(),1.0).dropLast(1)}
-                if(polygon!=null && polygon.size>=3) {
-                    buildings+=MapImageBuilding("image-building-$start",when(colors[start]){2->"green";3->"red";else->"yellow"},polygon,members)
+                fun inside(point:Point2D,poly:List<Point2D>):Boolean {
+                    var hit=false;var j=poly.lastIndex
+                    for(i in poly.indices){val a=poly[i];val b=poly[j]
+                        if((a.y>point.y)!=(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)hit=!hit
+                        j=i
+                    };return hit
+                }
+                val contained=polygon?.let {poly->members.filter {inside(Point2D((it.bounds.left+it.bounds.right)/2,(it.bounds.top+it.bounds.bottom)/2),poly)}}.orEmpty()
+                val roadEvidence=polygon!=null && mapText.any {streetText(it.text)!=null && inside(Point2D((it.bounds.left+it.bounds.right)/2,(it.bounds.top+it.bounds.bottom)/2),polygon)}
+                if(polygon!=null && polygon.size>=3 && contained.isNotEmpty() && !roadEvidence) {
+                    if(contained.size!=members.size)findings+=MapImageFinding("building-members-$start","Nearby member labels fall outside the recovered footprint; review the source crop.",bounds)
+                    buildings+=MapImageBuilding("image-building-$start",when(colors[start]){2->"green";3->"red";else->"yellow"},polygon,contained)
                     for(i in 0 until tail)mask[queue[i]]=false
                     continue
                 }
@@ -134,7 +144,9 @@ object MapImageDraftExtractor {
             if(path.size<8){findings+=MapImageFinding("short-$index","Review a short or broken road trace.",sourceBounds);return@forEachIndexed}
             val points=path.map {Point2D((it%width).toDouble(),(it/width).toDouble())}
             val votes=path.groupingBy {colors[it]}.eachCount().filterKeys {it!=0};val dominant=votes.maxByOrNull {it.value}?.key ?: 0
-            if(votes.filterKeys {it!=dominant}.values.sum()>max(3,path.size/20))findings+=MapImageFinding("color-$index","A work color changes away from a detected junction; verify the split.",sourceBounds)
+            var previousColor=0;var colorRun=0;var minorityRun=0
+            path.forEach {p->val c=colors[p];if(c!=0 && c!=dominant){colorRun=if(c==previousColor)colorRun+1 else 1;minorityRun=max(minorityRun,colorRun)}else colorRun=0;previousColor=c}
+            if(minorityRun>=2 || votes.filterKeys {it!=dominant}.values.sum()>max(3,path.size/20))findings+=MapImageFinding("color-$index","A work color changes away from a detected junction; verify the split.",sourceBounds)
             fun distance(b:AxisAlignedRect):Double {val cx=(b.left+b.right)/2;val cy=(b.top+b.bottom)/2;return points.minOf {hypot(it.x-cx,it.y-cy)}}
             val nearest=labels.mapIndexed {i,l->i to distance(l.second)}.sortedBy {it.second}
             val match=nearest.firstOrNull()?.takeIf {it.second<=max(28.0,min(width,height)*0.07)}

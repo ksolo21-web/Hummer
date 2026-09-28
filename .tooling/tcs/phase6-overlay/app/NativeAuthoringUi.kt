@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
@@ -60,11 +61,7 @@ import java.util.UUID
                     }
                 }
             } else {
-                val options=BitmapFactory.Options().apply {inJustDecodeBounds=true};BitmapFactory.decodeFile(file.path,options)
-                require(options.outWidth in 1..30000 && options.outHeight in 1..30000)
-                options.inJustDecodeBounds=false;options.inSampleSize=1
-                while(maxOf(options.outWidth,options.outHeight)/options.inSampleSize>1800)options.inSampleSize*=2
-                requireNotNull(BitmapFactory.decodeFile(file.path,options)) to 1
+                AndroidMapImageInterpreter().decode(file) to 1
             }
         }}
         result.onSuccess {(b,count)->bitmap=b;pages=count;onReadable(true)}.onFailure {error=it.message ?: "Source could not be displayed"}
@@ -97,16 +94,23 @@ import java.util.UUID
     error?.let {Text("Cannot read source: $it",color=MaterialTheme.colorScheme.error)}
 }
 
-@Composable private fun NativeTrace(roads:List<RoadGeometry>,buildings:List<BuildingGeometry>,points:List<Point2D>,onPoint:(Point2D)->Unit) {
-    Text("Tap the map to trace points in order. Use source junctions and real road ends.")
+@Composable private fun NativeTrace(roads:List<RoadGeometry>,buildings:List<BuildingGeometry>,points:List<Point2D>,editable:Boolean=true,onPoint:(Point2D)->Unit) {
+    Text(if(editable)"Tap the map to trace points in order. Use source junctions and real road ends." else "Generated draft geometry • inspect the final PDF after building")
     val border=MaterialTheme.colorScheme.outline
     Canvas(Modifier.fillMaxWidth().height(240.dp).testTag("native-trace").pointerInput(points) {
-        detectTapGestures {p->onPoint(Point2D(176.0+p.x/size.width*571.0,20.0+p.y/size.height*343.0))}
+        detectTapGestures {p->if(editable)onPoint(Point2D(176.0+p.x/size.width*571.0,20.0+p.y/size.height*343.0))}
     }) {
         fun point(p:Point2D)=Offset(((p.x-176.0)/571.0*size.width).toFloat(),((p.y-20.0)/343.0*size.height).toFloat())
         drawRect(Color.White);drawRect(border,style=androidx.compose.ui.graphics.drawscope.Stroke(2f))
-        buildings.forEach {b->(b.polygon+b.polygon.take(1)).zipWithNext().forEach {(a,c)->drawLine(Color.Gray,point(a),point(c),3f)}}
+        buildings.forEach {b->
+            val path=androidx.compose.ui.graphics.Path();b.polygon.forEachIndexed {i,p->val v=point(p);if(i==0)path.moveTo(v.x,v.y)else path.lineTo(v.x,v.y)};path.close()
+            val color=if(b.assigned)Color(0xFF51C72B) else Color(0xFFFF1435)
+            drawPath(path,color.copy(alpha=if(b.assigned)0.7f else 0.12f));drawPath(path,color,style=androidx.compose.ui.graphics.drawscope.Stroke(1f))
+        }
         roads.forEach {r->r.points.zipWithNext().forEach {(a,b)->drawLine(when(r.status){"yellow"->Color(0xFFD0AA00);"green"->Color(0xFF07883B);"red"->Color(0xFFD32222);else->Color.Gray},point(a),point(b),4f)}}
+        val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {color=android.graphics.Color.BLACK;textSize=(9.0*size.width/571.0).toFloat();textAlign=android.graphics.Paint.Align.CENTER}
+        buildings.forEach {b->b.labelItems.forEach {label->val p=point(label.center);drawContext.canvas.nativeCanvas.drawText(label.text,p.x,p.y,paint)}}
+        roads.forEach {r->val p=point(r.points[r.points.size/2]);drawContext.canvas.nativeCanvas.drawText(r.name,p.x,p.y-7f,paint)}
         points.zipWithNext().forEach {(a,b)->drawLine(Color.Blue,point(a),point(b),3f)}
         points.forEach {drawCircle(Color.Blue,5f,point(it))}
     }
@@ -138,6 +142,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     var contacts by remember(id,mode) {mutableStateOf<List<NativeContactDraft>>(emptyList())}
     var coverage by remember(id,mode) {mutableStateOf(false)}
     var imageReview by remember(id,mode) {mutableStateOf<NativeImageReview?>(null)}
+    var replacePictureDraft by remember {mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     val source=runCatching {sources.verifiedRecord(id)}.getOrNull()
     val sourceFile=source?.let {runCatching {sources.verifiedFile(id)}.getOrNull()}
@@ -221,6 +226,13 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     val contactPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->if(uri!=null)scope.launch {
         busy=true;runCatching {withContext(Dispatchers.IO){store.importContactSource(uri)}}.onSuccess {document=it;addressCheck=false;boundaryCheck=false;addressUse=false;phoneUse=false;bindingCheck=false;message="Contact source imported; authorization and record checks are still required."}.onFailure {message=it.message.orEmpty()};busy=false
     }}
+    if(replacePictureDraft)AlertDialog(onDismissRequest={replacePictureDraft=false},title={Text("Replace the map draft?")},text={Text("The current draft will be saved in its history before its roads and buildings are cleared. Then you can generate again from the current map picture. Addresses remain, with their boundary checks reset.")},confirmButton={TextButton(onClick={
+        runCatching {store.save(proposal(),draft?.revisionSha256)}.onSuccess {saved->
+            draft=saved;roads=emptyList();roadFacts=emptyList();buildings=emptyList();buildingFacts=emptyList();imageReview=null;coverage=false
+            contacts=contacts.map {it.copy(boundaryConfirmed=false)};replacePictureDraft=false
+            message="Previous draft preserved. Generate again from the current picture."
+        }.onFailure {message=it.message.orEmpty();replacePictureDraft=false}
+    },modifier=Modifier.testTag("native-replace-confirm")){Text("Preserve and replace")}},dismissButton={TextButton(onClick={replacePictureDraft=false}){Text("Cancel")}})
     LazyColumn(modifier.fillMaxSize().testTag("native-authoring-screen"),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item {TextButton(onClick=onBack){Text("Back to workspace")};Text("Create territory $id",style=MaterialTheme.typography.headlineMedium);Text(mode.label+" • "+assignment.canonicalFilename)}
         item {Text(message,modifier=Modifier.testTag("native-status"));if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())}
@@ -242,7 +254,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                                 message="Generated ${roads.size} road traces from the picture. Review ${generated.findings.size} findings and confirm source facts before registration."}
                         }.onFailure {message=it.message ?: "The map could not be interpreted"};busy=false
                 }},modifier=Modifier.testTag("native-generate-picture")){Text(if(busy)"Reading map…" else "Generate card draft from picture")}
-                if(roads.isNotEmpty())Text("A draft already exists. Edit it below; automatic generation will not overwrite your work.")
+                if(roads.isNotEmpty() || buildings.isNotEmpty())TextButton(enabled=!busy,onClick={replacePictureDraft=true},modifier=Modifier.testTag("native-replace-picture")){Text("Preserve draft and generate again…")}
             }
             item {Text("Describe the new card",style=MaterialTheme.typography.titleLarge);Text("Enter current source facts. Legacy geometry is not copied into this draft.")}
             item {NativeField("Locality",locality,"native-locality"){locality=it}}
@@ -313,7 +325,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
         }
         if(section=="Review") {
             item {Text("Reconcile the complete source",style=MaterialTheme.typography.titleLarge);Text("${roads.size} roads, ${buildings.size} footprints, ${contacts.size} working records. This records your local assignment authorization; it does not approve a PDF.")}
-            item {NativeTrace(roads,buildings,emptyList()) {}}
+            item {NativeTrace(roads,buildings,emptyList(),editable=false) {}}
             imageReview?.let {review->
                 items(review.findings().size) {i->val finding=review.findings()[i]
                     if(review.correctable(finding.first))NativeCheck("Resolved against the source: ${finding.second}",finding.first in review.acknowledged,"native-image-finding-$i") {checked->

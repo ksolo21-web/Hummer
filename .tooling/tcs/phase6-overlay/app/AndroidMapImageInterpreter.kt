@@ -69,6 +69,7 @@ class AndroidMapImageInterpreter {
             val offsetY=20.0+(343.0-(bottom-top)*scale)/2
             fun mapped(p:Point2D)=Point2D(offsetX+(p.x-left)*scale,offsetY+(p.y-top)*scale)
             val multiUnit=housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home")
+            require(!multiUnit || extraction.buildings.isEmpty() || buildingLabel!=null) {"Building label layout is required for extracted footprints"}
             val buildings=if(multiUnit && buildingLabel!=null)extraction.buildings.map {b->
                 val labels=b.labels.map {label->buildingLabel(label.text,mapped(Point2D((label.bounds.left+label.bounds.right)/2,(label.bounds.top+label.bounds.bottom)/2)))}
                 if(b.status=="yellow")findings+=MapImageFinding("building-color-${b.id}","A yellow footprint requires assignment review.",null)
@@ -90,7 +91,7 @@ class AndroidMapImageInterpreter {
             return InterpretedMapDraft(expectedSha256,roads,observations,findings,text,buildings,buildingObservations)
         } finally {source.recycle()}
     }
-    private fun decode(file:File):Bitmap {
+    internal fun decode(file:File):Bitmap {
         val pdf=file.inputStream().use {input->ByteArray(5).also {input.read(it)}}.toString(Charsets.US_ASCII)=="%PDF-"
         if(pdf)return PdfRenderer(ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY)).use {renderer->
             require(renderer.pageCount==1) {"Choose a single map picture or a one-page map PDF for automatic interpretation"}

@@ -86,6 +86,24 @@ class NativeSourceReconciliationTest {
         assertTrue(result.findings.any {it.id.startsWith("unmatched-label-")})
         assertTrue(result.roads.all {it.points.size>=2})
     }
+    @Test fun numberedConcaveFootprintRejectsBoundingBoxNeighbor() {
+        val w=300;val h=220;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 30..150)for(x in 30..60)pixels[y*w+x]=0xff00aa30.toInt()
+        for(y in 120..150)for(x in 30..170)pixels[y*w+x]=0xff00aa30.toInt()
+        val labels=listOf(MapImageText("101",AxisAlignedRect(35.0,60.0,55.0,76.0)),MapImageText("999",AxisAlignedRect(110.0,60.0,140.0,76.0)))
+        val result=MapImageDraftExtractor.extract(w,h,pixels,labels)
+        assertEquals(1,result.buildings.size)
+        assertEquals(listOf("101"),result.buildings.single().labels.map {it.text})
+        assertTrue(result.buildings.single().polygon.size>=6)
+        assertTrue(result.findings.any {it.id.startsWith("building-members-")})
+    }
+    @Test fun shortContiguousWorkColorChangeCannotDisappearInMajority() {
+        val w=500;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 68..72)for(x in 30..470)pixels[y*w+x]=if(x in 245..251)0xffdd2020.toInt() else 0xff00bb30.toInt()
+        val result=MapImageDraftExtractor.extract(w,h,pixels,listOf(MapImageText("Alpha Rd",AxisAlignedRect(160.0,43.0,250.0,62.0))))
+        assertTrue(result.findings.any {it.id.startsWith("color-")},"A short real excluded segment must be reviewed")
+    }
+
     @Test fun imageInterpretationReceiptIsBoundToRegistrationFacts() {
         val interpreted=r.copy(imageInterpretationSha256="d".repeat(64))
         assertNotEquals(NativeSourceReconciliationContract.draftFactsSha256(r),NativeSourceReconciliationContract.draftFactsSha256(interpreted))
