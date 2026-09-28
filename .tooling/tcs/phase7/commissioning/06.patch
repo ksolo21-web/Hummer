@@ -1,0 +1,125 @@
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt b/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
+@@ -39,6 +39,8 @@
+     internal fun sourceMapStore():SourceMapIntakeStore = verifiedCommissioningScope?.let {requireNotNull(commissioningStore).guardedSources(it)}
+         ?: SourceMapIntakeStore(appContext)
+     private fun scopeWitness(id:String) {verifiedCommissioningScope?.let {requireNotNull(commissioningStore).assertCurrent(it,id)}}
++    internal fun commissioningProblem(id:String):String? = if(verifiedCommissioningScope==null)null else
++        runCatching {scopeWitness(id)}.exceptionOrNull()?.let {it.message ?: "This replacement workspace is no longer current"}
+     private val privateRoot = File(appContext.noBackupFilesDir, "territory-card-studio" + (verifiedCommissioningScope?.let {"/commissioned/${it.sha256}"} ?: "")).apply {
+         require(exists() || mkdirs()) { "Unable to create app-private Territory Card Studio directory" }
+     }
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
+@@ -192,8 +192,6 @@
+     val context = LocalContext.current
+     val application = context.applicationContext as TerritoryCardStudioApplication
+     val services=servicesOverride ?: application.services
+-    val buildCoordinator = coordinator ?: services.buildWorkflow
+-    val preview = previewService ?: services.pdfPreview
+     var refresh by remember { mutableStateOf(0) }
+     val activity = context.previewActivity()
+     var active by remember { mutableStateOf(activity?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) }
+@@ -205,6 +203,21 @@
+         activity?.lifecycle?.addObserver(observer)
+         onDispose { activity?.lifecycle?.removeObserver(observer) }
+     }
++    // Check the application-owned scope before constructing lazy stores or dispatching
++    // any child route. Re-evaluate on lifecycle and source/route state changes so a stale
++    // candidate has a recovery screen, not an exception from a guarded service getter.
++    val commissioningProblem=(services as? TerritoryCardStudioServices)?.commissioningProblem(assignment.displayId)
++    if(commissioningProblem!=null) {
++        Column(modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
++            Text("Replacement source review required",style=MaterialTheme.typography.headlineSmall)
++            Text(commissioningProblem,modifier=Modifier.testTag("commissioning-invalid"))
++            Text("The original card and saved draft evidence are unchanged. Return to the original territory and review the new source before opening another candidate.")
++            TextButton(onClick=onBack,modifier=Modifier.testTag("commissioning-invalid-back")){Text("Return to source review")}
++        }
++        return
++    }
++    val buildCoordinator = coordinator ?: services.buildWorkflow
++    val preview = previewService ?: services.pdfPreview
+     val sourceStore = remember(context.applicationContext,services) { if(services is TerritoryCardStudioServices)services.sourceMapStore() else SourceMapIntakeStore(context) }
+     var workflowScreen by rememberSaveable(assignment.displayId) { mutableStateOf("WORKSPACE") }
+     var sourceRevision by rememberSaveable(assignment.displayId) { mutableStateOf(0) }
+@@ -292,8 +305,7 @@
+                 sourcePicker.launch(arrayOf("application/pdf", "image/jpeg", "image/png"))
+             },
+             onClearSource = {
+-                sourceStore.clear(assignment.displayId)
+-                importError = null
++                importError = runCatching {sourceStore.clear(assignment.displayId)}.exceptionOrNull()?.message
+                 sourceRevision += 1
+             },
+             onContinueVerification = { workflowScreen = "VERIFY" },
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+@@ -302,7 +302,7 @@
+                     runCatching {withContext(Dispatchers.IO) {if(inputKind=="OUTLINED_AREA")AndroidMapImageInterpreter().interpretOutlined(requireNotNull(sourceFile),requireNotNull(original).sha256,assignment.housingType,service::buildingLabel)
+                         else AndroidMapImageInterpreter().interpret(requireNotNull(sourceFile),requireNotNull(original).sha256,assignment.housingType,service::buildingLabel)}}
+                         .onSuccess {generated->
+-                            if(sources.verifiedRecord(id)?.sha256!=original?.sha256)message="Source changed. Generate again from the current picture."
++                            if(!runCatching {sources.verifiedRecord(id)?.sha256==original?.sha256}.getOrDefault(false))message="Source changed. Return to source review before generating again."
+                             else {roads=generated.roads;roadFacts=generated.observations;buildings=generated.buildings;buildingFacts=generated.buildingObservations;imageReview=if(generated.outlined==null)NativeImageReview.from(generated) else null;outlinedReview=if(generated.outlined==null)null else OutlinedNativeReview.from(generated);coverage=false;section="Review"
+                                 message="Generated ${roads.size} road traces from the picture. Review ${generated.findings.size} findings and confirm source facts before registration."}
+                         }.onFailure {message=it.message ?: "The map could not be interpreted"};busy=false
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+--- a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+@@ -211,10 +211,52 @@
+             rule.onNodeWithTag("workspace-prepare-new").assertIsDisplayed().assertIsEnabled()
+             rule.onNodeWithTag("workspace-commission-replacement").assertDoesNotExist()
+             screenshot(appearance.name.lowercase()+"-candidate")
++            // Exercise the actual new-card route, not just the presence of a button.
++            rule.onNodeWithTag("workspace-prepare-new").performClick()
++            rule.waitUntil(15000){rule.onAllNodesWithTag("native-authoring-screen").fetchSemanticsNodes().isNotEmpty()}
++            val screen=rule.onNodeWithTag("native-authoring-screen")
++            fun fill(tag:String,value:String) {
++                screen.performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).performTextReplacement(value)
++            }
++            fill("native-locality","Rochester")
++            fill("native-updated","9/28/2026")
++            fill("native-directions","Directions: Test-only source review; not for field use.")
++            fill("native-author","Instrumentation reviewer")
++            fill("native-county","Oakland County")
++            fill("native-state","Michigan")
++            fill("native-country","United States")
++            screen.performScrollToNode(hasTestTag("native-input-kind-OUTLINED_AREA"))
++            rule.onNodeWithTag("native-input-kind-OUTLINED_AREA").performClick()
++            screen.performScrollToNode(hasTestTag("native-generate-picture"))
++            rule.onNodeWithTag("native-generate-picture").assertIsEnabled().performClick()
++            screen.performScrollToIndex(0)
++            rule.waitUntil(60000){runCatching {rule.onNodeWithTag("native-status").assertTextContains("Generated",substring=true);true}.getOrDefault(false)}
++            screen.performScrollToNode(hasTestTag("native-save-draft"))
++            rule.onNodeWithTag("native-save-draft").assertIsEnabled().performClick()
++            screen.performScrollToIndex(0)
++            rule.onNodeWithTag("native-status").assertTextContains("Draft saved",substring=true)
++            val actualServices=x.services(requireNotNull(scope),store)
++            val actualDraft=requireNotNull(actualServices.nativeDrafts.read(ID,WorkspaceMode.REGULAR))
++            assertEquals(HASH,actualDraft.reconciliation.importedSourceSha256)
++            assertNotNull(actualDraft.outlinedReview)
++            assertTrue(actualDraft.assignment.roads.isNotEmpty())
++            assertFalse(requireNotNull(actualDraft.outlinedReview).complete(actualDraft.assignment.roads))
++            assertTrue(runCatching {actualServices.nativeDrafts.register(ID,WorkspaceMode.REGULAR,actualDraft.revisionSha256)}.isFailure)
++            screenshot(appearance.name.lowercase()+"-generated-draft")
++            // Source replacement must show recovery before a stale scope dispatches another route.
++            rule.runOnIdle {x.sources.importFromStream(x.slot,"different-source.jpg","image/jpeg",
++                InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-01-26588.jpg"))}
++            rule.onNodeWithText("Back to workspace",substring=false).performClick()
++            rule.onNodeWithTag("commissioning-invalid").assertIsDisplayed().assertTextContains("source changed",substring=true)
++            rule.onNodeWithTag("workspace-prepare-new").assertDoesNotExist()
++            rule.onNodeWithTag("native-authoring-screen").assertDoesNotExist()
++            screenshot(appearance.name.lowercase()+"-source-recovery")
+             assertEquals(x.slot,x.app.services.knowledgeBase.assignments.getValue(ID))
+             assertFalse(x.slot.needsNewCard)
+             report(appearance.name.lowercase(),JSONObject().put("actualWorkspaceRouteTested",true).put("typedIdentityMismatchBlocks",true)
+-                .put("identityEditResetsInspection",true).put("unapprovedReplacementReachesNewCardAction",true).put("originalAssignmentUnchanged",true))
++                .put("identityEditResetsInspection",true).put("unapprovedReplacementReachesNewCardAction",true).put("originalAssignmentUnchanged",true)
++                .put("actualNativePictureGeneration",true).put("draftSavedFromUi",true).put("generatedRoadCount",actualDraft.assignment.roads.size)
++                .put("sourceReplacementShowsRecovery",true).put("registrationStillBlocked",true))
+         } finally {
+             val retained=store.recordedScope(ID)
+             if(retained!=null){
