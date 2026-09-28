@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "sourceBaseline": "411dc2af5b5aa514f379d204b91022821eb6dca7",
-  "patchSha256": "de8c2fd1d0890243a269c4a4c95e0d72748008ff7d768350aac5517239d67867",
+  "patchSha256": "f9cd08676a85c36ceffa174a7f9974685af728c6a00e182214b13032f48fa13f",
   "files": [
     {
       "path": "core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt",
@@ -66,7 +66,7 @@
     {
       "path": "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt",
       "before": null,
-      "after": "dd2a55c5d42d9a71da1c8c55a23d8b7ad05ccc0316a133ff01e8f8084086a40f"
+      "after": "26c68066a7bd3cbc3fab1ca0e7161c81d515e34e1f42604ab85acd93bf04df20"
     }
   ],
   "patches": [
@@ -100,7 +100,7 @@
     },
     {
       "name": "08.patch",
-      "sha256": "ed46dce94594e93e2ea1ef863a0130be9080e73423599a6f1ea33941ee49a861"
+      "sha256": "204ad54d41a06e15b034ff607e4ed1b1d740fd755d6592d0caad8bd354990a5f"
     }
   ]
 }

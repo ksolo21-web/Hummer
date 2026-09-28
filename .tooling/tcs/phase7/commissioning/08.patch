@@ -74,7 +74,7 @@ diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phas
 new file mode 100644
 --- /dev/null
 +++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,99 @@
 +package com.koenterprises.territorycardstudio
 +
 +import android.graphics.Bitmap
@@ -86,39 +86,58 @@ new file mode 100644
 +
 +/** A passing Compose assertion alone cannot establish visible-screen evidence: a system
 + * dialog can cover the application while semantics assertions keep running. Never crop
-+ * around or dismiss a blocking window. Retain the full screenshot and two independent
-+ * foreground witnesses. Accessibility can legitimately return no root on an emulator;
-+ * WindowManager focus is then authoritative. Any foreign or disagreeing witness rejects
-+ * the screenshot. */
++ * around or dismiss a blocking window. Retain the full screenshot and independent
++ * foreground witnesses. Missing emulator accessibility roots are retried; foreign focus
++ * is rejected immediately rather than waited away. */
 +internal object Phase7ScreenEvidence {
 +    private val component=Regex("""([A-Za-z0-9_.]+)/[A-Za-z0-9_.$]+""")
 +
 +    private data class WindowWitness(
 +        val accessibilityPackage:String?,
-+        val focusedWindowPackage:String?
++        val focusedWindowPackage:String?,
++        val resumedActivityPackage:String?
 +    ) {
++        fun foreign(expected:String)=listOfNotNull(accessibilityPackage,focusedWindowPackage,resumedActivityPackage).any {it!=expected}
 +        fun accepted(expected:String):Boolean {
-+            val observed=listOfNotNull(accessibilityPackage,focusedWindowPackage)
-+            return observed.isNotEmpty() && observed.all {it==expected}
++            if(foreign(expected)) return false
++            return focusedWindowPackage==expected ||
++                (accessibilityPackage==expected && resumedActivityPackage==expected)
 +        }
 +        fun resolved(expected:String):String?=when {
 +            accepted(expected)->expected
++            focusedWindowPackage!=null->focusedWindowPackage
 +            accessibilityPackage!=null->accessibilityPackage
-+            else->focusedWindowPackage
++            else->resumedActivityPackage
 +        }
++    }
++
++    private fun shellPackage(command:String,markers:List<String>):String? {
++        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
++        return runCatching {
++            ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command))
++                .bufferedReader().use {reader->
++                    reader.lineSequence().firstNotNullOfOrNull {line->
++                        if(markers.none {line.contains(it)}) null else component.find(line)?.groupValues?.getOrNull(1)
++                    }
++                }
++        }.getOrNull()
 +    }
 +
 +    private fun witness():WindowWitness {
 +        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
 +        val accessibility=automation.rootInActiveWindow?.packageName?.toString()?.takeIf {it.isNotBlank()}
-+        val focused=runCatching {
-+            ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("dumpsys window windows"))
-+                .bufferedReader().use {reader->
-+                    val line=reader.lineSequence().firstOrNull {it.contains("mCurrentFocus=")}
-+                    line?.let {component.find(it)?.groupValues?.getOrNull(1)}
-+                }
-+        }.getOrNull()
-+        return WindowWitness(accessibility,focused)
++        val focused=shellPackage("dumpsys window",listOf("mCurrentFocus=","mFocusedApp="))
++        val resumed=shellPackage("dumpsys activity activities",listOf("mResumedActivity:","topResumedActivity=","mFocusedActivity:"))
++        return WindowWitness(accessibility,focused,resumed)
++    }
++
++    private fun stableWitness(expected:String):WindowWitness {
++        repeat(40) {
++            val current=witness()
++            if(current.foreign(expected) || current.accepted(expected)) return current
++            Thread.sleep(100)
++        }
++        return witness()
 +    }
 +
 +    fun capture(file:File) {
@@ -126,13 +145,18 @@ new file mode 100644
 +        val instrumentation=InstrumentationRegistry.getInstrumentation()
 +        val automation=instrumentation.uiAutomation
 +        val expected=instrumentation.targetContext.packageName
-+        val before=witness()
++        // Prime Accessibility/WindowManager without retaining or substituting this bitmap.
++        automation.takeScreenshot()?.recycle()
++        val before=stableWitness(expected)
++        check(before.accepted(expected)) {
++            "Screenshot precondition is not valid app evidence: before=$before expected=$expected"
++        }
 +        val image=requireNotNull(automation.takeScreenshot()) {"No visible-screen bitmap was returned"}
 +        try {file.outputStream().use {check(image.compress(Bitmap.CompressFormat.PNG,100,it))}}
 +        finally {image.recycle()}
-+        val after=witness()
++        val after=stableWitness(expected)
 +        val accepted=before.accepted(expected) && after.accepted(expected)
-+        val receipt=JSONObject().put("schema","phase7-screen-evidence-v2")
++        val receipt=JSONObject().put("schema","phase7-screen-evidence-v3")
 +            .put("expectedPackage",expected)
 +            .put("activePackageBefore",before.resolved(expected) ?: JSONObject.NULL)
 +            .put("activePackageAfter",after.resolved(expected) ?: JSONObject.NULL)
@@ -140,6 +164,8 @@ new file mode 100644
 +            .put("accessibilityPackageAfter",after.accessibilityPackage ?: JSONObject.NULL)
 +            .put("focusedWindowPackageBefore",before.focusedWindowPackage ?: JSONObject.NULL)
 +            .put("focusedWindowPackageAfter",after.focusedWindowPackage ?: JSONObject.NULL)
++            .put("resumedActivityPackageBefore",before.resumedActivityPackage ?: JSONObject.NULL)
++            .put("resumedActivityPackageAfter",after.resumedActivityPackage ?: JSONObject.NULL)
 +            .put("screenshotSha256",file.inputStream().use(BundleIntegrity::sha256))
 +            .put("accepted",accepted).put("testOnly",true).put("cardApproved",false)
 +        File(file.parentFile,file.nameWithoutExtension+"-screen.json").writeText(receipt.toString(2))
