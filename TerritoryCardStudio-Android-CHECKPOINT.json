@@ -559,7 +559,7 @@
   ],
   "source_package": "Phase4-Android-0.4.0-source.tar.xz",
   "source_package_sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965",
-  "saved_at_utc": "2026-09-28T12:47:39.618Z",
+  "saved_at_utc": "2026-09-28T13:20:51.836Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -3268,7 +3268,7 @@
     ],
     "blockers": [
       "Representative map image interpretation is not yet accurate enough: missed/duplicate building labels and building pixels classified as roads.",
-      "Complete successful native UI save/readback journey is still unproven; latest failures were asynchronous status assertions.",
+      "Complete successful native UI save/readback journey remains unproven; latest failures were test focus and synthetic-provider cleanup permissions.",
       "Arbitrary new-number enrollment is unsupported; number/type entry currently selects existing catalog assignments.",
       "All-mode light/dark phone/wide acceptance, affected regressions and final independent critic approval remain outstanding."
     ],
@@ -3279,17 +3279,17 @@
       "Kaleb personally creates all six real cards."
     ],
     "user_requirement": "Import a map picture, enter territory number and type, and generate a new territory card.",
-    "last_tested_commit": "958a632e24d0a5110b93abd684220aaa6db2ca5e",
-    "last_tested_run": 36418866386,
+    "last_tested_commit": "198fdd4a599e1f22a96022b8d5bc932b27abe424",
+    "last_tested_run": 36426737415,
     "core_checks": {
-      "passed": 26,
+      "passed": 27,
       "failed": 0,
       "accepted_phase6": false
     },
     "native_checks": {
       "passed": 4,
       "failed": 3,
-      "details": "Retention and restart through fresh preparation, explicit reapproval and exact export passed. Regular and image UI flows reached export but failed waiting for the result message. Representative image missed members and misclassified building pixels as roads."
+      "details": "Retention, edits, separate-process recovery, fresh preparation, explicit reapproval and exact export passed. Representative image still misses488/494; UI flows stopped on transient locality focus and synthetic-provider stale-child write permission."
     },
     "implemented_since_phase5": [
       "Explicit local source reconciliation and durable registration ledger",
@@ -3300,8 +3300,14 @@
     ],
     "independent_review": "NOT_APPROVED; no Phase6 completion score",
     "pending_repairs": [
-      "Separate numeric OCR elements, rotated number recognition, text-hole exclusion inside recovered footprints",
-      "Bounded image-review schema validation and robust save-message waits"
-    ]
+      "Magnified rotated numeric OCR with spatial duplicate/conflict checks awaiting device evidence",
+      "Exact complete footprint inventory test and three-mode phone/wide UI coverage awaiting device evidence",
+      "General map fidelity and typed correction of geometry findings",
+      "Arbitrary new-number explicit local enrollment remains unsupported"
+    ],
+    "pending_validation": {
+      "commit": "5c300960a014d9e8e7fcf599ca7d18d5fcef718e",
+      "run": 36427843184
+    }
   }
 }
