@@ -22,5 +22,5 @@ for case in ['a265','296-conflict','unidentified','clipped']:
     assert p.exists(),f'Missing actual native intake evidence: {p}'
     j=json.loads(p.read_text())
     assert j['sourceSha256'] and j['inputKind']=='OUTLINED_AREA'
-assert 'OK (4 tests)' in log,log
+assert 'OK (5 tests)' in log,log
 PY

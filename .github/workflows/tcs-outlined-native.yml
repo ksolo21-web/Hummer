@@ -57,6 +57,7 @@ jobs:
           base64 -d .tooling/tcs/boundary/source-26435.jpg.b64 > tcs-src/core/src/test/resources/boundary/source-26435.jpg
           cp tcs-src/core/src/test/resources/boundary/source-26435.jpg tcs-src/app/src/androidTest/assets/source-26435.jpg
           for source in .tooling/tcs/phase7/inputs/*.jpg; do cp "$source" "tcs-src/app/src/androidTest/assets/phase7-$(basename "$source")"; done
+          cp .tooling/tcs/phase7/inputs/reference-a265.pdf tcs-src/app/src/androidTest/assets/phase7-reference-a265.pdf
           (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun --tests '*NativeSourceReconciliationTest' --tests '*Outlined*Test') > evidence/core-tests.log 2>&1 || { cp -r tcs-src/core/build/test-results/test evidence/core-results; cat evidence/core-tests.log; exit 1; }
           cp -r tcs-src/core/build/test-results/test evidence/core-results
           python .tooling/tcs/phase6-overlay/python/native_source_reconciliation.py evidence/reconciliation-golden.json evidence/assignment-golden.json evidence/assignment-content.sha256 evidence/structural-parity.json > evidence/python-parity.json

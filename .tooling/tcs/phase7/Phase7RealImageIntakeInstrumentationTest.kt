@@ -11,7 +11,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Rule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.koenterprises.territorycardstudio.core.BundleIntegrity
+import com.koenterprises.territorycardstudio.core.*
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -111,6 +111,9 @@ class Phase7RealImageIntakeInstrumentationTest {
         val tampered=JSONObject(reviewed.document)
         tampered.getJSONObject("analysis").getJSONArray("repairs").getJSONObject(0).getJSONArray("addedPixels").getJSONArray(0).put(0,1.0)
         assertTrue(runCatching {OutlinedNativeReview(ExtendedValues.canonical(tampered))}.isFailure)
+        val wrongMode=JSONObject(reviewed.document)
+        wrongMode.getJSONObject("analysis").put("roadPaintMode","LIGHT_NEUTRAL")
+        assertTrue("Changing segmentation mode must invalidate its evidence",runCatching {OutlinedNativeReview(ExtendedValues.canonical(wrongMode))}.isFailure)
         rule.onNodeWithTag("boundary-repair-reject").performScrollTo().performClick()
         rule.runOnIdle {assertFalse(ui.value.boundaryConfirmed);assertTrue(ui.value.boundaryRepairEvidence.isEmpty())}
         rule.onNodeWithTag("outlined-boundary-confirm").assertIsNotEnabled()
@@ -124,6 +127,33 @@ class Phase7RealImageIntakeInstrumentationTest {
         })
         assertFalse("The source cannot register without road and boundary review",
             OutlinedNativeReview.from(result).complete(result.roads))
+    }
+
+    @Test fun a265HistoricalReferenceProvidesOnlyPendingBuildingProposals() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
+        val app=context.applicationContext as TerritoryCardStudioApplication
+        val reference=File(context.cacheDir,"a265-historical-reference.pdf")
+        instrumentation.context.assets.open("phase7-reference-a265.pdf").use {input->reference.outputStream().use {input.copyTo(it)}}
+        val sha=reference.inputStream().use(BundleIntegrity::sha256)
+        assertEquals("2220b772daef3aff751a4fcffddfdbf385944af9cffad9378e2aaccb0bc81a94",sha)
+        assertEquals(app.services.knowledgeBase.assignments.getValue("A265").referenceSha256,sha)
+        val template=app.assets.open("territory/render-authority/Canonical-New-Designed-Template-R48.pdf").use {it.readBytes()}
+        val style=app.assets.open("territory/R48-Canonical-Style-Tokens.json").bufferedReader().use(LabelStyleContractLoader::load)
+        val labels=NativeRoadLabelProducer(template,style)
+        var result:InterpretedMapDraft?=null;var failure:Throwable?=null
+        try {result=AndroidMapImageInterpreter().interpret(reference,sha,"apartment",labels::buildingLabel)}catch(e:Throwable){failure=e}
+        val report=JSONObject().put("sourceSha256",sha).put("referenceRole","HISTORICAL_SUPPLEMENT_ONLY")
+            .put("currentSpatialSourceSha256","8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d")
+            .put("decoderError",failure?.message ?: JSONObject.NULL).put("assignmentApproved",false)
+            .put("buildings",JSONArray(result?.buildings.orEmpty().map {b->JSONObject().put("id",b.buildingId)
+                .put("members",JSONArray(b.sourceMembers)).put("referenceAssigned",b.assigned)
+                .put("polygon",JSONArray(b.polygon.map {JSONArray(listOf(it.x,it.y))}))}))
+            .put("findings",JSONArray(result?.findings.orEmpty().map {f->JSONObject().put("id",f.id).put("message",f.message)}))
+        File(context.filesDir,"phase7-a265-reference-intake.json").writeText(report.toString(2))
+        assertNotNull("Historical reference could not be read; inspect diagnostic evidence",result)
+        assertTrue("No building proposals recovered from exact A265 reference",result!!.buildings.isNotEmpty())
+        assertTrue(result.buildingObservations.all {!it.confirmed})
+        assertEquals(sha,reference.inputStream().use(BundleIntegrity::sha256))
     }
 
     @Test fun aOrR296MustNotResolveItsConflictingIdentitySilently() {
