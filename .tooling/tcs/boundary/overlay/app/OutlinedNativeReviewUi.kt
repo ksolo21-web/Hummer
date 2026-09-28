@@ -14,7 +14,6 @@ import java.io.File
     var group by remember {mutableStateOf("TERRITORY")}
     var index by remember(group) {mutableStateOf(0)}
     var sourceReadable by remember(source) {mutableStateOf(false)}
-    var findingReadable by remember(source) {mutableStateOf(false)}
     var message by remember {mutableStateOf("")}
     val triage=remember(review.document){OutlinedMapTriageBuilder.build(review.extraction)}
     val candidates=review.extraction.roads.filter {triage.priorities[it.road.id]?.name==group}
@@ -97,30 +96,7 @@ import java.io.File
         TextButton(onClick={runCatching {val (r,out)=review.join(firstJoin.trim(),nextJoin.trim(),roads);onChanged(r,out);message="Exact continuation joined"}.onFailure {message=it.message.orEmpty()}},enabled=sourceReadable){Text("Join exact continuation")}
         TextButton(onClick={runCatching {val (r,out)=review.undoJoin(firstJoin.trim(),roads);onChanged(r,out);message="Join removed; review the original traces again"}.onFailure {message=it.message.orEmpty()}},enabled=sourceReadable){Text("Undo join")}
         Text(message,modifier=Modifier.testTag("outlined-review-status"))
-        val findings=review.unresolvedFindings(roads)
-        Text("${findings.size} unresolved image findings",style=MaterialTheme.typography.titleMedium)
-        if(findings.isNotEmpty()) {
-            var findingIndex by remember {mutableStateOf(0)}
-            val f=findings[findingIndex.coerceIn(0,findings.lastIndex)]
-            var kind by remember(f.id){mutableStateOf(review.allowedResolutions(f.id).firstOrNull().orEmpty())}
-            var evidence by remember(f.id){mutableStateOf("")}
-            var ids by remember(f.id){mutableStateOf("")}
-            Row {TextButton(onClick={findingIndex--},enabled=findingIndex>0){Text("Previous finding")};TextButton(onClick={findingIndex++},enabled=findingIndex<findings.lastIndex){Text("Next finding")}}
-            Text("${f.id}: ${f.message}")
-            if(source!=null && f.sourceBounds!=null)NativeSourcePreview(source,f.sourceBounds,review.extraction.boundary.polygon){findingReadable=it}
-            if(f.sourceBounds==null || review.allowedResolutions(f.id).isEmpty())Text("This analysis finding needs source-backed correction. It cannot be dismissed or matched to a nearby road.")
-            else {
-                review.allowedResolutions(f.id).forEach {value->FilterChip(kind==value,{kind=value},label={Text(value.replace('_',' '))})}
-                if(kind=="MATCHED_ROAD")OutlinedTextField(ids,{ids=it},label={Text("Matching output road IDs, separated by commas")},modifier=Modifier.fillMaxWidth())
-                OutlinedTextField(evidence,{evidence=it},label={Text("Specific evidence visible in this source region")},modifier=Modifier.fillMaxWidth())
-                Button(onClick={runCatching {
-                    val output=if(kind=="MATCHED_ROAD")ids.split(',').map {it.trim()}.filter {it.isNotEmpty()} else emptyList()
-                    val updated=review.reviewFinding(f.id,kind,evidence,output,roads)
-                    require(updated.unresolvedFindings(roads).none {it.id==f.id}){"This decision does not resolve the source finding"}
-                    onChanged(updated,roads);message="Typed finding resolution recorded."
-                }.onFailure {message=it.message.orEmpty()}},enabled=sourceReadable && findingReadable){Text("Record finding resolution")}
-            }
-        }
+        OutlinedFindingReviewPanel(review,roads,source,onChanged)
         val failures=review.coverageFailures(roads)
         if(failures.isNotEmpty())Text("Coverage review pending: "+failures.take(5).joinToString("; "))
         Text("Missing or obscured roads need source-backed geometry. Confirming visible traces alone does not establish complete coverage.")
