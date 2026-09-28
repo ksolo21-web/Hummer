@@ -40,7 +40,7 @@ public final class Phase56SyntheticDocumentsProvider extends DocumentsProvider {
     }
     @Override public String createDocument(String parent,String mime,String name) {
         if(!parent.equals("root")||name.length()>200||name.contains("/"))throw new IllegalArgumentException("Invalid test document");String id=UUID.randomUUID().toString();
-        try{Files.write(file(id).toPath(),new byte[0]);Files.write(new File(root(),id+".name").toPath(),name.getBytes(StandardCharsets.UTF_8));}catch(IOException e){throw new IllegalStateException(e);}return id;
+        try{Files.write(file(id).toPath(),new byte[0]);Files.write(new File(root(),id+".name").toPath(),name.getBytes(StandardCharsets.UTF_8));}catch(IOException e){throw new IllegalStateException(e);}getContext().grantUriPermission("com.koenterprises.territorycardstudio", DocumentsContract.buildDocumentUri(AUTHORITY,id), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);return id;
     }
     @Override public ParcelFileDescriptor openDocument(String id,String mode,CancellationSignal signal)throws java.io.FileNotFoundException{return ParcelFileDescriptor.open(file(id),ParcelFileDescriptor.parseMode(mode));}
     @Override public void deleteDocument(String id){if(!file(id).delete())throw new IllegalStateException("Cannot delete test document");new File(root(),id+".name").delete();}

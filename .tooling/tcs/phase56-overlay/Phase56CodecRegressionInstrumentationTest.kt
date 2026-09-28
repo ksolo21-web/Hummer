@@ -54,4 +54,26 @@ class Phase56CodecRegressionInstrumentationTest {
             assertEquals(x.projectHash,replacement.revalidateSaved(x.id,x.mode).projectSha256)
         }
     }
+    @Test fun invalidationAfterReceiptCreationRemovesSuccessRecordAndDestination() {
+        Phase56Fixture(WorkspaceMode.REGULAR).use { x ->
+            x.ready()
+            val receipts=File(x.f.root,"race-receipts")
+            var invalidated=false
+            val output=AndroidFinalOutputService(x.kb,x.f.app.services.activePolicy,x.coordinator,x.lifecycle,receipts,
+                fetchEvidence={request->x.evidence(request)},clock={
+                    if(!invalidated && receipts.listFiles().orEmpty().any{it.extension=="json"}) {
+                        invalidated=true;x.f.importSource("changed-after-receipt")
+                    }
+                    x.now
+                })
+            val ticket=output.validate(x.id,x.mode)
+            val destination=Phase56Destination()
+            assertTrue(runCatching{output.exportCreated(ticket,destination,false)}.isFailure)
+            assertTrue("Race must occur after receipt was created",invalidated)
+            assertTrue(destination.deleted)
+            assertTrue(receipts.listFiles().isNullOrEmpty())
+            assertFalse(x.lifecycle.state(x.id,x.mode).active)
+        }
+    }
+
 }
