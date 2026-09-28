@@ -19,8 +19,9 @@ internal class Phase56Fixture(val mode:WorkspaceMode):AutoCloseable {
     var evidenceAllowed=true
     val coordinator=AndroidBuildWorkflowCoordinator(kb,AndroidRenderModelService(kb),pdf,f.sources)
     val lifecycle=AndroidCandidateLifecycleService(kb,coordinator,f.sources,File(f.root,"output-lifecycle"))
-    val intake=AndroidVerifiedProjectIntake(kb,f.app.services.activePolicy,coordinator,f.sources,File(f.root,"projects"),fetchEvidence={if(evidenceAllowed)f.input.liveResult.evidence else emptyList()},clock={now})
-    val output=AndroidFinalOutputService(kb,f.app.services.activePolicy,coordinator,lifecycle,File(f.root,"receipts"),fetchEvidence={if(evidenceAllowed)f.input.liveResult.evidence else emptyList()},clock={now})
+    val intake=AndroidVerifiedProjectIntake(kb,f.app.services.activePolicy,coordinator,f.sources,File(f.root,"projects"),fetchEvidence={request->if(evidenceAllowed)evidence(request) else emptyList()},clock={now})
+    val output=AndroidFinalOutputService(kb,f.app.services.activePolicy,coordinator,lifecycle,File(f.root,"receipts"),fetchEvidence={request->if(evidenceAllowed)evidence(request) else emptyList()},clock={now})
+    fun evidence(request:LiveGeometryVerificationRequest)=f.input.liveResult.evidence.map{it.copy(requestFingerprint=request.requestFingerprint,responseSha256=BundleIntegrity.sha256((it.providerId+request.requestFingerprint).byteInputStream()))}
     fun prepare(){intake.prepare(intake.validate(id,mode,project))}
     fun build(){assertNull(lifecycle.build(id,mode,false).error);if(mode!=WorkspaceMode.REGULAR)assertNull(lifecycle.build(id,mode,true).error)}
     fun approve(){val s=lifecycle.state(id,mode);lifecycle.decide(requireNotNull(s.ticket),"Synthetic reviewer",CandidateReviewChecks(true,true,true),true,true,s.revision)}

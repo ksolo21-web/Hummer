@@ -27,6 +27,7 @@ jobs:
             case "$f" in *InstrumentationTest.kt) target=androidTest;; *) target=main;; esac
             cp "$f" "tcs-src/app/src/$target/java/com/koenterprises/territorycardstudio/"
           done
+          cp .tooling/tcs/phase56-overlay/*.java tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
           cp .tooling/tcs/phase56-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase56-overlay/AndroidTestManifest.xml tcs-src/app/src/androidTest/AndroidManifest.xml
       - uses: actions/setup-java@v4

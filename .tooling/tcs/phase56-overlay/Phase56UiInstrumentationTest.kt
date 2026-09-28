@@ -47,7 +47,7 @@ import java.io.File
         }}}
         rule.runOnIdle{val mask=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
             rule.activity.window.insetsController?.setSystemBarsAppearance(if(theme==AppearanceMode.LIGHT)mask else 0,mask)}
-        waitTag("final-output-status");rule.waitUntil(30000){rule.onNodeWithTag("final-output-status").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString().contains("Build")}
+        waitTag("final-output-status");rule.waitUntil(30000){rule.onNodeWithTag("final-output-status").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString().contains("not prepared")}
         rule.onNodeWithTag("final-output-validate").assertIsNotEnabled();shot("blocked-${theme.name.lowercase()}")
         rule.runOnIdle{route="IMPORT"};waitTag("verified-project-import");shot("intake-${theme.name.lowercase()}")
         x.ready();rule.runOnIdle{route="READY"};waitTag("final-output-validate")

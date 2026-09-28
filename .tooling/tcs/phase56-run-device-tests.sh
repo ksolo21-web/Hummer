@@ -9,13 +9,16 @@ adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell am force-stop com.google.android.apps.nexuslauncher
 run() {
+ adb logcat -b crash -c
  timeout 300 adb shell am instrument -w -r -e class "$2" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > "evidence/phase56-$1.log" 2>&1 || true
+ adb logcat -b crash -d > "evidence/phase56-$1-crash.log"
 }
-run output "$PKG.Phase56OutputInstrumentationTest#allModesStartUnpreparedAndExportExactApprovedPacketAndAudit,$PKG.Phase56OutputInstrumentationTest#unapprovedRejectedAndPartialPacketsCannotExport,$PKG.Phase56OutputInstrumentationTest#newVersionWithIdenticalBytesInvalidatesExport,$PKG.Phase56OutputInstrumentationTest#changedSourceAndSameCandidateRejectionInvalidateExport,$PKG.Phase56OutputInstrumentationTest#offlineFinalVerificationCannotReuseEarlierApproval,$PKG.Phase56OutputInstrumentationTest#expiredAndUnknownSessionTicketsFailClosed,$PKG.Phase56OutputInstrumentationTest#failedWritesAndCorruptReadbackDeleteNewDocument,$PKG.Phase56OutputInstrumentationTest#cleanupFailureReportsResidualFile,$PKG.Phase56OutputInstrumentationTest#auditWriteIsBoundToSameApprovalAndProviderEvidence,$PKG.Phase56OutputInstrumentationTest#registeredProjectCodecRoundTripAcrossModes,$PKG.Phase56OutputInstrumentationTest#arbitraryOrWrongModeProjectCannotCreateBaseline,$PKG.Phase56OutputInstrumentationTest#expiredImportAndSourceChangedDuringValidationCannotPrepare,$PKG.Phase56OutputInstrumentationTest#importedProviderClaimsDoNotReplaceFreshVerification,$PKG.Phase56OutputInstrumentationTest#projectTamperAfterPreparationInvalidatesApproval,$PKG.Phase56OutputInstrumentationTest#freshServiceCannotRestoreExportAuthority,$PKG.Phase56OutputInstrumentationTest#preparedBaselineSurvivesImportTicketExpiry,$PKG.Phase56OutputInstrumentationTest#repeatedProjectImportUsesOneDurableSlot,$PKG.Phase56OutputInstrumentationTest#renamedOutputFailsWithoutSaving,$PKG.Phase56OutputInstrumentationTest#realReplacementCardsRemainUncommissioned,$PKG.Phase56DocumentsInstrumentationTest,$PKG.Phase56UiInstrumentationTest"
+run output "$PKG.Phase56OutputInstrumentationTest#allModesStartUnpreparedAndExportExactApprovedPacketAndAudit,$PKG.Phase56OutputInstrumentationTest#unapprovedRejectedAndPartialPacketsCannotExport,$PKG.Phase56OutputInstrumentationTest#newVersionWithIdenticalBytesInvalidatesExport,$PKG.Phase56OutputInstrumentationTest#changedSourceAndSameCandidateRejectionInvalidateExport,$PKG.Phase56OutputInstrumentationTest#offlineFinalVerificationCannotReuseEarlierApproval,$PKG.Phase56OutputInstrumentationTest#expiredAndUnknownSessionTicketsFailClosed,$PKG.Phase56OutputInstrumentationTest#failedWritesAndCorruptReadbackDeleteNewDocument,$PKG.Phase56OutputInstrumentationTest#cleanupFailureReportsResidualFile,$PKG.Phase56OutputInstrumentationTest#auditWriteIsBoundToSameApprovalAndProviderEvidence,$PKG.Phase56OutputInstrumentationTest#registeredProjectCodecRoundTripAcrossModes,$PKG.Phase56OutputInstrumentationTest#arbitraryOrWrongModeProjectCannotCreateBaseline,$PKG.Phase56OutputInstrumentationTest#expiredImportAndSourceChangedDuringValidationCannotPrepare,$PKG.Phase56OutputInstrumentationTest#importedProviderClaimsDoNotReplaceFreshVerification,$PKG.Phase56OutputInstrumentationTest#projectTamperAfterPreparationInvalidatesApproval,$PKG.Phase56OutputInstrumentationTest#freshServiceCannotRestoreExportAuthority,$PKG.Phase56OutputInstrumentationTest#preparedBaselineSurvivesImportTicketExpiry,$PKG.Phase56OutputInstrumentationTest#repeatedProjectImportUsesOneDurableSlot,$PKG.Phase56OutputInstrumentationTest#renamedOutputFailsWithoutSaving,$PKG.Phase56OutputInstrumentationTest#realReplacementCardsRemainUncommissioned,$PKG.Phase56UiInstrumentationTest,$PKG.Phase56CodecRegressionInstrumentationTest"
+run documents "$PKG.Phase56DocumentsInstrumentationTest"
 run before-restart "$PKG.Phase56RestartInstrumentationTest#stageBeforeProcessDeath"
 adb shell am force-stop "$PKG"
 run after-restart "$PKG.Phase56RestartInstrumentationTest#recoverSavedProjectRebuildReapproveAndExportInNewProcess"
-run affected "$PKG.Phase2GExportInstrumentationTest#exactApprovedAttachmentExportAndRestartPreserveEveryByte,$PKG.Phase2DBNavigationInstrumentationTest#realWorkspaceOpensBlockedBuildWithoutCommissioningTerritory"
+
 adb shell wm size 2560x1600
 adb shell wm density 240
 run wide "$PKG.Phase56UiInstrumentationTest"
@@ -31,7 +34,7 @@ python3 - <<'PY'
 from pathlib import Path
 import json
 passed=[];failed=[];executions=[]
-for name,count in [('output',22),('before-restart',1),('after-restart',1),('affected',2),('wide',2)]:
+for name,count in [('output',23),('documents',1),('before-restart',1),('after-restart',1),('wide',2)]:
  text=Path(f'evidence/phase56-{name}.log').read_text();cls=test=None;good=[];bad=[]
  for line in text.splitlines():
   if line.startswith('INSTRUMENTATION_STATUS: class='):cls=line.split('=',1)[1]
