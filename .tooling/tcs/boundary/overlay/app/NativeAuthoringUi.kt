@@ -43,6 +43,10 @@ import java.util.UUID
     Column {choices.forEach {choice->FilterChip(selected=value==choice,onClick={onChange(choice)},label={Text(choice.replace('_',' '))},modifier=Modifier.testTag("$tag-$choice"))}}
 }
 
+@Composable internal fun SupplementalReferencePreview(file:File,generation:Int,onReadable:(Boolean)->Unit) {
+    key(file.path,generation) { NativeSourcePreview(file,onReadable=onReadable) }
+}
+
 @Composable internal fun NativeSourcePreview(file:File,highlight:AxisAlignedRect?=null,outline:List<Point2D> = emptyList(),sourceRoad:List<Point2D> = emptyList(),onReadable:(Boolean)->Unit) {
     var page by remember(file.path) {mutableStateOf(0)}
     var pages by remember(file.path) {mutableStateOf(1)}
@@ -241,6 +245,26 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     var bindingCheck by rememberSaveable {mutableStateOf(false)}
     var document by remember {mutableStateOf<NativeInventoryDocument?>(null)}
     val context=LocalContext.current
+    val referenceStore=remember(context){SupplementalBuildingReferenceStore(context)}
+    var referenceFile by remember(id){mutableStateOf(runCatching {referenceStore.verifiedFile(assignment.referenceSha256)}.getOrNull())}
+    var referenceReadable by remember(id){mutableStateOf(false)}
+    var referencePreviewGeneration by remember(id){mutableStateOf(0)}
+    var useReference by rememberSaveable(id){mutableStateOf(false)}
+    var referenceLocation by rememberSaveable(id){mutableStateOf("")}
+    var correspondenceEvidence by rememberSaveable(id){mutableStateOf("")}
+    var correspondenceConfirmed by rememberSaveable(id){mutableStateOf(false)}
+    LaunchedEffect(source?.sha256,itemId,points,members,assigned,assignment.housingType) {
+        correspondenceConfirmed=false
+    }
+    val referencePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if(uri!=null)scope.launch {
+            busy=true
+            runCatching {withContext(Dispatchers.IO){referenceStore.importReference(uri,assignment.referenceSha256,requireNotNull(source).sha256)}}
+                .onSuccess {referenceFile=it;referencePreviewGeneration++;referenceReadable=false;correspondenceConfirmed=false;confirmed=false;message="Reference imported for labels and work instructions. Match each building to the current map."}
+                .onFailure {message=it.message.orEmpty()}
+            busy=false
+        }
+    }
     var archivePickerOwned by rememberSaveable {mutableStateOf(false)}
     val archivePicker=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) {uri->
         val owned=archivePickerOwned;archivePickerOwned=false
@@ -294,10 +318,10 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             item {TextButton(onClick=onRegisteredImport){Text("Import an independently registered project")}}
         }
         if(section=="Roads" || section=="Buildings") {
-            item {NativeTrace(roads,buildings,points){confirmed=false;points=points+it;pointText=points.joinToString("; "){p->"${p.x},${p.y}"}}}
-            item {OutlinedButton(onClick={points=emptyList();pointText="";confirmed=false}){Text("Clear trace")};NativeField("Trace points (x,y; x,y)",pointText,"native-points"){pointText=it;confirmed=false}
-                TextButton(onClick={runCatching {pointText.split(';').map {s->val xy=s.trim().split(',');require(xy.size==2);Point2D(xy[0].trim().toDouble(),xy[1].trim().toDouble())}}.onSuccess{points=it}.onFailure{message="Use a pair of coordinates for each point"}}){Text("Apply points")}}
-            item {NativeField("Source item identifier",itemId,"native-item-id"){itemId=it;confirmed=false}}
+            item {NativeTrace(roads,buildings,points){correspondenceConfirmed=false;confirmed=false;points=points+it;pointText=points.joinToString("; "){p->"${p.x},${p.y}"}}}
+            item {OutlinedButton(onClick={points=emptyList();pointText="";confirmed=false;correspondenceConfirmed=false}){Text("Clear trace")};NativeField("Trace points (x,y; x,y)",pointText,"native-points"){pointText=it;confirmed=false;correspondenceConfirmed=false}
+                TextButton(onClick={runCatching {pointText.split(';').map {s->val xy=s.trim().split(',');require(xy.size==2);Point2D(xy[0].trim().toDouble(),xy[1].trim().toDouble())}}.onSuccess{points=it;correspondenceConfirmed=false;confirmed=false}.onFailure{message="Use a pair of coordinates for each point"}}){Text("Apply points")}}
+            item {NativeField("Source item identifier",itemId,"native-item-id"){itemId=it;confirmed=false;correspondenceConfirmed=false}}
             if(section=="Roads") {
                 item {NativeField("Street name exactly as sourced",name,"native-road-name"){name=it;confirmed=false}}
                 item {NativeChoice("Work instruction",status,listOf("yellow","green","red","context"),"native-road-status"){status=it;confirmed=false};Text("Yellow: inside only. Green: both sides. Red: do not work.")}
@@ -306,7 +330,18 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                 item {NativeChoice("First endpoint",endA,listOf("junction","termination"),"native-end-a"){endA=it;confirmed=false};NativeChoice("Last endpoint",endB,listOf("junction","termination"),"native-end-b"){endB=it;confirmed=false}}
                 item {NativeCheck("This segment is access only",accessOnly,"native-access-only"){accessOnly=it;confirmed=false}}
             } else {
-                item {NativeField("Assigned building/member identifiers, separated by commas",members,"native-building-members"){members=it;confirmed=false};NativeCheck("This footprint is assigned",assigned,"native-building-assigned"){assigned=it;confirmed=false}}
+                item {NativeField("Assigned building/member identifiers, separated by commas",members,"native-building-members"){members=it;confirmed=false;correspondenceConfirmed=false};NativeCheck("This footprint is assigned",assigned,"native-building-assigned"){assigned=it;confirmed=false;correspondenceConfirmed=false}}
+                item {
+                    NativeCheck("Use the locked reference for building numbers and work instructions",useReference,"native-use-building-reference"){useReference=it;confirmed=false;correspondenceConfirmed=false}
+                    if(useReference){
+                        Text("Trace the footprint from the current map. Match visible landmarks, shape and position; the historical reference does not establish current geometry.")
+                        Button(enabled=!busy && source!=null,onClick={referencePicker.launch(arrayOf("application/pdf","image/*"))},modifier=Modifier.testTag("native-import-building-reference")){Text("Import locked building reference")}
+                        referenceFile?.let { file -> SupplementalReferencePreview(file,referencePreviewGeneration){referenceReadable=it} }
+                        NativeField("Reference page and building location",referenceLocation,"native-building-reference-location"){referenceLocation=it;correspondenceConfirmed=false;confirmed=false}
+                        NativeField("Matching landmarks, footprint and position in the current map",correspondenceEvidence,"native-building-correspondence"){correspondenceEvidence=it;correspondenceConfirmed=false;confirmed=false}
+                        NativeCheck("I matched this current footprint to this reference building and checked its numbers and work instruction",correspondenceConfirmed,"native-building-match-confirmed"){correspondenceConfirmed=it;confirmed=false}
+                    }
+                }
             }
             item {NativeField("Where these facts appear in the source",note,"native-evidence-note"){note=it;confirmed=false};NativeCheck("I checked this item, its assignment and geometry against the exact source",confirmed,"native-item-confirmed"){confirmed=it}}
             item {Button(enabled=sourceReadable && !busy,onClick={runCatching {
@@ -321,8 +356,16 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                     val center=Point2D(points.map {it.x}.average(),points.map {it.y}.average())
                     val labels=service.buildingLabels(ms,points)
                     val b=BuildingGeometry(itemId.trim(),ms.joinToString("/"),assignment.housingType,assigned,"",ms,labels,points)
+                    val supplemental=if(useReference){
+                        require(referenceReadable && correspondenceConfirmed){"Inspect the imported reference and explicitly match this footprint"}
+                        referenceStore.verifiedFile(assignment.referenceSha256)
+                        SupplementalBuildingReference(assignment.referenceSha256,requireNotNull(source).sha256,
+                            SupplementalBuildingReferenceContract.contentSha256(b),referenceLocation.trim(),correspondenceEvidence.trim(),true)
+                            .also {SupplementalBuildingReferenceContract.validate(it)}
+                    } else null
                     buildings=buildings.filter {it.buildingId!=b.buildingId}+b
-                    buildingFacts=buildingFacts.filter {it.buildingId!=b.buildingId}+SourceBuildingObservation(b.buildingId,ms,assigned,note.trim(),confirmed)
+                    buildingFacts=buildingFacts.filter {it.buildingId!=b.buildingId}+SourceBuildingObservation(b.buildingId,ms,assigned,note.trim(),confirmed,supplemental)
+                    correspondenceConfirmed=false
                 }
                 coverage=false;save();confirmed=false
             }.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-save-item")){Text("Save source item and trace")}}
@@ -331,7 +374,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                 TextButton(onClick={itemId=r.segmentId;name=r.name;status=r.status;role=r.role;side=r.insideSide;endA=r.endpointAKind;endB=r.endpointBKind;accessOnly=r.accessOnly;points=r.points;pointText=r.points.joinToString("; "){"${it.x},${it.y}"};note=roadFacts.firstOrNull{it.segmentId==r.segmentId}?.evidenceNote.orEmpty();confirmed=false;section="Roads"}){Text("Edit ${r.segmentId}")}
                 TextButton(enabled=roads.size>1,onClick={roads=roads.filter {it.segmentId!=r.segmentId};roadFacts=roadFacts.filter {it.segmentId!=r.segmentId};coverage=false;save()}){Text("Remove source item ${r.segmentId}")}}
             items(buildings.size) {i->val b=buildings[i];Text("${b.buildingId}: ${b.sourceMembers.joinToString()}")
-                TextButton(onClick={itemId=b.buildingId;members=b.sourceMembers.joinToString(",");assigned=b.assigned;points=b.polygon;pointText=b.polygon.joinToString("; "){"${it.x},${it.y}"};note=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.evidenceNote.orEmpty();confirmed=false;section="Buildings"}){Text("Edit ${b.buildingId}")}
+                TextButton(onClick={val priorReference=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.supplementalReference;useReference=priorReference!=null;referenceLocation=priorReference?.referenceLocation.orEmpty();correspondenceEvidence=priorReference?.correspondenceEvidence.orEmpty();correspondenceConfirmed=false;itemId=b.buildingId;members=b.sourceMembers.joinToString(",");assigned=b.assigned;points=b.polygon;pointText=b.polygon.joinToString("; "){"${it.x},${it.y}"};note=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.evidenceNote.orEmpty();confirmed=false;section="Buildings"}){Text("Edit ${b.buildingId}")}
                 TextButton(onClick={buildings=buildings.filter {it.buildingId!=b.buildingId};buildingFacts=buildingFacts.filter {it.buildingId!=b.buildingId};coverage=false;save()}){Text("Remove source item ${b.buildingId}")}}
         }
         if(section=="Addresses" && mode!=WorkspaceMode.REGULAR) {

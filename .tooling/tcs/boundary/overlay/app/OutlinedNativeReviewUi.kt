@@ -89,6 +89,7 @@ import java.io.File
                 onChanged(changed,updated);message="Source disposition recorded for $id."
             }.onFailure {message=it.message.orEmpty()}},enabled=sourceReadable,modifier=Modifier.testTag("outlined-review-trace")){Text("Record this source decision")}
         }
+        OutlinedGroupedReview(review,roads,source,onChanged)
         var firstJoin by remember {mutableStateOf("")}
         var nextJoin by remember {mutableStateOf("")}
         OutlinedTextField(firstJoin,{firstJoin=it},label={Text("First reviewed output ID (or joined ID to undo)")},modifier=Modifier.fillMaxWidth())

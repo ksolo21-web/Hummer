@@ -29,6 +29,21 @@ class NativeSourceReconciliationTest {
         NativeSourceReconciliationContract.assess(kb,v,state,mode,source,inventory)
     private fun blocked(v:NativeSourceReconciliation, code:String) { val x=assess(v); assertFalse(x.passed);assertTrue(code in x.failures,x.failures.toString()) }
 
+    @Test fun supplementalReferenceSurvivesReconciliationAndRejectsStaleFootprint() {
+        val b=BuildingGeometry("match-1","500",slot.housingType,true,"",listOf("500"),emptyList(),listOf(Point2D(300.0,150.0),Point2D(320.0,150.0),Point2D(320.0,170.0)))
+        val ref=SupplementalBuildingReference(slot.referenceSha256,r.importedSourceSha256,SupplementalBuildingReferenceContract.contentSha256(b),"Page 1 building 500","Same footprint north of Alpha Road with entrance to the east",true)
+        val state=a.copy(buildings=listOf(b))
+        val observation=SourceBuildingObservation(b.buildingId,b.sourceMembers,b.assigned,"Geometry checked in current source; assignment matched to locked reference",true,ref)
+        val facts=r.copy(assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(state),buildings=listOf(observation))
+        assertEquals(facts,NativeSourceReconciliationContract.decode(NativeSourceReconciliationContract.encode(facts)))
+        assertTrue(assess(facts,state).passed)
+        val changed=state.copy(buildings=listOf(b.copy(polygon=b.polygon.map {Point2D(it.x+2,it.y)})))
+        val stale=facts.copy(assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(changed))
+        assertTrue("SUPPLEMENTAL_BUILDING_CHANGED" in assess(stale,changed).failures)
+        val pending=facts.copy(buildings=listOf(observation.copy(supplementalReference=ref.copy(confirmed=false))))
+        assertTrue("SUPPLEMENTAL_MATCH_UNCONFIRMED" in assess(pending,state).failures)
+    }
+
     @Test fun renderedBuildingAssignmentChangesPdfAndReceipt() {
         val template=File(root,"app/src/main/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
         val inside=PdfBuildingShape("included","9001",listOf(600.0 to 290.0,650.0 to 290.0,650.0 to 320.0,600.0 to 320.0))
@@ -105,10 +120,20 @@ class NativeSourceReconciliationTest {
             r.copy(segments=listOf(r.segments.single().copy(status="red"))),
             r.copy(segments=listOf(r.segments.single().copy(confirmed=false))),
             r.copy(buildings=listOf(SourceBuildingObservation("missing",listOf("1"),true,"Synthetic source",true))))
-        val rows=cases.map {v->
-            val t=assess(v).truth
+        val b=BuildingGeometry("supplemental","500",slot.housingType,true,"",listOf("500"),emptyList(),listOf(Point2D(300.0,140.0),Point2D(320.0,140.0),Point2D(320.0,160.0)))
+        val state=a.copy(buildings=listOf(b))
+        val ref=SupplementalBuildingReference(slot.referenceSha256,r.importedSourceSha256,SupplementalBuildingReferenceContract.contentSha256(b),"Page 1 building 500","Same footprint east of the visible entrance",true)
+        fun supplemental(v:SupplementalBuildingReference)=r.copy(assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(state),buildings=listOf(SourceBuildingObservation(b.buildingId,b.sourceMembers,b.assigned,"Explicit source correspondence",true,v)))
+        val pairs=cases.map {it to a}+listOf(
+            supplemental(ref) to state,
+            supplemental(ref.copy(confirmed=false)) to state,
+            supplemental(ref.copy(currentSourceSha256="c".repeat(64))) to state,
+            supplemental(ref.copy(referenceSha256="c".repeat(64))) to state,
+            supplemental(ref) to state.copy(buildings=listOf(b.copy(polygon=b.polygon.map {Point2D(it.x+1,it.y)}))))
+        val rows=pairs.map {(v,candidate)->
+            val t=assess(v,candidate).truth
             val expected="""{"missingExpectedSegmentCount":${t.missingExpectedSegmentCount},"unexpectedMeaningChangingSegmentCount":${t.unexpectedMeaningChangingSegmentCount},"assignmentColorConflictCount":${t.assignmentColorConflictCount},"unresolvedPerimeterWorkedSideCount":${t.unresolvedPerimeterWorkedSideCount},"unresolvedBuildingSiteCount":${t.unresolvedBuildingSiteCount}}"""
-            """{"reconciliation":${NativeSourceReconciliationContract.encode(v).toString(Charsets.UTF_8)},"assignment":${NativeAssignmentCodec.encode(a).toString(Charsets.UTF_8)},"expected":$expected}"""
+            """{"reconciliation":${NativeSourceReconciliationContract.encode(v).toString(Charsets.UTF_8)},"assignment":${NativeAssignmentCodec.encode(candidate).toString(Charsets.UTF_8)},"expected":$expected}"""
         }
         File(root,"../evidence/structural-parity.json").also {it.parentFile.mkdirs()}.writeText(rows.joinToString(",","[","]"))
     }

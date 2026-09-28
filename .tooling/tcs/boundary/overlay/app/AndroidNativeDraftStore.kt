@@ -26,7 +26,22 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     private val documents=File(root,"contact-sources")
     private val history=File(root,"draft-history")
     private val mapEvidence=File(root,"map-evidence")
+    private fun preserveSupplementalReferences(d:NativeAuthoringDraft) {
+        val refs=d.reconciliation.buildings.mapNotNull {it.supplementalReference}.map {it.referenceSha256}.distinct()
+        for(sha in refs){
+            require(sha==d.reconciliation.lockedReferenceSha256)
+            val target=AtomicFile(File(mapEvidence,"$sha.supplemental.source"))
+            val retained=target.baseFile.takeIf {it.isFile && it.inputStream().use(BundleIntegrity::sha256)==sha}
+            if(retained==null){
+                val original=SupplementalBuildingReferenceStore(context).verifiedFile(sha)
+                require(mapEvidence.isDirectory || mapEvidence.mkdirs())
+                write(target,original.readBytes())
+            }
+            require(target.openRead().use(BundleIntegrity::sha256)==sha){"Supplemental reference changed"}
+        }
+    }
     private fun archive(d:NativeAuthoringDraft) {
+        preserveSupplementalReferences(d)
         val bytes=encode(d);val sha=hash(bytes)
         require(history.isDirectory || history.mkdirs())
         val f=AtomicFile(File(history,"$sha.draft"))
@@ -82,6 +97,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         return File(documents,"${document.sha256}.source")
     }
     private fun requireSourceMode(d:NativeAuthoringDraft) {
+        preserveSupplementalReferences(d)
         val witness=AtomicFile(File(root,"outlined-source-${d.reconciliation.importedSourceSha256}.mode"))
         require(!witness.baseFile.exists() || d.outlinedReview!=null) {"This source requires its outlined-map review"}
         if(witness.baseFile.exists())require(witness.openRead().use {it.readBytes().toString(Charsets.UTF_8)}==d.reconciliation.importedSourceSha256) {"Source mode evidence changed"}
@@ -213,6 +229,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     fun register(id:String,mode:WorkspaceMode,expectedRevision:String):NativeRegistrationLedger.Registered {
         val d=requireNotNull(read(id,mode));require(d.revisionSha256==expectedRevision) {"Draft changed; review again"}
         requireSourceMode(d)
+        preserveSupplementalReferences(d)
         val prior=ledger.history(id,mode.name).lastOrNull()?.eventSha256
         val r=d.reconciliation.copy(author=d.reconciliation.author,reviewedAtUtc=Instant.now().truncatedTo(ChronoUnit.SECONDS).toString(),
             registrationId=UUID.randomUUID().toString(),predecessorEventSha256=prior,explicitAssignmentConfirmation=true,

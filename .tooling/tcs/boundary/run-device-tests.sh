@@ -10,6 +10,8 @@ adb shell wm dismiss-keyguard
 adb logcat -b crash -c
 timeout 600 adb shell am instrument -w -r -e class "$PKG.OutlinedImageInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/outlined-image.log 2>&1 || true
 timeout 600 adb shell am instrument -w -r -e class "$PKG.Phase6ImageInterpretationInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/outlined-colored-regression.log 2>&1 || true
+timeout 600 adb shell am instrument -w -r -e class "$PKG.OutlinedGroupReviewInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/outlined-group-review.log 2>&1 || true
+timeout 600 adb shell am instrument -w -r -e class "$PKG.SupplementalReferenceInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/supplemental-reference.log 2>&1 || true
 adb logcat -b crash -d > evidence/outlined-image-crash.log
 adb shell run-as "$PKG" ls files > evidence/outlined-capture-paths.txt
 while IFS= read -r path; do
@@ -20,8 +22,13 @@ done < evidence/outlined-capture-paths.txt
 python3 - <<'PY'
 from pathlib import Path
 import json
+supplemental=Path('evidence/supplemental-reference.log').read_text()
+assert 'OK (2 tests)' in supplemental,supplemental
 s=Path('evidence/outlined-image.log').read_text()
 assert 'OK (2 tests)' in s,s
+grouped=Path('evidence/outlined-group-review.log').read_text()
+assert 'OK (2 tests)' in grouped,grouped
+assert Path('evidence/outlined-group-a265-selected.png').stat().st_size>1000
 colored=Path('evidence/outlined-colored-regression.log').read_text()
 assert 'OK (1 test)' in colored,colored
 d=json.loads(Path('evidence/outlined-actual-source-analysis.json').read_text())
