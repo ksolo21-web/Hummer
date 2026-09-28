@@ -32,7 +32,7 @@ object OutlinedMapRoadExtractor {
             if(neutral[i]&&luminance[i]>=(if(interior[i])insideThreshold else outsideThreshold))proposed[i]=0xFF51C72B.toInt()
         }
         // Reuse only the neutral mask's geometric skeleton; its temporary color is not a work decision.
-        val geometry=MapImageDraftExtractor.extract(width,height,proposed,deduplicatedStreetText(text))
+        val geometry=MapImageDraftExtractor.extract(width,height,proposed,deduplicatedStreetText(text),retainShortSourcePaths=true)
         val roads=geometry.roads.map {r->OutlinedRoadProposal(r.copy(status="context"),relationship(r.points,boundary.polygon))}
         val findings=geometry.findings.toMutableList()
         if(roads.isEmpty())findings+=MapImageFinding("boundary-no-roads","No reliable visible roads were recovered inside the outlined area.",boundary.sourceBounds)

@@ -146,6 +146,9 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         if(previous!=null && previous.reconciliation.importedSourceSha256!=source.sha256) {
             require(!d.reconciliation.sourceCoverageComplete && d.reconciliation.segments.none {it.confirmed} && d.reconciliation.buildings.none {it.confirmed} && d.contacts.none {it.boundaryConfirmed}) {"Source changed; clear prior item and boundary confirmations before reconciling the replacement"}
         }
+        val outlinedWitness=AtomicFile(File(root,"outlined-source-${source.sha256}.mode"))
+        val previouslyOutlined=previous?.reconciliation?.importedSourceSha256==source.sha256 && previous.outlinedReview!=null
+        require((!outlinedWitness.baseFile.exists() && !previouslyOutlined) || d.outlinedReview!=null) {"This source requires its outlined-map review; it cannot be saved as a manual draft"}
         require(d.imageReview==null || d.outlinedReview==null)
         require((d.outlinedReview?.sha256 ?: d.imageReview?.sha256)==d.reconciliation.imageInterpretationSha256)
         d.outlinedReview?.let {require(it.sourceSha256==source.sha256)}
@@ -153,6 +156,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         val reset=d.copy(assignment=d.assignment.copy(authoritySha256="0".repeat(64)),reconciliation=d.reconciliation.copy(
             assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(d.assignment),explicitAssignmentConfirmation=false))
         previous?.let(::archive);archive(reset);preserveMap(id,source.sha256)
+        if(d.outlinedReview!=null)write(outlinedWitness,source.sha256.toByteArray(Charsets.UTF_8))
         write(file(id,mode),encode(reset));return requireNotNull(read(id,mode))
     }
     fun importContactSource(uri:Uri):NativeInventoryDocument {

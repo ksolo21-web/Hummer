@@ -56,21 +56,65 @@ data class OutlinedNativeReview(val document:String) {
     }
     fun confirmBoundary(confirmed:Boolean)=changed {it.put("boundaryConfirmed",confirmed)}
     fun reviewCandidate(id:String,disposition:OutlinedSpanDisposition,evidence:String,roads:List<RoadGeometry>):OutlinedNativeReview {
+        return reviewSpan(id,0.0,1.0,disposition,evidence,roads,if(disposition==OutlinedSpanDisposition.ROAD)id else null)
+    }
+    fun reviewSpan(id:String,from:Double,to:Double,disposition:OutlinedSpanDisposition,evidence:String,roads:List<RoadGeometry>,outputId:String?):OutlinedNativeReview {
         require(extraction.roads.any {it.road.id==id});require(evidence.trim().length in 8..2000)
-        val r=roads.firstOrNull {it.segmentId==id}
+        require(from.isFinite() && to.isFinite() && from>=0 && to<=1 && to>from)
+        val previous=spans.filterNot {it.candidateId==id && it.from==from && it.to==to}
+        require(previous.none {it.candidateId==id && maxOf(from,it.from)<minOf(to,it.to)}){"Clear the overlapping decision before replacing its source interval"}
+        val r=roads.firstOrNull {it.segmentId==outputId}
         require(disposition!=OutlinedSpanDisposition.ROAD || r!=null)
-        val span=OutlinedSourceSpan(id,0.0,1.0,disposition,if(disposition==OutlinedSpanDisposition.ROAD)id else null,
+        val span=OutlinedSourceSpan(id,from,to,disposition,if(disposition==OutlinedSpanDisposition.ROAD)outputId else null,
             evidence=evidence.trim(),reviewedOutputSha256=if(disposition==OutlinedSpanDisposition.ROAD)OutlinedCoverageContract.outputSha256(listOf(requireNotNull(r))) else "")
-        return changed {it.put("spans",JSONArray((spans.filterNot {v->v.candidateId==id}+span).map(::spanJson)))}
+        return changed {it.put("spans",JSONArray((previous+span).map(::spanJson)))}
+    }
+    fun clearCandidate(id:String,roads:List<RoadGeometry>):Pair<OutlinedNativeReview,List<RoadGeometry>> {
+        val outputs=spans.filter {it.candidateId==id}.mapNotNull {it.outputId}.toSet()
+        require(spans.none {it.candidateId!=id && it.outputId in outputs}){"This trace is part of a joined road; undo that join first"}
+        return changed {it.put("spans",JSONArray(spans.filterNot {s->s.candidateId==id}.map(::spanJson)))} to roads.filterNot {it.segmentId in outputs}
+    }
+    fun join(firstId:String,nextId:String,roads:List<RoadGeometry>):Pair<OutlinedNativeReview,List<RoadGeometry>> {
+        require(firstId!=nextId)
+        val a=requireNotNull(roads.firstOrNull {it.segmentId==firstId});val b=requireNotNull(roads.firstOrNull {it.segmentId==nextId})
+        fun same(x:Point2D,y:Point2D)=kotlin.math.hypot(x.x-y.x,x.y-y.y)<1e-7
+        val reverse=when {same(a.points.last(),b.points.first())->false;same(a.points.last(),b.points.last())->true;else->error("These roads do not share an exact endpoint. A gap needs separate source-backed geometry.")}
+        val bSide=if(reverse)when(b.insideSide){"left"->"right";"right"->"left";else->b.insideSide} else b.insideSide
+        require(a.name==b.name && a.normalizedName==b.normalizedName && a.status==b.status && a.role==b.role && a.insideSide==bSide && a.accessOnly==b.accessOnly && a.widthPt==b.widthPt){"Names and work instructions must agree before joining"}
+        val aSpans=spans.filter {it.outputId==firstId}.sortedBy {it.outputOrder}
+        var bSpans=spans.filter {it.outputId==nextId}.sortedBy {it.outputOrder}
+        require(aSpans.isNotEmpty()&&bSpans.isNotEmpty()){"Review both source traces first"}
+        require(aSpans.all {it.reviewedOutputSha256==OutlinedCoverageContract.outputSha256(listOf(a))} && bSpans.all {it.reviewedOutputSha256==OutlinedCoverageContract.outputSha256(listOf(b))}){"A road changed since its source review"}
+        if(reverse)bSpans=bSpans.reversed().map {it.copy(reversed=!it.reversed)}
+        val path=a.points+(if(reverse)b.points.reversed() else b.points).drop(1)
+        val id="joined-"+BundleIntegrity.sha256((firstId+"|"+nextId).byteInputStream()).take(16)
+        require(roads.none {it.segmentId==id})
+        val joined=a.copy(segmentId=id,points=path,endpointBKind=if(reverse)b.endpointAKind else b.endpointBKind)
+        val digest=OutlinedCoverageContract.outputSha256(listOf(joined))
+        val updated=(aSpans+bSpans).mapIndexed {i,s->s.copy(outputId=id,outputOrder=i,reviewedOutputSha256=digest,evidence=(s.evidence+"; exact continuation reviewed").take(2000))}
+        val review=changed {it.put("spans",JSONArray((spans.filterNot {s->s.outputId in setOf(firstId,nextId)}+updated).map(::spanJson)))}
+        val output=roads.filterNot {it.segmentId in setOf(firstId,nextId)}+joined
+        require(review.coverageFailures(output).none {it.endsWith(":$id")}){"Joined source coverage or work rules did not validate"}
+        return review to output
+    }
+    fun undoJoin(outputId:String,roads:List<RoadGeometry>):Pair<OutlinedNativeReview,List<RoadGeometry>> {
+        val linked=spans.filter {it.outputId==outputId};require(linked.size>1){"Choose a joined road"}
+        // Removes approval, not source evidence. The original source spans remain available to review.
+        return changed {it.put("spans",JSONArray(spans.filterNot {s->s.outputId==outputId}.map(::spanJson)))} to roads.filterNot {it.segmentId==outputId}
     }
     fun reviewFinding(id:String,kind:String,evidence:String,outputIds:List<String>,roads:List<RoadGeometry>):OutlinedNativeReview {
-        require(kind in RESOLUTIONS && evidence.trim().length in 8..2000)
+        require(kind in allowedResolutions(id) && evidence.trim().length in 8..2000)
         require(extraction.findings.any {it.id==id && it.sourceBounds!=null})
         val selected=outputIds.map {out->requireNotNull(roads.firstOrNull {it.segmentId==out})}
         require(if(kind=="MATCHED_ROAD")selected.isNotEmpty() else selected.isEmpty())
         val value=JSONObject().put("id",id).put("kind",kind).put("evidence",evidence.trim()).put("outputIds",JSONArray(outputIds))
             .put("outputSha256",OutlinedCoverageContract.outputSha256(selected))
         return changed {v->val a=v.getJSONArray("resolutions");v.put("resolutions",JSONArray((0 until a.length()).map {a.getJSONObject(it)}.filterNot {it.getString("id")==id}+value))}
+    }
+    fun allowedResolutions(id:String):Set<String> = when {
+        id.startsWith("component-")->setOf("OUTSIDE_CONTEXT")
+        id.startsWith("unmatched-label-")->setOf("OUTSIDE_CONTEXT")
+        else->emptySet()
     }
     fun coverageFailures(roads:List<RoadGeometry>):List<String> = OutlinedCoverageContract.assess(sourceSha256,extraction,transform,
         OutlinedCoverageDecision(root.getString("analysisSha256"),OutlinedCoverageContract.outputSha256(roads),boundaryConfirmed,spans),roads).failures
@@ -82,13 +126,11 @@ data class OutlinedNativeReview(val document:String) {
             if(candidate!=null && sourceSpans.isNotEmpty() && sourceSpans.all {s->s.disposition!=OutlinedSpanDisposition.ROAD || roads.any {it.segmentId==s.outputId && it.name.isNotBlank() && !it.name.startsWith("Unresolved road")}})false
             else {
                 val v=resolutions[f.id];val box=f.sourceBounds
-                if(v==null || box==null)true else {
+                if(v==null || box==null || v.getString("kind") !in allowedResolutions(f.id))true else {
                     val ids=v.getJSONArray("outputIds");val selected=(0 until ids.length()).mapNotNull {i->roads.firstOrNull {it.segmentId==ids.getString(i)}}
                     when(v.getString("kind")) {
-                        "MATCHED_ROAD"->selected.isEmpty() || selected.size!=ids.length() || v.getString("outputSha256")!=OutlinedCoverageContract.outputSha256(selected) ||
-                            selected.any {r->r.points.map(transform::source).none {p->p.x in box.left-40..box.right+40 && p.y in box.top-40..box.bottom+40}}
                         "OUTSIDE_CONTEXT"->!outside(box,extraction.boundary.polygon)
-                        else->false // Specific non-road classification with source-bound evidence, reviewed in the UI.
+                        else->ids.length()!=0 || !f.id.startsWith("component-")
                     }
                 }
             }

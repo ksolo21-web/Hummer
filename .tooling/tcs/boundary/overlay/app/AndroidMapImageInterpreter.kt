@@ -113,7 +113,7 @@ class AndroidMapImageInterpreter {
                 val rotated=if(inputKind==MapImageInputKind.OUTLINED_AREA)listOf(90,270).flatMap {recognized(it)} else if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))MapImageDraftExtractor.numericOcrRegions(source.width,source.height,pixels).flatMap {region->listOf(0,90,270).flatMap {rotation->recognized(rotation,region)}} else emptyList()
                 val enhanced=outlinedBoundary?.let {b->
                     val box=b.sourceBounds
-                    val region=AxisAlignedRect(max(0.0,box.left-16),max(0.0,box.top-16),min(source.width.toDouble(),box.right+16),min(source.height.toDouble(),box.bottom+16))
+                    val region=AxisAlignedRect(max(0.0,box.left-80),max(0.0,box.top-80),min(source.width.toDouble(),box.right+80),min(source.height.toDouble(),box.bottom+80))
                     listOf(0,90,270).flatMap {recognized(it,region,true)}
                 }.orEmpty()
                 normal+rotated+enhanced

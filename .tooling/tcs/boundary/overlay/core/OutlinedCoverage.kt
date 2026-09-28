@@ -159,7 +159,7 @@ object OutlinedCoverageContract {
                 val exact=runCatching {exactRelations(path,e.boundary.polygon)}.getOrNull()
                 if(exact==null)errors+="INVALID_SOURCE_PATH:$id"
                 if(road.status=="green" && exact!=setOf("inside"))errors+="WORKED_PATH_NOT_INTERIOR:$id"
-                if(road.status=="yellow" && (relation!=BoundaryRoadRelation.BOUNDARY_FOLLOWING || inwardSide(path,e.boundary.polygon)!=road.insideSide))errors+="WORKED_SIDE_NOT_VERIFIED:$id"
+                if(road.status=="yellow" && (relation!=BoundaryRoadRelation.BOUNDARY_FOLLOWING || exact!=setOf("boundary") || inwardSide(path,e.boundary.polygon)!=road.insideSide))errors+="WORKED_SIDE_NOT_VERIFIED:$id"
                 if(relation==BoundaryRoadRelation.CROSSING && road.status in setOf("green","yellow"))errors+="UNSPLIT_WORK_CROSSING:$id"
                 if(relation==BoundaryRoadRelation.EXTERIOR && road.status in setOf("green","yellow"))errors+="EXTERIOR_WORK_CONFLICT:$id"
                 if(relation==BoundaryRoadRelation.BOUNDARY_FOLLOWING && road.status=="green")errors+="BOUNDARY_BOTH_SIDES_CONFLICT:$id"

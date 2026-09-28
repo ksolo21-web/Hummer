@@ -108,5 +108,11 @@ class OutlinedCoverageTest {
     @Test fun degenerateOutsideGeometryReturnsBlockingFinding() {
         val q=proposal("q",listOf(Point2D(0.0,0.0),Point2D(0.0,0.0)))
         assertFalse(assess(extraction(q),emptyList(),listOf(span("q",0.0,1.0,null,kind=OutlinedSpanDisposition.OUTSIDE_CONTEXT))).passed)
+    } 
+    @Test fun yellowCannotHideBriefExcursionWithinPixelTolerance() {
+        val q=proposal("q",listOf(Point2D(10.0,10.0),Point2D(49.0,10.0),Point2D(50.0,9.5),Point2D(51.0,10.0),Point2D(90.0,10.0)))
+        val r=road("r",q.road.points).copy(status="yellow",role="perimeter",insideSide="right")
+        assertTrue(assess(extraction(q),listOf(r),listOf(span("q",0.0,1.0,"r"))).failures.any {it.startsWith("WORKED_SIDE_NOT_VERIFIED")})
     }
+
 }
