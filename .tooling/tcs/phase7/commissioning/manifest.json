@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "sourceBaseline": "411dc2af5b5aa514f379d204b91022821eb6dca7",
-  "patchSha256": "f9cd08676a85c36ceffa174a7f9974685af728c6a00e182214b13032f48fa13f",
+  "patchSha256": "761f180863d033674a7a9776e459148cf495ff02c859bda0f644a11872a891f0",
   "files": [
     {
       "path": "core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt",
@@ -61,12 +61,17 @@
     {
       "path": "app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt",
       "before": "d5b3ca57720879dd02bbc1efa942fb24b9cb9b1051839b807f5661ebd8c94752",
-      "after": "852af226072252c0f82f2ac3d71fcdeb9f4f38038d37b10bae5693af0838f2cc"
+      "after": "28e1591157b10712f54a588bc6296633b32f277b7baaf18ec04299cf29b9795e"
     },
     {
       "path": "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt",
       "before": null,
       "after": "26c68066a7bd3cbc3fab1ca0e7161c81d515e34e1f42604ab85acd93bf04df20"
+    },
+    {
+      "path": "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7A265CandidateInstrumentationTest.kt",
+      "before": null,
+      "after": "1a330af09bd2dc11ae3b6d8265bcd7c610e2fa7f9ada1bcb7acba2ba0c7d076d"
     }
   ],
   "patches": [
@@ -101,6 +106,10 @@
     {
       "name": "08.patch",
       "sha256": "204ad54d41a06e15b034ff607e4ed1b1d740fd755d6592d0caad8bd354990a5f"
+    },
+    {
+      "name": "09.patch",
+      "sha256": "0c00924498eaadcc009766310ff32840c94ae97191de5a93da65bc9c9c5e442e"
     }
   ]
 }
