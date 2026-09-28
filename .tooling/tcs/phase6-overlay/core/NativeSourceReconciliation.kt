@@ -187,10 +187,10 @@ object NativeSourceReconciliationContract {
             "buildings" to JsonValue.Arr(r.buildings.map { obj("buildingId" to s(it.buildingId),
                 "sourceMembers" to JsonValue.Arr(it.sourceMembers.map(::s)), "assigned" to b(it.assigned),
                 "evidenceNote" to s(it.evidenceNote), "confirmed" to b(it.confirmed)).let { building ->
-                    it.supplementalReference?.let { ref -> JsonValue.Obj(building.values + ("supplementalReference" to obj(
+                    it.supplementalReference?.let { ref -> JsonValue.Obj(LinkedHashMap(building.values + ("supplementalReference" to obj(
                         "referenceSha256" to s(ref.referenceSha256), "currentSourceSha256" to s(ref.currentSourceSha256),
                         "buildingContentSha256" to s(ref.buildingContentSha256), "referenceLocation" to s(ref.referenceLocation),
-                        "correspondenceEvidence" to s(ref.correspondenceEvidence), "confirmed" to b(ref.confirmed)))) } ?: building
+                        "correspondenceEvidence" to s(ref.correspondenceEvidence), "confirmed" to b(ref.confirmed))))) } ?: building
                 } }))
         return canonical(root).toByteArray(Charsets.UTF_8).also { require(it.size <= MAX_BYTES) }
     }
