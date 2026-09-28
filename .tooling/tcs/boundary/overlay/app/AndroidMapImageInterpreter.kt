@@ -76,14 +76,22 @@ class AndroidMapImageInterpreter {
         val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
         var inFlight:com.google.android.gms.tasks.Task<com.google.mlkit.vision.text.Text>?=null
         try {
+            val outlinedBoundary=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapBoundaryDetector.detect(source.width,source.height,pixels) else null
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
-                fun recognized(rotation:Int,region:AxisAlignedRect?=null):List<MapImageText> {
+                fun recognized(rotation:Int,region:AxisAlignedRect?=null,highContrast:Boolean=false):List<MapImageText> {
                     val left=region?.left?.toInt() ?: 0;val top=region?.top?.toInt() ?: 0
                     val width=region?.let {(it.right-it.left).toInt()} ?: source.width
                     val height=region?.let {(it.bottom-it.top).toInt()} ?: source.height
                     val scale=if(region==null && rotation==0)if(inputKind==MapImageInputKind.OUTLINED_AREA)2.0 else 1.0 else 3.0
-                    val bitmap=if(scale==1.0)source else Bitmap.createBitmap(source,left,top,width,height,Matrix().apply {postScale(scale.toFloat(),scale.toFloat());postRotate(rotation.toFloat())},true)
+                    var bitmap=if(scale==1.0)source else Bitmap.createBitmap(source,left,top,width,height,Matrix().apply {postScale(scale.toFloat(),scale.toFloat());postRotate(rotation.toFloat())},true)
+                    if(highContrast) {
+                        require(bitmap!==source)
+                        val mutable=requireNotNull(bitmap.copy(Bitmap.Config.ARGB_8888,true));if(mutable!==bitmap)bitmap.recycle();bitmap=mutable
+                        val enhanced=IntArray(bitmap.width*bitmap.height);bitmap.getPixels(enhanced,0,bitmap.width,0,0,bitmap.width,bitmap.height)
+                        for(i in enhanced.indices){val p=enhanced[i];val gray=(((p ushr 16)and 255)+((p ushr 8)and 255)+(p and 255))/3;enhanced[i]=if(gray<150)0xFF000000.toInt() else 0xFFFFFFFF.toInt()}
+                        bitmap.setPixels(enhanced,0,bitmap.width,0,0,bitmap.width,bitmap.height)
+                    }
                     val task=recognizer.process(InputImage.fromBitmap(bitmap,0))
                     inFlight=task
                     // Timeout does not cancel ML Kit. Release its bitmap only after completion.
@@ -98,12 +106,17 @@ class AndroidMapImageInterpreter {
                     return result.textBlocks.flatMap {block->block.lines.flatMap {line->
                         val pieces=if(line.elements.size>1 && line.elements.all {numeric.matches(it.text)})line.elements.mapNotNull {e->e.boundingBox?.let {MapImageText(e.text,box(it))}}
                             else listOfNotNull(line.boundingBox?.let {MapImageText(line.text,box(it))})
-                        pieces.filter {(rotation==0 && region==null) || numeric.matches(it.text) || inputKind==MapImageInputKind.OUTLINED_AREA && MapImageDraftExtractor.streetText(it.text)!=null}
+                        pieces.filter {(rotation==0 && region==null) || numeric.matches(it.text) || inputKind==MapImageInputKind.OUTLINED_AREA}
                     }}
                 }
                 val normal=recognized(0)
                 val rotated=if(inputKind==MapImageInputKind.OUTLINED_AREA)listOf(90,270).flatMap {recognized(it)} else if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))MapImageDraftExtractor.numericOcrRegions(source.width,source.height,pixels).flatMap {region->listOf(0,90,270).flatMap {rotation->recognized(rotation,region)}} else emptyList()
-                normal+rotated
+                val enhanced=outlinedBoundary?.let {b->
+                    val box=b.sourceBounds
+                    val region=AxisAlignedRect(max(0.0,box.left-16),max(0.0,box.top-16),min(source.width.toDouble(),box.right+16),min(source.height.toDouble(),box.bottom+16))
+                    listOf(0,90,270).flatMap {recognized(it,region,true)}
+                }.orEmpty()
+                normal+rotated+enhanced
             } finally {
                 val pending=inFlight
                 if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {recognizer.close()}

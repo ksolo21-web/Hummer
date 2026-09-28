@@ -31,6 +31,22 @@ class OutlinedImageInstrumentationTest {
             assertEquals(1079,outline.boundary.width);assertEquals(547,outline.boundary.height)
             assertTrue(outline.boundary.enclosedPixels in 48000..51000)
             assertTrue(result.roads.isNotEmpty());assertTrue(result.roads.all {it.status=="context" && it.role=="context"})
+            val pending=OutlinedNativeReview.from(result)
+            assertEquals(pending,OutlinedNativeReview(pending.document))
+            assertFalse("Unreviewed picture must not authorize registration",pending.complete(result.roads))
+            val boundaryReviewed=pending.confirmBoundary(true)
+            assertNotEquals(pending.sha256,boundaryReviewed.sha256)
+            assertFalse("Boundary confirmation cannot resolve roads",boundaryReviewed.complete(result.roads))
+            Phase6NativeFixture(WorkspaceMode.REGULAR).use {x->
+                val imported=x.sources.importFromStream(x.slot,"outlined-source.jpg","image/jpeg",file.inputStream())
+                val a=CurrentAuthoritativeAssignmentState(x.id,x.identity,x.identity.canonicalFilename,x.kb.revision,"current_authoritative_assignment","0".repeat(64),imported.sourceFilename,"Rochester","9/28/2026",listOf("Directions: Synthetic review only; not for field use."),"full_map",x.slot.housingType,RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,result.roads,emptyList())
+                val reconciliation=NativeSourceReconciliation(x.id,x.mode.name,x.kb.revision,hash,x.slot.referenceSha256,"current_assignment_map","Synthetic reviewer","2026-09-28T15:00:00Z",NativeSourceReconciliationContract.assignmentContentSha256(a),null,false,false,false,false,result.observations,emptyList(),"00000000-0000-0000-0000-000000000010",null,boundaryReviewed.sha256)
+                val saved=x.drafts.save(NativeAuthoringDraft(a,reconciliation,VerificationJurisdiction("Oakland County","Michigan","United States"),emptyList(),outlinedReview=boundaryReviewed),null)
+                val reloaded=AndroidNativeDraftStore(x.app,x.kb,x.sources,File(x.root,"native")).read(x.id,x.mode)
+                assertEquals(saved,reloaded);assertEquals(boundaryReviewed,reloaded?.outlinedReview)
+                assertTrue("Unresolved outlined source registered",runCatching {x.drafts.register(x.id,x.mode,saved.revisionSha256)}.isFailure)
+                File(context.filesDir,"outlined-persistence-evidence.json").writeText(JSONObject().put("draftSha256",saved.revisionSha256).put("reviewSha256",boundaryReviewed.sha256).put("reloadMatched",saved==reloaded).put("unresolvedRegistrationBlocked",true).toString(2))
+            }
             assertTrue("Vertical Alice Ave was not read",result.recognizedText.any {it.text.contains("Alice",true) && it.text.contains("Ave",true)})
             assertTrue("Vertical Taylor Ave was not read",result.recognizedText.any {it.text.contains("Taylor",true) && it.text.contains("Ave",true)})
         } finally {file.delete()}

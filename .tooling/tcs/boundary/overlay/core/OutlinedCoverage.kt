@@ -63,6 +63,48 @@ object OutlinedCoverageContract {
         require(result.size>=2);return result
     }
     private fun same(a:Point2D,b:Point2D)=hypot(a.x-b.x,a.y-b.y)<=EPS
+    /** Exact positive-length interval classification. Pixel tolerance is only for proposals. */
+    fun exactRelations(path:List<Point2D>,polygon:List<Point2D>):Set<String> {
+        val result=mutableSetOf<String>()
+        fun cross(a:Point2D,b:Point2D)=a.x*b.y-a.y*b.x
+        fun minus(a:Point2D,b:Point2D)=Point2D(a.x-b.x,a.y-b.y)
+        fun boundary(p:Point2D)= (polygon+polygon.first()).zipWithNext().any {(a,b)->
+            val d=minus(b,a);val q=minus(p,a);val length=hypot(d.x,d.y)
+            length>EPS && abs(cross(d,q))/length<=EPS && q.x*d.x+q.y*d.y>=-EPS && q.x*d.x+q.y*d.y<=length*length+EPS
+        }
+        for((a,b) in path.zipWithNext()) {
+            val d=minus(b,a);val length2=d.x*d.x+d.y*d.y
+            require(length2>EPS*EPS && length2.isFinite())
+            val cuts=mutableListOf(0.0,1.0)
+            for((u,v) in (polygon+polygon.first()).zipWithNext()) {
+                val edge=minus(v,u);val q=minus(u,a);val denominator=cross(d,edge)
+                if(abs(denominator)>EPS) {
+                    val t=cross(q,edge)/denominator;val s=cross(q,d)/denominator
+                    if(t in 0.0..1.0 && s in 0.0..1.0)cuts+=t
+                } else if(abs(cross(q,d))<=EPS) {
+                    for(p in listOf(u,v)){val x=minus(p,a);val t=(x.x*d.x+x.y*d.y)/length2;if(t in 0.0..1.0)cuts+=t}
+                }
+            }
+            for((lo,hi) in cuts.sorted().zipWithNext())if(hi-lo>EPS) {
+                val t=(lo+hi)/2;val p=Point2D(a.x+d.x*t,a.y+d.y*t)
+                result+=if(boundary(p))"boundary" else if(OutlinedMapBoundaryDetector.inside(p,polygon))"inside" else "outside"
+            }
+        }
+        return result
+    }
+    /** Screen-coordinate left is north when traversing an eastbound line. */
+    fun inwardSide(path:List<Point2D>,polygon:List<Point2D>):String? {
+        val sides=path.zipWithNext().map {(a,b)->
+            val dx=b.x-a.x;val dy=b.y-a.y;val length=hypot(dx,dy);if(length<=EPS)return null
+            val m=Point2D((a.x+b.x)/2,(a.y+b.y)/2)
+            val left=Point2D(m.x+8*dy/length,m.y-8*dx/length)
+            val right=Point2D(m.x-8*dy/length,m.y+8*dx/length)
+            val l=OutlinedMapBoundaryDetector.inside(left,polygon);val r=OutlinedMapBoundaryDetector.inside(right,polygon)
+            if(l==r)return null
+            if(l)"left" else "right"
+        }.toSet()
+        return sides.singleOrNull()
+    }
     fun assess(sourceSha256:String,e:OutlinedMapExtraction,t:OutlinedMapTransform,
         decision:OutlinedCoverageDecision,roads:List<RoadGeometry>):OutlinedCoverageResult {
         val errors=mutableListOf<String>()
@@ -89,9 +131,10 @@ object OutlinedCoverageContract {
                 }
                 else {
                     if(s.outputId!=null || s.reversed || s.outputOrder!=0 || s.reviewedOutputSha256.isNotEmpty())errors+="OMISSION_HAS_OUTPUT:$id"
-                    if(s.disposition==OutlinedSpanDisposition.OUTSIDE_CONTEXT &&
-                        OutlinedMapRoadExtractor.relationship(slice(proposal.road.points,s.from,s.to),e.boundary.polygon)!=BoundaryRoadRelation.EXTERIOR)
-                        errors+="NONEXTERIOR_CONTEXT_OMISSION:$id"
+                    if(s.disposition==OutlinedSpanDisposition.OUTSIDE_CONTEXT) {
+                        val relations=runCatching {exactRelations(slice(proposal.road.points,s.from,s.to),e.boundary.polygon)}.getOrNull()
+                        if(relations!=setOf("outside"))errors+="NONEXTERIOR_CONTEXT_OMISSION:$id"
+                    }
                 }
             }
             if(abs(end-1.0)>EPS)errors+="SPAN_GAP_OR_OVERLAP:$id"
@@ -113,6 +156,10 @@ object OutlinedCoverageContract {
             if(road.points.any {it.x !in 176.0..747.0 || it.y !in 20.0..363.0})errors+="OUTPUT_OUTSIDE_MAP:$id"
             if(path.size>=2) {
                 val relation=OutlinedMapRoadExtractor.relationship(path,e.boundary.polygon)
+                val exact=runCatching {exactRelations(path,e.boundary.polygon)}.getOrNull()
+                if(exact==null)errors+="INVALID_SOURCE_PATH:$id"
+                if(road.status=="green" && exact!=setOf("inside"))errors+="WORKED_PATH_NOT_INTERIOR:$id"
+                if(road.status=="yellow" && (relation!=BoundaryRoadRelation.BOUNDARY_FOLLOWING || inwardSide(path,e.boundary.polygon)!=road.insideSide))errors+="WORKED_SIDE_NOT_VERIFIED:$id"
                 if(relation==BoundaryRoadRelation.CROSSING && road.status in setOf("green","yellow"))errors+="UNSPLIT_WORK_CROSSING:$id"
                 if(relation==BoundaryRoadRelation.EXTERIOR && road.status in setOf("green","yellow"))errors+="EXTERIOR_WORK_CONFLICT:$id"
                 if(relation==BoundaryRoadRelation.BOUNDARY_FOLLOWING && road.status=="green")errors+="BOUNDARY_BOTH_SIDES_CONFLICT:$id"

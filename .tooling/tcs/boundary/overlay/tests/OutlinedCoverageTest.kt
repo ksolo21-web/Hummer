@@ -19,6 +19,17 @@ class OutlinedCoverageTest {
         spans.map {s->s.copy(reviewedOutputSha256=roads.firstOrNull {it.segmentId==s.outputId}?.let {OutlinedCoverageContract.outputSha256(listOf(it))}.orEmpty())})
     private fun assess(e:OutlinedMapExtraction,roads:List<RoadGeometry>,spans:List<OutlinedSourceSpan>)=
         OutlinedCoverageContract.assess(source,e,transform,review(e,roads,spans),roads)
+    @Test fun neutralContextIsRenderedWithoutAWorkColor() {
+        val root=generateSequence(java.io.File(System.getProperty("user.dir")).absoluteFile){it.parentFile}.first {java.io.File(it,"app/src/main/assets/territory").isDirectory}
+        val template=java.io.File(root,"app/src/main/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
+        val original=CandidatePdfRendererTest.syntheticFixtureSpec()
+        val spec=original.copy(roads=original.roads.map {it.copy(status=PdfRoadStatus.CONTEXT_ONLY)})
+        val rendered=CandidatePdfRenderer.renderNonFieldFixture(template,spec)
+        assertTrue(rendered.exactValidation.passed)
+        assertNotEquals(original.canonicalSha256(),spec.canonicalSha256())
+        assertEquals("#858B94",PdfRoadStatus.CONTEXT_ONLY.hex)
+        java.io.File(root.parentFile,"evidence/outlined-neutral-context.pdf").apply {parentFile.mkdirs()}.writeBytes(rendered.pdfBytes)
+    }
     @Test fun completeSplitAccountsForEverySourceInterval() {
         val e=extraction(p);val roads=listOf(road("a",OutlinedCoverageContract.slice(p.road.points,0.0,0.5)),road("b",OutlinedCoverageContract.slice(p.road.points,0.5,1.0)))
         assertTrue(assess(e,roads,listOf(span("source-a",0.0,0.5,"a"),span("source-a",0.5,1.0,"b"))).passed)
@@ -69,5 +80,33 @@ class OutlinedCoverageTest {
     @Test fun changedGeometryCannotPassWithRefreshedOutputDigest() {
         val e=extraction(p);val r=road("a",p.road.points.map {it.copy(y=it.y+2)})
         assertTrue(assess(e,listOf(r),listOf(span("source-a",0.0,1.0,"a"))).failures.any {it.startsWith("SOURCE_OUTPUT_GEOMETRY_MISMATCH")})
+    }
+    @Test fun boundaryToleranceCannotAuthorizeExteriorWork() {
+        for(x in listOf(8.0,9.999,10.0)) {
+            val q=proposal("q",listOf(Point2D(x,50.0),Point2D(50.0,50.0)))
+            val result=assess(extraction(q),listOf(road("r",q.road.points)),listOf(span("q",0.0,1.0,"r")))
+            assertEquals(x==10.0,result.passed,result.failures.toString())
+        }
+    }
+    @Test fun yellowSideMustFacePolygonAndReverseWithGeometry() {
+        val q=proposal("q",listOf(Point2D(10.0,10.0),Point2D(90.0,10.0)))
+        val e=extraction(q)
+        for(reverse in listOf(false,true)) {
+            val points=if(reverse)q.road.points.reversed() else q.road.points
+            for(side in listOf("left","right")) {
+                val r=road("r",points).copy(status="yellow",role="perimeter",insideSide=side)
+                assertEquals(side==(if(reverse)"left" else "right"),assess(e,listOf(r),listOf(span("q",0.0,1.0,"r",reverse=reverse))).passed)
+            }
+        }
+    }
+    @Test fun aggregateRefreshCannotRenewAStaleIndividualRoadReview() {
+        val e=extraction(p);val roads=listOf(road("r",p.road.points));val old=review(e,roads,listOf(span("source-a",0.0,1.0,"r")))
+        val edited=roads.map {it.copy(name="Renamed Rd",normalizedName="renamed rd")}
+        val refreshed=old.copy(outputSha256=OutlinedCoverageContract.outputSha256(edited))
+        assertTrue(OutlinedCoverageContract.assess(source,e,transform,refreshed,edited).failures.any {it.startsWith("SPAN_OUTPUT_REVIEW_CHANGED")})
+    }
+    @Test fun degenerateOutsideGeometryReturnsBlockingFinding() {
+        val q=proposal("q",listOf(Point2D(0.0,0.0),Point2D(0.0,0.0)))
+        assertFalse(assess(extraction(q),emptyList(),listOf(span("q",0.0,1.0,null,kind=OutlinedSpanDisposition.OUTSIDE_CONTEXT))).passed)
     }
 }

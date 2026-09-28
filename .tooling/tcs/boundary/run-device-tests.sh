@@ -10,7 +10,12 @@ adb shell wm dismiss-keyguard
 adb logcat -b crash -c
 timeout 300 adb shell am instrument -w -r -e class "$PKG.OutlinedImageInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/outlined-image.log 2>&1 || true
 adb logcat -b crash -d > evidence/outlined-image-crash.log
-adb exec-out run-as "$PKG" cat files/outlined-actual-source-analysis.json > evidence/outlined-actual-source-analysis.json
+adb shell run-as "$PKG" ls files > evidence/outlined-capture-paths.txt
+while IFS= read -r path; do
+ path="${path//$'\r'/}"
+ [[ "$path" == outlined-* ]] || continue
+ adb exec-out run-as "$PKG" cat "files/$path" > "evidence/${path##*/}"
+done < evidence/outlined-capture-paths.txt
 python3 - <<'PY'
 from pathlib import Path
 import json

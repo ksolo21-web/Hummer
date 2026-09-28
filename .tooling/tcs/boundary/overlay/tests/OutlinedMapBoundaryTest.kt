@@ -6,6 +6,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
 class OutlinedMapBoundaryTest {
+    @Test fun repeatedOcrPassesDoNotCreateFalseNameAmbiguity() {
+        val box=AxisAlignedRect(20.0,30.0,70.0,42.0)
+        val a=MapImageText("W University Dr",box)
+        val same=MapImageText("WUniversity Dr",AxisAlignedRect(21.0,31.0,71.0,43.0))
+        val conflict=MapImageText("W Universal Dr",box)
+        val separate=MapImageText("W University Dr",AxisAlignedRect(120.0,30.0,170.0,42.0))
+        assertEquals(listOf(a,conflict,separate),OutlinedMapRoadExtractor.deduplicatedStreetText(listOf(a,same,conflict,separate)))
+    }
     private val root=generateSequence(File(System.getProperty("user.dir")).absoluteFile){it.parentFile}.first {File(it,"app/src/main/assets/territory").isDirectory}
     private fun source()=ImageIO.read(File(root,"core/src/test/resources/boundary/source-26435.jpg"))
     @Test fun exactUserMapPreservesConcaveOutlineAndNarrowStem() {

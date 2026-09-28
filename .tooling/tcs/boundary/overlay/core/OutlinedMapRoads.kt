@@ -32,11 +32,23 @@ object OutlinedMapRoadExtractor {
             if(neutral[i]&&luminance[i]>=(if(interior[i])insideThreshold else outsideThreshold))proposed[i]=0xFF51C72B.toInt()
         }
         // Reuse only the neutral mask's geometric skeleton; its temporary color is not a work decision.
-        val geometry=MapImageDraftExtractor.extract(width,height,proposed,text.filter {MapImageDraftExtractor.streetText(it.text)!=null})
+        val geometry=MapImageDraftExtractor.extract(width,height,proposed,deduplicatedStreetText(text))
         val roads=geometry.roads.map {r->OutlinedRoadProposal(r.copy(status="context"),relationship(r.points,boundary.polygon))}
         val findings=geometry.findings.toMutableList()
         if(roads.isEmpty())findings+=MapImageFinding("boundary-no-roads","No reliable visible roads were recovered inside the outlined area.",boundary.sourceBounds)
         return OutlinedMapExtraction(boundary,roads,findings)
+    }
+    /** Repeated OCR passes at the same source label are one observation, not competing names.
+     * Different readings remain separate and therefore ambiguous. */
+    fun deduplicatedStreetText(text:List<MapImageText>):List<MapImageText> {
+        val result=mutableListOf<MapImageText>()
+        for(t in text.filter {MapImageDraftExtractor.streetText(it.text)!=null}) {
+            fun key(s:String)=s.lowercase().filterNot(Char::isWhitespace)
+            val b=t.bounds;val cx=(b.left+b.right)/2;val cy=(b.top+b.bottom)/2
+            val duplicate=result.any {r->val a=r.bounds;key(r.text)==key(t.text) && hypot((a.left+a.right)/2-cx,(a.top+a.bottom)/2-cy)<=15.0}
+            if(!duplicate)result+=t
+        }
+        return result
     }
     fun relationship(points:List<Point2D>,polygon:List<Point2D>):BoundaryRoadRelation {
         require(points.size>=2&&polygon.size>=3)
