@@ -98,4 +98,13 @@ class OutlinedMapBoundaryTest {
         val w=300;val h=200;val p=IntArray(w*h){when(it%w/75){0->0xFF51C72B.toInt();1->0xFFFF1435.toInt();2->0xFF22CCFF.toInt();else->0xFFFFDC18.toInt()}}
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
     }
+    @Test fun streetNamesRequireAlignedNearbyGeometry() {
+        val alice=MapImageText("N Alice Ave",AxisAlignedRect(572.0,116.0,583.0,170.0))
+        val taylor=MapImageText("Taylor Ave",AxisAlignedRect(682.0,52.0,693.0,96.0))
+        assertNull(OutlinedMapRoadExtractor.alignedStreetName(listOf(Point2D(556.0,173.0),Point2D(623.0,173.0)),listOf(alice)))
+        assertNull(OutlinedMapRoadExtractor.alignedStreetName(listOf(Point2D(644.0,67.0),Point2D(655.0,68.0),Point2D(655.0,83.0),Point2D(629.0,84.0)),listOf(taylor)))
+        assertEquals("N Alice Ave",OutlinedMapRoadExtractor.alignedStreetName(listOf(Point2D(576.0,100.0),Point2D(576.0,175.0)),listOf(alice)))
+        assertEquals("Taylor Ave",OutlinedMapRoadExtractor.alignedStreetName(listOf(Point2D(687.0,40.0),Point2D(687.0,105.0)),listOf(taylor)))
+    }
+
 }

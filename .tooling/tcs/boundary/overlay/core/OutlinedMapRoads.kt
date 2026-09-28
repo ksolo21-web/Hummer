@@ -32,11 +32,43 @@ object OutlinedMapRoadExtractor {
             if(neutral[i]&&luminance[i]>=(if(interior[i])insideThreshold else outsideThreshold))proposed[i]=0xFF51C72B.toInt()
         }
         // Reuse only the neutral mask's geometric skeleton; its temporary color is not a work decision.
-        val geometry=MapImageDraftExtractor.extract(width,height,proposed,deduplicatedStreetText(text),retainShortSourcePaths=true)
-        val roads=geometry.roads.map {r->OutlinedRoadProposal(r.copy(status="context"),relationship(r.points,boundary.polygon))}
-        val findings=geometry.findings.toMutableList()
+        val labels=deduplicatedStreetText(text)
+        val geometry=MapImageDraftExtractor.extract(width,height,proposed,labels,retainShortSourcePaths=true)
+        val roads=geometry.roads.map {r->OutlinedRoadProposal(r.copy(name=alignedStreetName(r.points,labels),status="context"),relationship(r.points,boundary.polygon))}
+        val findings=geometry.findings.filterNot {it.id.startsWith("name-") || it.id.startsWith("unmatched-label-")}.toMutableList()
+        for(p in roads)if(p.road.name==null) {
+            val r=p.road;val index=r.id.removePrefix("image-road-").toInt()-1
+            findings+=MapImageFinding("name-$index","Confirm this road name against its source; no unique aligned street label was recovered.",AxisAlignedRect(r.points.minOf {it.x},r.points.minOf {it.y},r.points.maxOf {it.x}+1,r.points.maxOf {it.y}+1))
+        }
+        labels.forEachIndexed {i,label->
+            if(roads.none {it.road.name!=null && alignedStreetName(it.road.points,listOf(label))?.let {name->name.filterNot(Char::isWhitespace).equals(it.road.name?.filterNot(Char::isWhitespace),true)}==true})
+                findings+=MapImageFinding("unmatched-label-$i","No aligned road geometry was recovered for ${label.text}; check the source.",label.bounds)
+        }
         if(roads.isEmpty())findings+=MapImageFinding("boundary-no-roads","No reliable visible roads were recovered inside the outlined area.",boundary.sourceBounds)
         return OutlinedMapExtraction(boundary,roads,findings)
+    }
+    /** OCR text is a proposal only when its orientation and source location agree with a road.
+     * Nearby labels on a perpendicular street or across a block cannot supply its name. */
+    fun alignedStreetName(points:List<Point2D>,text:List<MapImageText>):String? {
+        val names=text.mapNotNull {label->
+            val name=MapImageDraftExtractor.streetText(label.text) ?: return@mapNotNull null
+            val box=label.bounds;val width=box.right-box.left;val height=box.bottom-box.top
+            if(max(width,height)<min(width,height)*1.5)return@mapNotNull null
+            val horizontal=width>=height;val cx=(box.left+box.right)/2;val cy=(box.top+box.bottom)/2
+            val aligned=points.zipWithNext().any {(a,b)->
+                val dx=b.x-a.x;val dy=b.y-a.y;val length=hypot(dx,dy)
+                if(length<5 || abs(if(horizontal)dx else dy)/length<0.9)false else {
+                    val perpendicular=abs(dy*cx-dx*cy+b.x*a.y-b.y*a.x)/length
+                    val start=if(horizontal)min(a.x,b.x) else min(a.y,b.y)
+                    val end=if(horizontal)max(a.x,b.x) else max(a.y,b.y)
+                    val labelStart=if(horizontal)box.left else box.top
+                    val labelEnd=if(horizontal)box.right else box.bottom
+                    perpendicular<=8.0 && max(0.0,max(start-labelEnd,labelStart-end))<=8.0
+                }
+            }
+            if(aligned)name else null
+        }.groupBy {it.lowercase().filterNot(Char::isWhitespace)}
+        return names.values.singleOrNull()?.maxByOrNull {it.length}
     }
     /** Repeated OCR passes at the same source label are one observation, not competing names.
      * Different readings remain separate and therefore ambiguous. */
