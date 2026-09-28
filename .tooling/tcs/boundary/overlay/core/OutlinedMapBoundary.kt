@@ -40,10 +40,11 @@ object OutlinedMapBoundaryDetector {
                     val next=outgoing.removeAt(0);if(outgoing.isEmpty())edges.remove(v);v=next
                 }while(v!=first&&loop.size<=pixels.size*4)
                 if(v==first&&loop.size>=3)loops+=loop}
-            val outer=loops.maxByOrNull(::area) ?: continue
+            require(loops.size==1){"Connected multiple enclosures or interior holes need explicit boundary review."}
+            val outer=loops.single()
             val polygon=simplify(outer+outer.first(),1.0).dropLast(1)
             require(polygon.size in 3..2048){"Boundary complexity needs a clearer source."}
-            require(area(polygon)>=count*0.95){"Boundary simplification lost source coverage."}
+            require(abs(area(polygon)-count)<=max(8.0,count*0.005)){"Boundary simplification changed source coverage."}
             candidates+=OutlinedMapBoundary(width,height,polygon,count,AxisAlignedRect(left.toDouble(),top.toDouble(),right+1.0,bottom+1.0))
         }
         require(candidates.size==1){if(candidates.isEmpty())"No single closed black boundary was recovered. Use a clearer, complete outlined-area map." else "Several closed black boundaries were found. Select a map containing one territory."}

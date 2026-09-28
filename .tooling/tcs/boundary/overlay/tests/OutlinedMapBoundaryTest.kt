@@ -54,6 +54,15 @@ class OutlinedMapBoundaryTest {
         p.fill(0xFFDDDDDD.toInt());rect(0,20,170,200)
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
     }
+    @Test fun connectedEnclosuresAndInteriorHolesCannotBeFilledSilently() {
+        val w=400;val h=300;val p=IntArray(w*h){0xFFDDDDDD.toInt()}
+        fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){p[t*w+x]=0xFF000000.toInt();p[b*w+x]=0xFF000000.toInt()};for(y in t..b){p[y*w+l]=0xFF000000.toInt();p[y*w+r]=0xFF000000.toInt()}}
+        rect(20,20,300,260);rect(300,100,325,140)
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
+        p.fill(0xFFDDDDDD.toInt());rect(20,20,300,260);rect(120,100,160,140)
+        for(x in 20..120)p[120*w+x]=0xFF000000.toInt()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
+    }
     @Test fun neutralColoredAreasDoNotEstablishBoundaryOrWorkStatus() {
         val w=300;val h=200;val p=IntArray(w*h){when(it%w/75){0->0xFF51C72B.toInt();1->0xFFFF1435.toInt();2->0xFF22CCFF.toInt();else->0xFFFFDC18.toInt()}}
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
