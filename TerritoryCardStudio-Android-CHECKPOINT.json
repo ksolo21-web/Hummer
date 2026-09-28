@@ -559,7 +559,7 @@
   ],
   "source_package": "Phase4-Android-0.4.0-source.tar.xz",
   "source_package_sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965",
-  "saved_at_utc": "2026-09-28T13:35:48.244Z",
+  "saved_at_utc": "2026-09-28T13:55:00.838Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -3267,10 +3267,10 @@
       "Three-mode process restart revalidation/rebuild/reapproval"
     ],
     "blockers": [
-      "Representative map image interpretation is not yet accurate enough: missed/duplicate building labels and building pixels classified as roads.",
-      "Regular manual UI journey passed; automatic picture, letter and telephone journeys still require passing evidence.",
-      "Arbitrary new-number enrollment is unsupported; number/type entry currently selects existing catalog assignments.",
-      "All-mode light/dark phone/wide acceptance, affected regressions and final independent critic approval remain outstanding."
+      "Representative map still has unresolved color finding and unnamed road proposals; no final representative-map card acceptance.",
+      "Telephone full native flow needs passing evidence; three completed regular/picture flows need clean test completion after owner-only cleanup repair.",
+      "Arbitrary new-number enrollment remains unsupported; common explicit enrollment and native overlap population are not yet implemented.",
+      "Final independent all-mode artifact review and full Phase6 acceptance remain outstanding."
     ],
     "constraints": [
       "Do not promote legacy reference geometry or invent source authority.",
@@ -3279,17 +3279,17 @@
       "Kaleb personally creates all six real cards."
     ],
     "user_requirement": "Import a map picture, enter territory number and type, and generate a new territory card.",
-    "last_tested_commit": "5c300960a014d9e8e7fcf599ca7d18d5fcef718e",
-    "last_tested_run": 36427843184,
+    "last_tested_commit": "3eebf89ae4e28676e472ae2c95edc3f04cc3f30f",
+    "last_tested_run": 36429797943,
     "core_checks": {
-      "passed": 28,
+      "passed": 29,
       "failed": 0,
       "accepted_phase6": false
     },
     "native_checks": {
-      "passed": 5,
-      "failed": 6,
-      "details": "Regular light manual native UI completed actual PDF preview, approval, SAF save, exact readback/audit and KB display. Four persistence checks passed. Representative map still misses vertical members. Other UI failures: transient missing Compose hierarchy after picker; unavailable-number provenance conversion defect; synthetic building evidence incorrectly asserted road-role fields."
+      "passed": 7,
+      "failed": 4,
+      "details": "Complete reference building inventory passed (3assigned groups,8excluded footprints). Letter/dark and wide multi-unit/light UI exports passed, plus4persistence tests. Regular/light, automatic picture, and wide regular/dark completed export/audit/KB assertions then failed test-only source deletion cleanup. Telephone stopped at picker selection."
     },
     "implemented_since_phase5": [
       "Explicit local source reconciliation and durable registration ledger",
@@ -3300,11 +3300,9 @@
     ],
     "independent_review": "NOT_APPROVED; no Phase6 completion score",
     "pending_repairs": [
-      "Local colored-region numeric OCR crops awaiting representative evidence",
-      "Unavailable-number explicit verification controls and provenance conversion awaiting telephone UI validation",
-      "Source-preview fixed viewport and draft loading guard awaiting native UI validation",
-      "Picker tests now revoke setup grants and output creates receive only system grants; awaiting runtime proof",
-      "Arbitrary-number enrollment and full native overlap population remain unimplemented; architecture review saved"
+      "Rerun only four failing UI cases with owner-only cleanup and actual picker tap retry",
+      "Resolve representative map color/road findings through typed correction or faithful extraction",
+      "Implement shared explicit new-number enrollment and native overlap population"
     ]
   }
 }

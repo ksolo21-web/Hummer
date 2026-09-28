@@ -64,13 +64,30 @@ class Phase6NativeUiInstrumentationTest {
             systemClick {it.contentDescription?.toString()?.let {s->s.contains("Show roots",true)||s.contains("navigation drawer",true)}==true || it.viewIdResourceName=="android:id/home"}
         systemClick {it.text?.toString()=="Synthetic test files" && it.viewIdResourceName=="android:id/title"}
     }
+    private fun selectDocument(name:String,returnTag:String) {
+        rule.waitUntil(20000) {
+            if(automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")!=true)true
+            else {
+                nodes().firstOrNull {it.isVisibleToUser && it.text?.toString()==name}?.let {node->
+                    val bounds=android.graphics.Rect();node.getBoundsInScreen(bounds)
+                    val now=android.os.SystemClock.uptimeMillis()
+                    val down=android.view.MotionEvent.obtain(now,now,android.view.MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY(),0)
+                    val up=android.view.MotionEvent.obtain(now,now+80,android.view.MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY(),0)
+                    try {automation.injectInputEvent(down,true);automation.injectInputEvent(up,true)} finally {down.recycle();up.recycle()}
+                    runCatching {automation.waitForIdle(500,3000)}
+                }
+                false
+            }
+        }
+        waitTag(returnTag)
+    }
     private fun chooseInput(name:String) {
         rule.waitUntil(15000){automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true}
-        chooseRoot();systemClick {it.text?.toString()==name};waitTag("territory-workspace")
+        chooseRoot();selectDocument(name,"territory-workspace")
     }
     private fun chooseContact(name:String) {
         rule.waitUntil(15000){automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true}
-        chooseRoot();systemClick {it.text?.toString()==name};waitTag(native)
+        chooseRoot();selectDocument(name,native)
     }
     private fun savePicker() {
         rule.waitUntil(15000){automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true}
@@ -129,7 +146,7 @@ class Phase6NativeUiInstrumentationTest {
         click("territory-workspace","workspace-import-map");click("import-map-screen","choose-source-map")
         // Actual Android OpenDocument selection, not a direct intake call.
         rule.waitUntil(15000){automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true}
-        chooseRoot();systemClick {it.text?.toString()==sourceName};waitTag("import-map-screen")
+        chooseRoot();selectDocument(sourceName,"import-map-screen")
         textClick("import-map-screen","← Back to workspace")
         click("territory-workspace","workspace-prepare-new");waitTag(native)
         text(native,"native-locality","Oakland Township");text(native,"native-updated","9/28/2026")
@@ -206,7 +223,7 @@ class Phase6NativeUiInstrumentationTest {
         val child=DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root")
         val files=mutableMapOf<String,ByteArray>()
         resolver.query(child,arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME),null,null,null)!!.use {c->while(c.moveToNext()){val name=c.getString(1);if(name==x.identity.canonicalFilename || name==x.identity.canonicalFilename.removeSuffix(".pdf")+" - audit.json"){
-            val uri=DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,c.getString(0));files[name]=resolver.openInputStream(uri)!!.use {it.readBytes()};DocumentsContract.deleteDocument(resolver,uri)
+            val uri=DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,c.getString(0));files[name]=resolver.openInputStream(uri)!!.use {it.readBytes()}
         }}}
         val pdf=requireNotNull(files[x.identity.canonicalFilename]);assertArrayEquals(x.lifecycle.readCurrentPdf(x.id,mode),pdf);assertTrue(pdf.size<300000)
         val audit=requireNotNull(files[x.identity.canonicalFilename.removeSuffix(".pdf")+" - audit.json"]);val json=JSONObject(audit.toString(Charsets.UTF_8))
@@ -220,7 +237,6 @@ class Phase6NativeUiInstrumentationTest {
         rule.onNodeWithTag("nav-knowledge").performClick();waitTag("knowledge-selected");rule.onNodeWithTag("knowledge-selected").performClick()
         rule.waitUntil(30000){runCatching {rule.onNodeWithTag("knowledge-detail-list").performScrollToNode(hasTestTag("knowledge-local-cards"));rule.onNodeWithText("Current approved local reference",substring=true).assertExists();true}.getOrDefault(false)};screenshot("$prefix-knowledge")
         x.original.knowledgeBase.needsNewCardQueue.keys.forEach {assertEquals(x.original.knowledgeBase.assignments[it],x.kb.assignments[it])}
-        DocumentsContract.deleteDocument(resolver,sourceUri);DocumentsContract.deleteDocument(resolver,contactUri)
         assertEquals(2,File(x.root,"output").listFiles().orEmpty().count {it.extension=="json"})
     }}
 }
