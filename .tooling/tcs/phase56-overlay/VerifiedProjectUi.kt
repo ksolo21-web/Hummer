@@ -37,6 +37,10 @@ import kotlinx.coroutines.withContext
                 item{Text("The project supplies source-backed roads, labels, building assignments and the working inventory. Imported approval flags and old provider results cannot authorize a build.")}
                 item{Text(message,Modifier.testTag("verified-project-status"))}
                 item{Button(onClick={picker.launch(arrayOf("application/json"))},enabled=!busy && resumed,modifier=Modifier.fillMaxWidth().testTag("verified-project-import")){Text(if(busy)"Verifying…" else "Import verified project…")}}
+                item{OutlinedButton(onClick={busy=true;ticket=null;val generation=epoch
+                    scope.launch{val result=withContext(Dispatchers.IO){runCatching{service.revalidateSaved(id,mode)}}
+                        if(generation==epoch && resumed){ticket=result.getOrNull();message=result.fold({"Saved project reverified. Prepare it, then rebuild and review the new version."},{it.message ?: "No saved project is available"})};busy=false}
+                },enabled=!busy && resumed,modifier=Modifier.fillMaxWidth().testTag("verified-project-recover")){Text("Recheck saved project")}}
                 ticket?.let{t->
                     item{Text("Project SHA-256\n${t.projectSha256}\n\nSource map SHA-256\n${t.sourceSha256}\n\nVerified sources: ${t.providers.joinToString()}")}
                     item{Button(onClick={busy=true;ticket=null;scope.launch{val result=withContext(Dispatchers.IO){runCatching{service.prepare(t)}};message=result.fold({"Prepared. Return to the workspace to build and review your card."},{it.message ?: "Preparation failed"});busy=false}},enabled=!busy && resumed,modifier=Modifier.fillMaxWidth().testTag("verified-project-prepare")){Text("Prepare for Build")}}

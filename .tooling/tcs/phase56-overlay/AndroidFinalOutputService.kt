@@ -89,13 +89,15 @@ class AndroidFinalOutputService internal constructor(private val kb:TerritoryKno
             requireNotNull(t){"Export session expired. Validate again."};verifyCurrent(t)
             val m=t.review.manifest;val mode=WorkspaceMode.valueOf(m.mode.name)
             val bytes=if(audit)sessions.getValue(key(m.displayId,mode)).audit.copyOf() else lifecycle.readCurrentPdf(m.displayId,mode)
+            val name=if(audit)m.canonicalFilename.removeSuffix(".pdf")+" - audit.json" else m.canonicalFilename
+            destination.verifyCanonicalName(name)
             val expected=if(audit)t.auditSha256 else m.packetPdfSha256
             require(hash(bytes)==expected)
             destination.openOutput().use {it.write(bytes);it.flush()}
             val actual=destination.openInput().use{readBounded(it,bytes.size)}
             require(actual.contentEquals(bytes)){"Saved output differs from validated bytes"}
             verifyCurrent(t)
-            val name=if(audit)m.canonicalFilename.removeSuffix(".pdf")+" - audit.json" else m.canonicalFilename
+            destination.verifyCanonicalName(name)
             val receipt=FinalOutputReceipt(name,expected,bytes.size,if(audit)"AUDIT" else "PDF")
             val record=record(t,receipt)
             try {verifyCurrent(t)} catch(e:Exception) {record.delete();throw e}

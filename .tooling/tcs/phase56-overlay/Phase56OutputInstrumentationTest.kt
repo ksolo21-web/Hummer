@@ -28,7 +28,8 @@ internal class Phase56Fixture(val mode:WorkspaceMode):AutoCloseable {
     override fun close()=f.close()
 }
 internal class Phase56Destination:CreatedExportDestination {
-    var bytes=ByteArray(0);var deleted=false;var corrupt=false;var outputFailure=false;var deleteFailure=false;var onRead:(()->Unit)?=null
+    var bytes=ByteArray(0);var deleted=false;var corrupt=false;var outputFailure=false;var deleteFailure=false;var onRead:(()->Unit)?=null;var wrongName=false
+    override fun verifyCanonicalName(expected:String){require(!wrongName){"Provider renamed document"}}
     override fun openOutput():OutputStream {if(outputFailure)throw IOException("Provider write denied");return object:ByteArrayOutputStream(){override fun close(){bytes=toByteArray();super.close()}}}
     override fun openInput():InputStream {onRead?.invoke();return (if(corrupt)bytes+byteArrayOf(0) else bytes).inputStream()}
     override fun deleteCreated():Boolean {if(deleteFailure)return false;deleted=true;bytes=ByteArray(0);return true}
@@ -81,10 +82,16 @@ internal class Phase56Destination:CreatedExportDestination {
         if(expire)x.now+=900001 else x.f.importSource("after-project-verify");denied{x.intake.prepare(t)};assertFalse(x.coordinator.state(x.id,x.mode).inputReady)}}
     @Test fun importedProviderClaimsDoNotReplaceFreshVerification(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->x.evidenceAllowed=false;denied{x.intake.validate(x.id,x.mode,x.project)};assertFalse(x.coordinator.state(x.id,x.mode).inputReady)}}
     @Test fun projectTamperAfterPreparationInvalidatesApproval(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->x.ready();val t=x.output.validate(x.id,x.mode)
-        File(x.f.root,"projects").listFiles()!!.single().appendText(" ");denied{x.output.verifyCurrent(t)};assertFalse(x.lifecycle.state(x.id,x.mode).active)}}
+        File(x.f.root,"projects").listFiles()!!.single{it.extension=="json"}.appendText(" ");denied{x.output.verifyCurrent(t)};assertFalse(x.lifecycle.state(x.id,x.mode).active)}}
     @Test fun freshServiceCannotRestoreExportAuthority(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->x.ready();val t=x.output.validate(x.id,x.mode)
         val fresh=AndroidFinalOutputService(x.kb,x.f.app.services.activePolicy,x.coordinator,x.lifecycle,File(x.f.root,"fresh-receipts"),fetchEvidence={x.f.input.liveResult.evidence})
         denied{fresh.verifyCurrent(t)}}}
+    @Test fun preparedBaselineSurvivesImportTicketExpiry(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->x.prepare();x.now+=900001
+        assertTrue(x.coordinator.state(x.id,x.mode).inputReady);x.build();x.approve();x.output.validate(x.id,x.mode)}}
+    @Test fun repeatedProjectImportUsesOneDurableSlot(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->repeat(65){x.intake.validate(x.id,x.mode,x.project)}
+        assertEquals(1,File(x.f.root,"projects").listFiles()!!.size);x.prepare();assertTrue(x.coordinator.state(x.id,x.mode).inputReady)}}
+    @Test fun renamedOutputFailsWithoutSaving(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->x.ready();val d=Phase56Destination().apply{wrongName=true}
+        denied{x.output.exportCreated(x.output.validate(x.id,x.mode),d,false)};assertTrue(d.deleted)}}
     @Test fun realReplacementCardsRemainUncommissioned(){Phase56Fixture(WorkspaceMode.REGULAR).use{x->x.ready();x.output.validate(x.id,x.mode)
         for(id in listOf("T250","A257","297","A298","299","TA347")){assertEquals(x.f.original.assignments[id],x.kb.assignments[id]);assertTrue(x.kb.assignments.getValue(id).needsNewCard)
             val mode=WorkspaceModePolicy.defaultMode(x.kb.assignments.getValue(id));assertFalse(x.lifecycle.state(id,mode).active);assertTrue(x.lifecycle.state(id,mode).candidates.isEmpty())}}}

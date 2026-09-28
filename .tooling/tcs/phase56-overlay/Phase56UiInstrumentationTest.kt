@@ -25,7 +25,7 @@ import java.io.File
         InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let{b->File(dir,"phase56-debug-${d.methodName}.png").outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
     }}
     private fun waitTag(tag:String){rule.waitUntil(30000){rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()};rule.waitForIdle()}
-    private fun click(list:String,tag:String){waitTag(tag);rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).assertIsEnabled().performClick();rule.waitForIdle()}
+    private fun click(list:String,tag:String){rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).assertIsEnabled().performClick();rule.waitForIdle()}
     private fun shot(name:String){val auto=InstrumentationRegistry.getInstrumentation().uiAutomation;rule.waitForIdle();auto.waitForIdle(500,10000)
         var prior:Bitmap?=null;var chosen:Bitmap?=null;var since=0L
         try{rule.waitUntil(20000){val b=requireNotNull(auto.takeScreenshot());val now=android.os.SystemClock.elapsedRealtime()
@@ -45,6 +45,8 @@ import java.io.File
             if(route=="IMPORT")VerifiedProjectScreen(Modifier.fillMaxSize().safeDrawingPadding(),x.id,x.mode,x.intake){route="EXPORT"}
             else key(route){FinalOutputScreen(Modifier.fillMaxSize().safeDrawingPadding(),x.id,x.mode,x.output){route="IMPORT"}}
         }}}
+        rule.runOnIdle{val mask=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            rule.activity.window.insetsController?.setSystemBarsAppearance(if(theme==AppearanceMode.LIGHT)mask else 0,mask)}
         waitTag("final-output-status");rule.waitUntil(30000){rule.onNodeWithTag("final-output-status").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString().contains("Build")}
         rule.onNodeWithTag("final-output-validate").assertIsNotEnabled();shot("blocked-${theme.name.lowercase()}")
         rule.runOnIdle{route="IMPORT"};waitTag("verified-project-import");shot("intake-${theme.name.lowercase()}")

@@ -21,6 +21,7 @@ internal object VerifiedProjectCodec {
     }
     private fun components(c:Class<*>)=c.methods.filter{it.name.matches(Regex("component[0-9]+")) && it.parameterCount==0}.sortedBy{it.name.removePrefix("component").toInt()}
     private fun pack(v:Any?):Any=when(v){null->JSONObject.NULL;is String,is Boolean,is Int,is Long,is Double->v;is Char->v.toString();is Enum<*>->v.name
+        is Map<*,*>->JSONObject().also{o->v.forEach{(k,value)->require(k is String);o.put(k,pack(value))}}
         is Collection<*>->JSONArray(v.map(::pack));else->{require(v.javaClass.name.startsWith("com.koenterprises.territorycardstudio.core."));val c=components(v.javaClass);require(c.isNotEmpty());JSONArray(c.map{pack(it.invoke(v))})}}
     data class Project(val id:String,val mode:WorkspaceMode,val source:String,val input:ProductionRenderModelInput,val inventory:Page2Inventory?)
     fun decode(bytes:ByteArray):Project {
@@ -35,7 +36,10 @@ internal object VerifiedProjectCodec {
             require(++nodes<=100000 && d<=64)
             if(v===JSONObject.NULL)return null
             if(t is WildcardType)return unpack(v,t.upperBounds.single(),d+1)
-            if(t is ParameterizedType){val raw=t.rawType as Class<*>;require(raw==List::class.java || raw==Set::class.java)
+            if(t is ParameterizedType){val raw=t.rawType as Class<*>
+                if(raw==Map::class.java){require(t.actualTypeArguments[0]==String::class.java);val o=v as JSONObject;require(o.length()<=4096)
+                    return o.keys().asSequence().toList().associateWith{unpack(o.get(it),t.actualTypeArguments[1],d+1)}}
+                require(raw==List::class.java || raw==Set::class.java)
                 val a=v as JSONArray;require(a.length()<=4096);val values=(0 until a.length()).map{unpack(a.get(it),t.actualTypeArguments.single(),d+1)}
                 return if(raw==Set::class.java)values.toSet().also{require(it.size==values.size)} else values}
             val c=t as Class<*>
@@ -91,17 +95,44 @@ class AndroidVerifiedProjectIntake internal constructor(private val kb:Territory
         require(sources.verifiedRecord(id)==source && coordinator.currentCandidateVersion(id,mode)==prior){"Source or candidate changed during verification"}
         pending.entries.removeAll{!current(it.value)};require(pending.size<16){"Cancel an unused import first"}
         require(directory.isDirectory || directory.mkdirs())
-        val filename=BundleIntegrity.sha256("$id:${mode.name}".byteInputStream())+".json"
-        val file=AtomicFile(File(directory,filename));val stream=file.startWrite()
-        try{stream.write(bytes);stream.fd.sync();file.finishWrite(stream)}catch(e:Exception){file.failWrite(stream);throw e}
+        val file=AtomicFile(File(directory,"$hash.json"))
+        require(file.baseFile.exists() || directory.listFiles().orEmpty().count{it.extension=="json"}<64){"Project archive is full; preserve prior evidence before importing another distinct project"}
+        if(!file.baseFile.exists()) {
+            val stream=file.startWrite()
+            try{stream.write(bytes);stream.fd.sync();file.finishWrite(stream)}catch(e:Exception){file.failWrite(stream);throw e}
+        }
+        require(file.openRead().use{AndroidFinalOutputService.readBounded(it,VerifiedProjectCodec.MAX_BYTES)}.contentEquals(bytes)){"Saved project bytes changed"}
         val witness=EditingJournalWitness.capture(file.baseFile,VerifiedProjectCodec.MAX_BYTES);val now=clock()
         val ticket=InitialPreparationTicket(UUID.randomUUID().toString(),id,mode,hash,source.sha256,evidence.map{it.providerId}.distinct().sorted())
         pending.entries.removeAll{it.value.ticket.territory==id && it.value.ticket.mode==mode}
         pending[ticket.session]=Pending(ticket,input,EditingSnapshots.detach(p.inventory),source,prior,witness,now,now+900000);return ticket
     }
+    @Synchronized fun revalidateSaved(id:String,mode:WorkspaceMode):InitialPreparationTicket {
+        require(id in kb.assignments && mode in WorkspaceModePolicy.allowedModes(kb.assignments.getValue(id)))
+        val pointer=BundleIntegrity.sha256("$id:${mode.name}".byteInputStream())+".saved"
+        val hash=AtomicFile(File(directory,pointer)).openRead().use{AndroidFinalOutputService.readBounded(it,64)}.toString(Charsets.US_ASCII)
+        require(hash.matches(Regex("[0-9a-f]{64}")))
+        val bytes=AtomicFile(File(directory,"$hash.json")).openRead().use{AndroidFinalOutputService.readBounded(it,VerifiedProjectCodec.MAX_BYTES)}
+        return validate(id,mode,bytes)
+    }
     @Synchronized fun prepare(t:InitialPreparationTicket) {
         val p=requireNotNull(pending[t.session]);require(p.ticket==t && current(p)){"Verified project changed or expired; import again"}
-        coordinator.prepareEditing(t.territory,t.mode,t.sourceSha256,p.input,p.inventory,p.prior){bindingCurrent(p)}
+        val pointer=AtomicFile(File(directory,BundleIntegrity.sha256("${t.territory}:${t.mode.name}".byteInputStream())+".saved"))
+        // Recovery selection is not authority: every reuse must fetch evidence and rebuild/reapprove.
+        val previousPointer=if(pointer.baseFile.exists())pointer.openRead().use{AndroidFinalOutputService.readBounded(it,64)} else null
+        val out=pointer.startWrite()
+        try{out.write(t.projectSha256.toByteArray(Charsets.US_ASCII));out.fd.sync();pointer.finishWrite(out)}catch(e:Exception){pointer.failWrite(out);throw e}
+        try {
+            coordinator.prepareEditing(t.territory,t.mode,t.sourceSha256,p.input,p.inventory,p.prior){bindingCurrent(p)}
+        } catch(failure:Exception) {
+            try {
+                if(previousPointer==null)pointer.delete() else {
+                    val restore=pointer.startWrite()
+                    try{restore.write(previousPointer);restore.fd.sync();pointer.finishWrite(restore)}catch(e:Exception){pointer.failWrite(restore);throw e}
+                }
+            }catch(restoreFailure:Exception){failure.addSuppressed(restoreFailure)}
+            throw failure
+        }
         pending.remove(t.session)
     }
 }

@@ -14,6 +14,13 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.util.UUID
 
+class Phase56GrantActivity:android.app.Activity() {
+    override fun onCreate(saved:android.os.Bundle?) {super.onCreate(saved)
+        grantUriPermission("com.koenterprises.territorycardstudio",DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root"),
+            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        finish()
+    }
+}
 /** Installed only in the instrumentation APK. Contains synthetic fixture files, never user documents. */
 class Phase56SyntheticDocumentsProvider:DocumentsProvider() {
     companion object{const val AUTHORITY="com.koenterprises.territorycardstudio.test.synthetic.documents"}
@@ -50,8 +57,14 @@ class Phase56SyntheticDocumentsProvider:DocumentsProvider() {
 }
 @RunWith(AndroidJUnit4::class) class Phase56DocumentsInstrumentationTest {
     @Test fun actualDocumentProviderReadbackPreservesAllModesAndPairedAudit(){
-        val resolver=InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        instrumentation.context.startActivity(android.content.Intent().setClassName(instrumentation.context.packageName,Phase56GrantActivity::class.java.name).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        val resolver=instrumentation.targetContext.contentResolver
         val root=DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root")
+        val deadline=android.os.SystemClock.elapsedRealtime()+10000
+        while(runCatching{resolver.query(root,null,null,null,null)?.use{it.moveToFirst()}==true}.getOrDefault(false).not()) {
+            check(android.os.SystemClock.elapsedRealtime()<deadline){"Synthetic provider grant unavailable"};android.os.SystemClock.sleep(100)
+        }
         for(mode in WorkspaceMode.entries)Phase56Fixture(mode).use{x->
             // Incoming bytes cross the Android document provider boundary before validation.
             val input=requireNotNull(DocumentsContract.createDocument(resolver,root,"application/json","synthetic-project.json"))
