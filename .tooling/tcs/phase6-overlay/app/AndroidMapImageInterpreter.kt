@@ -67,12 +67,17 @@ class AndroidMapImageInterpreter {
     fun interpret(file:File,expectedSha256:String,housingType:String="",buildingLabel:((String,Point2D)->BuildingLabelItem)?=null):InterpretedMapDraft {
         require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed before image interpretation"}
         val source=decode(file)
+        val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
         var inFlight:com.google.android.gms.tasks.Task<com.google.mlkit.vision.text.Text>?=null
         try {
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
-                fun recognized(rotation:Int):List<MapImageText> {
-                    val bitmap=if(rotation==0)source else Bitmap.createBitmap(source,0,0,source.width,source.height,Matrix().apply {postScale(2f,2f);postRotate(rotation.toFloat())},true)
+                fun recognized(rotation:Int,region:AxisAlignedRect?=null):List<MapImageText> {
+                    val left=region?.left?.toInt() ?: 0;val top=region?.top?.toInt() ?: 0
+                    val width=region?.let {(it.right-it.left).toInt()} ?: source.width
+                    val height=region?.let {(it.bottom-it.top).toInt()} ?: source.height
+                    val scale=if(region==null && rotation==0)1.0 else 3.0
+                    val bitmap=if(scale==1.0)source else Bitmap.createBitmap(source,left,top,width,height,Matrix().apply {postScale(scale.toFloat(),scale.toFloat());postRotate(rotation.toFloat())},true)
                     val task=recognizer.process(InputImage.fromBitmap(bitmap,0))
                     inFlight=task
                     // Timeout does not cancel ML Kit. Release its bitmap only after completion.
@@ -80,25 +85,24 @@ class AndroidMapImageInterpreter {
                     val result=Tasks.await(task,60,TimeUnit.SECONDS)
                     val numeric=Regex("^[| ]*[0-9]+(?:[ \t]*[-/–—−][ \t]*[0-9]+)*(?:[ \t]*[A-Z])?[| ]*$")
                     fun box(b:android.graphics.Rect):AxisAlignedRect=when(rotation) {
-                        90->AxisAlignedRect(b.top/2.0,source.height-b.right/2.0,b.bottom/2.0,source.height-b.left/2.0)
-                        270->AxisAlignedRect(source.width-b.bottom/2.0,b.left/2.0,source.width-b.top/2.0,b.right/2.0)
-                        else->AxisAlignedRect(b.left.toDouble(),b.top.toDouble(),b.right.toDouble(),b.bottom.toDouble())
+                        90->AxisAlignedRect(left+b.top/scale,top+height-b.right/scale,left+b.bottom/scale,top+height-b.left/scale)
+                        270->AxisAlignedRect(left+width-b.bottom/scale,top+b.left/scale,left+width-b.top/scale,top+b.right/scale)
+                        else->AxisAlignedRect(left+b.left/scale,top+b.top/scale,left+b.right/scale,top+b.bottom/scale)
                     }
                     return result.textBlocks.flatMap {block->block.lines.flatMap {line->
                         val pieces=if(line.elements.size>1 && line.elements.all {numeric.matches(it.text)})line.elements.mapNotNull {e->e.boundingBox?.let {MapImageText(e.text,box(it))}}
                             else listOfNotNull(line.boundingBox?.let {MapImageText(line.text,box(it))})
-                        pieces.filter {rotation==0 || numeric.matches(it.text)}
+                        pieces.filter {(rotation==0 && region==null) || numeric.matches(it.text)}
                     }}
                 }
                 val normal=recognized(0)
-                val rotated=if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))(recognized(90)+recognized(270)).distinctBy {listOf(it.text,it.bounds.left.toInt()/4,it.bounds.top.toInt()/4)} else emptyList()
-                normal+rotated.filter {r->normal.none {n->n.text==r.text && kotlin.math.abs(n.bounds.left-r.bounds.left)<8 && kotlin.math.abs(n.bounds.top-r.bounds.top)<8}}
+                val rotated=if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))MapImageDraftExtractor.numericOcrRegions(source.width,source.height,pixels).flatMap {region->listOf(0,90,270).flatMap {rotation->recognized(rotation,region)}} else emptyList()
+                normal+rotated
             } finally {
                 val pending=inFlight
                 if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {recognizer.close()}
                 else recognizer.close()
             }
-            val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
             val extraction=MapImageDraftExtractor.extract(source.width,source.height,pixels,text)
             val all=extraction.roads.flatMap {it.points}+extraction.buildings.flatMap {it.polygon}
             val findings=extraction.findings.toMutableList()

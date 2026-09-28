@@ -178,7 +178,8 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
             Instant.parse(c.verifiedAt)
             if(mode==WorkspaceMode.TELEPHONE) {
                 require(c.phoneState in setOf("UNAVAILABLE","VERIFIED_NUMBER")) {"Choose a verified number or explicitly mark unavailable"}
-                if(c.phoneState=="VERIFIED_NUMBER")require(c.telephoneUseAuthorized && c.phoneBindingConfirmed && c.phone.isNotBlank()) {"The number needs independent source authorization and address binding"}
+                require(c.telephoneUseAuthorized && c.phoneBindingConfirmed) {"Verify and authorize the number availability in the contact source"}
+                if(c.phoneState=="VERIFIED_NUMBER")require(c.phone.isNotBlank()) {"The number needs independent source authorization and address binding"}
                 if(c.phoneState=="UNAVAILABLE")require(c.phone.isEmpty()) {"Unavailable must not contain a number"}
             }
         }
@@ -189,7 +190,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
             val report=LetterWritingAddressInventoryValidator.validateForPage2(v);require(report.passed){report.errors.joinToString("; ")};return Page2Inventory.LetterWriting(v)
         }
         val v=TelephoneTerritoryInventory(id,authority,kb.revision,true,d.contacts.map {c->TelephoneProvenance(c.id,c.sourceLabel,"USER_PROVIDED_LIST",c.verifiedAt,c.sourceSha256,TelephoneSourceAuthorization.USER_PROVIDED,c.addressUseAuthorized,c.telephoneUseAuthorized)},
-            d.contacts.map {c->TelephoneTerritoryRecord(c.id,id.displayId,c.address,c.unit.ifBlank{null},c.city.ifBlank{null},c.state.ifBlank{null},c.postalCode.ifBlank{null},c.buildingId.ifBlank{null},TelephoneRecordVerificationStatus.VERIFIED,c.verifiedAt,TelephoneBoundaryStatus.INSIDE_LOCKED_WORKING_AREA,source,addressProvenanceIds=listOf(c.id),phoneState=TelephoneNumberState.valueOf(c.phoneState),phoneNumber=c.phone.ifBlank{null},phoneVerifiedAtUtc=if(c.phoneState=="VERIFIED_NUMBER")c.verifiedAt else null,phoneRecordBindingVerified=c.phoneBindingConfirmed,phoneProvenanceIds=if(c.phoneState=="VERIFIED_NUMBER")listOf(c.id) else emptyList())})
+            d.contacts.map {c->TelephoneTerritoryRecord(c.id,id.displayId,c.address,c.unit.ifBlank{null},c.city.ifBlank{null},c.state.ifBlank{null},c.postalCode.ifBlank{null},c.buildingId.ifBlank{null},TelephoneRecordVerificationStatus.VERIFIED,c.verifiedAt,TelephoneBoundaryStatus.INSIDE_LOCKED_WORKING_AREA,source,addressProvenanceIds=listOf(c.id),phoneState=TelephoneNumberState.valueOf(c.phoneState),phoneNumber=c.phone.ifBlank{null},phoneVerifiedAtUtc=c.verifiedAt,phoneRecordBindingVerified=c.phoneBindingConfirmed,phoneProvenanceIds=listOf(c.id))})
         val report=TelephoneTerritoryInventoryValidator.validateForPage2(v);require(report.passed){report.errors.joinToString("; ")};return Page2Inventory.Telephone(v)
     }
     fun register(id:String,mode:WorkspaceMode,expectedRevision:String):NativeRegistrationLedger.Registered {

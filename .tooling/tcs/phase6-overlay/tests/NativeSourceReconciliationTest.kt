@@ -112,6 +112,13 @@ class NativeSourceReconciliationTest {
             assertEquals(listOf(label.replace(" ","")),result.buildings.single().labels.map {it.text})
         }
     }
+    @Test fun numericOcrCropsRetainCompactColoredRegionsWithoutTreatingRoadLinesAsBuildings() {
+        val w=300;val h=200;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 40..70)for(x in 30..90)pixels[y*w+x]=0xff00aa30.toInt()
+        for(x in 20..270)pixels[150*w+x]=0xffdd2020.toInt()
+        assertEquals(listOf(AxisAlignedRect(26.0,36.0,95.0,75.0)),MapImageDraftExtractor.numericOcrRegions(w,h,pixels))
+    }
+
     @Test fun conflictingRotatedNumberReadingsCannotSilentlyBecomeMembers() {
         val w=200;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
         for(y in 30..80)for(x in 30..150)pixels[y*w+x]=0xff00aa30.toInt()

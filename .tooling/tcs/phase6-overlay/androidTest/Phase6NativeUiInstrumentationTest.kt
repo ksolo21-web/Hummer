@@ -35,7 +35,7 @@ class Phase6NativeUiInstrumentationTest {
         }}
     }}
     private fun nodes():List<AccessibilityNodeInfo> {val out=mutableListOf<AccessibilityNodeInfo>();fun walk(n:AccessibilityNodeInfo?){if(n==null)return;out+=n;for(i in 0 until n.childCount)walk(n.getChild(i))};walk(automation.rootInActiveWindow);return out}
-    private fun waitTag(tag:String){rule.waitUntil(30000){rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()};rule.waitForIdle()}
+    private fun waitTag(tag:String){rule.waitUntil(30000){runCatching {rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()}.getOrDefault(false)};rule.waitForIdle()}
     private fun click(list:String,tag:String){
         rule.waitUntil(30000){runCatching {rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).assertIsEnabled();true}.getOrDefault(false)}
         rule.onNodeWithTag(tag).performClick();rule.waitForIdle()
@@ -84,8 +84,9 @@ class Phase6NativeUiInstrumentationTest {
             File(instrumentation.targetContext.filesDir,"phase6-${if(wide)"wide-" else ""}$name.png").outputStream().use {b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
     }
     private fun grant() {
-        instrumentation.context.startActivity(android.content.Intent().setClassName(instrumentation.context.packageName,Phase56GrantActivity::class.java.name).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-        rule.waitUntil(15000){runCatching {instrumentation.targetContext.contentResolver.query(root,null,null,null,null)?.use {it.moveToFirst()}==true && instrumentation.targetContext.contentResolver.query(DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root"),null,null,null,null)?.use {true}==true}.getOrDefault(false)}
+        val setupNonce=java.util.UUID.randomUUID().toString()
+        instrumentation.context.startActivity(android.content.Intent().setClassName(instrumentation.context.packageName,Phase56GrantActivity::class.java.name).putExtra("cleanup",true).putExtra("setupNonce",setupNonce).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        rule.waitUntil(15000){runCatching {instrumentation.targetContext.contentResolver.query(root,arrayOf("setup_nonce"),null,null,null)?.use {it.moveToFirst() && it.getString(0)==setupNonce}==true && instrumentation.targetContext.contentResolver.query(DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root"),null,null,null,null)?.use {it.count==0}==true}.getOrDefault(false)}
     }
     private fun document(name:String,mime:String,bytes:ByteArray):Uri {
         val resolver=instrumentation.targetContext.contentResolver;val uri=requireNotNull(DocumentsContract.createDocument(resolver,root,mime,name))
@@ -103,15 +104,15 @@ class Phase6NativeUiInstrumentationTest {
     private fun flow(mode:WorkspaceMode,theme:AppearanceMode,multiUnit:Boolean=false,automatic:Boolean=false) {Phase6NativeFixture(mode,multiUnit=multiUnit).use {x->
         activeFixture=x
         grant()
-        val testResolver=instrumentation.targetContext.contentResolver
-        val children=DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root")
-        val stale=mutableListOf<String>()
-        testResolver.query(children,arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),null,null,null)!!.use {c->while(c.moveToNext())stale+=c.getString(0)}
-        stale.forEach {DocumentsContract.deleteDocument(testResolver,DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,it))}
         val nonce=java.util.UUID.randomUUID().toString().take(8)
         val sourceName="phase6-$nonce-current.${if(automatic)"png" else "pdf"}";val contactsName="phase6-$nonce-records.txt"
         val sourceUri=document(sourceName,if(automatic)"image/png" else "application/pdf",if(automatic)x.sourcePng() else x.sourcePdf())
         val contactUri=document(contactsName,"text/plain","SYNTHETIC USER PROVIDED RECORDS - NOT FOR FIELD USE\n100 Example Way | 2025550101\n101 Example Way | UNAVAILABLE\n".toByteArray())
+        // Fixture setup grants end here; OpenDocument must deliver fresh access to each input.
+        instrumentation.context.startActivity(android.content.Intent().setClassName(instrumentation.context.packageName,Phase56GrantActivity::class.java.name)
+            .putExtra("revokeDocuments",arrayOf(sourceUri.toString(),contactUri.toString())).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        rule.waitUntil(15000){listOf(sourceUri,contactUri).all {uri->listOf(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION).all {flag->
+            instrumentation.targetContext.checkUriPermission(uri,android.os.Process.myPid(),android.os.Process.myUid(),flag)==android.content.pm.PackageManager.PERMISSION_DENIED}}}
         val prefix="${mode.name.lowercase()}-${theme.name.lowercase()}${if(multiUnit)"-multiunit" else ""}${if(automatic)"-automatic" else ""}"
         x.app.appearancePreferences.setMode(theme)
         rule.activity.runOnUiThread {rule.activity.enableEdgeToEdge()}
@@ -173,7 +174,8 @@ class Phase6NativeUiInstrumentationTest {
                 if(i==0)click(native,"native-address-authorized")
                 if(mode==WorkspaceMode.TELEPHONE) {
                     click(native,"native-phone-state-"+if(i==0)"VERIFIED_NUMBER" else "UNAVAILABLE")
-                    if(i==0) {text(native,"native-phone","2025550101");click(native,"native-phone-authorized");click(native,"native-phone-binding")}
+                    if(i==0)text(native,"native-phone","2025550101")
+                    click(native,"native-phone-authorized");click(native,"native-phone-binding")
                 }
                 click(native,"native-save-contact");statusContains("Draft saved")
             }

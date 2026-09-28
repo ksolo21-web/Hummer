@@ -39,7 +39,7 @@ internal class Phase6NativeFixture(val mode:WorkspaceMode,val fresh:Boolean=true
     }
     fun evidence(r:LiveGeometryVerificationRequest):List<ProviderVerificationEvidence> {
         val ids=r.roadTargets.map {it.targetId}.toSet()
-        return (listOf("oakland_county_roads","census_tigerweb_transportation")+if(multiUnit)listOf("oakland_county_site_addresses","oakland_county_buildings") else emptyList()).map {provider->ProviderVerificationEvidence(provider,r.requestFingerprint,true,Instant.now().toString(),BundleIntegrity.sha256("$provider|${r.requestFingerprint}".byteInputStream()),null,ids,ids,emptySet(),emptySet(),emptySet(),if(provider=="oakland_county_site_addresses")true else null,if(provider=="oakland_county_buildings")true else null,null)}
+        return (listOf("oakland_county_roads","census_tigerweb_transportation")+if(multiUnit)listOf("oakland_county_site_addresses","oakland_county_buildings") else emptyList()).map {provider->ProviderVerificationEvidence(provider,r.requestFingerprint,true,Instant.now().toString(),BundleIntegrity.sha256("$provider|${r.requestFingerprint}".byteInputStream()),if(provider=="oakland_county_buildings")"synthetic-fixture-2026-09-28" else null,if(provider in setOf("oakland_county_roads","census_tigerweb_transportation"))ids else emptySet(),if(provider in setOf("oakland_county_roads","census_tigerweb_transportation"))ids else emptySet(),emptySet(),emptySet(),emptySet(),if(provider=="oakland_county_site_addresses")true else null,if(provider=="oakland_county_buildings")true else null,null)}
     }
     fun sourcePdf():ByteArray {
         val doc=android.graphics.pdf.PdfDocument();val page=doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(768,480,1).create())

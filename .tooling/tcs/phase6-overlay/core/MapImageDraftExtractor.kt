@@ -29,6 +29,27 @@ object MapImageDraftExtractor {
         if(r>100 && r>g*1.4 && r>b*1.4)return 3
         return 0
     }
+    /** Source-space crops for supplemental numeric OCR only; these do not establish footprints. */
+    fun numericOcrRegions(width:Int,height:Int,pixels:IntArray):List<AxisAlignedRect> {
+        require(width in 16..1400 && height in 16..1400 && pixels.size==width*height)
+        val colors=IntArray(pixels.size){color(pixels[it])};val seen=BooleanArray(pixels.size);val queue=IntArray(pixels.size)
+        val regions=mutableListOf<AxisAlignedRect>()
+        for(start in colors.indices)if(colors[start]!=0 && !seen[start]) {
+            var head=0;var tail=0;queue[tail++]=start;seen[start]=true
+            var left=width;var right=0;var top=height;var bottom=0
+            while(head<tail){val p=queue[head++];val x=p%width;val y=p/width
+                left=min(left,x);right=max(right,x);top=min(top,y);bottom=max(bottom,y)
+                for(dy in -1..1)for(dx in -1..1){val nx=x+dx;val ny=y+dy
+                    if(nx in 0 until width && ny in 0 until height){val n=ny*width+nx
+                        if(!seen[n] && colors[n]==colors[start]){seen[n]=true;queue[tail++]=n}}}
+            }
+            if(tail>=20 && right-left>=12 && bottom-top>=12 && (right-left+1).toLong()*(bottom-top+1)<=width.toLong()*height/5)
+                regions+=AxisAlignedRect(max(0,left-4).toDouble(),max(0,top-4).toDouble(),min(width,right+5).toDouble(),min(height,bottom+5).toDouble())
+        }
+        require(regions.size<=64){"Too many colored regions for number recognition; choose a clearer map crop"}
+        return regions
+    }
+
     fun extract(width:Int,height:Int,pixels:IntArray,text:List<MapImageText>):MapImageExtraction {
         require(width in 16..1400 && height in 16..1400 && pixels.size==width*height)
         val colors=IntArray(pixels.size){color(pixels[it])};val findings=mutableListOf<MapImageFinding>();val buildings=mutableListOf<MapImageBuilding>()
@@ -55,7 +76,7 @@ object MapImageDraftExtractor {
         fun numberKey(s:String)=s.replace(Regex("\\s+"),"").replace('–','-').replace('—','-').replace('−','-')
         val memberPattern=Regex("^[0-9]+(?:\\s*[-/–—−]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
         val numberLabels=mapText.map {it.copy(text=it.text.trim().trim('|').trim().replace(Regex("\\s*([-/–—−])\\s*")){m->m.groupValues[1]})}.filter {memberPattern.matches(it.text)}.fold(mutableListOf<MapImageText>()) {out,t->
-            if(out.none {numberKey(it.text)==numberKey(t.text) && (overlap(it.bounds,t.bounds)>=0.6 || hypot((it.bounds.left+it.bounds.right-t.bounds.left-t.bounds.right)/2,(it.bounds.top+it.bounds.bottom-t.bounds.top-t.bounds.bottom)/2)<8.0)})out+=t
+            if(out.none {numberKey(it.text)==numberKey(t.text) && overlap(it.bounds,t.bounds)>=0.6})out+=t
             out
         }
         numberLabels.forEachIndexed {i,a->numberLabels.drop(i+1).forEachIndexed {j,b->

@@ -17,6 +17,7 @@ import java.util.UUID;
 /** Test-only synthetic documents. No Kotlin or test-library runtime required in provider process. */
 public final class Phase56SyntheticDocumentsProvider extends DocumentsProvider {
     public static final String AUTHORITY="com.koenterprises.territorycardstudio.test.synthetic.documents";
+    static volatile String setupNonce="";
     private File root() { File f=new File(getContext().getFilesDir(),"synthetic-documents"); if(!f.isDirectory()&&!f.mkdirs())throw new IllegalStateException("Cannot create test root");return f; }
     private File file(String id) { if(!id.matches("[a-f0-9-]{36}"))throw new IllegalArgumentException("Invalid test id");return new File(root(),id); }
     @Override public boolean onCreate(){return true;}
@@ -30,7 +31,7 @@ public final class Phase56SyntheticDocumentsProvider extends DocumentsProvider {
         String[] cols=projection!=null?projection:new String[]{"document_id","_display_name","mime_type","flags","_size"};
         boolean isRoot=id.equals("root");File f=isRoot?root():file(id);String name;
         try{name=isRoot?"Synthetic test files":new String(Files.readAllBytes(new File(root(),id+".name").toPath()),StandardCharsets.UTF_8);}catch(IOException e){throw new IllegalStateException(e);}
-        Map<String,Object> m=new HashMap<>();m.put("document_id",id);m.put("_display_name",name);m.put("mime_type",isRoot?DocumentsContract.Document.MIME_TYPE_DIR:name.endsWith(".png")?"image/png":name.endsWith(".jpg")?"image/jpeg":name.endsWith(".pdf")?"application/pdf":name.endsWith(".txt")?"text/plain":name.endsWith(".csv")?"text/csv":"application/json");m.put("flags",isRoot?DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE:DocumentsContract.Document.FLAG_SUPPORTS_WRITE|DocumentsContract.Document.FLAG_SUPPORTS_DELETE);m.put("_size",isRoot?0L:f.length());return row(cols,m);
+        Map<String,Object> m=new HashMap<>();m.put("document_id",id);m.put("_display_name",name);m.put("mime_type",isRoot?DocumentsContract.Document.MIME_TYPE_DIR:name.endsWith(".png")?"image/png":name.endsWith(".jpg")?"image/jpeg":name.endsWith(".pdf")?"application/pdf":name.endsWith(".txt")?"text/plain":name.endsWith(".csv")?"text/csv":"application/json");m.put("flags",isRoot?DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE:DocumentsContract.Document.FLAG_SUPPORTS_WRITE|DocumentsContract.Document.FLAG_SUPPORTS_DELETE);m.put("_size",isRoot?0L:f.length());m.put("setup_nonce",isRoot?setupNonce:"");return row(cols,m);
     }
     @Override public Cursor queryDocument(String id,String[] projection){return document(id,projection);}
     @Override public Cursor queryChildDocuments(String parent,String[] projection,String sortOrder) {
@@ -40,7 +41,7 @@ public final class Phase56SyntheticDocumentsProvider extends DocumentsProvider {
     }
     @Override public String createDocument(String parent,String mime,String name) {
         if(!parent.equals("root")||name.length()>200||name.contains("/"))throw new IllegalArgumentException("Invalid test document");String id=UUID.randomUUID().toString();
-        try{Files.write(file(id).toPath(),new byte[0]);Files.write(new File(root(),id+".name").toPath(),name.getBytes(StandardCharsets.UTF_8));}catch(IOException e){throw new IllegalStateException(e);}getContext().grantUriPermission("com.koenterprises.territorycardstudio", DocumentsContract.buildDocumentUri(AUTHORITY,id), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);return id;
+        try{Files.write(file(id).toPath(),new byte[0]);Files.write(new File(root(),id+".name").toPath(),name.getBytes(StandardCharsets.UTF_8));}catch(IOException e){throw new IllegalStateException(e);}if("com.koenterprises.territorycardstudio".equals(getCallingPackage()))getContext().grantUriPermission("com.koenterprises.territorycardstudio", DocumentsContract.buildDocumentUri(AUTHORITY,id), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);return id;
     }
     @Override public ParcelFileDescriptor openDocument(String id,String mode,CancellationSignal signal)throws java.io.FileNotFoundException{return ParcelFileDescriptor.open(file(id),ParcelFileDescriptor.parseMode(mode));}
     @Override public void deleteDocument(String id){if(!file(id).delete())throw new IllegalStateException("Cannot delete test document");new File(root(),id+".name").delete();}

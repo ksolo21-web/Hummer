@@ -68,8 +68,11 @@ import java.util.UUID
         result.onSuccess {(b,count,ratio)->bitmap=b;pages=count;analysisScale=ratio;onReadable(true)}.onFailure {error=it.message ?: "Source could not be displayed"}
     }
     Text("Exact imported source",style=MaterialTheme.typography.titleMedium)
-    bitmap?.let {b->Box(Modifier.fillMaxWidth().heightIn(max=480.dp)) {
-        Image(b.asImageBitmap(),"Imported territory source page ${page+1}",Modifier.fillMaxWidth().heightIn(max=480.dp).testTag("native-source-preview"))
+    // Reserve preview space while decoding so fields do not move during typing.
+    Box(Modifier.fillMaxWidth().height(320.dp),contentAlignment=androidx.compose.ui.Alignment.Center) {
+        if(bitmap==null && error==null)CircularProgressIndicator()
+        bitmap?.let {b->
+        Image(b.asImageBitmap(),"Imported territory source page ${page+1}",Modifier.matchParentSize().testTag("native-source-preview"))
         highlight?.let {area->Canvas(Modifier.matchParentSize()) {
             val scale=minOf(size.width/b.width,size.height/b.height);val dx=(size.width-b.width*scale)/2;val dy=(size.height-b.height*scale)/2
             drawRect(Color(0xFF0066FF),Offset(dx+(area.left*analysisScale*scale).toFloat(),dy+(area.top*analysisScale*scale).toFloat()),
@@ -248,7 +251,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
         item {Text(message,modifier=Modifier.testTag("native-status"));if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())}
         item {Row {(listOf("Map","Roads")+(if(assignment.housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))listOf("Buildings") else emptyList())+listOf(if(mode==WorkspaceMode.REGULAR)"Review" else "Addresses")).forEach {label->TextButton(onClick={section=label},modifier=Modifier.testTag("native-tab-$label")){Text(label)}}}
             if(mode!=WorkspaceMode.REGULAR)TextButton(onClick={section="Review"},modifier=Modifier.testTag("native-tab-Review")){Text("Review")}}
-        if(!loaded) item {Text("Loading draft…")}
+        if(!loaded) {item {Text("Loading draft…")};return@LazyColumn}
         if(sourceFile==null) item {Text("Import a current source map from the workspace before authoring.")}
         else item {NativeSourcePreview(sourceFile){}}
         if(section=="Map") {
@@ -321,8 +324,12 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             item {NativeField("Record identifier",itemId,"native-contact-id"){itemId=it};NativeField("Street address",address,"native-address"){address=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("Unit",unit,"native-unit"){unit=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("City",city,"native-city"){city=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("State (two letters)",addressState,"native-address-state"){addressState=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("Postal code",postal,"native-postal"){postal=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("Building identifier, if applicable",buildingId,"native-address-building"){buildingId=it;boundaryCheck=false;bindingCheck=false}}
             item {NativeCheck("I verified this address in the imported contact source",addressCheck,"native-address-confirmed"){addressCheck=it};NativeCheck("I verified this address is inside this territory's worked area",boundaryCheck,"native-boundary-confirmed"){boundaryCheck=it};NativeCheck("I provided this source and authorize its address records for this card",addressUse,"native-address-authorized"){addressUse=it}}
             if(mode==WorkspaceMode.TELEPHONE) {
-                item {NativeChoice("Number availability",phoneState,listOf("VERIFIED_NUMBER","UNAVAILABLE"),"native-phone-state"){phoneState=it;if(it=="UNAVAILABLE")phone="";bindingCheck=false}}
-                if(phoneState=="VERIFIED_NUMBER")item {NativeField("Number from the authorized source",phone,"native-phone"){phone=it;bindingCheck=false};NativeCheck("I authorize this source for telephone use",phoneUse,"native-phone-authorized"){phoneUse=it};NativeCheck("I checked that this exact number belongs to this address in the source",bindingCheck,"native-phone-binding"){bindingCheck=it}}
+                item {NativeChoice("Number availability",phoneState,listOf("VERIFIED_NUMBER","UNAVAILABLE"),"native-phone-state"){phoneState=it;if(it=="UNAVAILABLE")phone="";bindingCheck=false;phoneUse=false}}
+                if(phoneState=="VERIFIED_NUMBER")item {NativeField("Number from the authorized source",phone,"native-phone"){phone=it;bindingCheck=false}}
+                if(phoneState in setOf("VERIFIED_NUMBER","UNAVAILABLE"))item {
+                    NativeCheck("I authorize this source for telephone number or availability verification",phoneUse,"native-phone-authorized"){phoneUse=it}
+                    NativeCheck(if(phoneState=="UNAVAILABLE")"I verified in this source that a number is unavailable for this address" else "I checked that this exact number belongs to this address in the source",bindingCheck,"native-phone-binding"){bindingCheck=it}
+                }
             }
             item {Button(onClick={runCatching {val doc=requireNotNull(document){"Import the contact source first"};require(itemId.isNotBlank() && address.isNotBlank())
                 val c=NativeContactDraft(itemId,address,unit,city,addressState,postal,buildingId,doc.sha256,doc.label,Instant.now().truncatedTo(ChronoUnit.SECONDS).toString(),addressCheck,boundaryCheck,addressUse,phoneUse,phoneState,phone,bindingCheck)

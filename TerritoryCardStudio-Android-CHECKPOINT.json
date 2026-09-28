@@ -559,7 +559,7 @@
   ],
   "source_package": "Phase4-Android-0.4.0-source.tar.xz",
   "source_package_sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965",
-  "saved_at_utc": "2026-09-28T13:20:51.836Z",
+  "saved_at_utc": "2026-09-28T13:35:48.244Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -3268,7 +3268,7 @@
     ],
     "blockers": [
       "Representative map image interpretation is not yet accurate enough: missed/duplicate building labels and building pixels classified as roads.",
-      "Complete successful native UI save/readback journey remains unproven; latest failures were test focus and synthetic-provider cleanup permissions.",
+      "Regular manual UI journey passed; automatic picture, letter and telephone journeys still require passing evidence.",
       "Arbitrary new-number enrollment is unsupported; number/type entry currently selects existing catalog assignments.",
       "All-mode light/dark phone/wide acceptance, affected regressions and final independent critic approval remain outstanding."
     ],
@@ -3279,17 +3279,17 @@
       "Kaleb personally creates all six real cards."
     ],
     "user_requirement": "Import a map picture, enter territory number and type, and generate a new territory card.",
-    "last_tested_commit": "198fdd4a599e1f22a96022b8d5bc932b27abe424",
-    "last_tested_run": 36426737415,
+    "last_tested_commit": "5c300960a014d9e8e7fcf599ca7d18d5fcef718e",
+    "last_tested_run": 36427843184,
     "core_checks": {
-      "passed": 27,
+      "passed": 28,
       "failed": 0,
       "accepted_phase6": false
     },
     "native_checks": {
-      "passed": 4,
-      "failed": 3,
-      "details": "Retention, edits, separate-process recovery, fresh preparation, explicit reapproval and exact export passed. Representative image still misses488/494; UI flows stopped on transient locality focus and synthetic-provider stale-child write permission."
+      "passed": 5,
+      "failed": 6,
+      "details": "Regular light manual native UI completed actual PDF preview, approval, SAF save, exact readback/audit and KB display. Four persistence checks passed. Representative map still misses vertical members. Other UI failures: transient missing Compose hierarchy after picker; unavailable-number provenance conversion defect; synthetic building evidence incorrectly asserted road-role fields."
     },
     "implemented_since_phase5": [
       "Explicit local source reconciliation and durable registration ledger",
@@ -3300,14 +3300,11 @@
     ],
     "independent_review": "NOT_APPROVED; no Phase6 completion score",
     "pending_repairs": [
-      "Magnified rotated numeric OCR with spatial duplicate/conflict checks awaiting device evidence",
-      "Exact complete footprint inventory test and three-mode phone/wide UI coverage awaiting device evidence",
-      "General map fidelity and typed correction of geometry findings",
-      "Arbitrary new-number explicit local enrollment remains unsupported"
-    ],
-    "pending_validation": {
-      "commit": "5c300960a014d9e8e7fcf599ca7d18d5fcef718e",
-      "run": 36427843184
-    }
+      "Local colored-region numeric OCR crops awaiting representative evidence",
+      "Unavailable-number explicit verification controls and provenance conversion awaiting telephone UI validation",
+      "Source-preview fixed viewport and draft loading guard awaiting native UI validation",
+      "Picker tests now revoke setup grants and output creates receive only system grants; awaiting runtime proof",
+      "Arbitrary-number enrollment and full native overlap population remain unimplemented; architecture review saved"
+    ]
   }
 }
