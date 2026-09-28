@@ -58,7 +58,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     @Synchronized internal fun exportHistory(destination:CreatedExportDestination):String {
         val temp=File.createTempFile("native-evidence-",".zip",context.cacheDir)
         try {
-            fun files()=root.walkTopDown().filter {it.isFile && it.extension in setOf("draft","registered","source","assignment","reconciliation","event") || it.isFile && it.name=="head"}.sortedBy {it.relativeTo(root).path}.toList()
+            fun files()=root.walkTopDown().filter {it.isFile && it.extension in setOf("draft","registered","source","assignment","reconciliation","event","mode") || it.isFile && it.name=="head"}.sortedBy {it.relativeTo(root).path}.toList()
             val selected=files();require(selected.isNotEmpty()) {"No native evidence to export"}
             val manifest=selected.associate {it.relativeTo(root).invariantSeparatorsPath to it.inputStream().use(BundleIntegrity::sha256)}
             java.util.zip.ZipOutputStream(temp.outputStream()).use {zip->
@@ -81,11 +81,16 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         require(contactWitness(document.sha256)) {"Contact source bytes are missing or changed"}
         return File(documents,"${document.sha256}.source")
     }
+    private fun requireSourceMode(d:NativeAuthoringDraft) {
+        val witness=AtomicFile(File(root,"outlined-source-${d.reconciliation.importedSourceSha256}.mode"))
+        require(!witness.baseFile.exists() || d.outlinedReview!=null) {"This source requires its outlined-map review"}
+        if(witness.baseFile.exists())require(witness.openRead().use {it.readBytes().toString(Charsets.UTF_8)}==d.reconciliation.importedSourceSha256) {"Source mode evidence changed"}
+    }
     val ledger=NativeRegistrationLedger(File(root,"registrations"),kb,
         {id->sources.verifiedRecord(id)?.sha256},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {inventoryContentSha256(it)}},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {NativeSourceReconciliationContract.assignmentContentSha256(it.assignment)}},
-        {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {d->require(d.imageReview?.complete(d.assignment.roads)!=false && d.outlinedReview?.complete(d.assignment.roads)!=false) {"Review the automatic image findings first"};NativeSourceReconciliationContract.draftFactsSha256(d.reconciliation)}})
+        {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {d->requireSourceMode(d);require(d.imageReview?.complete(d.assignment.roads)!=false && d.outlinedReview?.complete(d.assignment.roads)!=false) {"Review the automatic image findings first"};NativeSourceReconciliationContract.draftFactsSha256(d.reconciliation)}})
     private fun hash(b:ByteArray)=BundleIntegrity.sha256(b.inputStream())
     private fun file(id:String,mode:WorkspaceMode):AtomicFile {
         val slot=requireNotNull(kb.assignments[id]);require(mode in WorkspaceModePolicy.allowedModes(slot))
@@ -207,6 +212,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     }
     fun register(id:String,mode:WorkspaceMode,expectedRevision:String):NativeRegistrationLedger.Registered {
         val d=requireNotNull(read(id,mode));require(d.revisionSha256==expectedRevision) {"Draft changed; review again"}
+        requireSourceMode(d)
         val prior=ledger.history(id,mode.name).lastOrNull()?.eventSha256
         val r=d.reconciliation.copy(author=d.reconciliation.author,reviewedAtUtc=Instant.now().truncatedTo(ChronoUnit.SECONDS).toString(),
             registrationId=UUID.randomUUID().toString(),predecessorEventSha256=prior,explicitAssignmentConfirmation=true,

@@ -79,11 +79,11 @@ class AndroidMapImageInterpreter {
             val outlinedBoundary=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapBoundaryDetector.detect(source.width,source.height,pixels) else null
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
-                fun recognized(rotation:Int,region:AxisAlignedRect?=null,highContrast:Boolean=false):List<MapImageText> {
+                fun recognized(rotation:Int,region:AxisAlignedRect?=null,highContrast:Boolean=false,scaleOverride:Double?=null):List<MapImageText> {
                     val left=region?.left?.toInt() ?: 0;val top=region?.top?.toInt() ?: 0
                     val width=region?.let {(it.right-it.left).toInt()} ?: source.width
                     val height=region?.let {(it.bottom-it.top).toInt()} ?: source.height
-                    val scale=if(region==null && rotation==0)if(inputKind==MapImageInputKind.OUTLINED_AREA)2.0 else 1.0 else 3.0
+                    val scale=scaleOverride ?: if(region==null && rotation==0)if(inputKind==MapImageInputKind.OUTLINED_AREA)2.0 else 1.0 else 3.0
                     var bitmap=if(scale==1.0)source else Bitmap.createBitmap(source,left,top,width,height,Matrix().apply {postScale(scale.toFloat(),scale.toFloat());postRotate(rotation.toFloat())},true)
                     if(highContrast) {
                         require(bitmap!==source)
@@ -113,10 +113,29 @@ class AndroidMapImageInterpreter {
                 val rotated=if(inputKind==MapImageInputKind.OUTLINED_AREA)listOf(90,270).flatMap {recognized(it)} else if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))MapImageDraftExtractor.numericOcrRegions(source.width,source.height,pixels).flatMap {region->listOf(0,90,270).flatMap {rotation->recognized(rotation,region)}} else emptyList()
                 val enhanced=outlinedBoundary?.let {b->
                     val box=b.sourceBounds
-                    val region=AxisAlignedRect(max(0.0,box.left-80),max(0.0,box.top-80),min(source.width.toDouble(),box.right+80),min(source.height.toDouble(),box.bottom+80))
-                    listOf(0,90,270).flatMap {recognized(it,region,true)}
+                    listOf(16.0,80.0).flatMap {padding->
+                        val region=AxisAlignedRect(max(0.0,box.left-padding),max(0.0,box.top-padding),min(source.width.toDouble(),box.right+padding),min(source.height.toDouble(),box.bottom+padding))
+                        listOf(0,90,270).flatMap {recognized(it,region,true)}
+                    }
                 }.orEmpty()
-                normal+rotated+enhanced
+                val vertical=outlinedBoundary?.let {boundary->
+                    val selected=mutableListOf<AxisAlignedRect>()
+                    val area=boundary.sourceBounds
+                    for(t in normal+rotated) {
+                        val b=t.bounds;val w=b.right-b.left;val h=b.bottom-b.top
+                        val cx=(b.left+b.right)/2;val cy=(b.top+b.bottom)/2
+                        if(w>0 && w<30 && h>max(20.0,w*2) && cx in (area.left-80)..(area.right+80) && cy in (area.top-80)..(area.bottom+80) &&
+                            selected.none {kotlin.math.hypot((it.left+it.right)/2-cx,(it.top+it.bottom)/2-cy)<15}) {
+                            selected+=b
+                            if(selected.size==16)break
+                        }
+                    }
+                    selected.flatMap {b->
+                        val crop=AxisAlignedRect(max(0.0,b.left-8),max(0.0,b.top-8),min(source.width.toDouble(),b.right+8),min(source.height.toDouble(),b.bottom+8))
+                        listOf(90,270).flatMap {recognized(it,crop,false,6.0)}
+                    }
+                }.orEmpty()
+                normal+rotated+enhanced+vertical
             } finally {
                 val pending=inFlight
                 if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {recognizer.close()}

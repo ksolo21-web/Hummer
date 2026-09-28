@@ -37,6 +37,9 @@ import java.io.File
             var side by remember(id){mutableStateOf(old?.insideSide ?: "")}
             var reason by remember(id){mutableStateOf("PARKING_MARKING")}
             var evidence by remember(id){mutableStateOf("")}
+            review.spans.filter {it.candidateId==id}.sortedBy {it.from}.forEach {span->
+                Text("${span.from}–${span.to}: ${span.disposition.name}; output ${span.outputId ?: "none"}")
+            }
             Text("$id • ${p.relation.name.replace('_',' ')}"+(if(id in reviewed)" • review recorded" else ""))
             OutlinedTextField(fromText,{fromText=it},label={Text("Source interval start (0 to 1)")},modifier=Modifier.fillMaxWidth())
             OutlinedTextField(toText,{toText=it},label={Text("Source interval end (0 to 1)")},modifier=Modifier.fillMaxWidth())
@@ -69,7 +72,7 @@ import java.io.File
                 val note=if(kind=="NON_ROAD")"$reason: ${evidence.trim()}" else evidence.trim()
                 require(evidence.trim().length>=8){"Describe the source evidence for this trace"}
                 val changed=review.reviewSpan(id,from,to,disposition,note,updated,if(disposition==OutlinedSpanDisposition.ROAD)outputId else null)
-                val failures=changed.coverageFailures(updated).filter {it.endsWith(":$outputId") && !it.startsWith("UNACCOUNTED_CANDIDATE") && !it.startsWith("SPAN_GAP_OR_OVERLAP")}
+                val failures=changed.coverageFailures(updated).filter {(it.endsWith(":$outputId") || it.endsWith(":$id")) && !it.startsWith("UNACCOUNTED_CANDIDATE") && !it.startsWith("SPAN_GAP_OR_OVERLAP")}
                 require(failures.isEmpty()){failures.joinToString("; ")}
                 onChanged(changed,updated);message="Source disposition recorded for $id."
             }.onFailure {message=it.message.orEmpty()}},enabled=sourceReadable,modifier=Modifier.testTag("outlined-review-trace")){Text("Record this source decision")}

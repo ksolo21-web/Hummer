@@ -1,5 +1,14 @@
 package com.koenterprises.territorycardstudio
 
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.Rule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.koenterprises.territorycardstudio.core.*
@@ -12,6 +21,7 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class OutlinedImageInstrumentationTest {
+    @get:Rule val rule=createAndroidComposeRule<ComponentActivity>()
     @Test fun actualOutlinedImagePreservesBoundaryAndReadsVerticalStreetNames() {
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
         val file=File(context.cacheDir,"outlined-exact-source.jpg")
@@ -26,7 +36,9 @@ class OutlinedImageInstrumentationTest {
                 .put("transform",JSONArray(listOf(transform.scale,transform.offsetX,transform.offsetY)))
                 .put("text",JSONArray(result.recognizedText.map {JSONObject().put("text",it.text).put("bounds",JSONArray(listOf(it.bounds.left,it.bounds.top,it.bounds.right,it.bounds.bottom)))}))
                 .put("roads",JSONArray(result.roads.map {JSONObject().put("id",it.segmentId).put("name",it.name).put("status",it.status).put("points",JSONArray(it.points.map {p->JSONArray(listOf(p.x,p.y))}))}))
-                .put("rawRoads",outline.roads.size).put("findings",JSONArray(result.findings.map {JSONObject().put("id",it.id).put("message",it.message)}))
+                .put("rawRoads",outline.roads.size)
+                .put("rawCandidates",JSONArray(outline.roads.map {p->JSONObject().put("id",p.road.id).put("name",p.road.name ?: JSONObject.NULL).put("relation",p.relation.name).put("points",JSONArray(p.road.points.map {v->JSONArray(listOf(v.x,v.y))}))}))
+                .put("findings",JSONArray(result.findings.map {JSONObject().put("id",it.id).put("message",it.message).put("bounds",it.sourceBounds?.let {b->JSONArray(listOf(b.left,b.top,b.right,b.bottom))} ?: JSONObject.NULL)}))
             File(context.filesDir,"outlined-actual-source-analysis.json").writeText(report.toString(2))
             assertEquals(1079,outline.boundary.width);assertEquals(547,outline.boundary.height)
             assertTrue(outline.boundary.enclosedPixels in 48000..51000)
@@ -34,6 +46,19 @@ class OutlinedImageInstrumentationTest {
             val pending=OutlinedNativeReview.from(result)
             assertEquals(pending,OutlinedNativeReview(pending.document))
             assertFalse("Unreviewed picture must not authorize registration",pending.complete(result.roads))
+            val previewSource=mutableStateOf<File?>(null)
+            val uiReview=mutableStateOf(pending)
+            rule.setContent {Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedNativeReviewPanel(uiReview.value,result.roads,previewSource.value){r,_->uiReview.value=r}
+            }}
+            rule.onNodeWithTag("outlined-boundary-confirm").assertIsNotEnabled()
+            rule.runOnIdle {previewSource.value=file}
+            rule.waitUntil(30000){runCatching {rule.onNodeWithTag("outlined-boundary-confirm").assertIsEnabled();true}.getOrDefault(false)}
+            rule.onNodeWithTag("outlined-boundary-confirm").performScrollTo().performClick()
+            rule.runOnIdle {assertTrue(uiReview.value.boundaryConfirmed)}
+            instrumentation.uiAutomation.takeScreenshot()?.let {bitmap->
+                File(context.filesDir,"outlined-native-source-review.png").outputStream().use {bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
+            }
             val boundaryReviewed=pending.confirmBoundary(true)
             assertNotEquals(pending.sha256,boundaryReviewed.sha256)
             assertFalse("Boundary confirmation cannot resolve roads",boundaryReviewed.complete(result.roads))
@@ -45,6 +70,7 @@ class OutlinedImageInstrumentationTest {
                 val reloaded=AndroidNativeDraftStore(x.app,x.kb,x.sources,File(x.root,"native")).read(x.id,x.mode)
                 val downgraded=saved.copy(outlinedReview=null,reconciliation=saved.reconciliation.copy(imageInterpretationSha256=null))
                 assertTrue("Outlined review removal bypassed mandatory gates",runCatching {x.drafts.save(downgraded,saved.revisionSha256)}.isFailure)
+                assertEquals(hash,File(x.root,"native/outlined-source-$hash.mode").readText())
                 assertEquals(saved,reloaded);assertEquals(boundaryReviewed,reloaded?.outlinedReview)
                 assertTrue("Unresolved outlined source registered",runCatching {x.drafts.register(x.id,x.mode,saved.revisionSha256)}.isFailure)
                 File(context.filesDir,"outlined-persistence-evidence.json").writeText(JSONObject().put("draftSha256",saved.revisionSha256).put("reviewSha256",boundaryReviewed.sha256).put("reloadMatched",saved==reloaded).put("unresolvedRegistrationBlocked",true).toString(2))
@@ -53,4 +79,30 @@ class OutlinedImageInstrumentationTest {
             assertTrue("Vertical Taylor Ave was not read",result.recognizedText.any {it.text.contains("Taylor",true) && it.text.contains("Ave",true)})
         } finally {file.delete()}
     }
+    @Test fun splitJoinAndFindingReviewCannotBypassSourceCoverage() {
+        val polygon=listOf(Point2D(10.0,10.0),Point2D(90.0,10.0),Point2D(90.0,90.0),Point2D(10.0,90.0))
+        val path=listOf(Point2D(20.0,50.0),Point2D(50.0,50.0),Point2D(80.0,50.0))
+        val candidate=OutlinedRoadProposal(MapImageRoad("source-a","Alpha Rd","context",path,false,false),BoundaryRoadRelation.INTERIOR)
+        val finding=MapImageFinding("component-mixed","Geometry was not recovered",AxisAlignedRect(20.0,40.0,80.0,60.0))
+        val extraction=OutlinedMapExtraction(OutlinedMapBoundary(100,100,polygon,6400,AxisAlignedRect(10.0,10.0,90.0,90.0)),listOf(candidate),listOf(finding))
+        val transform=OutlinedMapTransform(2.0,200.0,40.0)
+        val draft=InterpretedMapDraft("a".repeat(64),emptyList(),emptyList(),listOf(finding),emptyList(),outlined=extraction,sourceToPage=transform)
+        var review=OutlinedNativeReview.from(draft).confirmBoundary(true)
+        fun output(id:String,from:Double,to:Double)=RoadGeometry(id,"Alpha Rd","alpha rd","context","context","",false,"termination","termination",4.0,OutlinedCoverageContract.slice(path,from,to).map(transform::page))
+        var roads=listOf(output("part-a",0.0,0.5),output("part-b",0.5,1.0))
+        review=review.reviewSpan("source-a",0.0,0.5,OutlinedSpanDisposition.ROAD,"Visible source interval",roads,"part-a")
+        assertTrue(review.coverageFailures(roads).any {it.startsWith("SPAN_GAP_OR_OVERLAP") || it.startsWith("UNACCOUNTED_TAIL")})
+        review=review.reviewSpan("source-a",0.5,1.0,OutlinedSpanDisposition.ROAD,"Visible source interval",roads,"part-b")
+        assertTrue(review.coverageFailures(roads).isEmpty())
+        assertTrue(runCatching {review.reviewFinding(finding.id,"MAP_SYMBOL","Mixed component dismissed",emptyList(),roads)}.isFailure)
+        assertTrue(review.unresolvedFindings(roads).any {it.id==finding.id})
+        val joined=review.join("part-a","part-b",roads);review=joined.first;roads=joined.second
+        assertEquals(1,roads.size);assertTrue(review.coverageFailures(roads).isEmpty())
+        assertTrue(review.coverageFailures(roads.map {it.copy(name="Changed Rd")}).any {it.startsWith("SPAN_OUTPUT_REVIEW_CHANGED")})
+        val undone=review.undoJoin(roads.single().segmentId,roads)
+        assertTrue(undone.first.spans.isEmpty());assertTrue(undone.second.isEmpty())
+        val invalid=OutlinedNativeReview.from(draft).confirmBoundary(true).reviewSpan("source-a",0.0,0.5,OutlinedSpanDisposition.OUTSIDE_CONTEXT,"Incorrect exterior claim",emptyList(),null)
+        assertTrue(invalid.coverageFailures(emptyList()).contains("NONEXTERIOR_CONTEXT_OMISSION:source-a"))
+    }
+
 }
