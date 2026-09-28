@@ -13,6 +13,7 @@ run() {
  timeout 300 adb shell am instrument -w -r -e class "$2" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > "evidence/phase6-$1.log" 2>&1 || true
  adb logcat -b crash -d > "evidence/phase6-$1-crash.log"
 }
+run image-reference "$PKG.Phase6ImageInterpretationInstrumentationTest#representativeMapRetainsConnectedNumberedFootprints"
 run native-regular "$PKG.Phase6NativeUiInstrumentationTest#fullRegularLight"
 run native-picture "$PKG.Phase6NativeUiInstrumentationTest#pictureGeneratesNativeDraftAndExports"
 run native-retention "$PKG.Phase6NativePersistenceInstrumentationTest#replacementFailurePreservesDraftAndArchivedSource"
@@ -30,7 +31,7 @@ python3 - <<'PY'
 from pathlib import Path
 import json
 passed=[];failed=[];executions=[]
-for name,count in [('native-regular',1),('native-picture',1),('native-retention',1),('native-edits',1),('native-stage',1),('native-recover',1)]:
+for name,count in [('image-reference',1),('native-regular',1),('native-picture',1),('native-retention',1),('native-edits',1),('native-stage',1),('native-recover',1)]:
  text=Path(f'evidence/phase6-{name}.log').read_text();cls=test=None;good=[];bad=[]
  for line in text.splitlines():
   if line.startswith('INSTRUMENTATION_STATUS: class='):cls=line.split('=',1)[1]

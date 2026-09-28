@@ -37,10 +37,14 @@ class Phase6NativeUiInstrumentationTest {
     private fun textClick(list:String,label:String){rule.onNodeWithTag(list).performScrollToNode(hasText(label));rule.onNodeWithText(label).performClick();rule.waitForIdle()}
     private fun statusContains(text:String){rule.onNodeWithTag(native).performScrollToNode(hasTestTag("native-status"));rule.waitUntil(30000){runCatching {rule.onNodeWithTag("native-status").assertTextContains(text,substring=true);true}.getOrDefault(false)}}
     private fun systemClick(find:(AccessibilityNodeInfo)->Boolean) {
-        var selected:AccessibilityNodeInfo?=null
-        rule.waitUntil(15000){selected=nodes().firstOrNull(find);selected!=null}
-        var n=requireNotNull(selected);while(!n.isClickable && n.parent!=null)n=n.parent
-        check(n.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {"System picker action failed"}
+        rule.waitUntil(15000){
+            val selected=nodes().firstOrNull {it.isVisibleToUser && find(it)}
+            if(selected==null)false else {
+                var n=selected
+                while(!n.isClickable && n.parent!=null)n=n.parent
+                n.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+        }
         automation.waitForIdle(500,10000)
     }
     private fun chooseRoot() {
@@ -159,6 +163,7 @@ class Phase6NativeUiInstrumentationTest {
         click(native,"native-prepare");statusContains("Prepared using fresh independent sources")
         assertTrue(x.coordinator.state(x.id,mode).inputReady)
         textClick(native,"Back to workspace");click("territory-workspace","workspace-build")
+        rule.waitUntil(30000){runCatching {rule.onNodeWithTag("build-screen").performScrollToNode(hasTestTag("build-front"));true}.getOrDefault(false)}
         click("build-screen","build-front");rule.waitUntil(30000){x.coordinator.state(x.id,mode).front!=null}
         if(mode!=WorkspaceMode.REGULAR){click("build-screen","generate-page2");rule.waitUntil(30000){x.coordinator.state(x.id,mode).packet!=null}}
         click("build-screen",if(mode==WorkspaceMode.REGULAR)"preview-front" else "preview-packet");waitTag("preview-page");screenshot("$prefix-pdf-page1")

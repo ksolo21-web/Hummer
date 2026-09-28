@@ -15,6 +15,10 @@ class NativeRoadLabelProducer(template:ByteArray,private val style:LabelStyleCon
         widths=Regex("[-+]?[0-9]*\\.?[0-9]+").findAll(body).map {it.value.toDouble()}.toList()
         require(widths.size>=128)
     }
+    fun buildingLabel(text:String,center:Point2D):BuildingLabelItem {
+        val size=9.0;val width=text.sumOf {ch->require(ch.code-first in widths.indices);widths[ch.code-first]/1000.0*size}
+        return BuildingLabelItem(text,center,Point2D(center.x-width/2,center.y+size*0.26),0.0,size)
+    }
     fun buildingLabels(members:List<String>,polygon:List<Point2D>):List<BuildingLabelItem> {
         require(polygon.size>=3)
         val center=Point2D(polygon.map {it.x}.average(),polygon.map {it.y}.average())

@@ -235,10 +235,10 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                 Text("Territory $id • ${mode.label}. Read street labels and colored roads on this device, then review the generated draft.")
                 Button(enabled=sourceReadable && !busy && roads.isEmpty(),onClick={scope.launch {
                     busy=true;val original=source
-                    runCatching {withContext(Dispatchers.IO) {AndroidMapImageInterpreter().interpret(requireNotNull(sourceFile),requireNotNull(original).sha256)}}
+                    runCatching {withContext(Dispatchers.IO) {AndroidMapImageInterpreter().interpret(requireNotNull(sourceFile),requireNotNull(original).sha256,assignment.housingType,service::buildingLabel)}}
                         .onSuccess {generated->
                             if(sources.verifiedRecord(id)?.sha256!=original?.sha256)message="Source changed. Generate again from the current picture."
-                            else {roads=generated.roads;roadFacts=generated.observations;imageReview=NativeImageReview.from(generated);coverage=false;section="Review"
+                            else {roads=generated.roads;roadFacts=generated.observations;buildings=generated.buildings;buildingFacts=generated.buildingObservations;imageReview=NativeImageReview.from(generated);coverage=false;section="Review"
                                 message="Generated ${roads.size} road traces from the picture. Review ${generated.findings.size} findings and confirm source facts before registration."}
                         }.onFailure {message=it.message ?: "The map could not be interpreted"};busy=false
                 }},modifier=Modifier.testTag("native-generate-picture")){Text(if(busy)"Reading map…" else "Generate card draft from picture")}
@@ -316,14 +316,14 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             item {NativeTrace(roads,buildings,emptyList()) {}}
             imageReview?.let {review->
                 items(review.findings().size) {i->val finding=review.findings()[i]
-                    NativeCheck("Resolved against the source: ${finding.second}",finding.first in review.acknowledged,"native-image-finding-$i") {checked->
+                    if(review.correctable(finding.first))NativeCheck("Resolved against the source: ${finding.second}",finding.first in review.acknowledged,"native-image-finding-$i") {checked->
                         imageReview=review.copy(acknowledged=if(checked)review.acknowledged+finding.first else review.acknowledged-finding.first);coverage=false
-                    }
+                    } else Text("Generation blocked: ${finding.second} Use a clearer map crop or correct the source image and generate again.",color=MaterialTheme.colorScheme.error)
                 }
                 item {OutlinedButton(onClick={runCatching {
                     require(roads.none {it.name.startsWith("Unresolved road") || it.role=="perimeter" && it.insideSide !in setOf("left","right")}) {"Resolve missing road names and worked sides in Roads first"}
-                    require(imageReview?.complete()==true) {"Resolve each image finding first"}
-                    roadFacts=roadFacts.map {it.copy(confirmed=true)};message="Detected road facts confirmed. Save the complete reconciliation draft."
+                    require(imageReview?.complete(roads)==true) {"Resolve each image finding first"}
+                    roadFacts=roadFacts.map {it.copy(confirmed=true)};buildingFacts=buildingFacts.map {it.copy(confirmed=true)};message="Detected road facts confirmed. Save the complete reconciliation draft."
                 }.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-confirm-generated")){Text("I checked the generated roads against the source")}}
             }
 

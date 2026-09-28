@@ -6,7 +6,8 @@ import kotlin.math.*
 data class MapImageText(val text:String,val bounds:AxisAlignedRect)
 data class MapImageFinding(val id:String,val message:String,val sourceBounds:AxisAlignedRect?)
 data class MapImageRoad(val id:String,val name:String?,val status:String,val points:List<Point2D>,val junctionA:Boolean,val junctionB:Boolean)
-data class MapImageExtraction(val roads:List<MapImageRoad>,val findings:List<MapImageFinding>,val width:Int,val height:Int)
+data class MapImageBuilding(val id:String,val status:String,val polygon:List<Point2D>,val labels:List<MapImageText>)
+data class MapImageExtraction(val roads:List<MapImageRoad>,val findings:List<MapImageFinding>,val width:Int,val height:Int,val buildings:List<MapImageBuilding> = emptyList())
 
 object MapImageDraftExtractor {
     private val suffix=Regex("(?i)\\b(?:road|rd|street|st|drive|dr|court|ct|lane|ln|way|avenue|ave|boulevard|blvd|circle|cir|trail|trl|place|pl|parkway|pkwy|terrace|ter)\\b")
@@ -25,9 +26,18 @@ object MapImageDraftExtractor {
     }
     fun extract(width:Int,height:Int,pixels:IntArray,text:List<MapImageText>):MapImageExtraction {
         require(width in 16..1400 && height in 16..1400 && pixels.size==width*height)
-        val colors=IntArray(pixels.size){color(pixels[it])};val findings=mutableListOf<MapImageFinding>()
+        val colors=IntArray(pixels.size){color(pixels[it])};val findings=mutableListOf<MapImageFinding>();val buildings=mutableListOf<MapImageBuilding>()
+        var mapLeft=0;var mapBottom=height
+        val hasSidebar=text.any {it.text.trim().equals("TERRITORY",true) && it.bounds.right<width*0.35} && text.any {it.text.trim().equals("LEGEND",true)}
+        if(hasSidebar) {
+            val columns=(0 until width/3).filter {x->(height/20 until height*19/20).count {y->val p=pixels[y*width+x];((p ushr 16)and 255)+((p ushr 8)and 255)+(p and 255)<180} > height*0.5}
+            if(columns.size>width/10)mapLeft=(columns.maxOrNull() ?: 0)+max(8,width/60)
+            mapBottom=text.filter {it.text.contains("Directions:",true) && it.bounds.top>height*0.65}.minOfOrNull {it.bounds.top.toInt()-height/30} ?: height
+        }
+        for(y in 0 until height)for(x in 0 until width)if(x<mapLeft || y>=mapBottom)colors[y*width+x]=0
+        val mapText=text.filter {it.bounds.left>=mapLeft && it.bounds.bottom<=mapBottom}
         // Explicit legend text is evidence for excluding its nearby swatch, not an inferred road.
-        text.filter {streetText(it.text)==null && (it.text.contains("work inside",true)||it.text.contains("work both",true)||it.text.contains("do not work",true))}.forEach {label->
+        mapText.filter {streetText(it.text)==null && (it.text.contains("work inside",true)||it.text.contains("work both",true)||it.text.contains("do not work",true))}.forEach {label->
             val b=label.bounds
             for(y in max(0,b.top.toInt()-4)..min(height-1,b.bottom.toInt()+4))
                 for(x in max(0,b.left.toInt()-80)..min(width-1,b.right.toInt()+5)) colors[y*width+x]=0
@@ -44,9 +54,42 @@ object MapImageDraftExtractor {
             var head=0;var tail=0;queue[tail++]=start;seen[start]=true
             var left=width;var right=0;var top=height;var bottom=0
             while(head<tail){val p=queue[head++];val x=p%width;val y=p/width;left=min(left,x);right=max(right,x);top=min(top,y);bottom=max(bottom,y)
-                for(n in near(p))if(mask[n]&&!seen[n]){seen[n]=true;queue[tail++]=n}}
+                for(n in near(p))if(mask[n]&&!seen[n] && colors[n]==colors[start]){seen[n]=true;queue[tail++]=n}}
             val bounds=AxisAlignedRect(left.toDouble(),top.toDouble(),(right+1).toDouble(),(bottom+1).toDouble())
             val solid=tail.toDouble()/((right-left+1)*(bottom-top+1))
+            val memberPattern=Regex("^[0-9]+(?:\\s*[-/]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
+            val members=mapText.filter {t->memberPattern.matches(t.text.trim()) && (t.bounds.left+t.bounds.right)/2 in bounds.left..bounds.right && (t.bounds.top+t.bounds.bottom)/2 in bounds.top..bounds.bottom}
+            val numbered=members.isNotEmpty() && (right-left)*(bottom-top)<width*height*0.20 && solid>0.06
+            if(numbered) {
+                val component=(0 until tail).map {queue[it]}.toHashSet()
+                val edges=HashMap<Long,MutableList<Long>>()
+                fun vertex(x:Int,y:Int)=y.toLong()*(width+1)+x
+                fun edge(x1:Int,y1:Int,x2:Int,y2:Int){edges.getOrPut(vertex(x1,y1)){mutableListOf()}.add(vertex(x2,y2))}
+                for(p in component){val x=p%width;val y=p/width
+                    if(y==0 || p-width !in component)edge(x,y,x+1,y)
+                    if(x==width-1 || p+1 !in component)edge(x+1,y,x+1,y+1)
+                    if(y==height-1 || p+width !in component)edge(x+1,y+1,x,y+1)
+                    if(x==0 || p-1 !in component)edge(x,y+1,x,y)
+                }
+                val loops=mutableListOf<List<Point2D>>()
+                while(edges.isNotEmpty()) {
+                    val first=edges.keys.minOrNull()!!;var v=first;val loop=mutableListOf<Point2D>();var closed=false
+                    repeat(tail*4+4){
+                        if(!closed){loop+=Point2D((v%(width+1)).toDouble(),(v/(width+1)).toDouble())
+                            val next=edges[v]?.removeAt(0);if(edges[v]?.isEmpty()==true)edges.remove(v)
+                            if(next==null)closed=true else {v=next;if(v==first)closed=true}}
+                    }
+                    if(v==first && loop.size>=3)loops+=loop
+                }
+                fun area(poly:List<Point2D>)=abs((poly+poly.first()).zipWithNext().sumOf {(a,b)->a.x*b.y-b.x*a.y})/2
+                val polygon=loops.maxByOrNull(::area)?.let {simplify(it+it.first(),1.0).dropLast(1)}
+                if(polygon!=null && polygon.size>=3) {
+                    buildings+=MapImageBuilding("image-building-$start",when(colors[start]){2->"green";3->"red";else->"yellow"},polygon,members)
+                    for(i in 0 until tail)mask[queue[i]]=false
+                    continue
+                }
+                findings+=MapImageFinding("building-$start","Numbered footprint could not be recovered as a closed polygon.",bounds)
+            }
             val mark=tail<12 || max(right-left,bottom-top)<12
             val area=solid>0.65 && min(right-left,bottom-top)>20 && max(right-left,bottom-top)<min(right-left,bottom-top)*3
             if(mark||area){for(i in 0 until tail)mask[queue[i]]=false
@@ -84,24 +127,25 @@ object MapImageDraftExtractor {
         adjacency.filterValues {it.size!=2}.keys.sorted().forEach {p->adjacency.getValue(p).forEach {n->if(edge(p,n) !in visited)walk(p,n)}}
         adjacency.keys.sorted().forEach {p->adjacency.getValue(p).forEach {n->if(edge(p,n) !in visited)walk(p,n)}}
         require(paths.size<=4096){"Too many image components; use a clearer map crop"}
-        val labels=text.mapNotNull {t->streetText(t.text)?.let {it to t.bounds}}
+        val labels=mapText.mapNotNull {t->streetText(t.text)?.let {it to t.bounds}}
         val usedLabels=HashSet<Int>();val roads=mutableListOf<MapImageRoad>()
         paths.forEachIndexed {index,path->
-            if(path.size<8){findings+=MapImageFinding("short-$index","Review a short or broken road trace.",null);return@forEachIndexed}
+            val sourceBounds=AxisAlignedRect(path.minOf{(it%width).toDouble()},path.minOf{(it/width).toDouble()},path.maxOf{(it%width).toDouble()}+1,path.maxOf{(it/width).toDouble()}+1)
+            if(path.size<8){findings+=MapImageFinding("short-$index","Review a short or broken road trace.",sourceBounds);return@forEachIndexed}
             val points=path.map {Point2D((it%width).toDouble(),(it/width).toDouble())}
             val votes=path.groupingBy {colors[it]}.eachCount().filterKeys {it!=0};val dominant=votes.maxByOrNull {it.value}?.key ?: 0
-            if(votes.filterKeys {it!=dominant}.values.sum()>max(3,path.size/20))findings+=MapImageFinding("color-$index","A work color changes away from a detected junction; verify the split.",null)
+            if(votes.filterKeys {it!=dominant}.values.sum()>max(3,path.size/20))findings+=MapImageFinding("color-$index","A work color changes away from a detected junction; verify the split.",sourceBounds)
             fun distance(b:AxisAlignedRect):Double {val cx=(b.left+b.right)/2;val cy=(b.top+b.bottom)/2;return points.minOf {hypot(it.x-cx,it.y-cy)}}
             val nearest=labels.mapIndexed {i,l->i to distance(l.second)}.sortedBy {it.second}
             val match=nearest.firstOrNull()?.takeIf {it.second<=max(28.0,min(width,height)*0.07)}
             val ambiguous=match!=null && nearest.getOrNull(1)?.second?.let {it-match.second<6.0}==true
             val name=if(ambiguous)null else match?.let {usedLabels+=it.first;labels[it.first].first}
-            if(name==null)findings+=MapImageFinding("name-$index","Confirm the name of road ${index+1}; image text was missing or ambiguous.",null)
+            if(name==null)findings+=MapImageFinding("name-$index","Confirm the name of road ${index+1}; image text was missing or ambiguous.",sourceBounds)
             roads+=MapImageRoad("image-road-${index+1}",name,when(dominant){1->"yellow";2->"green";3->"red";else->"context"},simplify(points,1.4),adjacency.getValue(path.first()).size>2,adjacency.getValue(path.last()).size>2)
         }
         labels.forEachIndexed {i,l->if(i !in usedLabels)findings+=MapImageFinding("unmatched-label-$i","No reliable colored road was found for ${l.first}. Verify missing or uncolored geometry.",l.second)}
         if(roads.isEmpty())findings+=MapImageFinding("no-roads","No reliable colored road network was detected. Work boundaries cannot be inferred from an unmarked map.",null)
-        return MapImageExtraction(roads,findings,width,height)
+        return MapImageExtraction(roads,findings,width,height,buildings)
     }
     private fun simplify(points:List<Point2D>,epsilon:Double):List<Point2D> {
         if(points.size<=2)return points

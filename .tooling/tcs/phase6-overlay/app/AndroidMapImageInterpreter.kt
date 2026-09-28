@@ -15,7 +15,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
-data class InterpretedMapDraft(val sourceSha256:String,val roads:List<RoadGeometry>,val observations:List<SourceSegmentObservation>,val findings:List<MapImageFinding>,val recognizedText:List<MapImageText>)
+data class InterpretedMapDraft(val sourceSha256:String,val roads:List<RoadGeometry>,val observations:List<SourceSegmentObservation>,val findings:List<MapImageFinding>,val recognizedText:List<MapImageText>,val buildings:List<BuildingGeometry> = emptyList(),val buildingObservations:List<SourceBuildingObservation> = emptyList())
 
 /** Bundled OCR and local image geometry. Source images are never uploaded by this interpreter. */
 data class NativeImageReview(val analysisJson:String,val acknowledged:Set<String> = emptySet()) {
@@ -32,10 +32,15 @@ data class NativeImageReview(val analysisJson:String,val acknowledged:Set<String
     }
     val sha256 get()=BundleIntegrity.sha256(analysisJson.byteInputStream())
     fun findings():List<Pair<String,String>> {val a=org.json.JSONObject(analysisJson).getJSONArray("findings");return (0 until a.length()).map {a.getJSONObject(it).let {v->v.getString("id") to v.getString("message")}}}
-    fun complete()=findings().all {it.first in acknowledged}
+    fun complete(roads:List<RoadGeometry> = emptyList())=findings().all {(id,_)->id in acknowledged && when {
+        id.startsWith("side-")->roads.any {it.segmentId==id.removePrefix("side-") && it.insideSide in setOf("left","right")}
+        id.startsWith("name-")->roads.any {it.segmentId=="image-road-${id.removePrefix("name-").toInt()+1}" && !it.name.startsWith("Unresolved road")}
+        else->false
+    }}
+    fun correctable(id:String)=id.startsWith("side-") || id.startsWith("name-")
     companion object {
         fun from(result:InterpretedMapDraft):NativeImageReview {
-            val findings=org.json.JSONArray(result.findings.map {f->org.json.JSONObject().put("id",f.id).put("message",f.message)})
+            val findings=org.json.JSONArray(result.findings.map {f->org.json.JSONObject().put("id",f.id).put("message",f.message).put("sourceBounds",f.sourceBounds?.let {org.json.JSONArray(listOf(it.left,it.top,it.right,it.bottom))} ?: org.json.JSONObject.NULL)})
             val text=org.json.JSONArray(result.recognizedText.map {t->org.json.JSONObject().put("text",t.text).put("bounds",org.json.JSONArray(listOf(t.bounds.left,t.bounds.top,t.bounds.right,t.bounds.bottom)))})
             return NativeImageReview(ExtendedValues.canonical(org.json.JSONObject().put("schema","map-image-analysis-v1").put("sourceSha256",result.sourceSha256).put("findings",findings).put("recognizedText",text)))
         }
@@ -43,7 +48,7 @@ data class NativeImageReview(val analysisJson:String,val acknowledged:Set<String
 }
 
 class AndroidMapImageInterpreter {
-    fun interpret(file:File,expectedSha256:String):InterpretedMapDraft {
+    fun interpret(file:File,expectedSha256:String,housingType:String="",buildingLabel:((String,Point2D)->BuildingLabelItem)?=null):InterpretedMapDraft {
         require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed before image interpretation"}
         val source=decode(file)
         try {
@@ -55,25 +60,34 @@ class AndroidMapImageInterpreter {
             } finally {recognizer.close()}
             val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
             val extraction=MapImageDraftExtractor.extract(source.width,source.height,pixels,text)
-            val all=extraction.roads.flatMap {it.points}
+            val all=extraction.roads.flatMap {it.points}+extraction.buildings.flatMap {it.polygon}
             val findings=extraction.findings.toMutableList()
             if(all.isEmpty())return InterpretedMapDraft(expectedSha256,emptyList(),emptyList(),findings,text)
             val left=all.minOf {it.x};val right=all.maxOf {it.x};val top=all.minOf {it.y};val bottom=all.maxOf {it.y}
             val scale=min(511.0/max(1.0,right-left),283.0/max(1.0,bottom-top))
             val offsetX=176.0+(571.0-(right-left)*scale)/2
             val offsetY=20.0+(343.0-(bottom-top)*scale)/2
+            fun mapped(p:Point2D)=Point2D(offsetX+(p.x-left)*scale,offsetY+(p.y-top)*scale)
+            val multiUnit=housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home")
+            val buildings=if(multiUnit && buildingLabel!=null)extraction.buildings.map {b->
+                val labels=b.labels.map {label->buildingLabel(label.text,mapped(Point2D((label.bounds.left+label.bounds.right)/2,(label.bounds.top+label.bounds.bottom)/2)))}
+                if(b.status=="yellow")findings+=MapImageFinding("building-color-${b.id}","A yellow footprint requires assignment review.",null)
+                BuildingGeometry(b.id,labels.joinToString("/"){it.text},housingType,b.status=="green","",labels.map {it.text},labels,b.polygon.map(::mapped))
+            } else emptyList()
+            if(!multiUnit && extraction.buildings.isNotEmpty())findings+=MapImageFinding("building-type","Numbered buildings were found; verify the territory housing type before generation.",null)
+            val buildingObservations=buildings.map {b->SourceBuildingObservation(b.buildingId,b.sourceMembers,b.assigned,"Footprint and member labels extracted from source image; requires source review",false)}
             val roads=extraction.roads.map {r->
                 val name=r.name ?: "Unresolved road ${r.id.removePrefix("image-road-")}"
                 val role=when(r.status){"yellow"->"perimeter";"green"->"interior";"red"->"excluded";else->"context"}
                 if(r.status=="yellow")findings+=MapImageFinding("side-${r.id}","Confirm the worked side of $name from the source boundary.",null)
                 RoadGeometry(r.id,name,TopologyOverlapDecisionEngine.normalizeRoadName(name),r.status,role,"",false,
                     if(r.junctionA)"junction" else "termination",if(r.junctionB)"junction" else "termination",4.0,
-                    r.points.map {Point2D(offsetX+(it.x-left)*scale,offsetY+(it.y-top)*scale)})
+                    r.points.map(::mapped))
             }
             val observations=roads.map {r->SourceSegmentObservation(r.segmentId,r.name,r.status,r.role,r.insideSide,r.accessOnly,r.endpointAKind,r.endpointBKind,
                 "Automatically extracted from source image $expectedSha256; requires source review",false)}
             require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed during image interpretation"}
-            return InterpretedMapDraft(expectedSha256,roads,observations,findings,text)
+            return InterpretedMapDraft(expectedSha256,roads,observations,findings,text,buildings,buildingObservations)
         } finally {source.recycle()}
     }
     private fun decode(file:File):Bitmap {

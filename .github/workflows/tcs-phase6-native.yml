@@ -41,6 +41,8 @@ jobs:
           set -euo pipefail
           cp .tooling/tcs/phase6-overlay/app/*.kt tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/
           cp .tooling/tcs/phase6-overlay/androidTest/* tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
+          mkdir -p tcs-src/app/src/androidTest/assets
+          cp 'tcs-src/core/src/test/resources/pdf-boundary/Territory - 300Aa.pdf' tcs-src/app/src/androidTest/assets/reference300.pdf
           cp .tooling/tcs/phase6-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase6-overlay/core/*.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/
           cp .tooling/tcs/phase6-overlay/tests/*.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/

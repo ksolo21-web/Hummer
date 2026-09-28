@@ -68,7 +68,12 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
             require(files()==selected && selected.all {it.inputStream().use(BundleIntegrity::sha256)==manifest[it.relativeTo(root).invariantSeparatorsPath]}) {"Evidence changed during export; retry"}
             val expected=temp.inputStream().use(BundleIntegrity::sha256)
             destination.openOutput().use {out->temp.inputStream().use {it.copyTo(out)}}
-            require(destination.openInput().use(BundleIntegrity::sha256)==expected) {"Saved evidence did not match; export failed"}
+            val received=destination.openInput().use {input->
+                val digest=java.security.MessageDigest.getInstance("SHA-256");val buffer=ByteArray(8192);var count=0L
+                while(true){val n=input.read(buffer);if(n<0)break;count+=n;require(count<=temp.length()) {"Saved evidence length changed"};digest.update(buffer,0,n)}
+                require(count==temp.length());digest.digest().joinToString(""){"%02x".format(it)}
+            }
+            require(received==expected) {"Saved evidence did not match; export failed"}
             return expected
         } catch(e:Exception){runCatching {destination.deleteCreated()};throw e} finally {temp.delete()}
     }
@@ -80,7 +85,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         {id->sources.verifiedRecord(id)?.sha256},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {inventoryContentSha256(it)}},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {NativeSourceReconciliationContract.assignmentContentSha256(it.assignment)}},
-        {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {d->require(d.imageReview?.complete()!=false) {"Review the automatic image findings first"};NativeSourceReconciliationContract.draftFactsSha256(d.reconciliation)}})
+        {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {d->require(d.imageReview?.complete(d.assignment.roads)!=false) {"Review the automatic image findings first"};NativeSourceReconciliationContract.draftFactsSha256(d.reconciliation)}})
     private fun hash(b:ByteArray)=BundleIntegrity.sha256(b.inputStream())
     private fun file(id:String,mode:WorkspaceMode):AtomicFile {
         val slot=requireNotNull(kb.assignments[id]);require(mode in WorkspaceModePolicy.allowedModes(slot))
@@ -120,6 +125,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
             NativeImageReview(v.getString("analysis"),(0 until ack.length()).map {ack.getString(it)}.toSet())
         }
         require(image?.sha256==r.imageInterpretationSha256)
+        image?.let {require(JSONObject(it.analysisJson).getString("sourceSha256")==r.importedSourceSha256)}
         val d=NativeAuthoringDraft(a,r,VerificationJurisdiction(if(j.isNull("county"))null else j.getString("county"),j.getString("state"),j.getString("country")),(0 until contacts.length()).map {contact(contacts.getJSONObject(it))},hash(bytes),image)
         require(a.displayId==id && r.territory==id && r.mode==mode.name && a.knowledgeBaseRevision==kb.revision && r.knowledgeBaseRevision==kb.revision)
         require(encode(d).contentEquals(bytes)) {"Native draft encoding changed"};return d
