@@ -21,7 +21,7 @@ data class OutlinedNativeReview(val document:String) {
         ExtendedValues.keys(root,*(listOf("schema","sourceSha256","analysis","transform","analysisSha256","boundaryConfirmed","spans","resolutions")+if(root.has("repairReviews"))listOf("repairReviews")else emptyList()).toTypedArray())
         require(root.getString("schema")=="outlined-native-review-v1")
         sourceSha256=root.getString("sourceSha256");require(sourceSha256.matches(Regex("[0-9a-f]{64}")))
-        val a=root.getJSONObject("analysis");ExtendedValues.keys(a,*(listOf("width","height","polygon","enclosedPixels","bounds","roads","findings","recognizedText")+if(a.has("repairs"))listOf("repairs")else emptyList()).toTypedArray())
+        val a=root.getJSONObject("analysis");ExtendedValues.keys(a,*(listOf("width","height","polygon","enclosedPixels","bounds","roads","findings","recognizedText")+(if(a.has("repairs"))listOf("repairs")else emptyList())+(if(a.has("roadPaintMode"))listOf("roadPaintMode")else emptyList())).toTypedArray())
         val width=a.getInt("width");val height=a.getInt("height");require(width in 16..1400 && height in 16..1400)
         val polygon=points(a.getJSONArray("polygon"));require(polygon.size in 3..2048)
         val repairRows=a.optJSONArray("repairs") ?: JSONArray();require(repairRows.length()<=1)
@@ -42,7 +42,7 @@ data class OutlinedNativeReview(val document:String) {
         val findings=(0 until rows.length()).map {i->val f=rows.getJSONObject(i);ExtendedValues.keys(f,"id","message","bounds")
             MapImageFinding(f.getString("id"),f.getString("message"),if(f.isNull("bounds"))null else bounds(f.getJSONArray("bounds")))}
         require(a.getJSONArray("recognizedText").length()<=10000)
-        extraction=OutlinedMapExtraction(boundary,roads,findings)
+        extraction=OutlinedMapExtraction(boundary,roads,findings,OutlinedRoadPaintMode.valueOf(a.optString("roadPaintMode","LIGHT_NEUTRAL")))
         require((polygon+roads.flatMap {it.road.points}).all {it.x in 0.0..width.toDouble() && it.y in 0.0..height.toDouble()})
         val t=root.getJSONArray("transform");require(t.length()==3);transform=OutlinedMapTransform(t.getDouble(0),t.getDouble(1),t.getDouble(2))
         require(root.getString("analysisSha256")==OutlinedCoverageContract.analysisSha256(sourceSha256,extraction,transform))
@@ -179,6 +179,7 @@ data class OutlinedNativeReview(val document:String) {
             val root=JSONObject().put("schema","outlined-native-review-v1").put("sourceSha256",result.sourceSha256).put("analysis",analysis)
                 .put("transform",JSONArray(listOf(t.scale,t.offsetX,t.offsetY))).put("analysisSha256",OutlinedCoverageContract.analysisSha256(result.sourceSha256,e,t))
                 .put("boundaryConfirmed",false).put("spans",JSONArray()).put("resolutions",JSONArray())
+            if(e.paintMode!=OutlinedRoadPaintMode.LIGHT_NEUTRAL)analysis.put("roadPaintMode",e.paintMode.name)
             if(b.gapRepairs.isNotEmpty()) {
                 analysis.put("repairs",JSONArray(b.gapRepairs.map {r->JSONObject().put("id",r.id).put("algorithm",r.algorithm).put("ends",path(listOf(r.start,r.end))).put("addedPixels",path(r.addedPixels))}))
                 root.put("repairReviews",JSONObject())

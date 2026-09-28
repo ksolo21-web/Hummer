@@ -45,6 +45,7 @@ class Phase7RealImageIntakeInstrumentationTest {
             val boundary = result?.outlined?.boundary
             val report = JSONObject().put("case", caseId).put("sourceSha256", actualHash)
                 .put("inputKind", "OUTLINED_AREA")
+                .put("roadPaintMode",result?.outlined?.paintMode?.name ?: JSONObject.NULL)
                 .put("decoderError", failure?.let { "${it.javaClass.simpleName}: ${it.message}" } ?: JSONObject.NULL)
                 .put("boundary", boundary?.let { b -> JSONObject()
                     .put("width", b.width).put("height", b.height)

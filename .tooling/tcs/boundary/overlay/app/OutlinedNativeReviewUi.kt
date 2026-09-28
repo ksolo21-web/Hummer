@@ -22,6 +22,7 @@ import java.io.File
     val reviewed=review.spans.map {it.candidateId}.toSet()
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Outlined-map source review",style=MaterialTheme.typography.titleLarge)
+        if(review.extraction.paintMode==OutlinedRoadPaintMode.BLUE_GRAY)Text("Blue-gray map surfaces are proposed as roads. Check parking areas and building edges before assigning work.")
         Text("${reviewed.size} of ${review.extraction.roads.size} traces have a recorded disposition. Uncertain marks remain separate findings.")
         if(source!=null)NativeSourcePreview(source,outline=review.extraction.boundary.polygon,sourceRoad=current?.road?.points.orEmpty()){sourceReadable=it}
         review.extraction.boundary.gapRepairs.forEach {repair->

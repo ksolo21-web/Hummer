@@ -41,6 +41,7 @@ object OutlinedCoverageContract {
         o.writeInt(e.roads.size);e.roads.forEach {p->val r=p.road;o.text(r.id);o.text(r.name ?: "");o.text(r.status)
             o.text(p.relation.name);o.writeBoolean(r.junctionA);o.writeBoolean(r.junctionB);o.points(r.points)}
         o.writeInt(e.findings.size);e.findings.forEach {f->o.text(f.id);o.text(f.message);o.writeBoolean(f.sourceBounds!=null);f.sourceBounds?.let {o.bounds(it)}}
+        if(e.paintMode!=OutlinedRoadPaintMode.LIGHT_NEUTRAL){o.text("outlined-road-paint-v1");o.text(e.paintMode.name)}
         // Preserve existing no-repair hashes; repaired analyses carry a versioned extension.
         if(e.boundary.gapRepairs.isNotEmpty()) {
             o.text("boundary-repair-proposals-v1");o.writeInt(e.boundary.gapRepairs.size)

@@ -134,6 +134,23 @@ class OutlinedMapBoundaryTest {
         for(x in 350..355)pixels[30*w+x]=0xFFFFFFFF.toInt()
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
     }
+    @Test fun blueGrayRoadsOnPaleMapsRemainNeutralAndDoNotTraceBuildingFill() {
+        val w=400;val h=300;val pixels=IntArray(w*h){0xFFF5F5F5.toInt()}
+        for(x in 25..375){pixels[25*w+x]=0xFF000000.toInt();pixels[275*w+x]=0xFF000000.toInt()}
+        for(y in 25..275){pixels[y*w+25]=0xFF000000.toInt();pixels[y*w+375]=0xFF000000.toInt()}
+        for(y in 140..160)for(x in 40..360)pixels[y*w+x]=0xFFB9C8D2.toInt()
+        for(y in 60..160)for(x in 190..210)pixels[y*w+x]=0xFFB9C8D2.toInt()
+        for(y in 60..110)for(x in 60..130)pixels[y*w+x]=0xFFE4E4E9.toInt()
+        for(y in 200..245)for(x in 60..130)pixels[y*w+x]=0xFF77CCEE.toInt()
+        for(y in 60..110)for(x in 280..330)pixels[y*w+x]=0xFFC0CDD8.toInt()
+        val result=OutlinedMapRoadExtractor.extract(w,h,pixels,emptyList())
+        assertEquals(OutlinedRoadPaintMode.BLUE_GRAY,result.paintMode)
+        assertTrue(result.findings.any {it.id.startsWith("component-") && it.sourceBounds?.left==280.0})
+        assertTrue(result.roads.isNotEmpty())
+        assertTrue(result.roads.all {it.road.status=="context"})
+        assertTrue(result.roads.flatMap {it.road.points}.any {it.x<150 && it.y in 140.0..160.0})
+        assertFalse(result.roads.flatMap {it.road.points}.any {it.x in 60.0..130.0 && (it.y in 60.0..110.0 || it.y in 200.0..245.0)})
+    }
     @Test fun neutralColoredAreasDoNotEstablishBoundaryOrWorkStatus() {
         val w=300;val h=200;val p=IntArray(w*h){when(it%w/75){0->0xFF51C72B.toInt();1->0xFFFF1435.toInt();2->0xFF22CCFF.toInt();else->0xFFFFDC18.toInt()}}
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
