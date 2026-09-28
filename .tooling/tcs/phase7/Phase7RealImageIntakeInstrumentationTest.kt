@@ -95,7 +95,10 @@ class Phase7RealImageIntakeInstrumentationTest {
         rule.onNodeWithTag("boundary-repair-evidence").performScrollTo().performTextInput("Reviewed the short connection across the Timberlea Dr label against both visible stroke ends")
         rule.waitUntil(30000){runCatching {rule.onNodeWithTag("boundary-repair-accept").assertIsEnabled();true}.getOrDefault(false)}
         rule.onNodeWithTag("boundary-repair-closeup").performScrollTo()
-        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        rule.runOnUiThread {
+            val view=rule.activity.window.decorView
+            (rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(view.windowToken,0)
+        }
         rule.waitForIdle()
         requireNotNull(instrumentation.uiAutomation.takeScreenshot()).let {bitmap->File(context.filesDir,"phase7-a265-repair-pending.png").outputStream().use {assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it))};bitmap.recycle()}
         rule.onNodeWithTag("boundary-repair-accept").performScrollTo().performClick()
