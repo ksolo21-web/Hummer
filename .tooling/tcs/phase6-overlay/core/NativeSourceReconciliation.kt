@@ -69,6 +69,12 @@ object NativeSourceReconciliationContract {
         return BundleIntegrity.sha256(bytes.toByteArray().inputStream())
     }
 
+    /** Separates stable user observations from registration execution metadata.
+     * Inventory is bound independently; its authority digest is assigned after registration. */
+    fun draftFactsSha256(r: NativeSourceReconciliation): String = BundleIntegrity.sha256(encode(r.copy(
+        reviewedAtUtc="2000-01-01T00:00:00Z", registrationId="00000000-0000-0000-0000-000000000000",
+        predecessorEventSha256=null, explicitAssignmentConfirmation=false, inventorySha256=null)).inputStream())
+
     fun assess(kb: TerritoryKnowledgeBase, r: NativeSourceReconciliation,
         a: CurrentAuthoritativeAssignmentState, mode: String, sourceSha256: String,
         inventorySha256: String?): NativeReconciliationAssessment {

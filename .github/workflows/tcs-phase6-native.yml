@@ -39,11 +39,25 @@ jobs:
       - name: Apply native authoring foundation and test affected contracts
         run: |
           set -euo pipefail
+          cp .tooling/tcs/phase6-overlay/app/*.kt tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/
+          cp .tooling/tcs/phase6-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
           cp .tooling/tcs/phase6-overlay/core/*.kt tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/
           cp .tooling/tcs/phase6-overlay/tests/*.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/
           (cd tcs-src && gradle --no-daemon :core:test --tests '*NativeSourceReconciliationTest') > evidence/core-tests.log 2>&1 || { cat evidence/core-tests.log; exit 1; }
           cp -r tcs-src/core/build/test-results/test evidence/core-results
           python .tooling/tcs/phase6-overlay/python/native_source_reconciliation.py evidence/reconciliation-golden.json evidence/assignment-golden.json evidence/assignment-content.sha256 > evidence/python-parity.json
+      - name: Compile native application and device tests
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug :app:bundleDebug :app:assembleDebugAndroidTest) > evidence/compile.log 2>&1 || { cat evidence/compile.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Android-0.6.1.apk
+          cp tcs-src/app/build/outputs/bundle/debug/app-debug.aab evidence/TerritoryCardStudio-Android-0.6.1.aab
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/emulator-test.apk
+          sha256sum evidence/*.apk evidence/*.aab > evidence/builds.sha256
       - name: Preserve evidence and rebuildable source
         if: always()
         run: |

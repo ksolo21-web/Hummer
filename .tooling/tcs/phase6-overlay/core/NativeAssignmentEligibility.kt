@@ -11,7 +11,7 @@ class NativeAssignmentEvidence private constructor(
     val territory: String, val mode: String, val knowledgeBaseRevision: String,
     val authoritySha256: String, val importedSourceSha256: String, val lockedReferenceSha256: String,
     val assignmentContentSha256: String, val inventorySha256: String?,
-    val topology: TopologySignature, val buildingMembers: List<String>, val truth: CandidateSourceTruthState
+    val topology: TopologySignature, val buildingMembers: List<String>, val truth: CandidateSourceTruthState, val reconciliationJson:String
 ) {
     fun matches(kb: TerritoryKnowledgeBase, a: CurrentAuthoritativeAssignmentState, sourceTruth: CandidateSourceTruthState): Boolean =
         territory == a.displayId && knowledgeBaseRevision == kb.revision && authoritySha256 == a.authoritySha256 &&
@@ -31,7 +31,7 @@ class NativeAssignmentEvidence private constructor(
             require(assessment.passed) { assessment.failures.joinToString("; ") }
             return NativeAssignmentEvidence(r.territory,r.mode,kb.revision,hash,sourceSha256,r.lockedReferenceSha256,
                 r.assignmentContentSha256,r.inventorySha256,TopologyOverlapDecisionEngine.topologySignature(assignment.roads),
-                assignment.buildings.flatMap { it.sourceMembers }.distinct().sorted(),assessment.truth)
+                assignment.buildings.flatMap { it.sourceMembers }.distinct().sorted(),assessment.truth,receiptBytes.toString(Charsets.UTF_8))
         }
     }
 }

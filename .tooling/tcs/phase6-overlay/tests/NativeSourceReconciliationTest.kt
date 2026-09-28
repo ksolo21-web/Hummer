@@ -112,7 +112,7 @@ class NativeSourceReconciliationTest {
     @Test fun durableRegistrationRevocationAndFreshWitnessChecks() {
         val dir=java.nio.file.Files.createTempDirectory("native-ledger").toFile()
         var source:String?=r.importedSourceSha256
-        fun ledger()=NativeRegistrationLedger(dir,kb,{source},{_,_->null})
+        fun ledger()=NativeRegistrationLedger(dir,kb,{source},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(a)},{_,_->NativeSourceReconciliationContract.draftFactsSha256(r)})
         try {
             val l=ledger();val saved=l.register(r,a,null)
             assertEquals(1,saved.head.sequence);assertEquals(saved,ledger().active(r.territory,r.mode))
@@ -135,7 +135,7 @@ class NativeSourceReconciliationTest {
     @Test fun tamperedArchivesAndUncommittedEventsCannotGrantAuthority() {
         val dir=java.nio.file.Files.createTempDirectory("native-tamper").toFile()
         try {
-            val l=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null})
+            val l=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(a)},{_,_->NativeSourceReconciliationContract.draftFactsSha256(r)})
             val saved=l.register(r,a,null)
             val archive=dir.walkTopDown().single {it.name==saved.head.assignmentSha256+".assignment"}
             File(archive.parentFile,"unselected.event").writeText("Not a committed registration")
@@ -149,7 +149,7 @@ class NativeSourceReconciliationTest {
         val dir=java.nio.file.Files.createTempDirectory("native-request").toFile()
         val boundKb=kb.copy(referenceRoles=kb.referenceRoles+(slot.referenceFile to kb.referenceRoles.getValue(slot.referenceFile).copy(displayId=identity.displayId,fieldReleaseAllowed=false)))
         try {
-            val ledger=NativeRegistrationLedger(dir,boundKb,{r.importedSourceSha256},{_,_->null});val saved=ledger.register(r,a,null)
+            val ledger=NativeRegistrationLedger(dir,boundKb,{r.importedSourceSha256},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(a)},{_,_->NativeSourceReconciliationContract.draftFactsSha256(r)});val saved=ledger.register(r,a,null)
             val evidence=requireNotNull(ledger.current(r.territory,saved.assignment.authoritySha256))
             val policy=File(root,"app/src/main/assets/territory/Online-Source-Policy.json").reader().use(OnlineSourcePolicyLoader::load)
             fun request(eligibility:NativeAssignmentEligibility)=LiveGeometryVerificationRequestFactory.create(boundKb,policy,r.territory,saved.assignment.authoritySha256,evidence.topology,emptyList(),evidence.truth,VerificationJurisdiction("Oakland County","Michigan","United States"),nativeEligibility=eligibility)
@@ -164,7 +164,7 @@ class NativeSourceReconciliationTest {
     @Test fun failedPrecommitPreservesSelectionAndPostcommitSyncFailureIsExplicit() {
         val dir=java.nio.file.Files.createTempDirectory("native-commit").toFile()
         var failBefore=false;var failAfter=false
-        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},
+        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(a)},{_,_->NativeSourceReconciliationContract.draftFactsSha256(r)},
             beforeCommit={if(failBefore)error("Injected before rename")},syncDirectory={if(failAfter)error("Injected directory sync failure")})
         try {
             val first=ledger.register(r,a,null)
@@ -180,7 +180,7 @@ class NativeSourceReconciliationTest {
     }
     @Test fun finalCapacityIsReservedForRevocation() {
         val dir=java.nio.file.Files.createTempDirectory("native-capacity").toFile()
-        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},syncDirectory={})
+        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(a)},{_,_->NativeSourceReconciliationContract.draftFactsSha256(r)},syncDirectory={})
         try {
             var head:String?=null
             repeat(NativeRegistrationLedger.MAX_EVENTS-1) {i->
@@ -195,7 +195,7 @@ class NativeSourceReconciliationTest {
     }
     @Test fun lookupAndConcurrentRevocationLinearizeWithoutReactivatingAuthority() {
         val dir=java.nio.file.Files.createTempDirectory("native-race").toFile()
-        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},syncDirectory={})
+        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(a)},{_,_->NativeSourceReconciliationContract.draftFactsSha256(r)},syncDirectory={})
         val executor=java.util.concurrent.Executors.newFixedThreadPool(2)
         try {
             val saved=ledger.register(r,a,null)

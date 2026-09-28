@@ -13,6 +13,8 @@ class NativeRegistrationLedger(
     private val root:File, private val kb:TerritoryKnowledgeBase,
     private val currentSourceHash:(String)->String?,
     private val currentInventoryContentHash:(String,String)->String?,
+    private val currentAssignmentContentHash:(String,String)->String?,
+    private val currentReconciliationFactsHash:(String,String)->String?,
     private val beforeCommit:(File)->Unit = {},
     private val syncDirectory:(File)->Unit = { directory ->
         java.nio.channels.FileChannel.open(directory.toPath(),java.nio.file.StandardOpenOption.READ).use {it.force(true)}
@@ -99,6 +101,7 @@ class NativeRegistrationLedger(
     }
     private fun evidence(item:Registered):NativeAssignmentEvidence {
         val r=item.reconciliation
+        require(currentAssignmentContentHash(r.territory,r.mode)==r.assignmentContentSha256 && currentReconciliationFactsHash(r.territory,r.mode)==NativeSourceReconciliationContract.draftFactsSha256(r)) {"Authoring draft changed after registration"}
         return NativeAssignmentEvidence.fromCurrentLedger(kb,NativeSourceReconciliationContract.encode(r),item.assignment,r.mode,
             requireNotNull(currentSourceHash(r.territory)) {"Current source witness missing"},currentInventoryContentHash(r.territory,r.mode))
     }
@@ -127,10 +130,11 @@ class NativeRegistrationLedger(
         existing.lastOrNull()?.let {require(!Instant.parse(r.reviewedAtUtc).isBefore(Instant.parse(it.at))) {"Review timestamp predates registration history"}}
         val assignment=NativeAssignmentCodec.decode(NativeAssignmentCodec.encode(draft.copy(authoritySha256=authority)))
         val beforeSource=currentSourceHash(r.territory);val beforeInventory=currentInventoryContentHash(r.territory,r.mode)
+        require(currentAssignmentContentHash(r.territory,r.mode)==r.assignmentContentSha256 && currentReconciliationFactsHash(r.territory,r.mode)==NativeSourceReconciliationContract.draftFactsSha256(r)) {"Authoring draft changed before registration"}
         NativeAssignmentEvidence.fromCurrentLedger(kb,receipt,assignment,r.mode,requireNotNull(beforeSource),beforeInventory)
         require(dir.listFiles().orEmpty().count {it.extension in setOf("assignment","reconciliation")}<1024) {"Registration evidence archive is full"}
         val rHash=archive(dir,receipt,"reconciliation");val aHash=archive(dir,NativeAssignmentCodec.encode(assignment),"assignment")
-        require(currentSourceHash(r.territory)==beforeSource && currentInventoryContentHash(r.territory,r.mode)==beforeInventory) {"Source or inventory changed during registration"}
+        require(currentSourceHash(r.territory)==beforeSource && currentInventoryContentHash(r.territory,r.mode)==beforeInventory && currentAssignmentContentHash(r.territory,r.mode)==r.assignmentContentSha256 && currentReconciliationFactsHash(r.territory,r.mode)==NativeSourceReconciliationContract.draftFactsSha256(r)) {"Source, draft or inventory changed during registration"}
         val head=commit(dir,existing,"REGISTER",rHash,aHash,r.author,r.reviewedAtUtc)
         Registered(head,r,assignment)
     }
