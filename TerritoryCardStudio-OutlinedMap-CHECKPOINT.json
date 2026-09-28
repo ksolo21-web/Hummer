@@ -1,53 +1,82 @@
 {
   "status": "IN_PROGRESS_NOT_ACCEPTED",
+  "releaseReady": false,
+  "newAPKDelivered": false,
   "source": "source-26435.jpg",
   "sourceSha256": "a93294659bd8ec40937fde5b20a8e0f89315d20c69ebe25e92318fb5665bbec3",
-  "completedAcceptanceGates": 0,
-  "requiredAcceptanceGates": 6,
-  "current": "Boundary and lossless presentation triage verified; road interpretation is not yet usable for card production.",
-  "next": "Implement source-bound road classification and geometry/span coverage review; wire native input mode and invalidation; run actual-source native output journey and independent final review.",
   "baselineSourceCommit": "e851c625b73dee83737810767856a741e9468d26",
-  "boundaryTests": {
-    "passed": 7,
-    "failed": 0,
-    "run": 36440890866,
-    "commit": "c2da74993fee4c9e1850f0fd2241e7a4a9ab0bcd"
+  "sourceCommit": "1207f17e0ba118ba6c5ede37861162a858b62597",
+  "current": "Outlined import, boundary overlay, source-span review and persistent source-mode guards implemented. Final card production remains blocked by incomplete road reconstruction.",
+  "verifiedAtPreviousCommit": {
+    "commit": "170eb77d106b8bf294b97ed9a4fd3424ffb6d76c",
+    "run": 36455491218,
+    "coreTests": 55,
+    "outlinedAndroidTests": 2,
+    "coloredMapAndroidRegressionTests": 1,
+    "result": "SUCCESS"
   },
-  "roadProposalReview": {
-    "rawProposals": 487,
-    "rawFindings": 673,
-    "accepted": false,
-    "reason": "Parking stripes and other non-road geometry dominate raw proposals. Require source-bound triage and typed review before native generation."
+  "latestValidation": {
+    "commit": "1207f17e0ba118ba6c5ede37861162a858b62597",
+    "nativeRun": 36456967772,
+    "coreRun": 36456967969,
+    "status": "SUCCESS",
+    "coreTests": 56,
+    "outlinedAndroidTests": 2,
+    "coloredMapAndroidRegressionTests": 1,
+    "nativeEvidenceArtifact": 10986307319,
+    "sourceArtifact": 10987061010
   },
-  "sourceCommit": "041cd5e7cd4f2b2a39ff99cd89b338c595c4bafb",
-  "targetedTests": {
-    "passed": 8,
-    "failed": 0,
-    "run": 36441404778
-  },
-  "triage": {
-    "SURROUNDING_CONTEXT": 426,
-    "CONNECTED_APPROACH": 13,
-    "TERRITORY": 48
-  },
-  "remaining": [
-    "Road nuisance classification without losing legitimate short roads",
-    "OCR/name and occluded geometry handling",
-    "Typed per-candidate coverage and source-to-output span bindings",
-    "Native outlined-map selection, boundary overlay and review persistence",
-    "Neutral context rendering",
-    "Full native journey and actual final-card review"
+  "implemented": [
+    "Closed black polygon detection preserving concavities",
+    "Neutral road proposals independent of basemap fill colors",
+    "Rotated and targeted vertical-label OCR",
+    "Source-aligned street-name proposals; wrong orientation/distant labels rejected",
+    "Exact source-span coverage and per-output review invalidation",
+    "Native partial-span, clear, exact-join and undo controls",
+    "Source visibility prerequisite for review",
+    "Draft v3 reload and source-mode witness preventing manual downgrade or older-draft registration bypass",
+    "Mode provenance included in history export"
   ],
+  "remaining": [
+    "Recover missing and obscured road geometry with source-backed correction",
+    "Make nuisance classification complete and usable without discarding real road fragments",
+    "Support verified perimeter-road correspondence when road centerlines differ from the black-outline inner edge",
+    "Complete actual-JPG native registration, preparation, PDF preview, approval, SAF readback and knowledge-base update journey",
+    "Independent final-card visual review and all acceptance gates"
+  ],
+  "lastActualSourceInventory": {
+    "commit": "1207f17e0ba118ba6c5ede37861162a858b62597",
+    "candidates": 596,
+    "emittedRoads": 69,
+    "unresolvedEmittedNames": 64,
+    "findings": 662,
+    "reviewedDispositions": 0,
+    "wrongSchoolTaylorAndHorizontalAliceBindingsRemoved": true
+  },
   "independentReview": {
-    "finding": "Presentation grouping is safe; no full feature acceptance.",
-    "limitations": "A region rectangle can contain mixed geometry. No bulk dismiss may silently resolve its contents."
+    "accepted": false,
+    "reviewedCommit": "1207f17e0ba118ba6c5ede37861162a858b62597",
+    "reviewedEvidence": "boundary/native-round6",
+    "limitedFixConfirmed": "School Taylor and horizontal Alice incorrect names removed; vertical Alice proposals retained. Boundary stem and concavities visually preserved. Reload and unresolved-registration block evidenced.",
+    "blockers": "64 of 69 emitted roads remain unnamed; 662 findings and zero recorded dispositions. Complete geometry, omissions, work rules and inside-only sides unverified. No completed actual-source final PDF, approval or SAF readback.",
+    "finalCardScore": null
   },
   "evidence": {
-    "outlined-road-proposals.json": "55eb4782d2326bc8f6a5498ba3f873e825342d78e7db5590995e1983824e512b",
-    "core-tests.log": "837979c6daba023b39d4f3b216a874a245b5aa296e9dc030977cb87fcef6427e",
-    "boundary-analysis.json": "31f9821aaa4577191316057ffa18707b4ab549c000ec185de4b1525ef333c86d",
-    "core-results/TEST-com.koenterprises.territorycardstudio.core.OutlinedMapBoundaryTest.xml": "4629d18294c3d21a87fa54b6655a7b05f833575b5e8f0da6dc6203fe1d780f9d",
-    "core-results/binary/results-generic.bin": "29af83b174eea94e18133a51987da512dce1d91ae75fb44c44eae4cfc68e57cc",
-    "core-results/binary/output-events.bin": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "outlined-native-source-review.png": "df4265ce7cd1b3f90b8f0f452b1b8b8ba7bbc6250790037d3547e3a519f93910",
+    "outlined-road-proposals.json": "1d9bdffc0a40750c8ab2bbee4d5f899c972fb840edfc22faf157f65eb08ce461",
+    "outlined-image-crash.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "outlined-actual-source-analysis.json": "b891ce7f2b295fd025cabbe1352bf6b1440125f97bf7c95c52cb943491361a03",
+    "outlined-persistence-evidence.json": "2a7756450ddd0ada61ae7c9b24a469833bb2e2ce18ed18cbb36fe605060db0c2",
+    "outlined-capture-paths.txt": "52369b712cedebc30324bf9d5fb550796d1c5c494b7d9db269863b7b69d11d74",
+    "outlined-neutral-context.pdf": "16069be1b2f46a991dffec95cd58f9b4f9d5cf6deb0799d27957d0274e457ee7",
+    "outlined-image.log": "6e3e624c0d2ab7a5bb4fcf549d4900d2894d70791ac642712243b1596af83df4",
+    "outlined-colored-regression.log": "492b062bceeb5ffb79570253d9e01e9eca3c77bb644f97085ae87237aeb39112"
+  },
+  "actualSourceFinalPDF": null,
+  "neutralContextPDFPurpose": "Synthetic renderer regression only; not the actual source final card.",
+  "acceptedBaselineAPK": {
+    "version": "0.6.1",
+    "sourceCommit": "e851c625b73dee83737810767856a741e9468d26",
+    "sha256": "31920acf188379bf35c64d06f8521c373ba88f1bf14ab1df7d0b57445ed5ccc2"
   }
 }
