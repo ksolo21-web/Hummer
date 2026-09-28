@@ -26,6 +26,16 @@ data class NativeImageReview(val analysisJson:String,val acknowledged:Set<String
         val value=org.json.JSONObject(analysisJson);ExtendedValues.keys(value,"schema","sourceSha256","findings","recognizedText")
         require(value.getString("schema")=="map-image-analysis-v1" && value.getString("sourceSha256").matches(Regex("[0-9a-f]{64}")))
         require(value.getJSONArray("findings").length()<=4096 && value.getJSONArray("recognizedText").length()<=5000)
+        fun rectangle(a:org.json.JSONArray){require(a.length()==4);val v=(0..3).map {a.getDouble(it)};require(v.all {it.isFinite()} && v[2]>=v[0] && v[3]>=v[1])}
+        val findingRows=value.getJSONArray("findings")
+        for(i in 0 until findingRows.length()) {
+            val row=findingRows.getJSONObject(i);val keys=row.keys().asSequence().toSet()
+            require(keys==setOf("id","message") || keys==setOf("id","message","sourceBounds"))
+            require(row.get("id") is String && row.get("message") is String)
+            if(!row.isNull("sourceBounds"))rectangle(row.getJSONArray("sourceBounds"))
+        }
+        val recognized=value.getJSONArray("recognizedText")
+        for(i in 0 until recognized.length()) {val row=recognized.getJSONObject(i);ExtendedValues.keys(row,"text","bounds");require(row.get("text") is String && row.getString("text").length<=2000);rectangle(row.getJSONArray("bounds"))}
         val rows=findings();require(rows.map {it.first}.distinct().size==rows.size && acknowledged.all {id->rows.any {it.first==id}})
         require(rows.all {it.first.length<=120 && it.second.length<=1000})
         require(ExtendedValues.canonical(value)==analysisJson)
@@ -40,10 +50,10 @@ data class NativeImageReview(val analysisJson:String,val acknowledged:Set<String
     }
     fun complete(roads:List<RoadGeometry> = emptyList())=findings().all {(id,_)->id in acknowledged && when {
         id.startsWith("side-")->roads.any {it.segmentId==id.removePrefix("side-") && it.insideSide in setOf("left","right")}
-        id.startsWith("name-")->roads.any {it.segmentId=="image-road-${id.removePrefix("name-").toInt()+1}" && !it.name.startsWith("Unresolved road")}
+        id.startsWith("name-")->id.removePrefix("name-").toIntOrNull()?.takeIf {it in 0..4095}?.let {index->roads.any {it.segmentId=="image-road-${index+1}" && !it.name.startsWith("Unresolved road")}}==true
         else->false
     }}
-    fun correctable(id:String)=id.startsWith("side-") || id.startsWith("name-")
+    fun correctable(id:String)=id.matches(Regex("side-image-road-[1-9][0-9]{0,3}")) || id.removePrefix("name-").toIntOrNull()?.let {id.startsWith("name-") && it in 0..4095}==true
     companion object {
         fun from(result:InterpretedMapDraft):NativeImageReview {
             val findings=org.json.JSONArray(result.findings.map {f->org.json.JSONObject().put("id",f.id).put("message",f.message).put("sourceBounds",f.sourceBounds?.let {org.json.JSONArray(listOf(it.left,it.top,it.right,it.bottom))} ?: org.json.JSONObject.NULL)})
@@ -60,9 +70,23 @@ class AndroidMapImageInterpreter {
         try {
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
-                Tasks.await(recognizer.process(InputImage.fromBitmap(source,0)),60,TimeUnit.SECONDS).textBlocks.flatMap {block->block.lines.mapNotNull {line->
-                    line.boundingBox?.let {b->MapImageText(line.text,AxisAlignedRect(b.left.toDouble(),b.top.toDouble(),b.right.toDouble(),b.bottom.toDouble()))}
-                }}
+                fun recognized(rotation:Int):List<MapImageText> {
+                    val result=Tasks.await(recognizer.process(InputImage.fromBitmap(source,rotation)),60,TimeUnit.SECONDS)
+                    val numeric=Regex("^[| ]*[0-9]+(?:[ \t]*[-/–—−][ \t]*[0-9]+)*(?:[ \t]*[A-Z])?[| ]*$")
+                    fun box(b:android.graphics.Rect):AxisAlignedRect=when(rotation) {
+                        90->AxisAlignedRect(b.top.toDouble(),source.height-b.right.toDouble(),b.bottom.toDouble(),source.height-b.left.toDouble())
+                        270->AxisAlignedRect(source.width-b.bottom.toDouble(),b.left.toDouble(),source.width-b.top.toDouble(),b.right.toDouble())
+                        else->AxisAlignedRect(b.left.toDouble(),b.top.toDouble(),b.right.toDouble(),b.bottom.toDouble())
+                    }
+                    return result.textBlocks.flatMap {block->block.lines.flatMap {line->
+                        val pieces=if(line.elements.size>1 && line.elements.all {numeric.matches(it.text)})line.elements.mapNotNull {e->e.boundingBox?.let {MapImageText(e.text,box(it))}}
+                            else listOfNotNull(line.boundingBox?.let {MapImageText(line.text,box(it))})
+                        pieces.filter {rotation==0 || numeric.matches(it.text) && (it.bounds.bottom-it.bounds.top)>(it.bounds.right-it.bounds.left)*1.2}
+                    }}
+                }
+                val normal=recognized(0)
+                val rotated=if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))(recognized(90)+recognized(270)).distinctBy {listOf(it.text,it.bounds.left.toInt()/4,it.bounds.top.toInt()/4)} else emptyList()
+                normal+rotated.filter {r->normal.none {n->n.text==r.text && kotlin.math.abs(n.bounds.left-r.bounds.left)<8 && kotlin.math.abs(n.bounds.top-r.bounds.top)<8}}
             } finally {recognizer.close()}
             val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
             val extraction=MapImageDraftExtractor.extract(source.width,source.height,pixels,text)

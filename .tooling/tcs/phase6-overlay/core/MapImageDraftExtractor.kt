@@ -48,7 +48,10 @@ object MapImageDraftExtractor {
                 for(x in max(0,b.left.toInt()-80)..min(width-1,b.right.toInt()+5)) colors[y*width+x]=0
         }
         val memberPattern=Regex("^[0-9]+(?:\\s*[-/–—−]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
-        val numberLabels=mapText.filter {memberPattern.matches(it.text.trim())}
+        val numberLabels=mapText.map {it.copy(text=it.text.trim().trim('|').trim().replace(Regex("\\s*([-/–—−])\\s*")){m->m.groupValues[1]})}.filter {memberPattern.matches(it.text)}.fold(mutableListOf<MapImageText>()) {out,t->
+            if(out.none {it.text==t.text && hypot((it.bounds.left+it.bounds.right-t.bounds.left-t.bounds.right)/2,(it.bounds.top+it.bounds.bottom-t.bounds.top-t.bounds.bottom)/2)<8.0})out+=t
+            out
+        }
         val usedBuildingLabels=HashSet<MapImageText>()
         val mask=BooleanArray(colors.size){colors[it]!=0}
         val seen=BooleanArray(mask.size);val queue=IntArray(mask.size)
@@ -66,7 +69,7 @@ object MapImageDraftExtractor {
             val bounds=AxisAlignedRect(left.toDouble(),top.toDouble(),(right+1).toDouble(),(bottom+1).toDouble())
             val solid=tail.toDouble()/((right-left+1)*(bottom-top+1))
             val members=numberLabels.filter {t->(t.bounds.left+t.bounds.right)/2 in bounds.left..bounds.right && (t.bounds.top+t.bounds.bottom)/2 in bounds.top..bounds.bottom}
-            val numbered=members.isNotEmpty() && solid>0.06
+            val numbered=members.isNotEmpty()
             if(numbered) {
                 val component=(0 until tail).map {queue[it]}.toHashSet()
                 val edges=HashMap<Long,MutableList<Long>>()
@@ -102,6 +105,9 @@ object MapImageDraftExtractor {
                 if(polygon!=null && polygon.size>=3 && contained.isNotEmpty() && !roadEvidence) {
                     usedBuildingLabels+=contained
                     buildings+=MapImageBuilding("image-building-$start",when(colors[start]){2->"green";3->"red";else->"yellow"},polygon,contained)
+                    // Text holes inside one recovered footprint must not become duplicate buildings or roads.
+                    for(y in top..bottom)for(x in left..right){val p=y*width+x
+                        if(colors[p]==colors[start] && inside(Point2D(x+0.5,y+0.5),polygon)){mask[p]=false;seen[p]=true}}
                     for(i in 0 until tail)mask[queue[i]]=false
                     continue
                 }

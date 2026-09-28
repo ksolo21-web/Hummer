@@ -24,10 +24,15 @@ class Phase6NativeUiInstrumentationTest {
     private val instrumentation get()=InstrumentationRegistry.getInstrumentation()
     private val automation get()=instrumentation.uiAutomation
     private val native="native-authoring-screen"
+    private var activeFixture:Phase6NativeFixture?=null
     private val root=DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root")
     @get:Rule val diagnostic=object:org.junit.rules.TestWatcher(){override fun failed(e:Throwable,d:org.junit.runner.Description){
         File(instrumentation.targetContext.filesDir,"phase6-debug-${d.methodName}.txt").writeText(e.stackTraceToString()+"\n"+runCatching{rule.onRoot().printToString()}.getOrDefault("No Compose tree")+"\n"+nodes().joinToString("\n"){"${it.viewIdResourceName} | ${it.text} | ${it.contentDescription}"})
         screenshot("failure-${d.methodName}")
+        runCatching {activeFixture?.let {x->val state=x.coordinator.state(x.id,x.mode)
+            state.front?.file?.copyTo(File(x.app.filesDir,"phase6-failure-${d.methodName}-front.pdf"),overwrite=true)
+            state.packet?.file?.copyTo(File(x.app.filesDir,"phase6-failure-${d.methodName}-packet.pdf"),overwrite=true)
+        }}
     }}
     private fun nodes():List<AccessibilityNodeInfo> {val out=mutableListOf<AccessibilityNodeInfo>();fun walk(n:AccessibilityNodeInfo?){if(n==null)return;out+=n;for(i in 0 until n.childCount)walk(n.getChild(i))};walk(automation.rootInActiveWindow);return out}
     private fun waitTag(tag:String){rule.waitUntil(30000){rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()};rule.waitForIdle()}
@@ -48,7 +53,7 @@ class Phase6NativeUiInstrumentationTest {
                 n.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
-        automation.waitForIdle(500,10000)
+        automation.waitForIdle(1000,10000)
     }
     private fun chooseRoot() {
         if(nodes().none {it.isVisibleToUser && it.viewIdResourceName?.endsWith(":id/roots_list")==true})
@@ -67,11 +72,10 @@ class Phase6NativeUiInstrumentationTest {
         rule.waitUntil(15000){automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true}
         chooseRoot();systemClick {it.text?.toString()?.equals("Save",true)==true && it.isEnabled}
         waitTag("final-output-screen")
-        rule.onNodeWithTag("final-output-list").performScrollToNode(hasTestTag("final-output-message"))
-        rule.waitUntil(30000){runCatching {rule.onNodeWithTag("final-output-message").assertTextContains("saved and read back successfully",substring=true);true}.getOrDefault(false)}
+        rule.waitUntil(30000){runCatching {rule.onNodeWithTag("final-output-list").performScrollToNode(hasTestTag("final-output-message"));rule.onNodeWithTag("final-output-message").assertTextContains("saved and read back successfully",substring=true);true}.getOrDefault(false)}
     }
     private fun screenshot(name:String) {
-        runCatching {rule.waitForIdle();automation.waitForIdle(500,10000)}
+        runCatching {rule.waitForIdle();automation.waitForIdle(1000,10000)}
         automation.takeScreenshot()?.let {b->val wide=rule.activity.resources.configuration.screenWidthDp>=840
             File(instrumentation.targetContext.filesDir,"phase6-${if(wide)"wide-" else ""}$name.png").outputStream().use {b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}
     }
@@ -93,7 +97,13 @@ class Phase6NativeUiInstrumentationTest {
     @Test fun fullMultiUnitLight()=flow(WorkspaceMode.LETTER_WRITING,AppearanceMode.LIGHT,true)
     @Test fun pictureGeneratesNativeDraftAndExports()=flow(WorkspaceMode.REGULAR,AppearanceMode.LIGHT,automatic=true)
     private fun flow(mode:WorkspaceMode,theme:AppearanceMode,multiUnit:Boolean=false,automatic:Boolean=false) {Phase6NativeFixture(mode,multiUnit=multiUnit).use {x->
+        activeFixture=x
         grant()
+        val testResolver=instrumentation.targetContext.contentResolver
+        val children=DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root")
+        val stale=mutableListOf<String>()
+        testResolver.query(children,arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),null,null,null)!!.use {c->while(c.moveToNext())stale+=c.getString(0)}
+        stale.forEach {DocumentsContract.deleteDocument(testResolver,DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,it))}
         val nonce=java.util.UUID.randomUUID().toString().take(8)
         val sourceName="phase6-$nonce-current.${if(automatic)"png" else "pdf"}";val contactsName="phase6-$nonce-records.txt"
         val sourceUri=document(sourceName,if(automatic)"image/png" else "application/pdf",if(automatic)x.sourcePng() else x.sourcePdf())
@@ -182,10 +192,10 @@ class Phase6NativeUiInstrumentationTest {
         text("lifecycle-list","lifecycle-actor","Synthetic PDF reviewer");click("lifecycle-list","lifecycle-approve");waitTag("lifecycle-confirmation");rule.onNodeWithTag("lifecycle-confirm").performClick()
         rule.waitUntil(30000){x.lifecycle.state(x.id,mode).active}
         click("lifecycle-list","lifecycle-back");textClick("build-screen","← Back to workspace");click("territory-workspace","workspace-export")
-        click("final-output-list","final-output-validate");waitTag("final-output-ready");screenshot("$prefix-final-validation")
+        click("final-output-list","final-output-validate");rule.waitUntil(30000){runCatching {rule.onNodeWithTag("final-output-list").performScrollToNode(hasTestTag("final-output-ready"));true}.getOrDefault(false)};screenshot("$prefix-final-validation")
         click("final-output-list","final-output-pdf");savePicker();screenshot("$prefix-saved-pdf")
         // SAF pause/resume may invalidate a UI ticket; always request a fresh final check for audit.
-        click("final-output-list","final-output-validate");waitTag("final-output-ready");click("final-output-list","final-output-audit");savePicker()
+        click("final-output-list","final-output-validate");rule.waitUntil(30000){runCatching {rule.onNodeWithTag("final-output-list").performScrollToNode(hasTestTag("final-output-ready"));true}.getOrDefault(false)};click("final-output-list","final-output-audit");savePicker()
         val resolver=instrumentation.targetContext.contentResolver
         val child=DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root")
         val files=mutableMapOf<String,ByteArray>()
@@ -196,9 +206,13 @@ class Phase6NativeUiInstrumentationTest {
         val audit=requireNotNull(files[x.identity.canonicalFilename.removeSuffix(".pdf")+" - audit.json"]);val json=JSONObject(audit.toString(Charsets.UTF_8))
         assertEquals(BundleIntegrity.sha256(pdf.inputStream()),json.getString("pdfSha256"));assertEquals("explicit_local_user_reconciliation",json.getString("assignmentAuthorization"))
         assertEquals(registered.reconciliation.registrationId,json.getJSONObject("nativeReconciliation").getString("registrationId"))
+        if(automatic) {
+            assertNotNull(registered.reconciliation.imageInterpretationSha256)
+            assertEquals(registered.reconciliation.imageInterpretationSha256,json.getJSONObject("nativeReconciliation").getString("imageInterpretationSha256"))
+        }
         File(x.app.filesDir,"phase6-$prefix.pdf").writeBytes(pdf);File(x.app.filesDir,"phase6-$prefix-audit.json").writeBytes(audit)
         rule.onNodeWithTag("nav-knowledge").performClick();waitTag("knowledge-selected");rule.onNodeWithTag("knowledge-selected").performClick()
-        rule.onNodeWithTag("knowledge-detail-list").performScrollToNode(hasTestTag("knowledge-local-cards"));rule.onNodeWithText("Current approved local reference",substring=true).assertExists();screenshot("$prefix-knowledge")
+        rule.waitUntil(30000){runCatching {rule.onNodeWithTag("knowledge-detail-list").performScrollToNode(hasTestTag("knowledge-local-cards"));rule.onNodeWithText("Current approved local reference",substring=true).assertExists();true}.getOrDefault(false)};screenshot("$prefix-knowledge")
         x.original.knowledgeBase.needsNewCardQueue.keys.forEach {assertEquals(x.original.knowledgeBase.assignments[it],x.kb.assignments[it])}
         DocumentsContract.deleteDocument(resolver,sourceUri);DocumentsContract.deleteDocument(resolver,contactUri)
         assertEquals(2,File(x.root,"output").listFiles().orEmpty().count {it.extension=="json"})

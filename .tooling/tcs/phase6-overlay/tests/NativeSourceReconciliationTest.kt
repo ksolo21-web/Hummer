@@ -109,7 +109,7 @@ class NativeSourceReconciliationTest {
         for(y in 30..80)for(x in 30..150)pixels[y*w+x]=0xff00aa30.toInt()
         listOf("440–456","440—456","440 − 456").forEach {label->
             val result=MapImageDraftExtractor.extract(w,h,pixels,listOf(MapImageText(label,AxisAlignedRect(50.0,45.0,130.0,65.0))))
-            assertEquals(listOf(label),result.buildings.single().labels.map {it.text})
+            assertEquals(listOf(label.replace(" ","")),result.buildings.single().labels.map {it.text})
         }
     }
     @Test fun shortContiguousWorkColorChangeCannotDisappearInMajority() {

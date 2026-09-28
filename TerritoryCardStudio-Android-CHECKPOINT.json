@@ -1,10 +1,10 @@
 {
   "project": "Territory Card Studio Android",
-  "version": "0.6.0",
-  "milestone": "phase-5-complete-phase-6-blocked",
-  "status": "PHASE_5_PASSED_PHASE_6_BLOCKED",
+  "version": "0.6.1-development",
+  "milestone": "phase-5-complete-phase-6-in-progress",
+  "status": "PHASE_5_PASSED_PHASE_6_NOT_ACCEPTED",
   "phase_milestone_before": "Phase3 PASSED; Phase4 IN_PROGRESS",
-  "phase_milestone_after": "Phase5 PASSED; Phase6 BLOCKED_NOT_ACCEPTED",
+  "phase_milestone_after": "Phase5 PASSED; Phase6 IN_PROGRESS_NOT_ACCEPTED",
   "preserved_passed_milestones": [
     "1A_dedicated_detail",
     "1B_1_split_detail",
@@ -476,8 +476,8 @@
     "critic_agent": "/root/phase3cc_critic"
   },
   "last_completed_package": "0.6.0-phase5-complete-phase6-blocked",
-  "next_open_gate": "Phase6 production source registration and complete native commissioning",
-  "next_bounded_task": "Resolve the supported independently authorized current-source/assignment producer and registration contract without weakening shared Python/Android authority. Then prove initial native authoring through successful picker export in all three modes. Keep six real cards untouched for Kaleb. Preserve187 accepted identities; rerun only new/failed/affected checks.",
+  "next_open_gate": "Phase6 picture-to-card correctness and complete native acceptance",
+  "next_bounded_task": "Validate latest image/OCR repairs against the representative map and the PNG-to-card UI journey; inspect exact PDFs and audit readback; preserve 187 accepted prior checks and all six real territories.",
   "completion_ledger": "TerritoryCardStudio-Android-COMPLETION-LEDGER.json",
   "scope_completed": [
     "closed Phase 1D-A against the updated ANDROID_PORT_PLAN.md submilestone structure rather than prematurely closing aggregate Phase 1D",
@@ -559,7 +559,7 @@
   ],
   "source_package": "Phase4-Android-0.4.0-source.tar.xz",
   "source_package_sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965",
-  "saved_at_utc": "2026-09-28T03:06:25.800Z",
+  "saved_at_utc": "2026-09-28T12:47:39.618Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -3259,7 +3259,7 @@
     "reserved_real_cards": "USER_OWNED_UNTOUCHED"
   },
   "phase6_in_progress": {
-    "status": "BLOCKED_NOT_ACCEPTED",
+    "status": "IN_PROGRESS_NOT_ACCEPTED",
     "completed_components": [
       "Native intake and final output screens",
       "Three-mode service integration",
@@ -3267,14 +3267,41 @@
       "Three-mode process restart revalidation/rebuild/reapproval"
     ],
     "blockers": [
-      "No usable independently authorized current-source/project producer and registration path; six reserved assignments register legacy PDF hashes only.",
-      "No complete all-mode native dashboard/intake/authoring/build/preview/approval/successful SAF save/knowledge-base journey evidence."
+      "Representative map image interpretation is not yet accurate enough: missed/duplicate building labels and building pixels classified as roads.",
+      "Complete successful native UI save/readback journey is still unproven; latest failures were asynchronous status assertions.",
+      "Arbitrary new-number enrollment is unsupported; number/type entry currently selects existing catalog assignments.",
+      "All-mode light/dark phone/wide acceptance, affected regressions and final independent critic approval remain outstanding."
     ],
     "constraints": [
       "Do not promote legacy reference geometry or invent source authority.",
       "Do not require Kaleb to build the six cards outside the app.",
       "Preserve all accepted checks except affected dependencies or concrete defects.",
       "Kaleb personally creates all six real cards."
+    ],
+    "user_requirement": "Import a map picture, enter territory number and type, and generate a new territory card.",
+    "last_tested_commit": "958a632e24d0a5110b93abd684220aaa6db2ca5e",
+    "last_tested_run": 36418866386,
+    "core_checks": {
+      "passed": 26,
+      "failed": 0,
+      "accepted_phase6": false
+    },
+    "native_checks": {
+      "passed": 4,
+      "failed": 3,
+      "details": "Retention and restart through fresh preparation, explicit reapproval and exact export passed. Regular and image UI flows reached export but failed waiting for the result message. Representative image missed members and misclassified building pixels as roads."
+    },
+    "implemented_since_phase5": [
+      "Explicit local source reconciliation and durable registration ledger",
+      "Native initial drafting, image OCR and colored geometry proposals",
+      "Source-preserving retry, labeled geometry preview and source-location highlights",
+      "Existing-catalog territory number/type entry",
+      "Strict decimal PDF size ceiling and exact receipt/audit binding"
+    ],
+    "independent_review": "NOT_APPROVED; no Phase6 completion score",
+    "pending_repairs": [
+      "Separate numeric OCR elements, rotated number recognition, text-hole exclusion inside recovered footprints",
+      "Bounded image-review schema validation and robust save-message waits"
     ]
   }
 }
