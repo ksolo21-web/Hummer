@@ -79,8 +79,11 @@ class NativeRegistrationLedger(
         return result.reversed()
     }
     private fun <T> locked(id:String,mode:String,block:(File)->T):T=synchronized(LOCK) {
-        val dir=scope(id,mode)
-        RandomAccessFile(File(dir,"transaction.lock"),"rw").use {raf->raf.channel.lock().use {block(dir)}}
+        require(id in kb.assignments && mode in setOf("REGULAR","LETTER_WRITING","TELEPHONE"))
+        require(root.isDirectory || root.mkdirs())
+        // The lock inode survives a scope-directory rollover, including cross-process waiters.
+        val lockFile=File(root,hash("$id:$mode".toByteArray())+".lock")
+        RandomAccessFile(lockFile,"rw").use {raf->raf.channel.lock().use {block(scope(id,mode))}}
     }
     fun history(id:String,mode:String):List<Head> = locked(id,mode) {events(it).toList()}
     private fun registered(dir:File,head:Head):Registered? {
@@ -126,6 +129,13 @@ class NativeRegistrationLedger(
         require(existing.size<MAX_EVENTS-1) {"Registration history is full; final capacity is reserved for revocation"}
         require(r.predecessorEventSha256==expectedHead) {"Reconciliation belongs to a different registration history"}
         val receipt=NativeSourceReconciliationContract.encode(r);val authority=hash(receipt)
+        val archived=File(root,"archived-${dir.name}").listFiles().orEmpty()
+        val archivedEvents=archived.map {directory->events(directory).also {rows->
+            require(rows.lastOrNull()?.action=="REVOKE") {"Archived registration history is incomplete"}
+            rows.filter {it.action=="REGISTER"}.forEach {requireNotNull(registered(directory,it))}
+        }}
+        require(archivedEvents.flatten().none {it.reconciliationSha256==authority}) {"Reconciliation receipt was already used in archived history"}
+        archivedEvents.map {it.last()}.forEach {require(!Instant.parse(r.reviewedAtUtc).isBefore(Instant.parse(it.at))) {"Review timestamp predates archived history"}}
         require(existing.none {it.reconciliationSha256==authority}) {"Reconciliation receipt was already used"}
         existing.lastOrNull()?.let {require(!Instant.parse(r.reviewedAtUtc).isBefore(Instant.parse(it.at))) {"Review timestamp predates registration history"}}
         val assignment=NativeAssignmentCodec.decode(NativeAssignmentCodec.encode(draft.copy(authoritySha256=authority)))
@@ -138,6 +148,17 @@ class NativeRegistrationLedger(
         val head=commit(dir,existing,"REGISTER",rHash,aHash,r.author,r.reviewedAtUtc)
         Registered(head,r,assignment)
     }
+    /** Starts a new bounded cycle only after explicit revocation; immutable prior cycles remain. */
+    fun archiveRevokedHistory(id:String,mode:String,expectedHead:String):String=locked(id,mode) {dir->
+        val old=requireNotNull(events(dir).lastOrNull())
+        require(old.eventSha256==expectedHead && old.action=="REVOKE") {"Revoke the current registration before archiving its history"}
+        val archives=File(root,"archived-${dir.name}").also {require(it.isDirectory || it.mkdirs())}
+        require(archives.listFiles().orEmpty().size<64) {"Registration archive capacity reached; retained evidence is never deleted automatically"}
+        val destination=File(archives,old.eventSha256);require(!destination.exists())
+        Files.move(dir.toPath(),destination.toPath(),StandardCopyOption.ATOMIC_MOVE)
+        try {syncDirectory(root);syncDirectory(archives)}catch(e:Exception){durabilityWarning="History archived locally; power-loss durability could not be confirmed."}
+        old.eventSha256
+    }
     fun revoke(id:String,mode:String,expectedHead:String,actor:String,at:String):Head=locked(id,mode) {dir->
         val history=events(dir);val old=requireNotNull(history.lastOrNull())
         require(old.eventSha256==expectedHead && old.action=="REGISTER") {"Registration changed or already revoked"}
@@ -145,7 +166,7 @@ class NativeRegistrationLedger(
     }
     private fun commit(dir:File,history:List<Head>,action:String,rHash:String,aHash:String,actor:String,at:String):Head {
         require(history.size<MAX_EVENTS && actor.isNotBlank() && actor==actor.trim() && actor.length<=120 && actor.all {it.code in 32..126})
-        Instant.parse(at);require('\n' !in kb.revision && '\r' !in kb.revision)
+        Instant.parse(at);history.lastOrNull()?.let {require(!Instant.parse(at).isBefore(Instant.parse(it.at)))};require('\n' !in kb.revision && '\r' !in kb.revision)
         val seq=history.size+1
         val bytes=listOf("native-registration-event-v1",seq.toString(),history.lastOrNull()?.eventSha256 ?: "0".repeat(64),action,rHash,aHash,actor,at,kb.revision,"").joinToString("\n").toByteArray(Charsets.UTF_8)
         val eventHash=archive(dir,bytes,"event")

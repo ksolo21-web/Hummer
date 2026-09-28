@@ -42,7 +42,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         require(target.openRead().use {hash(it.readBytes())}==expected) {"Archived map changed"}
     }
     /** Explicit cleanup preserves every selected draft and every registration attempt's evidence. */
-    @Synchronized fun pruneUnusedDraftHistory():Int {
+    @Synchronized fun pruneUnusedDraftHistory(pendingContactSources:Set<String> = emptySet()):Int {
         val protected=root.listFiles().orEmpty().filter {it.extension=="draft"}.map {hash(AtomicFile(it).openRead().use {s->s.readBytes()})}.toSet()+
             history.listFiles().orEmpty().filter {it.extension=="registered"}.map {it.nameWithoutExtension}
         var removed=0
@@ -50,9 +50,27 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         val referenced=(history.listFiles().orEmpty().filter {it.extension=="draft"}+root.listFiles().orEmpty().filter {it.extension=="draft"}).flatMap {f->
             val rows=JSONObject(AtomicFile(f).openRead().use {it.readBytes().toString(Charsets.UTF_8)}).getJSONArray("contacts")
             (0 until rows.length()).map {rows.getJSONObject(it).getString("sourceSha256")}
-        }.toSet()
+        }.toSet()+pendingContactSources
         documents.listFiles().orEmpty().filter {it.extension=="source" && it.nameWithoutExtension !in referenced}.forEach {if(it.delete())removed++}
         return removed
+    }
+    /** Evidence-only ZIP: importing it cannot activate registration or approve any PDF. */
+    @Synchronized internal fun exportHistory(destination:CreatedExportDestination):String {
+        val temp=File.createTempFile("native-evidence-",".zip",context.cacheDir)
+        try {
+            fun files()=root.walkTopDown().filter {it.isFile && it.extension in setOf("draft","registered","source","assignment","reconciliation","event") || it.isFile && it.name=="head"}.sortedBy {it.relativeTo(root).path}.toList()
+            val selected=files();require(selected.isNotEmpty()) {"No native evidence to export"}
+            val manifest=selected.associate {it.relativeTo(root).invariantSeparatorsPath to it.inputStream().use(BundleIntegrity::sha256)}
+            java.util.zip.ZipOutputStream(temp.outputStream()).use {zip->
+                for(f in selected){val name=f.relativeTo(root).invariantSeparatorsPath;zip.putNextEntry(java.util.zip.ZipEntry(name));f.inputStream().use {it.copyTo(zip)};zip.closeEntry()}
+                zip.putNextEntry(java.util.zip.ZipEntry("manifest.json"));zip.write(ExtendedValues.canonical(JSONObject().put("schema","native-evidence-archive-v1").put("purpose","Evidence only; no assignment activation or PDF approval").put("sha256",JSONObject(manifest))).toByteArray());zip.closeEntry()
+            }
+            require(files()==selected && selected.all {it.inputStream().use(BundleIntegrity::sha256)==manifest[it.relativeTo(root).invariantSeparatorsPath]}) {"Evidence changed during export; retry"}
+            val expected=temp.inputStream().use(BundleIntegrity::sha256)
+            destination.openOutput().use {out->temp.inputStream().use {it.copyTo(out)}}
+            require(destination.openInput().use(BundleIntegrity::sha256)==expected) {"Saved evidence did not match; export failed"}
+            return expected
+        } catch(e:Exception){runCatching {destination.deleteCreated()};throw e} finally {temp.delete()}
     }
     fun contactSource(document:NativeInventoryDocument):File {
         require(contactWitness(document.sha256)) {"Contact source bytes are missing or changed"}
@@ -79,8 +97,8 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     }
     private fun encode(d:NativeAuthoringDraft):ByteArray {
         require(d.contacts.size<=240 && d.contacts.map {it.id}.distinct().size==d.contacts.size)
-        val o=JSONObject().put("schema","native-draft-v1").put("assignment",JSONObject(NativeAssignmentCodec.encode(d.assignment).toString(Charsets.UTF_8)))
-            .put("reconciliation",JSONObject(NativeSourceReconciliationContract.encode(d.reconciliation).toString(Charsets.UTF_8)))
+        val o=JSONObject().put("schema","native-draft-v2").put("assignment",NativeAssignmentCodec.encode(d.assignment).toString(Charsets.UTF_8))
+            .put("reconciliation",NativeSourceReconciliationContract.encode(d.reconciliation).toString(Charsets.UTF_8))
             .put("jurisdiction",JSONObject().put("county",d.jurisdiction.county ?: JSONObject.NULL).put("state",d.jurisdiction.state).put("country",d.jurisdiction.country))
             .put("contacts",JSONArray(d.contacts.map(::contact)))
         return ExtendedValues.canonical(o).toByteArray().also {require(it.size<=MAX_DRAFT_BYTES)}
@@ -88,10 +106,13 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     @Synchronized fun read(id:String,mode:WorkspaceMode):NativeAuthoringDraft? {
         val f=file(id,mode);if(!f.baseFile.exists())return null
         val bytes=f.openRead().use {AndroidFinalOutputService.readBounded(it,MAX_DRAFT_BYTES)}
-        val o=JSONObject(Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(bytes)).toString())
-        ExtendedValues.keys(o,"schema","assignment","reconciliation","jurisdiction","contacts");require(o.getString("schema")=="native-draft-v1")
-        val a=NativeAssignmentCodec.decode(ExtendedValues.canonical(o.getJSONObject("assignment")).toByteArray())
-        val r=NativeSourceReconciliationContract.decode(ExtendedValues.canonical(o.getJSONObject("reconciliation")).toByteArray())
+        val text=Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+        var depth=0;var quoted=false;var escaped=false
+        for(c in text){if(quoted){if(escaped)escaped=false else if(c=='\\')escaped=true else if(c=='"')quoted=false}else when(c){'"'->quoted=true;'[','{'->{depth++;require(depth<=16)};']','}'->{depth--;require(depth>=0)}}};require(!quoted && depth==0)
+        val o=JSONObject(text)
+        ExtendedValues.keys(o,"schema","assignment","reconciliation","jurisdiction","contacts");require(o.getString("schema")=="native-draft-v2")
+        val a=NativeAssignmentCodec.decode(o.getString("assignment").toByteArray(Charsets.UTF_8))
+        val r=NativeSourceReconciliationContract.decode(o.getString("reconciliation").toByteArray(Charsets.UTF_8))
         val j=o.getJSONObject("jurisdiction");ExtendedValues.keys(j,"county","state","country")
         val contacts=o.getJSONArray("contacts");require(contacts.length()<=240)
         val d=NativeAuthoringDraft(a,r,VerificationJurisdiction(if(j.isNull("county"))null else j.getString("county"),j.getString("state"),j.getString("country")),(0 until contacts.length()).map {contact(contacts.getJSONObject(it))},hash(bytes))

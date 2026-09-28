@@ -20,6 +20,19 @@ class Phase6NativePersistenceInstrumentationTest {
     private fun rejected(block:()->Unit){assertTrue(runCatching(block).isFailure)}
     @Test fun replacementFailurePreservesDraftAndArchivedSource() {Phase6NativeFixture(WorkspaceMode.REGULAR).use {x->
         val d=create(x);val registered=x.drafts.register(x.id,x.mode,d.revisionSha256)
+        val archiveBytes=java.io.ByteArrayOutputStream()
+        val destination=object:CreatedExportDestination {
+            override fun openOutput()=archiveBytes
+            override fun openInput()=archiveBytes.toByteArray().inputStream()
+            override fun deleteCreated()=true
+        }
+        assertEquals(x.drafts.exportHistory(destination),BundleIntegrity.sha256(archiveBytes.toByteArray().inputStream()))
+        val entries=mutableListOf<String>()
+        java.util.zip.ZipInputStream(archiveBytes.toByteArray().inputStream()).use {zip->while(true){val entry=zip.nextEntry ?: break;entries+=entry.name;zip.closeEntry()}}
+        assertTrue("draft-history/${d.revisionSha256}.draft" in entries)
+        assertTrue("map-evidence/${d.reconciliation.importedSourceSha256}.source" in entries)
+        assertTrue("manifest.json" in entries)
+
         rejected {x.drafts.save(d.copy(assignment=d.assignment.copy(knowledgeBaseRevision="wrong")),d.revisionSha256)}
         assertEquals(d,x.drafts.read(x.id,x.mode));assertEquals(registered.head,x.drafts.ledger.active(x.id,x.mode.name)?.head)
         rejected {x.sources.importFromStream(x.slot,"invalid.pdf","application/pdf","broken".byteInputStream())}

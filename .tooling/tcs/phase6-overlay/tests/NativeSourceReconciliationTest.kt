@@ -47,6 +47,16 @@ class NativeSourceReconciliationTest {
             assertTrue(out.baselineTopY in out.placement.bounds.top..out.placement.bounds.bottom)
             assertFalse(out.placement.requiresReview)
         }
+        val callout=producer.labels(a.copy(roads=listOf(road.copy(name="Tiny Ct",normalizedName="tiny ct",status="green",role="interior",insideSide="",points=listOf(Point2D(390.0,180.0),Point2D(410.0,180.0)))))).single().placement
+        assertEquals(LabelPlacementMode.NEARBY_ATTACHED_ARROW_CALLOUT,callout.mode)
+        assertTrue(requireNotNull(callout.calloutEvidence).calloutJustified)
+        assertEquals(LabelSide.NEGATIVE_NORMAL,callout.calloutEvidence?.directCandidateSide)
+        assertTrue(requireNotNull(callout.callout).roadAnchor.y>0.0)
+        val curve=producer.labels(a.copy(roads=listOf(road.copy(name="Curve Ct",normalizedName="curve ct",status="green",role="interior",insideSide="",points=listOf(Point2D(320.0,180.0),Point2D(360.0,182.0),Point2D(400.0,190.0),Point2D(440.0,205.0)))))).single().placement
+        assertEquals(LabelPlacementMode.CURVED_ROAD_FOLLOWING,curve.mode)
+        assertNotNull(curve.sideEvidence)
+        val regular=producer.labels(a.copy(roads=listOf(road.copy(role="interior",status="green",insideSide="")))) .single()
+        assertTrue(regular.placement.center.y<road.points.first().y,"horizontal tie must place label north")
         val horizontal=producer.labels(a).single()
         assertTrue(horizontal.placement.center.y>road.points.first().y,"left inside requires right exterior in top-origin geometry")
     }
@@ -226,6 +236,12 @@ class NativeSourceReconciliationTest {
             assertThrows(Exception::class.java) {ledger.register(next,a,head)}
             val revoked=ledger.revoke(r.territory,r.mode,requireNotNull(head),"Synthetic reviewer","2026-09-28T04:03:00Z")
             assertEquals(NativeRegistrationLedger.MAX_EVENTS,revoked.sequence);assertNull(ledger.active(r.territory,r.mode))
+            val archive=ledger.archiveRevokedHistory(r.territory,r.mode,revoked.eventSha256)
+            assertEquals(revoked.eventSha256,archive);assertTrue(ledger.history(r.territory,r.mode).isEmpty())
+            assertThrows(Exception::class.java){ledger.register(r,a,null)}
+            val fresh=r.copy(registrationId="00000000-0000-0000-0000-000000002000",reviewedAtUtc="2026-09-28T04:04:00Z",predecessorEventSha256=null)
+            assertEquals(1,ledger.register(fresh,a,null).head.sequence)
+            assertTrue(dir.walkTopDown().any {it.name==archive && it.isDirectory})
         } finally {dir.deleteRecursively()}
     }
     @Test fun lookupAndConcurrentRevocationLinearizeWithoutReactivatingAuthority() {

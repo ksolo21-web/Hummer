@@ -6,6 +6,7 @@ import com.koenterprises.territorycardstudio.core.*
 class AndroidNativeAuthoringService internal constructor(private val kb:TerritoryKnowledgeBase,private val policy:OnlineSourcePolicy,
     private val drafts:AndroidNativeDraftStore,private val sources:SourceMapIntakeStore,private val coordinator:AndroidBuildWorkflowCoordinator,
     private val labels:NativeRoadLabelProducer,private val fetchEvidence:(LiveGeometryVerificationRequest)->List<ProviderVerificationEvidence>) {
+    fun buildingLabels(members:List<String>,polygon:List<Point2D>)=labels.buildingLabels(members,polygon)
     fun prepare(id:String,mode:WorkspaceMode,expectedDraftRevision:String):List<String> {
         val d=requireNotNull(drafts.read(id,mode)) {"Create and save a native draft first"}
         require(d.revisionSha256==expectedDraftRevision) {"Draft changed; review it again"}

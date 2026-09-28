@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.koenterprises.territorycardstudio.core.*
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +50,7 @@ import java.util.UUID
     LaunchedEffect(file.path,page) {
         onReadable(false)
         val result=withContext(Dispatchers.IO) {runCatching {
-            if(file.inputStream().use {it.readNBytes(5)}.toString(Charsets.US_ASCII)=="%PDF-") {
+            if(file.inputStream().use {input->ByteArray(5).also {input.read(it)}}.toString(Charsets.US_ASCII)=="%PDF-") {
                 PdfRenderer(ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY)).use {pdf->
                     val total=pdf.pageCount;require(total in 1..200)
                     pdf.openPage(page.coerceIn(0,total-1)).use {p->
@@ -81,7 +82,7 @@ import java.util.UUID
     LaunchedEffect(document.sha256) {
         runCatching {withContext(Dispatchers.IO) {
             val f=store.contactSource(document)
-            if(f.inputStream().use {it.readNBytes(5)}.toString(Charsets.US_ASCII)=="%PDF-") f to null
+            if(f.inputStream().use {input->ByteArray(5).also {input.read(it)}}.toString(Charsets.US_ASCII)=="%PDF-") f to null
             else null to Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(f.readBytes())).toString()
         }}.onSuccess {(f,t)->file=f;text=t}.onFailure {error=it.message}
     }
@@ -143,7 +144,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
         sourceReadable=false
         sourceReadable=withContext(Dispatchers.IO) {runCatching {
             val f=requireNotNull(sourceFile)
-            if(f.inputStream().use {it.readNBytes(5)}.toString(Charsets.US_ASCII)=="%PDF-") {
+            if(f.inputStream().use {input->ByteArray(5).also {input.read(it)}}.toString(Charsets.US_ASCII)=="%PDF-") {
                 PdfRenderer(ParcelFileDescriptor.open(f,ParcelFileDescriptor.MODE_READ_ONLY)).use {require(it.pageCount in 1..200)}
             } else {
                 val options=BitmapFactory.Options().apply {inJustDecodeBounds=true};BitmapFactory.decodeFile(f.path,options)
@@ -207,13 +208,22 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     var phoneUse by rememberSaveable {mutableStateOf(false)}
     var bindingCheck by rememberSaveable {mutableStateOf(false)}
     var document by remember {mutableStateOf<NativeInventoryDocument?>(null)}
+    val context=LocalContext.current
+    var archivePickerOwned by rememberSaveable {mutableStateOf(false)}
+    val archivePicker=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) {uri->
+        val owned=archivePickerOwned;archivePickerOwned=false
+        if(owned && uri!=null)scope.launch {busy=true
+            runCatching {withContext(Dispatchers.IO){store.exportHistory(AndroidCreatedExportDestination(context.contentResolver,uri))}}
+                .onSuccess {message="Evidence archive saved and read back successfully. SHA-256 $it"}.onFailure {message=it.message.orEmpty()};busy=false
+        }
+    }
     val contactPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->if(uri!=null)scope.launch {
         busy=true;runCatching {withContext(Dispatchers.IO){store.importContactSource(uri)}}.onSuccess {document=it;addressCheck=false;boundaryCheck=false;addressUse=false;phoneUse=false;bindingCheck=false;message="Contact source imported; authorization and record checks are still required."}.onFailure {message=it.message.orEmpty()};busy=false
     }}
     LazyColumn(modifier.fillMaxSize().testTag("native-authoring-screen"),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item {TextButton(onClick=onBack){Text("Back to workspace")};Text("Create territory $id",style=MaterialTheme.typography.headlineMedium);Text(mode.label+" • "+assignment.canonicalFilename)}
         item {Text(message,modifier=Modifier.testTag("native-status"));if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())}
-        item {Row {listOf("Map","Roads","Buildings",if(mode==WorkspaceMode.REGULAR)"Review" else "Addresses").forEach {label->TextButton(onClick={section=label},modifier=Modifier.testTag("native-tab-$label")){Text(label)}}}
+        item {Row {(listOf("Map","Roads")+(if(assignment.housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))listOf("Buildings") else emptyList())+listOf(if(mode==WorkspaceMode.REGULAR)"Review" else "Addresses")).forEach {label->TextButton(onClick={section=label},modifier=Modifier.testTag("native-tab-$label")){Text(label)}}}
             if(mode!=WorkspaceMode.REGULAR)TextButton(onClick={section="Review"},modifier=Modifier.testTag("native-tab-Review")){Text("Review")}}
         if(!loaded) item {Text("Loading draft…")}
         if(sourceFile==null) item {Text("Import a current source map from the workspace before authoring.")}
@@ -253,7 +263,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                 } else {
                     require(points.size>=3);val ms=members.split(',').map {it.trim()}.filter {it.isNotBlank()};require(!assigned || ms.isNotEmpty())
                     val center=Point2D(points.map {it.x}.average(),points.map {it.y}.average())
-                    val labels=ms.mapIndexed {index,m->BuildingLabelItem(m,Point2D(center.x,center.y+(index-(ms.size-1)/2.0)*10),null,0.0,9.0)}
+                    val labels=service.buildingLabels(ms,points)
                     val b=BuildingGeometry(itemId.trim(),ms.joinToString("/"),assignment.housingType,assigned,"",ms,labels,points)
                     buildings=buildings.filter {it.buildingId!=b.buildingId}+b
                     buildingFacts=buildingFacts.filter {it.buildingId!=b.buildingId}+SourceBuildingObservation(b.buildingId,ms,assigned,note.trim(),confirmed)
@@ -299,7 +309,9 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             item {Button(enabled=!busy && draft!=null,onClick={scope.launch {busy=true
                 runCatching {val current=requireNotNull(draft);val proposed=proposal();require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction){"Save all changes before preparation"};withContext(Dispatchers.IO) {service.prepare(id,mode,current.revisionSha256)}}.onSuccess {message="Prepared using fresh independent sources. Build the candidate, inspect its PDF and explicitly approve it in the workspace."}.onFailure {message=it.message.orEmpty()};busy=false
             }},modifier=Modifier.testTag("native-prepare")){Text("Verify sources and prepare")}}
-            item {OutlinedButton(onClick={runCatching {store.pruneUnusedDraftHistory()}.onSuccess {message="Removed $it unused draft versions. Registered evidence and current drafts were retained."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-prune-history")){Text("Remove unused draft history")}}
+            item {OutlinedButton(enabled=!busy && !archivePickerOwned,onClick={archivePickerOwned=true;archivePicker.launch("Territory-native-evidence.zip")},modifier=Modifier.testTag("native-export-history")){Text("Export all native source evidence")}}
+            item {OutlinedButton(onClick={runCatching {val head=store.ledger.history(id,mode.name).lastOrNull() ?: error("No registration history");store.ledger.archiveRevokedHistory(id,mode.name,head.eventSha256)}.onSuccess {message="Revoked history preserved. Review and register again to begin a new cycle."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-archive-registration")){Text("Archive revoked registration history")}}
+            item {OutlinedButton(onClick={runCatching {store.pruneUnusedDraftHistory(setOfNotNull(document?.sha256))}.onSuccess {message="Removed $it unused draft versions. Registered evidence and current drafts were retained."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-prune-history")){Text("Remove unused draft history")}}
             item {OutlinedButton(onClick={runCatching {val head=store.ledger.history(id,mode.name).lastOrNull() ?: error("No registration exists");store.ledger.revoke(id,mode.name,head.eventSha256,author,Instant.now().truncatedTo(ChronoUnit.SECONDS).toString())}.onSuccess {message="Registration revoked. Prepared candidates and approvals are invalid."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-revoke")){Text("Revoke local registration")}}
         }
     }
