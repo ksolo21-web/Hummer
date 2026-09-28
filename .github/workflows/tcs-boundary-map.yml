@@ -51,7 +51,7 @@ jobs:
           cp .tooling/tcs/boundary/overlay/tests/*.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/
           mkdir -p tcs-src/core/src/test/resources/boundary
           base64 -d .tooling/tcs/boundary/source-26435.jpg.b64 > tcs-src/core/src/test/resources/boundary/source-26435.jpg
-          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun --tests '*OutlinedMapBoundaryTest') > evidence/core-tests.log 2>&1 || { cp -r tcs-src/core/build/test-results/test evidence/core-results; cat evidence/core-tests.log; exit 1; }
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun --tests '*Outlined*Test') > evidence/core-tests.log 2>&1 || { cp -r tcs-src/core/build/test-results/test evidence/core-results; cat evidence/core-tests.log; exit 1; }
           cp -r tcs-src/core/build/test-results/test evidence/core-results
       - uses: actions/upload-artifact@v4
         if: always()
