@@ -1,0 +1,73 @@
+name: TCS Phase 5 and 6 Output Integration
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-phase56-integration.yml
+      - .tooling/tcs/phase56-overlay/**
+      - .tooling/tcs/phase56-run-device-tests.sh
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase56-integration
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover frozen source and apply integration
+        run: |
+          set -euo pipefail
+          mkdir -p evidence tcs-src
+          echo '12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965  .tooling/tcs/phase4-evidence/Phase4-Android-0.4.0-source.tar.xz' | sha256sum -c -
+          tar -xJf .tooling/tcs/phase4-evidence/Phase4-Android-0.4.0-source.tar.xz -C tcs-src
+          for f in .tooling/tcs/phase56-overlay/*.kt; do
+            case "$f" in *InstrumentationTest.kt) target=androidTest;; *) target=main;; esac
+            cp "$f" "tcs-src/app/src/$target/java/com/koenterprises/territorycardstudio/"
+          done
+          cp .tooling/tcs/phase56-overlay/app-build.gradle.kts tcs-src/app/build.gradle.kts
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Compile application and tests
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug :app:bundleDebug :app:assembleDebugAndroidTest) > evidence/compile.log 2>&1 || { cat evidence/compile.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Android-0.6.0.apk
+          cp tcs-src/app/build/outputs/bundle/debug/app-debug.aab evidence/TerritoryCardStudio-Android-0.6.0.aab
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/emulator-test.apk
+          sha256sum evidence/*.apk evidence/*.aab > evidence/builds.sha256
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Targeted Android output and integration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: bash .tooling/tcs/phase56-run-device-tests.sh
+      - name: Preserve evidence and rebuildable source
+        if: always()
+        run: |
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/source-files.sha256
+          tar -cJf evidence/phase56-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+          sha256sum evidence/phase56-source.tar.xz > evidence/source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase56-integration-evidence
+          path: evidence
+          retention-days: 14

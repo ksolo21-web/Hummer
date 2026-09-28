@@ -14,8 +14,8 @@
     "2_production_ui": "PASSED",
     "3_editing_commissioning_workflow": "PASSED",
     "4_candidate_lifecycle_approval": "PASSED",
-    "5_pdf_output_validation_completion": "NOT_STARTED_READY",
-    "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
+    "5_pdf_output_validation_completion": "IN_PROGRESS",
+    "6_end_to_end_android_integration": "IN_PROGRESS_DEPENDS_PHASE5",
     "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
     "8_release_hardening": "NOT_STARTED_DEPENDS_PHASE7",
     "9_final_release_gate": "NOT_STARTED_DEPENDS_PHASE8",
@@ -53,7 +53,7 @@
   "phase_milestone_before": "Phase3 PASSED; Phase4 IN_PROGRESS",
   "phase_milestone_after": "Phase4 PASSED; Phase5 next",
   "last_completed_package": "0.4.0-phase4-complete",
-  "next_open_gate": "Phase5 final PDF and output validation",
+  "next_open_gate": "Combined Phase5-6 verification and integration",
   "next_bounded_task": "Complete Phase5 final PDF/output validation against the accepted local-reference lifecycle: exact packet integrity, print readiness, canonical naming, guarded export and audit evidence. Preserve159 accepted distinct identities; rerun only new/failed/affected checks. Kaleb personally creates the six real replacement cards; agent tests synthetic fixtures only.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
@@ -2905,5 +2905,13 @@
     "field_export_integration": "PHASE5",
     "production_signing": "PHASE8",
     "next": "5_pdf_output_validation_completion"
+  },
+  "phase56_in_progress": {
+    "status": "IMPLEMENTING_NOT_ACCEPTED",
+    "baseline": "b9ab59b45a5f6884d2d60fe90cc2c22d907a2e1d",
+    "scope": "Phase5 final validation/export and Phase6 full native integration",
+    "six_real_cards": "Reserved for Kaleb; synthetic-only tests",
+    "frozen_prior_identities": 159,
+    "remaining": "Device compilation/runtime, full native SAF workflow, independent output/source review, final acceptance"
   }
 }
