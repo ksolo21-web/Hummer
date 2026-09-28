@@ -1,0 +1,110 @@
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt
+--- a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt
+@@ -1,6 +1,7 @@
+ package com.koenterprises.territorycardstudio
+ 
+ import androidx.activity.ComponentActivity
++import androidx.compose.foundation.layout.safeDrawingPadding
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.foundation.layout.fillMaxWidth
+ import androidx.compose.foundation.rememberScrollState
+@@ -49,9 +50,7 @@
+         rule.runOnUiThread {rule.activity.window.insetsController?.hide(android.view.WindowInsets.Type.ime())}
+         rule.waitUntil(10000){!rule.activity.window.decorView.rootWindowInsets.isVisible(android.view.WindowInsets.Type.ime())}
+         rule.waitForIdle()
+-        requireNotNull(i.uiAutomation.takeScreenshot()).let {image->
+-            File(i.targetContext.filesDir,"phase7-finding-$name-$viewport.png").outputStream().use {assertTrue(image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it))};image.recycle()
+-        }
++        Phase7ScreenEvidence.capture(File(i.targetContext.filesDir,"phase7-finding-$name-$viewport.png"))
+     }
+     @Test fun exactInteriorFindingPersistsWithoutRemovingCoverageOrApprovingACard() {
+         val review=OutlinedNativeReview.from(draft)
+@@ -96,7 +95,7 @@
+         val source=source(appearance.name.lowercase())
+         val original=OutlinedNativeReview.from(draft);val state=mutableStateOf(original)
+         try {
+-            rule.setContent {TerritoryCardStudioTheme(appearance) {Surface {Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
++            rule.setContent {TerritoryCardStudioTheme(appearance) {Surface(modifier=Modifier.safeDrawingPadding()) {Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                 OutlinedFindingReviewPanel(state.value,draft.roads,source){next,roads->assertEquals(draft.roads,roads);state.value=next}
+             }}}}
+             rule.onNodeWithTag("outlined-finding-record").performScrollTo().assertIsNotEnabled()
+@@ -131,7 +130,7 @@
+     @Test fun aReplacedSourceCannotReuseItsPreviousReadableCrop() {
+         val source=source("tamper");val original=OutlinedNativeReview.from(draft);var calls=0
+         try {
+-            rule.setContent {TerritoryCardStudioTheme(AppearanceMode.LIGHT) {Surface {Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
++            rule.setContent {TerritoryCardStudioTheme(AppearanceMode.LIGHT) {Surface(modifier=Modifier.safeDrawingPadding()) {Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                 OutlinedFindingReviewPanel(original,draft.roads,source){_,_->calls++}
+             }}}}
+             rule.onNodeWithTag("outlined-finding-kind-OUTSIDE_CONTEXT").performScrollTo().performClick()
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+--- a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+@@ -2,6 +2,7 @@
+ import android.view.WindowInsets
+ import androidx.activity.ComponentActivity
++import androidx.compose.foundation.layout.safeDrawingPadding
+ import androidx.compose.material3.Surface
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.test.*
+@@ -83,10 +84,8 @@
+         rule.runOnUiThread {rule.activity.window.insetsController?.hide(WindowInsets.Type.ime())}
+         rule.waitUntil(10000){!rule.activity.window.decorView.rootWindowInsets.isVisible(WindowInsets.Type.ime())}
+         rule.waitForIdle()
+-        val i=InstrumentationRegistry.getInstrumentation();val image=requireNotNull(i.uiAutomation.takeScreenshot())
+-        File(i.targetContext.filesDir,"phase7-commissioning-$name-$viewport.png").outputStream().use {
+-            assertTrue(image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it))
+-        };image.recycle()
++        val i=InstrumentationRegistry.getInstrumentation()
++        Phase7ScreenEvidence.capture(File(i.targetContext.filesDir,"phase7-commissioning-$name-$viewport.png"))
+     }
+     @Test fun actualA265DraftPersistsInIsolatedServicesAndOriginalApprovalIsUntouched()=Fixture().use {x->
+         val originalAssignment=x.slot.copy();val originalExport=x.app.services.approvedExport.state(ID)
+@@ -200,7 +199,7 @@
+         require(store.recordedScope(ID)==null) {"Do not alter a pre-existing candidate during instrumentation"}
+         var scope:NativeCommissioningScope?=null
+         try {
+-            rule.setContent {TerritoryCardStudioTheme(appearance){Surface {
++            rule.setContent {TerritoryCardStudioTheme(appearance){Surface(modifier=Modifier.safeDrawingPadding()) {
+                 ModeAwareTerritoryWorkspace(Modifier,TerritoryDashboardItem(x.slot,TerritoryUiStatus.REAUDIT_REQUIRED,"Apartments"),x.baseline.revision,
+                     onBack={},knowledgeBase=x.baseline,servicesOverride=x.app.services)
+             }}}
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt
+@@ -0,0 +1,33 @@
++package com.koenterprises.territorycardstudio
++
++import android.graphics.Bitmap
++import androidx.test.platform.app.InstrumentationRegistry
++import com.koenterprises.territorycardstudio.core.BundleIntegrity
++import org.json.JSONObject
++import java.io.File
++
++/** A passing Compose assertion alone cannot establish visible-screen evidence: a system
++ * dialog can cover the application while semantics assertions keep running. Never crop
++ * around or dismiss a blocking window. Retain the full screenshot and window witnesses,
++ * then reject it unless this target application was active before AND after capture. */
++internal object Phase7ScreenEvidence {
++    fun capture(file:File) {
++        require(file.name.startsWith("phase7-") && file.extension=="png")
++        val instrumentation=InstrumentationRegistry.getInstrumentation()
++        val automation=instrumentation.uiAutomation
++        fun activePackage()=automation.rootInActiveWindow?.packageName?.toString()
++        val before=activePackage()
++        val image=requireNotNull(automation.takeScreenshot()) {"No visible-screen bitmap was returned"}
++        try {file.outputStream().use {check(image.compress(Bitmap.CompressFormat.PNG,100,it))}}
++        finally {image.recycle()}
++        val after=activePackage()
++        val expected=instrumentation.targetContext.packageName
++        val accepted=before==expected && after==expected
++        val receipt=JSONObject().put("schema","phase7-screen-evidence-v1")
++            .put("expectedPackage",expected).put("activePackageBefore",before ?: JSONObject.NULL)
++            .put("activePackageAfter",after ?: JSONObject.NULL).put("screenshotSha256",file.inputStream().use(BundleIntegrity::sha256))
++            .put("accepted",accepted).put("testOnly",true).put("cardApproved",false)
++        File(file.parentFile,file.nameWithoutExtension+"-screen.json").writeText(receipt.toString(2))
++        check(accepted) {"Screenshot is not valid app evidence: blocking or missing active window ($before -> $after); full screenshot and receipt were retained"}
++    }
++}
