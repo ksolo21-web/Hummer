@@ -1,8 +1,8 @@
 {
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
-  "current_phase": 3,
-  "current_checkpoint": "0.3.4-phase3cc-independent-preparation",
+  "current_phase": 4,
+  "current_checkpoint": "0.3.4-phase3-complete",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -12,8 +12,8 @@
     "1D_front_back_pdf_semantics": "PASSED",
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
-    "3_editing_commissioning_workflow": "IN_PROGRESS_3D",
-    "4_candidate_lifecycle_approval": "NOT_STARTED_DEPENDS_PHASE3",
+    "3_editing_commissioning_workflow": "PASSED",
+    "4_candidate_lifecycle_approval": "NOT_STARTED_READY",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
     "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
@@ -41,20 +41,20 @@
     "3A_editing_draft_foundation": "PASSED",
     "3B_editor_ui": "PASSED",
     "3C_validated_editing_preparation": "PASSED_IMPLEMENTED_SCOPE",
-    "3D_editing_integration_audit": "NOT_STARTED_DEPENDS_3C",
+    "3D_editing_integration_audit": "PASSED",
     "3C_A_preparation_transaction": "PASSED",
     "3C_B_extended_controlled_editing": "PASSED_PROPOSAL_EDITOR_SCOPE",
     "3C_C_preparation_ui": "PASSED",
     "3CA_road_label_preparation_transaction": "PASSED",
     "3CB_authority_aware_expanded_editing": "PASSED_PROPOSAL_EDITOR_SCOPE",
     "3CC_preparation_ui": "PASSED",
-    "3D_editing_integration": "INITIAL_EVIDENCE_AUDIT_DONE_RUNTIME_OPEN"
+    "3D_editing_integration": "PASSED"
   },
-  "phase_milestone_before": "Phase3C-C IN_PROGRESS",
-  "phase_milestone_after": "Phase3C-C PASSED; Phase3D initial evidence audit complete, runtime cases OPEN; Phase3 IN_PROGRESS",
-  "last_completed_package": "0.3.4-phase3cc-independent-preparation",
-  "next_open_gate": "Phase3D aggregate editing integration",
-  "next_bounded_task": "Phase3D integration audit: implement the four bounded combined-runtime cases in .tooling/tcs/phase3d-evidence/integration-audit.md, preserving132 accepted identities. Cover edited letter/telephone candidates through exact preview/review/local approval; journal/authority/source invalidation after review; rebuild/restart; export boundary. No blanket rerun, no authority escalation, no reserved territory commissioning. Independent review >9 and durable evidence readback required.",
+  "phase_milestone_before": "Phase3D runtime integration open; Phase3 IN_PROGRESS",
+  "phase_milestone_after": "Phase3A\u20133D PASSED; aggregate Phase3 PASSED; Phase4 next",
+  "last_completed_package": "0.3.4-phase3d-complete",
+  "next_open_gate": "Phase4 candidate lifecycle and approval",
+  "next_bounded_task": "Phase4 candidate lifecycle and approval: audit the existing accepted review/export lifecycle against Phase4 requirements, identify uncovered behavior, and implement only new or affected checks. Preserve140 accepted identities and the six reserved Phase7 commissioning territories.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-27T22:55:12.578914+00:00",
+  "saved_at_utc": "2026-09-28T00:08:48.199994+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -614,7 +614,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase3cc-independent-reconciliation-preparation-closeout",
+  "last_completed_task": "phase3-complete-editing-integration-closeout",
   "phase2h_freeze_evidence": {
     "status": "PASS",
     "run_id": 36295828394,
@@ -2173,5 +2173,350 @@
         "Durable commit/checkpoint and remote readback remain parent closeout tasks."
       ]
     }
+  },
+  "phase3d_freeze_evidence": {
+    "run_id": 36360518108,
+    "source_commit": "041c975cd2174c2977a9d494aabb0876e9b777ee",
+    "artifact_id": 10945627989,
+    "artifact_sha256": "ae6058f9ffdbb9ac4e8dbdb79dbd1bef687dd017cbfea4563cddcbe4c666ee5a",
+    "artifact_size": 72500140,
+    "retained_run_id": 36359946254,
+    "retained_artifact_id": 10945133430,
+    "retained_source_commit": "233a5dd5422640c685196c2c2b5cce053f71a420",
+    "retained_artifact_sha256": "0970e93867f322bad670b02a770f02192446e0fc7d4da120843244736d24c4d2",
+    "unchanged_source_files": 148,
+    "added_test_files": [
+      "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase3DIntegrationInstrumentationTest.kt",
+      "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase3DIntegrationUiInstrumentationTest.kt"
+    ],
+    "manifest_files": 150,
+    "apk_aab_unchanged": true,
+    "source_package_sha256": "0454ebe1ca33314103213d1a0673ec7530846febda826eb471ea9062cb0fd5ab",
+    "exact_non_signing_apk_entries": 146,
+    "emulator_apk_sha256": "d1549fc68f301edb57117dccc1ecb778453510f491c4b0966a31c4d596d8e015",
+    "status": "PASS",
+    "run_conclusion": "success",
+    "version": "0.3.4",
+    "version_code": 41,
+    "new_phase3d_tests": 8,
+    "retained_phase3d_tests": 6,
+    "retried_phase3d_tests": 2,
+    "frozen_prior_tests": 132,
+    "combined_distinct_identities": 140,
+    "phase3_specific_identities": 73,
+    "full_prior_suite_rerun": false,
+    "unresolved_failures": 0,
+    "screenshots": [
+      {
+        "file": "phase3d-edited-review-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "461f62f16f9123a17a5f8f8d170ced88bbbdf61a9ac6cba9d757d0e2f37cd049"
+      },
+      {
+        "file": "phase3d-edited-review-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "c751b67745923273831347195aa91911209aa905d2964e83f661fd631bd0d259"
+      },
+      {
+        "file": "phase3d-export-blocked-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "8203332bb784d92be8b8292480179b4836fad297b1d302f399695672ab806ad0"
+      },
+      {
+        "file": "phase3d-export-blocked-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "ce35954e3d52eece30e2ca58edf25facc2629dbe836bdf851783e7062263f7c6"
+      },
+      {
+        "file": "phase3d-letter-page1.png",
+        "width": 1536,
+        "height": 960,
+        "sha256": "f122200af1dc6b24951bc36e7fbcca90a5676f54a55de91e614bfcc78d75d00a"
+      },
+      {
+        "file": "phase3d-letter-page2.png",
+        "width": 1536,
+        "height": 960,
+        "sha256": "8ddc56ab02fa9f19825d818f4cccfa962e7246448a89f49fc0cf1b65cfeafdca"
+      },
+      {
+        "file": "phase3d-local-decision-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "dc9132352e9d634aee051a4fda0930d79397a5c4fa5e1416ce15ea54a93b40a6"
+      },
+      {
+        "file": "phase3d-local-decision-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "a722f94d0137c6bcf2480abce022c703e5f4582fda19a1499d40a0f1f3cd3639"
+      },
+      {
+        "file": "phase3d-stale-review-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "10bb43948649a6362902f749450e386713afc350e659fac0ddbefbc59fa2a91a"
+      },
+      {
+        "file": "phase3d-stale-review-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "f2e90449396423545814e2d9948758992c0d503046e1e9998e3b95ce95f7efb4"
+      },
+      {
+        "file": "phase3d-telephone-page1.png",
+        "width": 1536,
+        "height": 960,
+        "sha256": "01319530133112aaa96460788775f08928a6630b148eeb84c71af470697f3f02"
+      },
+      {
+        "file": "phase3d-telephone-page2.png",
+        "width": 1536,
+        "height": 960,
+        "sha256": "84e81947fa442417e3892e4c30aeb3f2a069e7f7c08077293c36a795a73f2b45"
+      },
+      {
+        "file": "phase3d-wide-edited-review-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "cb60ccba23789bb7e54f31e0807b2d91d5727e5d52bda8e032c27bc9b77e8cbf"
+      },
+      {
+        "file": "phase3d-wide-edited-review-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "51fc7df1980b04f8369449ceffe9a854bf86889137bd05f67781bc40f020203c"
+      },
+      {
+        "file": "phase3d-wide-export-blocked-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "e63d606851536d3639e10360a86c4b9337a88649a83ce6cf2d7d5e33c87089d2"
+      },
+      {
+        "file": "phase3d-wide-export-blocked-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "292a8a615fea6579f323747602eb4b76481282177bc77f8209bc390f0732a06a"
+      },
+      {
+        "file": "phase3d-wide-local-decision-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "e724c1c989ec56cd0851798d0ac0d5392dda0161be613a89f07ba0aa9c8d1793"
+      },
+      {
+        "file": "phase3d-wide-local-decision-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "e2582d30c0185ff36977604f4ceef41bb747fca67275a267c4f6b40f4ff842d7"
+      },
+      {
+        "file": "phase3d-wide-stale-review-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "4bf6a16b8266a10f8a2fd88114b54799250385dddcb480c7fb165bf7c3359f5e"
+      },
+      {
+        "file": "phase3d-wide-stale-review-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "7aa8d66e17e722d5856d1fd2450e4965080a422dfd427772364ff2e3b785d546"
+      }
+    ],
+    "independent_critic": {
+      "milestone": "Phase3D and aggregate Phase3",
+      "passed": true,
+      "score": 10,
+      "critic_agent": "/root/phase3cc_critic",
+      "source_commit": "041c975cd2174c2977a9d494aabb0876e9b777ee",
+      "run_id": 36360518108,
+      "artifact_id": 10945627989,
+      "artifact_sha256": "ae6058f9ffdbb9ac4e8dbdb79dbd1bef687dd017cbfea4563cddcbe4c666ee5a",
+      "status": "TECHNICAL_AND_VISUAL_ACCEPTED_PENDING_DURABLE_CLOSEOUT",
+      "scope": "Full documented Phase3 editing workflow: accepted3A/3B/3CA/3CB/3CC plus3D aggregate integration; excludes Phases4\u20139",
+      "mandatory_checks": {
+        "prior_3A_3B_3CA_3CB_3CC_acceptance_preserved": "PASS",
+        "both_modes_edited_input_packet_preview_exact_local_review": "PASS",
+        "label_and_extended_journal_post_decision_invalidation": "PASS",
+        "authority_revocation_and_receipt_expiry_distinct_from_ticket_expiry": "PASS",
+        "source_replacement_stale_ticket_and_preview_rejection": "PASS",
+        "same_byte_rebuild_new_version_invalidates_decision": "PASS",
+        "actual_process_restart_with_all_persisted_bytes_restored": "PASS",
+        "restart_proposals_retained_but_authority_preparation_unavailable": "PASS",
+        "valid_approved_reference_export_survives_restart": "PASS",
+        "edited_local_approval_cannot_grant_export_or_overwrite_authority": "PASS",
+        "all_six_canonical_reserved_assignments_unchanged": "PASS",
+        "eight_distinct_raw_identities_mapped_to_xml": "PASS",
+        "sixteen_native_visuals_and_four_exact_synthetic_page_renders": "PASS",
+        "exact_accepted_apk_aab_and_strong_emulator_payload_parity": "PASS",
+        "source_manifest_and_frozen_test_preservation": "PASS",
+        "artifact_and_retained_evidence_hashes": "PASS"
+      },
+      "evidence": {
+        "new_distinct_identities": 8,
+        "retained_new_identities": 6,
+        "retried_failed_identities": 2,
+        "prior_frozen_identities": 132,
+        "combined_distinct_identities": 140,
+        "phase3_specific_identities": 73,
+        "manifest_files": 150,
+        "frozen_files": 148,
+        "new_test_files": 2,
+        "images": 20,
+        "native_images": 16,
+        "pdf_page_renders": 4,
+        "full_prior_suite_rerun": false,
+        "restart_old_pid": 4504,
+        "restart_new_pid": 4542,
+        "accepted_apk_sha256": "70d635ada9d2b1a9ca9a4ae205565e71c019830145aa7411b36ff3244bfce641",
+        "accepted_aab_sha256": "6d6b03170e2d251cd6dc89b724ee5383eb4bebf4de3a4a30a81aeff7385fd58c",
+        "emulator_app_sha256": "d1549fc68f301edb57117dccc1ecb778453510f491c4b0966a31c4d596d8e015",
+        "source_archive_sha256": "0454ebe1ca33314103213d1a0673ec7530846febda826eb471ea9062cb0fd5ab",
+        "strong_nonsigning_app_entries": 146
+      },
+      "findings": [
+        "All20images individually inspected in preceding review and every finalimage hash matches. Native phone/wide Light/Dark review,localapproval,blockedexport,stale review are legible, correctly framed and free of system overlays.",
+        "Four actual PDF renders show edited Alpha Road/building2/address102/authorized phone and explicit unavailable row. Their scope is synthetic rendering integration, not territory geography or production layout certification.",
+        "Final two failed identities pass status0;originalsixpassing identities mapped independently from rawlogs. FinalXML contains exactly the union8;all6 retainedtest bodies unchanged.",
+        "Fresh process restores full runtime/source hash snapshots and original preference bytes before newservices; existing proposals and reviewbytes persist,session authority/preparation do not; valid approvedreference exports exact81696bytes.",
+        "All148 preexisting source/testfiles unchanged,150manifest entriesverified. AcceptedAPK/AAB byte-identical; disposable app/testresigning changed only permitted signatures. Strongcomparison includes nonsigningMETA-INF resources and rejects duplicateZIPnames.",
+        "Prioraccepted Phase3A,B,CA,CB,CC reviews inspected.3D completes their explicitly deferred aggregateintegration combinations."
+      ],
+      "issues": [],
+      "reserved_canonical_ids": [
+        "T250",
+        "A257",
+        "297",
+        "A298",
+        "299",
+        "TA347"
+      ],
+      "images_reviewed": [
+        {
+          "file": "phase3d-edited-review-dark.png",
+          "sha256": "461f62f16f9123a17a5f8f8d170ced88bbbdf61a9ac6cba9d757d0e2f37cd049"
+        },
+        {
+          "file": "phase3d-edited-review-light.png",
+          "sha256": "c751b67745923273831347195aa91911209aa905d2964e83f661fd631bd0d259"
+        },
+        {
+          "file": "phase3d-export-blocked-dark.png",
+          "sha256": "8203332bb784d92be8b8292480179b4836fad297b1d302f399695672ab806ad0"
+        },
+        {
+          "file": "phase3d-export-blocked-light.png",
+          "sha256": "ce35954e3d52eece30e2ca58edf25facc2629dbe836bdf851783e7062263f7c6"
+        },
+        {
+          "file": "phase3d-letter-page1.png",
+          "sha256": "f122200af1dc6b24951bc36e7fbcca90a5676f54a55de91e614bfcc78d75d00a"
+        },
+        {
+          "file": "phase3d-letter-page2.png",
+          "sha256": "8ddc56ab02fa9f19825d818f4cccfa962e7246448a89f49fc0cf1b65cfeafdca"
+        },
+        {
+          "file": "phase3d-local-decision-dark.png",
+          "sha256": "dc9132352e9d634aee051a4fda0930d79397a5c4fa5e1416ce15ea54a93b40a6"
+        },
+        {
+          "file": "phase3d-local-decision-light.png",
+          "sha256": "a722f94d0137c6bcf2480abce022c703e5f4582fda19a1499d40a0f1f3cd3639"
+        },
+        {
+          "file": "phase3d-stale-review-dark.png",
+          "sha256": "10bb43948649a6362902f749450e386713afc350e659fac0ddbefbc59fa2a91a"
+        },
+        {
+          "file": "phase3d-stale-review-light.png",
+          "sha256": "f2e90449396423545814e2d9948758992c0d503046e1e9998e3b95ce95f7efb4"
+        },
+        {
+          "file": "phase3d-telephone-page1.png",
+          "sha256": "01319530133112aaa96460788775f08928a6630b148eeb84c71af470697f3f02"
+        },
+        {
+          "file": "phase3d-telephone-page2.png",
+          "sha256": "84e81947fa442417e3892e4c30aeb3f2a069e7f7c08077293c36a795a73f2b45"
+        },
+        {
+          "file": "phase3d-wide-edited-review-dark.png",
+          "sha256": "cb60ccba23789bb7e54f31e0807b2d91d5727e5d52bda8e032c27bc9b77e8cbf"
+        },
+        {
+          "file": "phase3d-wide-edited-review-light.png",
+          "sha256": "51fc7df1980b04f8369449ceffe9a854bf86889137bd05f67781bc40f020203c"
+        },
+        {
+          "file": "phase3d-wide-export-blocked-dark.png",
+          "sha256": "e63d606851536d3639e10360a86c4b9337a88649a83ce6cf2d7d5e33c87089d2"
+        },
+        {
+          "file": "phase3d-wide-export-blocked-light.png",
+          "sha256": "292a8a615fea6579f323747602eb4b76481282177bc77f8209bc390f0732a06a"
+        },
+        {
+          "file": "phase3d-wide-local-decision-dark.png",
+          "sha256": "e724c1c989ec56cd0851798d0ac0d5392dda0161be613a89f07ba0aa9c8d1793"
+        },
+        {
+          "file": "phase3d-wide-local-decision-light.png",
+          "sha256": "e2582d30c0185ff36977604f4ceef41bb747fca67275a267c4f6b40f4ff842d7"
+        },
+        {
+          "file": "phase3d-wide-stale-review-dark.png",
+          "sha256": "4bf6a16b8266a10f8a2fd88114b54799250385dddcb480c7fb165bf7c3359f5e"
+        },
+        {
+          "file": "phase3d-wide-stale-review-light.png",
+          "sha256": "7aa8d66e17e722d5856d1fd2450e4965080a422dfd427772364ff2e3b785d546"
+        }
+      ],
+      "limitations": [
+        "Device executions use synthetic fixtureterritories; no real fieldapproval,authoritypromotion or sixterritorycommissioning.",
+        "Emulator installed disposable resign derivatives with identical application payload; release signing remains later phase.",
+        "This critic reviewed recorded runtime evidence and actualpixels; did not operate an independent emulator.",
+        "Durable checkpoint/ledger commit and remote readback remain parent closeout tasks.",
+        "Phases4\u20139 and overall apprelease remain open."
+      ]
+    },
+    "apk_sha256": "70d635ada9d2b1a9ca9a4ae205565e71c019830145aa7411b36ff3244bfce641",
+    "aab_sha256": "6d6b03170e2d251cd6dc89b724ee5383eb4bebf4de3a4a30a81aeff7385fd58c",
+    "emulator_signing": "Disposable debug derivative; every nonsigning entry byte-identical; accepted APK/AAB unchanged",
+    "actual_process_restart": "PASS_DIFFERENT_PIDS_FULL_PERSISTED_STATE_RESTORED",
+    "reserved_canonical_ids": [
+      "T250",
+      "A257",
+      "297",
+      "A298",
+      "299",
+      "TA347"
+    ],
+    "reserved_territories": "UNCHANGED_NOT_COMMISSIONED",
+    "production_source_changed": false,
+    "synthetic_pdf_renders": "INTEGRATION_EVIDENCE_ONLY_NOT_REAL_CARD_ACCEPTANCE",
+    "phase3": "PASSED",
+    "next": "4_candidate_lifecycle_approval"
+  },
+  "phase3_integration_audit": {
+    "status": "PASS",
+    "phase3_specific_identities": 73,
+    "combined_project_identities": 140,
+    "accepted_subphases": [
+      "3A",
+      "3B",
+      "3CA",
+      "3CB",
+      "3CC",
+      "3D"
+    ],
+    "critic_score": 10,
+    "real_territory_commissioning": false
   }
 }

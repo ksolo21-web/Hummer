@@ -1,0 +1,122 @@
+[
+  {
+    "file": "phase3d-edited-review-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "461f62f16f9123a17a5f8f8d170ced88bbbdf61a9ac6cba9d757d0e2f37cd049"
+  },
+  {
+    "file": "phase3d-edited-review-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "c751b67745923273831347195aa91911209aa905d2964e83f661fd631bd0d259"
+  },
+  {
+    "file": "phase3d-export-blocked-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "8203332bb784d92be8b8292480179b4836fad297b1d302f399695672ab806ad0"
+  },
+  {
+    "file": "phase3d-export-blocked-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "ce35954e3d52eece30e2ca58edf25facc2629dbe836bdf851783e7062263f7c6"
+  },
+  {
+    "file": "phase3d-letter-page1.png",
+    "width": 1536,
+    "height": 960,
+    "sha256": "f122200af1dc6b24951bc36e7fbcca90a5676f54a55de91e614bfcc78d75d00a"
+  },
+  {
+    "file": "phase3d-letter-page2.png",
+    "width": 1536,
+    "height": 960,
+    "sha256": "8ddc56ab02fa9f19825d818f4cccfa962e7246448a89f49fc0cf1b65cfeafdca"
+  },
+  {
+    "file": "phase3d-local-decision-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "dc9132352e9d634aee051a4fda0930d79397a5c4fa5e1416ce15ea54a93b40a6"
+  },
+  {
+    "file": "phase3d-local-decision-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "a722f94d0137c6bcf2480abce022c703e5f4582fda19a1499d40a0f1f3cd3639"
+  },
+  {
+    "file": "phase3d-stale-review-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "10bb43948649a6362902f749450e386713afc350e659fac0ddbefbc59fa2a91a"
+  },
+  {
+    "file": "phase3d-stale-review-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "f2e90449396423545814e2d9948758992c0d503046e1e9998e3b95ce95f7efb4"
+  },
+  {
+    "file": "phase3d-telephone-page1.png",
+    "width": 1536,
+    "height": 960,
+    "sha256": "01319530133112aaa96460788775f08928a6630b148eeb84c71af470697f3f02"
+  },
+  {
+    "file": "phase3d-telephone-page2.png",
+    "width": 1536,
+    "height": 960,
+    "sha256": "84e81947fa442417e3892e4c30aeb3f2a069e7f7c08077293c36a795a73f2b45"
+  },
+  {
+    "file": "phase3d-wide-edited-review-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "cb60ccba23789bb7e54f31e0807b2d91d5727e5d52bda8e032c27bc9b77e8cbf"
+  },
+  {
+    "file": "phase3d-wide-edited-review-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "51fc7df1980b04f8369449ceffe9a854bf86889137bd05f67781bc40f020203c"
+  },
+  {
+    "file": "phase3d-wide-export-blocked-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "e63d606851536d3639e10360a86c4b9337a88649a83ce6cf2d7d5e33c87089d2"
+  },
+  {
+    "file": "phase3d-wide-export-blocked-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "292a8a615fea6579f323747602eb4b76481282177bc77f8209bc390f0732a06a"
+  },
+  {
+    "file": "phase3d-wide-local-decision-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "e724c1c989ec56cd0851798d0ac0d5392dda0161be613a89f07ba0aa9c8d1793"
+  },
+  {
+    "file": "phase3d-wide-local-decision-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "e2582d30c0185ff36977604f4ceef41bb747fca67275a267c4f6b40f4ff842d7"
+  },
+  {
+    "file": "phase3d-wide-stale-review-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "4bf6a16b8266a10f8a2fd88114b54799250385dddcb480c7fb165bf7c3359f5e"
+  },
+  {
+    "file": "phase3d-wide-stale-review-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "7aa8d66e17e722d5856d1fd2450e4965080a422dfd427772364ff2e3b785d546"
+  }
+]

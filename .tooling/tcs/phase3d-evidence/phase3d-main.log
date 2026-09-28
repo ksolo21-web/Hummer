@@ -1,0 +1,134 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest:
+INSTRUMENTATION_STATUS: test=editedReviewLight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=editedReviewLight
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=editedReviewDark
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=editedReviewDark
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest:
+INSTRUMENTATION_STATUS: test=sameByteRebuildInvalidatesLocalDecisionInBothModes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=sameByteRebuildInvalidatesLocalDecisionInBothModes
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: expected:<6> but was:<2>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest.editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards(Phase3DIntegrationInstrumentationTest.kt:77)
+
+INSTRUMENTATION_STATUS: stream=
+Error in editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards(com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest):
+java.lang.AssertionError: expected:<6> but was:<2>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest.editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards(Phase3DIntegrationInstrumentationTest.kt:77)
+
+INSTRUMENTATION_STATUS: test=editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=editedBothModesReachExactPreviewAndExplicitReview
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=editedBothModesReachExactPreviewAndExplicitReview
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=everyPostDecisionInvalidationRejectsOldTicketAndArtifacts
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=6
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: Source, assignment or inventory changed; draft is stale
+	at com.koenterprises.territorycardstudio.AndroidExtendedDraftStore.current(AndroidExtendedDraftStore.kt:144)
+	at com.koenterprises.territorycardstudio.AndroidExtendedDraftStore.save(AndroidExtendedDraftStore.kt:146)
+	at com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest.everyPostDecisionInvalidationRejectsOldTicketAndArtifacts(Phase3DIntegrationInstrumentationTest.kt:52)
+
+INSTRUMENTATION_STATUS: stream=
+Error in everyPostDecisionInvalidationRejectsOldTicketAndArtifacts(com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest):
+java.lang.IllegalArgumentException: Source, assignment or inventory changed; draft is stale
+	at com.koenterprises.territorycardstudio.AndroidExtendedDraftStore.current(AndroidExtendedDraftStore.kt:144)
+	at com.koenterprises.territorycardstudio.AndroidExtendedDraftStore.save(AndroidExtendedDraftStore.kt:146)
+	at com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest.everyPostDecisionInvalidationRejectsOldTicketAndArtifacts(Phase3DIntegrationInstrumentationTest.kt:52)
+
+INSTRUMENTATION_STATUS: test=everyPostDecisionInvalidationRejectsOldTicketAndArtifacts
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 82.374
+There were 2 failures:
+1) editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards(com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest)
+java.lang.AssertionError: expected:<6> but was:<2>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at org.junit.Assert.assertEquals(Assert.java:146)
+	at com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest.editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards(Phase3DIntegrationInstrumentationTest.kt:77)
+2) everyPostDecisionInvalidationRejectsOldTicketAndArtifacts(com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest)
+java.lang.IllegalArgumentException: Source, assignment or inventory changed; draft is stale
+	at com.koenterprises.territorycardstudio.AndroidExtendedDraftStore.current(AndroidExtendedDraftStore.kt:144)
+	at com.koenterprises.territorycardstudio.AndroidExtendedDraftStore.save(AndroidExtendedDraftStore.kt:146)
+	at com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest.everyPostDecisionInvalidationRejectsOldTicketAndArtifacts(Phase3DIntegrationInstrumentationTest.kt:52)
+
+FAILURES!!!
+Tests run: 6,  Failures: 2
+
+
+INSTRUMENTATION_CODE: -1

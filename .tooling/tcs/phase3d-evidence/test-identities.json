@@ -1,0 +1,41 @@
+{
+  "passed": [
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest",
+      "editedBothModesReachExactPreviewAndExplicitReview"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest",
+      "editedLocalApprovalNeverCreatesExportAuthorityOrChangesReservedCards"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest",
+      "everyPostDecisionInvalidationRejectsOldTicketAndArtifacts"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest",
+      "processRestartKeepsEditedSessionsBlockedAndApprovedReferenceExportWorking"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest",
+      "sameByteRebuildInvalidatesLocalDecisionInBothModes"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationInstrumentationTest",
+      "stageEditedDecisionsAndApprovedReferenceBeforeProcessDeath"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest",
+      "editedReviewDark"
+    ],
+    [
+      "com.koenterprises.territorycardstudio.Phase3DIntegrationUiInstrumentationTest",
+      "editedReviewLight"
+    ]
+  ],
+  "failed": [],
+  "execution_count": 12,
+  "retried_failed_identities": 2,
+  "retained_phase3d_identities": 6,
+  "frozen_prior": 132
+}

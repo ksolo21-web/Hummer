@@ -1,3 +1,5 @@
+Status: COMPLETED. See completion.md, phase3d-freeze.json and independent-review.json for final acceptance. The initial audit below is retained as scope history.
+
 # Phase 3D editing integration — initial evidence audit
 
 Status: OPEN. Dependency: Phase 3C-C final visual acceptance and durable closeout. No Phase 3D runtime approval is claimed.

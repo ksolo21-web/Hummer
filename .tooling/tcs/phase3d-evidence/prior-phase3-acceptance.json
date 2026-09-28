@@ -1,0 +1,37 @@
+[
+  {
+    "phase": "3a",
+    "status": "PASS",
+    "run": 36334431100,
+    "distinct_total": 77,
+    "critic": 10
+  },
+  {
+    "phase": "3b",
+    "status": "PASS",
+    "run": 36339456333,
+    "distinct_total": 87,
+    "critic": 10
+  },
+  {
+    "phase": "3ca",
+    "status": "PASS",
+    "run": 36341715486,
+    "distinct_total": 100,
+    "critic": 10
+  },
+  {
+    "phase": "3cb",
+    "status": "PASS",
+    "run": 36349473357,
+    "distinct_total": 116,
+    "critic": 10
+  },
+  {
+    "phase": "3cc",
+    "status": "PASS",
+    "run": 36356150069,
+    "distinct_total": 132,
+    "critic": 10
+  }
+]

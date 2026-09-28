@@ -1,0 +1,12 @@
+{
+  "unchanged_source_files": 148,
+  "added_test_files": [
+    "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase3DIntegrationInstrumentationTest.kt",
+    "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase3DIntegrationUiInstrumentationTest.kt"
+  ],
+  "manifest_files": 150,
+  "apk_aab_unchanged": true,
+  "source_package_sha256": "0454ebe1ca33314103213d1a0673ec7530846febda826eb471ea9062cb0fd5ab",
+  "exact_non_signing_apk_entries": 146,
+  "emulator_apk_sha256": "d1549fc68f301edb57117dccc1ecb778453510f491c4b0966a31c4d596d8e015"
+}

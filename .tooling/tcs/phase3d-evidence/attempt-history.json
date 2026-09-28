@@ -1,0 +1,36 @@
+[
+  {
+    "run_id": 36359149823,
+    "commit": "e334abbec1eb90d7fe5d641c687fea3fa7c05bc0",
+    "artifact_id": 10945491443,
+    "artifact_sha256": "b86d27c36fca6eb1471a3717f7e8d7cdef568e5039f1d145d4db81ac05ce5fba",
+    "result": "TEST_HARNESS_BLOCKED",
+    "identities_executed": 0,
+    "cause": "New test APK debug signer did not match accepted APK signer"
+  },
+  {
+    "run_id": 36359678176,
+    "commit": "7c06ef94f29b122b38e65ddfc37e946c85a5d5e8",
+    "artifact_id": 10945122636,
+    "artifact_sha256": "4d246e5877954300361fb1539fc5b394f0f0e199653928cb63d6edd13016c6f3",
+    "result": "TEST_HARNESS_BLOCKED",
+    "identities_executed": 0,
+    "cause": "Runner-local default debug keystore absent; replaced with explicit ephemeral test-only key"
+  },
+  {
+    "run_id": 36359946254,
+    "commit": "233a5dd5422640c685196c2c2b5cce053f71a420",
+    "artifact_id": 10945133430,
+    "artifact_sha256": "0970e93867f322bad670b02a770f02192446e0fc7d4da120843244736d24c4d2",
+    "result": "6_PASSED_2_HARNESS_CASES_CORRECTED",
+    "identities_executed": 8,
+    "executions": 10,
+    "images": 20,
+    "failures": [
+      "Reserved display labels used as canonical IDs",
+      "Stale extended journal mutation attempted via prohibited save instead of permitted discard"
+    ],
+    "retained_passed_identities": 6,
+    "retained_images": 20
+  }
+]

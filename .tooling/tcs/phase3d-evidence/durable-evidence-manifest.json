@@ -1,0 +1,234 @@
+[
+  {
+    "path": ".tooling/tcs/phase3d-evidence/TEST-phase3d.xml",
+    "sha256": "9f462b1b38928f0532a71daea242c4a2b86da27f998187bc3c8ce031a832f501"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/aab.sha256",
+    "sha256": "916c1c759bebb77e55f63661a0c40f493f6d8ff79cb0970a11fa5eb9a1840606"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/apk-payload-parity.json",
+    "sha256": "148dcdab2a5a95a0596b0397f67507386ea6a415e1e98c727430e347631f1aa2"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/apk.sha256",
+    "sha256": "56ba6114e4e3ad4457cc4b010ae7c1bf52616a271f04b6cf31e653e9b957837f"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/app-install.log",
+    "sha256": "6d4a5f9fd6f8e7b6d50c1061de710bbdec59a83f69670e5bab3c6dcae6bc5437"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/artifact-provenance.json",
+    "sha256": "79e94894cbbbe5ffe1a17ffd4ae7802e40299a2c6f996285c71518b6ceca1339"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/attempt-history.json",
+    "sha256": "9c7cd8569d47d05f7c153342141bc35c99d42ba40e483127aebe347c3132fe7f"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/capture-paths.txt",
+    "sha256": "3786c2cbf3ef1b5ed67348bba64563bd88c9919788a8c4374c52add4c05efc43"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/completion.md",
+    "sha256": "f6edf9b71dffad3280c7af41873342bcc2581d934c69e87ce0715cdf73cef111"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/emulator-apk.sha256",
+    "sha256": "2c57d3a3834d290ff0b9efb857fb12777b853ec647b902220b98f8f3c59a338a"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/emulator-signature.txt",
+    "sha256": "377352fe5e39ad1009fbe79b819c87808c92e973f4ac7be8df637557023d9b2e"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/independent-attempt-review.json",
+    "sha256": "b27434f0f1e983a484614bf8e8e03f68dea5e935bb8db2c9b15d98b4dc52dd70"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/independent-attempt-review.md",
+    "sha256": "b58cbce0cbeca20a574e4bf190b84c437930a9c8a9fc9e30c3e34d6a227d837a"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/independent-preservation-verification.json",
+    "sha256": "2a3242897e2eb50b4894b618de4031d2c4b66882efe233df471f3113018acddc"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/independent-review.json",
+    "sha256": "cf3f6358c2b999947f6bd4c051027c1c12a095056a99fc33d750a001ced21324"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/independent-review.md",
+    "sha256": "e708553e3870f7eaddd4d5591959f04261b4263cd1a25a685a3ff8b05507efb3"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/logs.sha256",
+    "sha256": "f15072be070212f8122fb4f05e62c862405dc5342e624708f5e3f5b3fbbb8efc"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-after-restart.log",
+    "sha256": "d55aa8740117689b5ef6335117438663f417244bdb05ef7a6ffd359e75135874"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-before-restart.log",
+    "sha256": "e1de7a5709c40862972059ce804a361fb53798dc0e938f031ff3aaa0562ef9da"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-edited-review-dark.png",
+    "sha256": "461f62f16f9123a17a5f8f8d170ced88bbbdf61a9ac6cba9d757d0e2f37cd049"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-edited-review-light.png",
+    "sha256": "c751b67745923273831347195aa91911209aa905d2964e83f661fd631bd0d259"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-export-blocked-dark.png",
+    "sha256": "8203332bb784d92be8b8292480179b4836fad297b1d302f399695672ab806ad0"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-export-blocked-light.png",
+    "sha256": "ce35954e3d52eece30e2ca58edf25facc2629dbe836bdf851783e7062263f7c6"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-freeze.json",
+    "sha256": "a114510f821f1b8738ccdbe4e577119c903c654eb70df49632d2764e84ff82a6"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-letter-page1.png",
+    "sha256": "f122200af1dc6b24951bc36e7fbcca90a5676f54a55de91e614bfcc78d75d00a"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-letter-page2.png",
+    "sha256": "8ddc56ab02fa9f19825d818f4cccfa962e7246448a89f49fc0cf1b65cfeafdca"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-local-decision-dark.png",
+    "sha256": "dc9132352e9d634aee051a4fda0930d79397a5c4fa5e1416ce15ea54a93b40a6"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-local-decision-light.png",
+    "sha256": "a722f94d0137c6bcf2480abce022c703e5f4582fda19a1499d40a0f1f3cd3639"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-main.log",
+    "sha256": "3ef63d7936a561af1b3175d7117bc72225675711d60b96abff53b8d6fda936c7"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-restart-proof.json",
+    "sha256": "c223d4f2d323c3b70876d6551fb447f80057c254592cd4eba67d9ac260bad2cd"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-retry.log",
+    "sha256": "f4c21584671681164d3bf980589989bbeee201d5b0b43911184656072ae9e4d8"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-stale-review-dark.png",
+    "sha256": "10bb43948649a6362902f749450e386713afc350e659fac0ddbefbc59fa2a91a"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-stale-review-light.png",
+    "sha256": "f2e90449396423545814e2d9948758992c0d503046e1e9998e3b95ce95f7efb4"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-telephone-page1.png",
+    "sha256": "01319530133112aaa96460788775f08928a6630b148eeb84c71af470697f3f02"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-telephone-page2.png",
+    "sha256": "84e81947fa442417e3892e4c30aeb3f2a069e7f7c08077293c36a795a73f2b45"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-edited-review-dark.png",
+    "sha256": "cb60ccba23789bb7e54f31e0807b2d91d5727e5d52bda8e032c27bc9b77e8cbf"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-edited-review-light.png",
+    "sha256": "51fc7df1980b04f8369449ceffe9a854bf86889137bd05f67781bc40f020203c"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-export-blocked-dark.png",
+    "sha256": "e63d606851536d3639e10360a86c4b9337a88649a83ce6cf2d7d5e33c87089d2"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-export-blocked-light.png",
+    "sha256": "292a8a615fea6579f323747602eb4b76481282177bc77f8209bc390f0732a06a"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-local-decision-dark.png",
+    "sha256": "e724c1c989ec56cd0851798d0ac0d5392dda0161be613a89f07ba0aa9c8d1793"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-local-decision-light.png",
+    "sha256": "e2582d30c0185ff36977604f4ceef41bb747fca67275a267c4f6b40f4ff842d7"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-stale-review-dark.png",
+    "sha256": "4bf6a16b8266a10f8a2fd88114b54799250385dddcb480c7fb165bf7c3359f5e"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide-stale-review-light.png",
+    "sha256": "7aa8d66e17e722d5856d1fd2450e4965080a422dfd427772364ff2e3b785d546"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/phase3d-wide.log",
+    "sha256": "018c49a249cfc2cbfd7eaae39e157686466d227b8c0f661301bf39d4b05c2af9"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/prior-phase3-acceptance.json",
+    "sha256": "81de6865d7ea3651169ed4088be73be0130aaffb46b1ea340c4db567728a867f"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/requirements.md",
+    "sha256": "f529e0a6e6c9855a8a6f921115aa8bd969f817ae7621b25005e58c3c691494ba"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/retained-test-identities.json",
+    "sha256": "c157f0da3e6a130920d2e2d1b89ad7316fcc890ee1de46aae039d78288670cb9"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/screenshot-manifest.json",
+    "sha256": "d22b4d1f70c454475c5da10f66f3bf887c919b522cd3c089b102758804359a3e"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/source-files.sha256",
+    "sha256": "4b322f3e3f8b8b9c2dea78ce787855937bdfc20127282b3a564344f211a38ea8"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/source-package.sha256",
+    "sha256": "49c64fe88b05e4ecd85edf7bb11ebefedebe268958dce8f869b80d554a11f5c9"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/status.txt",
+    "sha256": "4b67cedf99e86056ff31e5392dd85a77f84046ad9544818bbc55f86f02846fac"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/test-apk.sha256",
+    "sha256": "c12c01ff84808c1afc742e9b30ce52b6d2e0d2030955362cff91eff0e84d7de6"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/test-compile.log",
+    "sha256": "ebf60473d6f15a61a7ac6becae044c2b8956faf6dd1974856e29c58410b2e8f7"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/test-identities.json",
+    "sha256": "1261422d8f8e799b0fe2514968b3dde7971ac360772778e4892b8a79bf8c2fc6"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/test-install.log",
+    "sha256": "e6f60ca0c56c7fbeb80ae930c69ea7899933a737636b62726c1693f89183a89b"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/test-payload-parity.json",
+    "sha256": "ae98c7d8fc8fe39526cc60facdba98e1642bbe6d132a85e923d571abd2b7dcf0"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/test-signature.txt",
+    "sha256": "377352fe5e39ad1009fbe79b819c87808c92e973f4ac7be8df637557023d9b2e"
+  },
+  {
+    "path": ".tooling/tcs/phase3d-evidence/verify-preservation.py",
+    "sha256": "9c7c45cab96308ef1a2ea15ee2c8bc345ae6107e8aa4fdeb36dd216394c88f0a"
+  }
+]

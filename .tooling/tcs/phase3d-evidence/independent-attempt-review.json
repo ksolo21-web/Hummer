@@ -1,0 +1,123 @@
+{
+  "scope": "Phase3D integration; aggregate Phase3 pending final two retries",
+  "critic_agent": "/root/phase3cc_critic",
+  "passed": false,
+  "score": 8.5,
+  "run_id": 36359946254,
+  "findings": [
+    "All20 actual images individually opened:16native UI states pass;4actualPDFpage renders confirm edited synthetic fields.",
+    "Six distinct passing identities retained. Two failures are test assumptions: incorrect canonical reservedIDs and attempted save of correctly stale extendedjournal.",
+    "Actual producerPID4504 and consumerPID4542; full runtime/source snapshots verified during freshservice restart, existing proposals preserved but preparation/authority unavailable, approvedreference export81696bytes succeeds.",
+    "ArtifactSHA independently computed;all prior production/core/tests byte-identical to3CC;acceptedAPK/AAB exact;146 nonsignatureAPKentries identical in emulator resign derivative; emulator/test certdigests match."
+  ],
+  "images": [
+    {
+      "file": "phase3d-edited-review-dark.png",
+      "sha256": "461f62f16f9123a17a5f8f8d170ced88bbbdf61a9ac6cba9d757d0e2f37cd049",
+      "passed": true
+    },
+    {
+      "file": "phase3d-edited-review-light.png",
+      "sha256": "c751b67745923273831347195aa91911209aa905d2964e83f661fd631bd0d259",
+      "passed": true
+    },
+    {
+      "file": "phase3d-export-blocked-dark.png",
+      "sha256": "8203332bb784d92be8b8292480179b4836fad297b1d302f399695672ab806ad0",
+      "passed": true
+    },
+    {
+      "file": "phase3d-export-blocked-light.png",
+      "sha256": "ce35954e3d52eece30e2ca58edf25facc2629dbe836bdf851783e7062263f7c6",
+      "passed": true
+    },
+    {
+      "file": "phase3d-letter-page1.png",
+      "sha256": "f122200af1dc6b24951bc36e7fbcca90a5676f54a55de91e614bfcc78d75d00a",
+      "passed": true
+    },
+    {
+      "file": "phase3d-letter-page2.png",
+      "sha256": "8ddc56ab02fa9f19825d818f4cccfa962e7246448a89f49fc0cf1b65cfeafdca",
+      "passed": true
+    },
+    {
+      "file": "phase3d-local-decision-dark.png",
+      "sha256": "dc9132352e9d634aee051a4fda0930d79397a5c4fa5e1416ce15ea54a93b40a6",
+      "passed": true
+    },
+    {
+      "file": "phase3d-local-decision-light.png",
+      "sha256": "a722f94d0137c6bcf2480abce022c703e5f4582fda19a1499d40a0f1f3cd3639",
+      "passed": true
+    },
+    {
+      "file": "phase3d-stale-review-dark.png",
+      "sha256": "10bb43948649a6362902f749450e386713afc350e659fac0ddbefbc59fa2a91a",
+      "passed": true
+    },
+    {
+      "file": "phase3d-stale-review-light.png",
+      "sha256": "f2e90449396423545814e2d9948758992c0d503046e1e9998e3b95ce95f7efb4",
+      "passed": true
+    },
+    {
+      "file": "phase3d-telephone-page1.png",
+      "sha256": "01319530133112aaa96460788775f08928a6630b148eeb84c71af470697f3f02",
+      "passed": true
+    },
+    {
+      "file": "phase3d-telephone-page2.png",
+      "sha256": "84e81947fa442417e3892e4c30aeb3f2a069e7f7c08077293c36a795a73f2b45",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-edited-review-dark.png",
+      "sha256": "cb60ccba23789bb7e54f31e0807b2d91d5727e5d52bda8e032c27bc9b77e8cbf",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-edited-review-light.png",
+      "sha256": "51fc7df1980b04f8369449ceffe9a854bf86889137bd05f67781bc40f020203c",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-export-blocked-dark.png",
+      "sha256": "e63d606851536d3639e10360a86c4b9337a88649a83ce6cf2d7d5e33c87089d2",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-export-blocked-light.png",
+      "sha256": "292a8a615fea6579f323747602eb4b76481282177bc77f8209bc390f0732a06a",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-local-decision-dark.png",
+      "sha256": "e724c1c989ec56cd0851798d0ac0d5392dda0161be613a89f07ba0aa9c8d1793",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-local-decision-light.png",
+      "sha256": "e2582d30c0185ff36977604f4ceef41bb747fca67275a267c4f6b40f4ff842d7",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-stale-review-dark.png",
+      "sha256": "4bf6a16b8266a10f8a2fd88114b54799250385dddcb480c7fb165bf7c3359f5e",
+      "passed": true
+    },
+    {
+      "file": "phase3d-wide-stale-review-light.png",
+      "sha256": "7aa8d66e17e722d5856d1fd2450e4965080a422dfd427772364ff2e3b785d546",
+      "passed": true
+    }
+  ],
+  "remaining": [
+    "Retry only two failed identities after correcting normalizedreservedIDs and using discard for extendedjournalmutation.",
+    "Verify final source/provenance and retained six tests/images hashes before finalacceptance."
+  ],
+  "limitations": [
+    "Synthetic sparse PDFs prove editedrender integration; they are not production territorycard visual approval or geography certification.",
+    "No field approval, authority promotion, sixterritorycommissioning or productionrelease."
+  ]
+}
