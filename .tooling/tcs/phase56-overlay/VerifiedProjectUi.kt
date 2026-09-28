@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 
 @Composable fun VerifiedProjectScreen(modifier:Modifier,id:String,mode:WorkspaceMode,service:AndroidVerifiedProjectIntake,onBack:()->Unit) {
     key(id,mode,service){
-        val context=LocalContext.current;val scope=rememberCoroutineScope();val activity=context.exportActivity()
+        val context=LocalContext.current;val scope=rememberCoroutineScope();val activity=context.previewActivity()
         var busy by remember{mutableStateOf(false)};var ticket by remember{mutableStateOf<InitialPreparationTicket?>(null)}
         var message by remember{mutableStateOf("Import the source map, then its independently registered current-assignment project.")}
         var epoch by remember{mutableIntStateOf(0)};var resumed by remember{mutableStateOf(true)}

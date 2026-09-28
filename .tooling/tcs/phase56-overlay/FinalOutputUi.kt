@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
     key(id,mode,service){FinalOutputContent(modifier,id,mode,service,onBack)}
 }
 @Composable private fun FinalOutputContent(modifier:Modifier,id:String,mode:WorkspaceMode,service:AndroidFinalOutputService,onBack:()->Unit) {
-    val context=LocalContext.current;val activity=context.exportActivity();val scope=rememberCoroutineScope()
+    val context=LocalContext.current;val activity=context.previewActivity();val scope=rememberCoroutineScope()
     var state by remember{mutableStateOf<FinalOutputState?>(null)};var ticket by remember{mutableStateOf<FinalOutputTicket?>(null)}
     var pending by remember{mutableStateOf<FinalOutputTicket?>(null)};var pendingAudit by remember{mutableStateOf(false)}
     var picker by rememberSaveable{mutableStateOf(false)};var busy by remember{mutableStateOf(false)}
@@ -39,7 +39,12 @@ import kotlinx.coroutines.withContext
         if(uri==null){message="Save cancelled. No output was written.";return}
         busy=true
         scope.launch{val result=withContext(Dispatchers.IO){runCatching{service.exportCreated(selected,AndroidCreatedExportDestination(context.contentResolver,uri),audit)}}
-            message=result.fold({"${it.kind} saved and read back successfully. SHA-256 ${it.sha256}"},{it.message ?: "Save failed"});busy=false;revision++}
+            message=result.fold({"${it.kind} saved and read back successfully. SHA-256 ${it.sha256}"},{it.message ?: "Save failed"})
+            if(result.isSuccess && selected!=null) {
+                val valid=withContext(Dispatchers.IO){runCatching{service.verifyCurrent(selected)}.isSuccess}
+                if(valid && resumed)ticket=selected
+            }
+            busy=false;revision++}
     }
     val pdfPicker=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")){saved(it)}
     val auditPicker=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){saved(it)}

@@ -97,13 +97,15 @@ class AndroidFinalOutputService internal constructor(private val kb:TerritoryKno
             verifyCurrent(t)
             val name=if(audit)m.canonicalFilename.removeSuffix(".pdf")+" - audit.json" else m.canonicalFilename
             val receipt=FinalOutputReceipt(name,expected,bytes.size,if(audit)"AUDIT" else "PDF")
-            record(t,receipt);verifyCurrent(t);return receipt
+            val record=record(t,receipt)
+            try {verifyCurrent(t)} catch(e:Exception) {record.delete();throw e}
+            return receipt
         } catch(e:Exception) {
             val removed=runCatching{destination.deleteCreated()}.getOrDefault(false)
             throw IllegalStateException("Save failed: ${e.message}. "+if(removed)"The new destination was removed." else "A file may remain. Delete it before retrying.",e)
         }
     }
-    private fun record(t:FinalOutputTicket,r:FinalOutputReceipt) {
+    private fun record(t:FinalOutputTicket,r:FinalOutputReceipt):AtomicFile {
         require(directory.isDirectory || directory.mkdirs()){"Cannot save output receipt"}
         require(directory.listFiles().orEmpty().size<512){"Output receipt archive is full"}
         val bytes=ExtendedValues.canonical(JSONObject().put("schema",1).put("session",t.session).put("manifestSha256",t.review.manifest.canonicalSha256())
@@ -112,5 +114,6 @@ class AndroidFinalOutputService internal constructor(private val kb:TerritoryKno
         val file=AtomicFile(File(directory,"${UUID.randomUUID()}.json"));val out=file.startWrite()
         try {out.write(bytes);out.fd.sync();file.finishWrite(out);require(file.openRead().use{readBounded(it,65536)}.contentEquals(bytes))}
         catch(e:Exception){file.failWrite(out);file.delete();throw e}
+        return file
     }
 }

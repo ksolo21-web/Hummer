@@ -171,7 +171,10 @@ fun ModeAwareTerritoryWorkspace(
     editingDraftStore: AndroidEditingDraftStore? = null,
     extendedDraftStore: AndroidExtendedDraftStore? = null,
     authorityStore: AndroidEditingAuthorityStore? = null,
-    extendedPreparation: AndroidExtendedPreparationService? = null
+    extendedPreparation: AndroidExtendedPreparationService? = null,
+    lifecycleService: AndroidCandidateLifecycleService? = null,
+    finalOutputService: AndroidFinalOutputService? = null,
+    projectIntakeService: AndroidVerifiedProjectIntake? = null
 ) {
     val assignment = item.assignment
     val allowedModes = WorkspaceModePolicy.allowedModes(assignment)
@@ -225,7 +228,7 @@ fun ModeAwareTerritoryWorkspace(
     val findings = Phase2KFindings.from(item, mode, currentVerification, kb, prepared)
     val auditService = remember(kb, buildCoordinator, sourceStore) { Phase2KAuditService(kb, buildCoordinator, sourceStore, application.services.activePolicy, application.services.candidateReview) }
     if (workflowScreen == "INITIAL_PREPARATION") {
-        VerifiedProjectScreen(modifier, assignment.displayId, mode, application.services.verifiedProject) { workflowScreen = "WORKSPACE" }
+        VerifiedProjectScreen(modifier, assignment.displayId, mode, projectIntakeService ?: application.services.verifiedProject) { workflowScreen = "WORKSPACE" }
         return
     }
     if (workflowScreen == "EDITING_PREPARATION") {
@@ -288,14 +291,14 @@ fun ModeAwareTerritoryWorkspace(
     }
 
     if (workflowScreen == "BUILD") {
-        BuildWorkflowScreen(modifier, assignment.displayId, mode, application.services.buildWorkflow, application.services.pdfPreview, application.services.candidateReview, lifecycleService = application.services.candidateLifecycle, onInspectFindings = { categoryFilter = null; workflowScreen = "FINDINGS" }) {
+        BuildWorkflowScreen(modifier, assignment.displayId, mode, buildCoordinator, preview, application.services.candidateReview, lifecycleService = lifecycleService ?: application.services.candidateLifecycle, onInspectFindings = { categoryFilter = null; workflowScreen = "FINDINGS" }) {
             workflowScreen = "WORKSPACE"
         }
         return
     }
 
     if (workflowScreen == "EXPORT") {
-        if (assignment.needsNewCard) FinalOutputScreen(modifier, assignment.displayId, mode, application.services.finalOutput) {
+        if (assignment.needsNewCard) FinalOutputScreen(modifier, assignment.displayId, mode, finalOutputService ?: application.services.finalOutput) {
             workflowScreen = "WORKSPACE"
         } else ApprovedExportScreen(modifier, assignment.displayId, application.services.approvedExport) {
             workflowScreen = "WORKSPACE"

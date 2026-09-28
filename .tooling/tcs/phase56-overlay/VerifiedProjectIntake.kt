@@ -66,7 +66,8 @@ class AndroidVerifiedProjectIntake internal constructor(private val kb:Territory
     private data class Pending(val ticket:InitialPreparationTicket,val input:ProductionRenderModelInput,val inventory:Page2Inventory?,val source:SourceMapIntakeRecord,
         val prior:String?,val witness:EditingJournalWitness,val issued:Long,val expires:Long)
     private val pending=linkedMapOf<String,Pending>()
-    private fun current(p:Pending)=runCatching{clock() in p.issued..p.expires && p.witness.current() && sources.verifiedRecord(p.ticket.territory)==p.source}.getOrDefault(false)
+    private fun bindingCurrent(p:Pending)=runCatching{p.witness.current() && sources.verifiedRecord(p.ticket.territory)==p.source}.getOrDefault(false)
+    private fun current(p:Pending)=clock() in p.issued..p.expires && bindingCurrent(p)
     @Synchronized fun validate(id:String,mode:WorkspaceMode,submitted:ByteArray):InitialPreparationTicket {
         val bytes=submitted.copyOf();require(bytes.size in 1..VerifiedProjectCodec.MAX_BYTES)
         val slot=requireNotNull(kb.assignments[id]);require(slot.needsNewCard && mode in WorkspaceModePolicy.allowedModes(slot))
@@ -89,16 +90,18 @@ class AndroidVerifiedProjectIntake internal constructor(private val kb:Territory
         coordinator.validateEditingInventory(id,mode,input,p.inventory)
         require(sources.verifiedRecord(id)==source && coordinator.currentCandidateVersion(id,mode)==prior){"Source or candidate changed during verification"}
         pending.entries.removeAll{!current(it.value)};require(pending.size<16){"Cancel an unused import first"}
-        require(directory.isDirectory || directory.mkdirs());require(directory.listFiles().orEmpty().size<64){"Verified project archive is full"}
-        val file=AtomicFile(File(directory,"${UUID.randomUUID()}.json"));val stream=file.startWrite()
+        require(directory.isDirectory || directory.mkdirs())
+        val filename=BundleIntegrity.sha256("$id:${mode.name}".byteInputStream())+".json"
+        val file=AtomicFile(File(directory,filename));val stream=file.startWrite()
         try{stream.write(bytes);stream.fd.sync();file.finishWrite(stream)}catch(e:Exception){file.failWrite(stream);throw e}
         val witness=EditingJournalWitness.capture(file.baseFile,VerifiedProjectCodec.MAX_BYTES);val now=clock()
         val ticket=InitialPreparationTicket(UUID.randomUUID().toString(),id,mode,hash,source.sha256,evidence.map{it.providerId}.distinct().sorted())
+        pending.entries.removeAll{it.value.ticket.territory==id && it.value.ticket.mode==mode}
         pending[ticket.session]=Pending(ticket,input,EditingSnapshots.detach(p.inventory),source,prior,witness,now,now+900000);return ticket
     }
     @Synchronized fun prepare(t:InitialPreparationTicket) {
         val p=requireNotNull(pending[t.session]);require(p.ticket==t && current(p)){"Verified project changed or expired; import again"}
-        coordinator.prepareEditing(t.territory,t.mode,t.sourceSha256,p.input,p.inventory,p.prior){current(p)}
+        coordinator.prepareEditing(t.territory,t.mode,t.sourceSha256,p.input,p.inventory,p.prior){bindingCurrent(p)}
         pending.remove(t.session)
     }
 }
