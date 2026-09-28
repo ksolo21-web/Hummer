@@ -1,0 +1,97 @@
+name: TCS Phase 4 Candidate Lifecycle
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-phase4-lifecycle.yml
+      - .tooling/tcs/phase4-overlay/**
+      - .tooling/tcs/phase4-run-device-tests.sh
+      - .tooling/tcs/phase4-summarize.py
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: tcs-phase4-lifecycle
+  cancel-in-progress: true
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover accepted Phase 3 and apply Phase 4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence accepted tcs-src
+          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10945627989/zip > accepted.zip
+          echo 'ae6058f9ffdbb9ac4e8dbdb79dbd1bef687dd017cbfea4563cddcbe4c666ee5a  accepted.zip' | sha256sum -c -
+          unzip -q accepted.zip -d accepted
+          echo '0454ebe1ca33314103213d1a0673ec7530846febda826eb471ea9062cb0fd5ab  accepted/phase3d-source.tar.xz' | sha256sum -c -
+          tar -xJf accepted/phase3d-source.tar.xz -C tcs-src
+          (cd tcs-src && sha256sum -c ../accepted/source-files.sha256) > evidence/accepted-source-verification.log
+          for f in .tooling/tcs/phase4-overlay/*.kt; do
+            case "$f" in *InstrumentationTest.kt) target=androidTest;; *) target=main;; esac
+            cp "$f" "tcs-src/app/src/$target/java/com/koenterprises/territorycardstudio/"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tcs-src/app/build.gradle.kts');s=p.read_text().replace('versionCode = 41','versionCode = 42').replace('versionName = "0.3.4"','versionName = "0.4.0"');p.write_text(s)
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Compile app bundle and test package
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          python3 -m pip install --quiet pillow
+          (cd tcs-src && gradle --no-daemon :app:assembleDebug :app:bundleDebug :app:assembleDebugAndroidTest) > evidence/compile.log 2>&1 || { cat evidence/compile.log; exit 1; }
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/phase4-debug.jks" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=Phase4 Emulator Debug' -noprompt
+          "$APKSIGNER" sign --ks "$RUNNER_TEMP/phase4-debug.jks" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/TerritoryCardStudio-Android-0.4.0.apk tcs-src/app/build/outputs/apk/debug/app-debug.apk
+          "$APKSIGNER" sign --ks "$RUNNER_TEMP/phase4-debug.jks" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/emulator-test.apk tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          "$APKSIGNER" verify --print-certs evidence/TerritoryCardStudio-Android-0.4.0.apk > evidence/apk-signature.txt
+          "$APKSIGNER" verify --print-certs evidence/emulator-test.apk > evidence/test-signature.txt
+          python3 .tooling/tcs/phase3d-verify-payload.py tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Android-0.4.0.apk evidence/apk-payload-parity.json
+          sha256sum evidence/TerritoryCardStudio-Android-0.4.0.apk > evidence/apk.sha256
+          sha256sum tcs-src/app/build/outputs/bundle/debug/app-debug.aab > evidence/aab.sha256
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Execute new lifecycle and affected route cases
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: |
+            adb shell svc power stayon true
+            adb shell settings put system screen_off_timeout 1800000
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell wm dismiss-keyguard
+            bash .tooling/tcs/phase4-run-device-tests.sh
+      - name: Save source and evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/source-files.sha256
+          find evidence -maxdepth 1 -name '*.log' -type f -print0 | sort -z | xargs -0 sha256sum > evidence/logs.sha256
+          tar -cJf evidence/phase4-source.tar.xz -C tcs-src .
+          sha256sum evidence/phase4-source.tar.xz > evidence/source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase4-lifecycle-evidence
+          path: evidence
+          retention-days: 14

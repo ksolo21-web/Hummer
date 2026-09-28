@@ -13,7 +13,7 @@
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
     "3_editing_commissioning_workflow": "PASSED",
-    "4_candidate_lifecycle_approval": "NOT_STARTED_READY",
+    "4_candidate_lifecycle_approval": "IN_PROGRESS",
     "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
     "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
@@ -53,8 +53,8 @@
   "phase_milestone_before": "Phase3D runtime integration open; Phase3 IN_PROGRESS",
   "phase_milestone_after": "Phase3A\u20133D PASSED; aggregate Phase3 PASSED; Phase4 next",
   "last_completed_package": "0.3.4-phase3d-complete",
-  "next_open_gate": "Phase4 candidate lifecycle and approval",
-  "next_bounded_task": "Phase4 candidate lifecycle and approval: audit the existing accepted review/export lifecycle against Phase4 requirements, identify uncovered behavior, and implement only new or affected checks. Preserve140 accepted identities and the six reserved Phase7 commissioning territories.",
+  "next_open_gate": "Phase4 targeted runtime and independent acceptance",
+  "next_bounded_task": "Complete all Phase4 gates in one run: retain passing identities, repair only failed/affected checks, review24images, persist finalcheckpoint.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -2518,5 +2518,13 @@
     ],
     "critic_score": 10,
     "real_territory_commissioning": false
-  }
+  },
+  "phase4_progress": {
+    "status": "IMPLEMENTED_PENDING_RUNTIME_AND_CRITIC",
+    "new_identities": 19,
+    "prior_identities_retained": 140,
+    "affected_prior_rechecks": 2,
+    "required_images": 24
+  },
+  "six_real_territories_owner": "Kaleb personally creates/reviews/exports through app; agent uses synthetic tests only; never agent commission."
 }

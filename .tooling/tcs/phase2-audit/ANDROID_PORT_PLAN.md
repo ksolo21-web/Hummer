@@ -102,6 +102,8 @@ Implement controlled territory editing/commissioning without bypassing source-tr
 ### Phase 4 — Candidate lifecycle / approval
 Implement candidate creation, explicit approval/rejection, exact-hash promotion, approval invalidation after change, and audit history.
 
+Phase4 acceptance: durable exact candidate/PDF archive; explicit human approval with lifecycle revision compare-and-swap; atomic local-reference promotion and append-only audit; invalidation on source/version/validation changes; bounded corrupt-store handling; suspended persisted approval after actual process restart; native Light/Dark phone/wide lifecycle UI. Final field-export integration remains Phase5. Preserve140 accepted identities, rerunning only affected checks. See `.tooling/tcs/phase4-evidence/requirements.md`.
+
 ### Phase 5 — Final PDF / output validation
 Complete production packet validation, output integrity, print readiness, naming, export, and audit evidence.
 
@@ -109,7 +111,7 @@ Complete production packet validation, output integrity, print readiness, naming
 Prove the complete Android workflow against the shared engine and durable data contracts.
 
 ### Phase 7 — Six real commissioning cases through the app only
-Commission the six reserved `needs_new_card` territories only after prior gates are complete. Do not manually create/repair these cards outside the app.
+Kaleb will personally create, review and export the six reserved `needs_new_card` territories through the finished app after prior gates are complete. Agent work prepares and tests the workflow using synthetic fixtures only; never create, approve, promote or commission these six real cards on Kaleb’s behalf. Do not manually create/repair them outside the app.
 
 ### Phase 8 — Production release hardening / signing
 Complete production signing, security, reliability, accessibility, performance, and release hardening.
