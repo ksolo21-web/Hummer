@@ -547,7 +547,7 @@ object CandidatePdfRenderer {
     }
 
     private fun validateBuildingLabelItems(building: PdfBuildingShape, requireVerifiedItems: Boolean = false) {
-        if (requireVerifiedItems) require(building.labelItems.isNotEmpty()) {
+        if (requireVerifiedItems && building.assigned) require(building.labelItems.isNotEmpty()) {
             "${building.buildingId}: verified building label items are required"
         }
         if (building.labelItems.isEmpty()) return
