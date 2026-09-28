@@ -15,7 +15,7 @@ object MapImageDraftExtractor {
         val clean=text.trim().replace(Regex("\\s+")," ")
         if(clean.length !in 3..100 || clean.any {it.code !in 32..126})return null
         val matches=suffix.findAll(clean).toList()
-        if(matches.isEmpty() || clean.contains('=') || clean.startsWith("Directions",true) || clean.startsWith("Enter ",true) || clean.startsWith("Work ",true))return null
+        if(matches.isEmpty() || clean.contains('=') || clean.startsWith("Directions",true) || clean.startsWith("Enter ",true) || clean.startsWith("Work ",true) || clean.startsWith("To ",true))return null
         val match=matches.last()
         val trailing=clean.substring(match.range.last+1).trim()
         if(trailing.isNotEmpty() && trailing!="." && !trailing.startsWith(':'))return null
@@ -120,6 +120,14 @@ object MapImageDraftExtractor {
                 if(tail>=5)findings+=MapImageFinding("component-$start",if(area)"Review this filled area or building footprint; it was not converted into a road." else "Review this small colored mark.",bounds)}
         }
         numberLabels.filter {it !in usedBuildingLabels}.forEachIndexed {i,t->findings+=MapImageFinding("unmatched-member-$i","Number ${t.text} has no reliable containing building footprint.",t.bounds)}
+        // Explicit numbered captions provide an independent coverage check, never inferred geometry.
+        val numberedCaption=Regex("^[A-Za-z .]+:[ \t]*([0-9]+(?:[ \t]*/[ \t]*[0-9]+)+)$")
+        val recoveredNumbers=usedBuildingLabels.flatMap {Regex("[0-9]+").findAll(it.text).map {m->m.value}.toList()}.toSet()
+        mapText.filterNot {it.text.substringBefore(':').trim().lowercase() in setOf("date","updated")}.forEachIndexed {i,t->
+            val match=numberedCaption.matchEntire(t.text.trim())
+            if(match!=null){val missing=Regex("[0-9]+").findAll(match.groupValues[1]).map {it.value}.filter {it !in recoveredNumbers}.toList()
+                if(missing.isNotEmpty())findings+=MapImageFinding("caption-members-$i","Source caption lists member numbers not recovered in building footprints: ${missing.joinToString()}",t.bounds)}
+        }
         // Zhang–Suen thinning preserves the topology of the combined color mask.
         val remove=IntArray(mask.size)
         var changed=true;var iterations=0

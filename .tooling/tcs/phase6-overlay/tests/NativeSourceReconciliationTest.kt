@@ -101,7 +101,7 @@ class NativeSourceReconciliationTest {
         assertNull(MapImageDraftExtractor.streetText("E = Elizabeth St B = Baldwin Ave. Numbers identify buildings"))
         assertNull(MapImageDraftExtractor.streetText("Enter Miller Ave. Work only the three green buildings"))
         assertEquals("Alpha Rd",MapImageDraftExtractor.streetText("Alpha Rd: inside RIGHT"))
-        assertEquals("To Meadow Ln",MapImageDraftExtractor.streetText("To Meadow Ln"))
+        assertNull(MapImageDraftExtractor.streetText("To Meadow Ln"))
         listOf("St Clair St","St John Dr","Parkway Dr","Court St","Trail Rd").forEach {assertEquals(it,MapImageDraftExtractor.streetText(it))}
     }
     @Test fun unicodeNumberRangesRemainBuildingEvidence() {
@@ -112,6 +112,14 @@ class NativeSourceReconciliationTest {
             assertEquals(listOf(label.replace(" ","")),result.buildings.single().labels.map {it.text})
         }
     }
+    @Test fun numberedCaptionExposesMemberMissedByOcr() {
+        val w=200;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 30..80)for(x in 30..150)pixels[y*w+x]=0xff00aa30.toInt()
+        val text=listOf(MapImageText("490",AxisAlignedRect(70.0,45.0,105.0,65.0)),MapImageText("Units: 488 / 490",AxisAlignedRect(30.0,100.0,170.0,120.0)))
+        val result=MapImageDraftExtractor.extract(w,h,pixels,text)
+        assertTrue(result.findings.any {it.id.startsWith("caption-members-") && it.message.contains("488")})
+    }
+
     @Test fun shortContiguousWorkColorChangeCannotDisappearInMajority() {
         val w=500;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}
         for(y in 68..72)for(x in 30..470)pixels[y*w+x]=if(x in 245..251)0xffdd2020.toInt() else 0xff00bb30.toInt()

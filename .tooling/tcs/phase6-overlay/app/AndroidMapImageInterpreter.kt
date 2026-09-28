@@ -67,12 +67,17 @@ class AndroidMapImageInterpreter {
     fun interpret(file:File,expectedSha256:String,housingType:String="",buildingLabel:((String,Point2D)->BuildingLabelItem)?=null):InterpretedMapDraft {
         require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed before image interpretation"}
         val source=decode(file)
+        var inFlight:com.google.android.gms.tasks.Task<com.google.mlkit.vision.text.Text>?=null
         try {
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
                 fun recognized(rotation:Int):List<MapImageText> {
                     val bitmap=if(rotation==0)source else Bitmap.createBitmap(source,0,0,source.width,source.height,Matrix().apply {postRotate(rotation.toFloat())},true)
-                    val result=try {Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap,0)),60,TimeUnit.SECONDS)} finally {if(bitmap!==source)bitmap.recycle()}
+                    val task=recognizer.process(InputImage.fromBitmap(bitmap,0))
+                    inFlight=task
+                    // Timeout does not cancel ML Kit. Release its bitmap only after completion.
+                    if(bitmap!==source)task.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {bitmap.recycle()}
+                    val result=Tasks.await(task,60,TimeUnit.SECONDS)
                     val numeric=Regex("^[| ]*[0-9]+(?:[ \t]*[-/–—−][ \t]*[0-9]+)*(?:[ \t]*[A-Z])?[| ]*$")
                     fun box(b:android.graphics.Rect):AxisAlignedRect=when(rotation) {
                         90->AxisAlignedRect(b.top.toDouble(),source.height-b.right.toDouble(),b.bottom.toDouble(),source.height-b.left.toDouble())
@@ -88,7 +93,11 @@ class AndroidMapImageInterpreter {
                 val normal=recognized(0)
                 val rotated=if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))(recognized(90)+recognized(270)).distinctBy {listOf(it.text,it.bounds.left.toInt()/4,it.bounds.top.toInt()/4)} else emptyList()
                 normal+rotated.filter {r->normal.none {n->n.text==r.text && kotlin.math.abs(n.bounds.left-r.bounds.left)<8 && kotlin.math.abs(n.bounds.top-r.bounds.top)<8}}
-            } finally {recognizer.close()}
+            } finally {
+                val pending=inFlight
+                if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {recognizer.close()}
+                else recognizer.close()
+            }
             val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
             val extraction=MapImageDraftExtractor.extract(source.width,source.height,pixels,text)
             val all=extraction.roads.flatMap {it.points}+extraction.buildings.flatMap {it.polygon}
@@ -120,7 +129,11 @@ class AndroidMapImageInterpreter {
                 "Automatically extracted from source image $expectedSha256; requires source review",false)}
             require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed during image interpretation"}
             return InterpretedMapDraft(expectedSha256,roads,observations,findings,text,buildings,buildingObservations)
-        } finally {source.recycle()}
+        } finally {
+            val pending=inFlight
+            if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {source.recycle()}
+            else source.recycle()
+        }
     }
     internal fun decode(file:File):Bitmap {
         val pdf=file.inputStream().use {input->ByteArray(5).also {input.read(it)}}.toString(Charsets.US_ASCII)=="%PDF-"
