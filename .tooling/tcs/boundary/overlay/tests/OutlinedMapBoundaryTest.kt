@@ -29,8 +29,12 @@ class OutlinedMapBoundaryTest {
         assertTrue(result.roads.isNotEmpty())
         assertTrue(result.roads.all {it.road.status=="context"})
         assertTrue(result.roads.any {it.relation==BoundaryRoadRelation.INTERIOR})
+        val triage=OutlinedMapTriageBuilder.build(result)
+        assertEquals(result.roads.map {it.road.id}.toSet(),triage.priorities.keys)
+        assertEquals(result.findings.map {it.id}.toSet(),triage.uncertaintyRegions.flatMap {it.findingIds}.toSet())
+        assertTrue(result.roads.filter {it.relation!=BoundaryRoadRelation.EXTERIOR}.all {triage.priorities[it.road.id]==OutlinedProposalPriority.TERRITORY})
         val out=File(root.parentFile,"evidence/outlined-road-proposals.json");out.parentFile.mkdirs()
-        out.writeText("""{"roads":[${result.roads.joinToString(","){r->"""{"id":"${r.road.id}","relation":"${r.relation}","points":[${r.road.points.joinToString(","){"[${it.x},${it.y}]"}}]}"""}}],"findingCount":${result.findings.size}}""")
+        out.writeText("""{"roads":[${result.roads.joinToString(","){r->"""{"id":"${r.road.id}","relation":"${r.relation}","priority":"${triage.priorities[r.road.id]}","points":[${r.road.points.joinToString(","){"[${it.x},${it.y}]"}}]}"""}}],"findingCount":${result.findings.size},"contextRegionCount":${triage.surroundingRegions.size},"uncertaintyRegionCount":${triage.uncertaintyRegions.size}}""")
     }
     @Test fun sourceSpaceRoadRelationsDistinguishCrossingsAndSides() {
         val polygon=listOf(Point2D(0.0,0.0),Point2D(100.0,0.0),Point2D(100.0,100.0),Point2D(0.0,100.0))
@@ -40,11 +44,30 @@ class OutlinedMapBoundaryTest {
         assertEquals(BoundaryRoadRelation.CROSSING,relation(-20.0,50.0,120.0,50.0))
         assertEquals(BoundaryRoadRelation.BOUNDARY_FOLLOWING,relation(0.0,20.0,0.0,80.0))
         assertEquals(BoundaryRoadRelation.BOUNDARY_ENDPOINT,relation(50.0,50.0,100.0,50.0))
+        // Most of the trace follows the edge, but its two tails genuinely cross it.
+        assertEquals(BoundaryRoadRelation.CROSSING,OutlinedMapRoadExtractor.relationship(listOf(
+            Point2D(-8.0,10.0),Point2D(0.0,10.0),Point2D(0.0,90.0),Point2D(8.0,90.0)),polygon))
     }
     @Test fun brokenUserOutlineIsNotSilentlyClosed() {
         val image=source();val p=IntArray(image.width*image.height);image.getRGB(0,0,image.width,image.height,p,0,image.width)
         for(y in 82..92)for(x in 584..590)p[y*image.width+x]=0xFFFFFFFF.toInt()
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(image.width,image.height,p)}
+    }
+    @Test fun triageKeepsShortTerritoryBranchesAndNeverJoinsAcrossGaps() {
+        val polygon=listOf(Point2D(20.0,20.0),Point2D(80.0,20.0),Point2D(80.0,80.0),Point2D(20.0,80.0))
+        val boundary=OutlinedMapBoundary(100,100,polygon,3600,AxisAlignedRect(20.0,20.0,80.0,80.0))
+        fun road(id:String,a:Point2D,b:Point2D,relation:BoundaryRoadRelation)=OutlinedRoadProposal(MapImageRoad(id,null,"context",listOf(a,b),false,false),relation)
+        val roads=listOf(road("short",Point2D(30.0,30.0),Point2D(31.0,30.0),BoundaryRoadRelation.INTERIOR),
+            road("edge",Point2D(20.0,40.0),Point2D(40.0,40.0),BoundaryRoadRelation.BOUNDARY_ENDPOINT),
+            road("approach",Point2D(0.0,40.0),Point2D(20.0,40.0),BoundaryRoadRelation.EXTERIOR),
+            road("gap",Point2D(0.0,39.0),Point2D(19.0,39.0),BoundaryRoadRelation.EXTERIOR))
+        val finding=MapImageFinding("unknown","Unknown geometry",AxisAlignedRect(10.0,10.0,12.0,12.0))
+        val triage=OutlinedMapTriageBuilder.build(OutlinedMapExtraction(boundary,roads,listOf(finding)))
+        assertEquals(OutlinedProposalPriority.TERRITORY,triage.priorities["short"])
+        assertEquals(OutlinedProposalPriority.CONNECTED_APPROACH,triage.priorities["approach"])
+        assertEquals(OutlinedProposalPriority.SURROUNDING_CONTEXT,triage.priorities["gap"])
+        assertEquals(listOf("gap"),triage.surroundingRegions.flatMap {it.proposalIds})
+        assertEquals(listOf("unknown"),triage.uncertaintyRegions.flatMap {it.findingIds})
     }
     @Test fun competingAndClippedOutlinesAreRejected() {
         val w=400;val h=240;val p=IntArray(w*h){0xFFDDDDDD.toInt()}

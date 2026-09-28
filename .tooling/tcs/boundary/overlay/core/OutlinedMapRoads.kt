@@ -44,8 +44,8 @@ object OutlinedMapRoadExtractor {
         val near=samples.map {distance(it,polygon)<=4.0}
         val definite=samples.filterIndexed {i,_->!near[i]}.map {OutlinedMapBoundaryDetector.inside(it,polygon)}
         return when {
-            near.count {it}>=samples.size*0.7->BoundaryRoadRelation.BOUNDARY_FOLLOWING
             definite.any {it}&&definite.any {!it}->BoundaryRoadRelation.CROSSING
+            near.count {it}>=samples.size*0.7->BoundaryRoadRelation.BOUNDARY_FOLLOWING
             distance(points.first(),polygon)<=5.0||distance(points.last(),polygon)<=5.0->BoundaryRoadRelation.BOUNDARY_ENDPOINT
             definite.any {it}->BoundaryRoadRelation.INTERIOR
             else->BoundaryRoadRelation.EXTERIOR
