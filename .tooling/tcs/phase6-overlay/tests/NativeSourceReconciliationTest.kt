@@ -29,6 +29,29 @@ class NativeSourceReconciliationTest {
         NativeSourceReconciliationContract.assess(kb,v,state,mode,source,inventory)
     private fun blocked(v:NativeSourceReconciliation, code:String) { val x=assess(v); assertFalse(x.passed);assertTrue(code in x.failures,x.failures.toString()) }
 
+    @Test fun renderedBuildingAssignmentChangesPdfAndReceipt() {
+        val template=File(root,"app/src/main/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
+        val inside=PdfBuildingShape("included","9001",listOf(600.0 to 290.0,650.0 to 290.0,650.0 to 320.0,600.0 to 320.0))
+        val outside=PdfBuildingShape("excluded","9010",listOf(680.0 to 290.0,730.0 to 290.0,730.0 to 320.0,680.0 to 320.0),assigned=false)
+        val spec=CandidatePdfRendererTest.syntheticFixtureSpec().copy(buildings=listOf(inside,outside))
+        val rendered=CandidatePdfRenderer.renderNonFieldFixture(template,spec)
+        val bytes=rendered.pdfBytes.toString(Charsets.ISO_8859_1)
+        assertTrue(bytes.contains("% TCS_BUILDING_WORK_STATUS included assigned"))
+        assertTrue(bytes.contains("% TCS_BUILDING_WORK_STATUS excluded excluded"))
+        val changed=spec.copy(buildings=listOf(inside,outside.copy(assigned=true)))
+        assertNotEquals(spec.canonicalSha256(),changed.canonicalSha256())
+        assertNotEquals(rendered.pdfSha256,CandidatePdfRenderer.renderNonFieldFixture(template,changed).pdfSha256)
+        File(root.parentFile,"evidence/building-color-regression.pdf").apply {parentFile.mkdirs()}.writeBytes(rendered.pdfBytes)
+    }
+    @Test fun affectedBuildingLayoutsAndAdapterContractsRemainValid() {
+        val assets=File(root,"app/src/main/assets/territory")
+        val template=File(assets,"render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
+        listOf(CandidatePdfRendererTest.splitDetailFixtureSpec(),CandidatePdfRendererTest.fullPlusDetailFixtureSpec(),CandidatePdfRendererTest.siteBuildingAssignmentFixtureSpec()).forEach {spec->
+            assertTrue(CandidatePdfRenderer.renderNonFieldFixture(template,spec).exactValidation.passed)
+        }
+        ProductionRenderModelAdapterTest.run(kb0,assets)
+    }
+
     @Test fun strictDecimalFinalFileBoundary() {
         assertTrue(GeneratedPdfSizeContract.accepts(299999));assertFalse(GeneratedPdfSizeContract.accepts(300000))
         assertFalse(GeneratedPdfSizeContract.accepts(0));assertFalse(GeneratedPdfSizeContract.accepts(307200))

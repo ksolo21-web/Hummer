@@ -73,7 +73,8 @@ class Phase6NativeUiInstrumentationTest {
                     val now=android.os.SystemClock.uptimeMillis()
                     val down=android.view.MotionEvent.obtain(now,now,android.view.MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY(),0)
                     val up=android.view.MotionEvent.obtain(now,now+80,android.view.MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY(),0)
-                    try {automation.injectInputEvent(down,true);automation.injectInputEvent(up,true)} finally {down.recycle();up.recycle()}
+                    down.source=android.view.InputDevice.SOURCE_TOUCHSCREEN;up.source=android.view.InputDevice.SOURCE_TOUCHSCREEN
+                    try {automation.injectInputEvent(down,true);android.os.SystemClock.sleep(80);automation.injectInputEvent(up,true)} finally {down.recycle();up.recycle()}
                     runCatching {automation.waitForIdle(500,3000)}
                 }
                 false
@@ -181,6 +182,10 @@ class Phase6NativeUiInstrumentationTest {
             text(native,"native-item-id","condo-1");text(native,"native-building-members","9001,9002")
             click(native,"native-building-assigned");text(native,"native-evidence-note","Page 1 assigned condo footprint and both member identifiers")
             click(native,"native-item-confirmed");click(native,"native-save-item");statusContains("Draft saved")
+            text(native,"native-points","430,220;500,220;500,260;430,260");textClick(native,"Apply points")
+            text(native,"native-item-id","excluded-9010");text(native,"native-building-members","9010")
+            click(native,"native-building-assigned");text(native,"native-evidence-note","Page 1 red outlined excluded footprint9010 - DO NOT WORK")
+            click(native,"native-item-confirmed");click(native,"native-save-item");statusContains("Draft saved")
         }
         if(mode!=WorkspaceMode.REGULAR) {
             click(native,"native-tab-Addresses");click(native,"native-import-contacts");chooseContact(contactsName)
@@ -226,6 +231,11 @@ class Phase6NativeUiInstrumentationTest {
             val uri=DocumentsContract.buildDocumentUri(Phase56SyntheticDocumentsProvider.AUTHORITY,c.getString(0));files[name]=resolver.openInputStream(uri)!!.use {it.readBytes()}
         }}}
         val pdf=requireNotNull(files[x.identity.canonicalFilename]);assertArrayEquals(x.lifecycle.readCurrentPdf(x.id,mode),pdf);assertTrue(pdf.size<300000)
+        if(multiUnit){
+            val bytes=pdf.toString(Charsets.ISO_8859_1)
+            assertTrue(bytes.contains("% TCS_BUILDING_WORK_STATUS condo-1 assigned"))
+            assertTrue(bytes.contains("% TCS_BUILDING_WORK_STATUS excluded-9010 excluded"))
+        }
         val audit=requireNotNull(files[x.identity.canonicalFilename.removeSuffix(".pdf")+" - audit.json"]);val json=JSONObject(audit.toString(Charsets.UTF_8))
         assertEquals(BundleIntegrity.sha256(pdf.inputStream()),json.getString("pdfSha256"));assertEquals("explicit_local_user_reconciliation",json.getString("assignmentAuthorization"))
         assertEquals(registered.reconciliation.registrationId,json.getJSONObject("nativeReconciliation").getString("registrationId"))

@@ -52,9 +52,12 @@ internal class Phase6NativeFixture(val mode:WorkspaceMode,val fresh:Boolean=true
         }
         page.canvas.drawText("Alpha endpoints: junctions. Beta/Gamma endpoints: terminations.",40f,350f,p)
         if(multiUnit) {
-            p.color=android.graphics.Color.YELLOW;page.canvas.drawRect(550f,220f,620f,260f,p)
+            p.color=android.graphics.Color.rgb(81,199,43);page.canvas.drawRect(550f,220f,620f,260f,p)
             p.color=android.graphics.Color.BLACK;page.canvas.drawText("9001 / 9002",552f,244f,p)
             page.canvas.drawText("Assigned condo footprint: members 9001 and 9002",40f,370f,p)
+            p.color=android.graphics.Color.rgb(255,20,53);p.style=android.graphics.Paint.Style.STROKE;p.strokeWidth=1f
+            page.canvas.drawRect(430f,220f,500f,260f,p);p.style=android.graphics.Paint.Style.FILL;p.color=android.graphics.Color.BLACK
+            page.canvas.drawText("9010",449f,244f,p);page.canvas.drawText("Excluded footprint: 9010 - DO NOT WORK",40f,390f,p)
         }
         doc.finishPage(page);val out=java.io.ByteArrayOutputStream();doc.writeTo(out);doc.close();return out.toByteArray()
     }

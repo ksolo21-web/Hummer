@@ -483,7 +483,7 @@ object ProductionRenderModelAdapter {
             val road = requireNotNull(roadsByIdForRender[label.segmentId]) { "Verified label targets unknown road ${label.segmentId}" }
             toPdfLabel(label, road)
         }
-        val buildings = state.buildings.filter { it.assigned }.sortedBy { it.buildingId }.map(::toPdfBuildingShape)
+        val buildings = state.buildings.sortedBy { it.buildingId }.map(::toPdfBuildingShape)
         val labelByIdForDetail = input.labels.associateBy { it.labelId }
         val dedicatedDetails = input.dedicatedDetails.sortedBy { it.detailId }.map { detail ->
             PdfDedicatedDetail(
@@ -666,6 +666,7 @@ object ProductionRenderModelAdapter {
         buildingId = building.buildingId,
         label = building.label,
         points = building.polygon.map { it.x to it.y },
+        assigned = building.assigned,
         labelItems = building.labelItems.map { item ->
             PdfBuildingLabelItem(
                 text = item.text,
@@ -698,7 +699,7 @@ object ProductionRenderModelAdapter {
             if (building.labelItems.any { !mapPoint(it.center) }) failures += "${building.buildingId}: building label center escapes the locked R48 map panel"
         }
         if (multiUnit) {
-            state.buildings.filter { it.assigned }.forEach { building ->
+            state.buildings.forEach { building ->
                 if (building.housingType != state.housingType) {
                     failures += "${building.buildingId}: building housing type '${building.housingType}' does not match current assignment '${state.housingType}'"
                 }
@@ -793,7 +794,7 @@ object ProductionRenderModelAdapter {
         if (split.sharedSourceSegmentIds.distinct().size != split.sharedSourceSegmentIds.size) failures += "split_detail shared segment IDs must be unique"
 
         state.roads.forEach { road -> if (road.points.any { !rectContainsPoint(SPLIT_FULL_MAP_RECT, it) }) failures += "${road.segmentId}: split base road escapes full-map rect" }
-        state.buildings.filter { it.assigned }.forEach { building -> if (building.polygon.any { !rectContainsPoint(SPLIT_FULL_MAP_RECT, it) }) failures += "${building.buildingId}: split base building escapes full-map rect" }
+        state.buildings.forEach { building -> if (building.polygon.any { !rectContainsPoint(SPLIT_FULL_MAP_RECT, it) }) failures += "${building.buildingId}: split base building escapes full-map rect" }
         val labelById = labels.associateBy { it.labelId }
         val roadById = state.roads.associateBy { it.segmentId }
         val buildingById = state.buildings.associateBy { it.buildingId }
@@ -883,7 +884,7 @@ object ProductionRenderModelAdapter {
         if ((panel.sourceLabelIds.toSet() intersect panel.detailLabelIds.toSet()).isNotEmpty()) failures += "full_plus_detail source/detail label IDs must be distinct"
 
         state.roads.forEach { road -> if (road.points.any { !rectContainsPoint(main, it) }) failures += "${road.segmentId}: full_plus_detail base road escapes main-context rect" }
-        state.buildings.filter { it.assigned }.forEach { building -> if (building.polygon.any { !rectContainsPoint(main, it) }) failures += "${building.buildingId}: full_plus_detail base building escapes main-context rect" }
+        state.buildings.forEach { building -> if (building.polygon.any { !rectContainsPoint(main, it) }) failures += "${building.buildingId}: full_plus_detail base building escapes main-context rect" }
 
         val roadById = state.roads.associateBy { it.segmentId }
         val buildingById = state.buildings.associateBy { it.buildingId }
@@ -1012,19 +1013,19 @@ object ProductionRenderModelAdapter {
         val accessDetailIds = layout.accessInset?.detailLabelIds?.toSet().orEmpty()
         val baseLabels = labels.filter { it.labelId !in accessDetailIds }
         val roadById = state.roads.associateBy { it.segmentId }
-        val assignedBuildings = state.buildings.filter { it.assigned }
-        val buildingById = assignedBuildings.associateBy { it.buildingId }
+        val renderedBuildings = state.buildings
+        val buildingById = renderedBuildings.associateBy { it.buildingId }
         val baseLabelById = baseLabels.associateBy { it.labelId }
         val allLabelById = labels.associateBy { it.labelId }
 
         if (layout.sourceSegmentIds.toSet() != roadById.keys) failures += "site_building_assignment must explicitly own every current-assignment road segment"
-        if (layout.sourceBuildingIds.toSet() != buildingById.keys) failures += "site_building_assignment must explicitly own every assigned building"
+        if (layout.sourceBuildingIds.toSet() != buildingById.keys) failures += "site_building_assignment must explicitly own every rendered building"
         if (layout.sourceLabelIds.toSet() != baseLabelById.keys) failures += "site_building_assignment must explicitly own every base street label"
 
         state.roads.forEach { road ->
             if (road.points.any { !rectContainsPoint(layout.diagramRect, it) }) failures += "${road.segmentId}: site_building_assignment base road escapes diagram"
         }
-        assignedBuildings.forEach { building ->
+        renderedBuildings.forEach { building ->
             if (building.polygon.any { !rectContainsPoint(layout.diagramRect, it) }) failures += "${building.buildingId}: site_building_assignment building escapes diagram"
             if (building.labelItems.any { !rectContainsPoint(layout.diagramRect, it.center) }) failures += "${building.buildingId}: site_building_assignment building label escapes diagram"
         }
@@ -1242,7 +1243,7 @@ object ProductionRenderModelAdapter {
             add(state.sourceMasterLabel)
             addAll(state.directionsLines)
             state.roads.forEach { add(it.name) }
-            state.buildings.filter { it.assigned }.forEach { add(it.label) }
+            state.buildings.forEach { add(it.label) }
             labels.forEach { add(it.text) }
         }
         text.filter { value -> value.any { it.code !in 32..126 } }.forEach { value ->
