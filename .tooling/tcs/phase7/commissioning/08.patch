@@ -74,10 +74,11 @@ diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phas
 new file mode 100644
 --- /dev/null
 +++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7ScreenEvidence.kt
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,73 @@
 +package com.koenterprises.territorycardstudio
 +
 +import android.graphics.Bitmap
++import android.os.ParcelFileDescriptor
 +import androidx.test.platform.app.InstrumentationRegistry
 +import com.koenterprises.territorycardstudio.core.BundleIntegrity
 +import org.json.JSONObject
@@ -85,26 +86,65 @@ new file mode 100644
 +
 +/** A passing Compose assertion alone cannot establish visible-screen evidence: a system
 + * dialog can cover the application while semantics assertions keep running. Never crop
-+ * around or dismiss a blocking window. Retain the full screenshot and window witnesses,
-+ * then reject it unless this target application was active before AND after capture. */
++ * around or dismiss a blocking window. Retain the full screenshot and two independent
++ * foreground witnesses. Accessibility can legitimately return no root on an emulator;
++ * WindowManager focus is then authoritative. Any foreign or disagreeing witness rejects
++ * the screenshot. */
 +internal object Phase7ScreenEvidence {
++    private val component=Regex("""([A-Za-z0-9_.]+)/[A-Za-z0-9_.$]+""")
++
++    private data class WindowWitness(
++        val accessibilityPackage:String?,
++        val focusedWindowPackage:String?
++    ) {
++        fun accepted(expected:String):Boolean {
++            val observed=listOfNotNull(accessibilityPackage,focusedWindowPackage)
++            return observed.isNotEmpty() && observed.all {it==expected}
++        }
++        fun resolved(expected:String):String?=when {
++            accepted(expected)->expected
++            accessibilityPackage!=null->accessibilityPackage
++            else->focusedWindowPackage
++        }
++    }
++
++    private fun witness():WindowWitness {
++        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
++        val accessibility=automation.rootInActiveWindow?.packageName?.toString()?.takeIf {it.isNotBlank()}
++        val focused=runCatching {
++            ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("dumpsys window windows"))
++                .bufferedReader().use {reader->
++                    val line=reader.lineSequence().firstOrNull {it.contains("mCurrentFocus=")}
++                    line?.let {component.find(it)?.groupValues?.getOrNull(1)}
++                }
++        }.getOrNull()
++        return WindowWitness(accessibility,focused)
++    }
++
 +    fun capture(file:File) {
 +        require(file.name.startsWith("phase7-") && file.extension=="png")
 +        val instrumentation=InstrumentationRegistry.getInstrumentation()
 +        val automation=instrumentation.uiAutomation
-+        fun activePackage()=automation.rootInActiveWindow?.packageName?.toString()
-+        val before=activePackage()
++        val expected=instrumentation.targetContext.packageName
++        val before=witness()
 +        val image=requireNotNull(automation.takeScreenshot()) {"No visible-screen bitmap was returned"}
 +        try {file.outputStream().use {check(image.compress(Bitmap.CompressFormat.PNG,100,it))}}
 +        finally {image.recycle()}
-+        val after=activePackage()
-+        val expected=instrumentation.targetContext.packageName
-+        val accepted=before==expected && after==expected
-+        val receipt=JSONObject().put("schema","phase7-screen-evidence-v1")
-+            .put("expectedPackage",expected).put("activePackageBefore",before ?: JSONObject.NULL)
-+            .put("activePackageAfter",after ?: JSONObject.NULL).put("screenshotSha256",file.inputStream().use(BundleIntegrity::sha256))
++        val after=witness()
++        val accepted=before.accepted(expected) && after.accepted(expected)
++        val receipt=JSONObject().put("schema","phase7-screen-evidence-v2")
++            .put("expectedPackage",expected)
++            .put("activePackageBefore",before.resolved(expected) ?: JSONObject.NULL)
++            .put("activePackageAfter",after.resolved(expected) ?: JSONObject.NULL)
++            .put("accessibilityPackageBefore",before.accessibilityPackage ?: JSONObject.NULL)
++            .put("accessibilityPackageAfter",after.accessibilityPackage ?: JSONObject.NULL)
++            .put("focusedWindowPackageBefore",before.focusedWindowPackage ?: JSONObject.NULL)
++            .put("focusedWindowPackageAfter",after.focusedWindowPackage ?: JSONObject.NULL)
++            .put("screenshotSha256",file.inputStream().use(BundleIntegrity::sha256))
 +            .put("accepted",accepted).put("testOnly",true).put("cardApproved",false)
 +        File(file.parentFile,file.nameWithoutExtension+"-screen.json").writeText(receipt.toString(2))
-+        check(accepted) {"Screenshot is not valid app evidence: blocking or missing active window ($before -> $after); full screenshot and receipt were retained"}
++        check(accepted) {
++            "Screenshot is not valid app evidence: before=$before after=$after expected=$expected; full screenshot and receipt were retained"
++        }
 +    }
 +}

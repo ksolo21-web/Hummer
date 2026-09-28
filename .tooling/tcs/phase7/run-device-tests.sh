@@ -39,6 +39,10 @@ for path in receipts:
     j=json.loads(path.read_text());image=path.with_name(path.name.replace('-screen.json','.png'))
     assert j['accepted'] is True and j['cardApproved'] is False,path
     assert j['activePackageBefore']==j['activePackageAfter']==j['expectedPackage']=='com.koenterprises.territorycardstudio',path
+    for side in ['Before','After']:
+        witnesses=[j.get('accessibilityPackage'+side),j.get('focusedWindowPackage'+side)]
+        witnesses=[w for w in witnesses if w is not None]
+        assert witnesses and all(w==j['expectedPackage'] for w in witnesses),(path,side,witnesses)
     assert hashlib.sha256(image.read_bytes()).hexdigest()==j['screenshotSha256'],path
 PY
 }
