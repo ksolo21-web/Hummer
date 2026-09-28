@@ -1,0 +1,14 @@
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt
+--- a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt
+@@ -46,8 +46,8 @@
+     }
+     private fun screenshot(name:String) {
+         val i=InstrumentationRegistry.getInstrumentation()
+-        rule.runOnUiThread {(rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+-            .hideSoftInputFromWindow(rule.activity.window.decorView.windowToken,0)}
++        rule.runOnUiThread {rule.activity.window.insetsController?.hide(android.view.WindowInsets.Type.ime())}
++        rule.waitUntil(10000){!rule.activity.window.decorView.rootWindowInsets.isVisible(android.view.WindowInsets.Type.ime())}
+         rule.waitForIdle()
+         requireNotNull(i.uiAutomation.takeScreenshot()).let {image->
+             File(i.targetContext.filesDir,"phase7-finding-$name-$viewport.png").outputStream().use {assertTrue(image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it))};image.recycle()

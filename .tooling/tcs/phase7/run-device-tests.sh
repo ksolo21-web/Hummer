@@ -27,16 +27,16 @@ for case in ['a265','296-conflict','unidentified','clipped']:
     assert j['sourceSha256'] and j['inputKind']=='OUTLINED_AREA'
 assert 'OK (5 tests)' in log,log
 PY
-# Verify the new review path on phone and wide layouts, in both actual app themes.
-# These tests are not native-card acceptance evidence and cannot close Phase 7.
+# Verify source review and real existing-territory commissioning on phone and wide
+# layouts, in both actual app themes. Neither suite is passing-card evidence.
 trap 'adb shell wm size reset >/dev/null 2>&1 || true; adb shell wm density reset >/dev/null 2>&1 || true' EXIT
 for viewport in phone wide; do
   if [[ "$viewport" == wide ]]; then
     adb shell wm size 1920x1200
     adb shell wm density 160
   fi
-  adb shell wm size > "evidence/phase7-finding-$viewport-display.txt"
-  adb shell wm density >> "evidence/phase7-finding-$viewport-display.txt"
+  adb shell wm size > "evidence/phase7-$viewport-display.txt"
+  adb shell wm density >> "evidence/phase7-$viewport-display.txt"
   adb logcat -b crash -c
   timeout 900 adb shell am instrument -w -r -e phase7Viewport "$viewport" -e class "$PKG.OutlinedFindingReviewInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > "evidence/phase7-finding-$viewport.log" 2>&1 || true
   adb logcat -b crash -d > "evidence/phase7-finding-$viewport-crash.log"
@@ -49,12 +49,30 @@ log=Path(f'evidence/phase7-finding-{viewport}.log').read_text()
 assert 'OK (4 tests)' in log and 'FAILURES!!!' not in log and 'INSTRUMENTATION_FAILED' not in log,log
 assert 'FATAL EXCEPTION' not in Path(f'evidence/phase7-finding-{viewport}-crash.log').read_text()
 for name in ['persistence','light','dark','source-replacement']:
-    p=Path(f'evidence/phase7-finding-{name}-{viewport}.json')
-    j=json.loads(p.read_text())
+    j=json.loads(Path(f'evidence/phase7-finding-{name}-{viewport}.json').read_text())
     assert j['sourceSha256']=='8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d'
     assert j['testOnly'] is True and j['cardApproved'] is False
 for theme in ['light','dark']:
     assert Path(f'evidence/phase7-finding-{theme}-{viewport}.png').stat().st_size>1000
+PY
+  adb logcat -b crash -c
+  timeout 1000 adb shell am instrument -w -r -e phase7Viewport "$viewport" -e class "$PKG.OutlinedCommissioningInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > "evidence/phase7-commissioning-$viewport.log" 2>&1 || true
+  adb logcat -b crash -d > "evidence/phase7-commissioning-$viewport-crash.log"
+  capture_phase7
+  python3 - "$viewport" <<'PY'
+from pathlib import Path
+import json,sys
+viewport=sys.argv[1]
+log=Path(f'evidence/phase7-commissioning-{viewport}.log').read_text()
+assert 'OK (6 tests)' in log and 'FAILURES!!!' not in log and 'INSTRUMENTATION_FAILED' not in log,log
+assert 'FATAL EXCEPTION' not in Path(f'evidence/phase7-commissioning-{viewport}-crash.log').read_text()
+for name in ['persistence','invalidation','authorization','atomic-history','light','dark']:
+    j=json.loads(Path(f'evidence/phase7-commissioning-{name}-{viewport}.json').read_text())
+    assert j['sourceSha256']=='8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d'
+    assert j['territory']=='A265' and j['testOnly'] is True and j['cardApproved'] is False
+for theme in ['light','dark']:
+    for stage in ['confirmation','candidate']:
+        assert Path(f'evidence/phase7-commissioning-{theme}-{stage}-{viewport}.png').stat().st_size>1000
 PY
 done
 python3 - <<'PY'
@@ -67,6 +85,7 @@ Path('evidence/phase7-acceptance-status.json').write_text(json.dumps({
   'requiredRealImageCards':4,
   'intakeTestsPassed':5,
   'findingReviewTestsPassed':{'phone':4,'wide':4},
-  'note':'No exact final native card PDFs, current-geometry acceptance, critic approval, or save/readback receipts were produced by this regression run.'
+  'commissioningTestsPassed':{'phone':6,'wide':6},
+  'note':'Real A265 can enter an explicitly commissioned, isolated unapproved workspace. This is not final-card acceptance. No four exact final native card PDFs, current-geometry acceptance, critic approvals or final-card save/readback receipts were produced by this regression run.'
 },indent=2)+'\n')
 PY

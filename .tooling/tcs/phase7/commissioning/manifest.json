@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "sourceBaseline": "411dc2af5b5aa514f379d204b91022821eb6dca7",
+  "patchSha256": "a9b4005188bcd54393cc3df11254b2ed50f4c7777e79037f63785a2f2fc47791",
+  "files": [
+    {"path":"core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt","before":"a05e9dd89d775971a6e630639adf681177330fdc092b2161cb67cb90e8089a6b","after":"f33a0299ba2ca16221bf1f8d434686fa4246f06d703f5e9f9e81ccabf8b17f41"},
+    {"path":"core/src/main/kotlin/com/koenterprises/territorycardstudio/core/NativeCommissioningProjection.kt","before":null,"after":"8dbe18e995b41026fc29b4ed463f80a04922e6ec4a36c0aebad31e870b8bd889"},
+    {"path":"core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt","before":"d1c8b7db05a31e5ce1991715442cb437066c414e4079730a516e6c78b3dc4f87","after":"849a211784f6a12d487b5e80fc4fa5fdbeb79f211c7ee4b1ad592bd06aa2c527"},
+    {"path":"core/src/test/kotlin/com/koenterprises/territorycardstudio/core/OutlinedCommissioningContractTest.kt","before":null,"after":"45675fbadc8cdbe2422539e9a38dd7aec54f10b31bf70de747f942e87dc7fe26"},
+    {"path":"app/src/main/java/com/koenterprises/territorycardstudio/AndroidCommissioningStore.kt","before":null,"after":"30b408d8d5f11578ce29054fdf71395ab3b5a38baac287261536bd63c8e04411"},
+    {"path":"app/src/main/java/com/koenterprises/territorycardstudio/NativeCommissioningUi.kt","before":null,"after":"fec9c609ae206ec4bfca59f029ead41d7a3fd59f9abff1d2560c1c17788d8e61"},
+    {"path":"app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt","before":"a152b1f3fdc7d68d8f7df45ac44034beffb8a815db8bb7ff0c6a780dcfa9fb05","after":"6c7e15a03260af0ae3dc9de0235b294e2075e2b3336117d643209ac6f0661f6f"},
+    {"path":"app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt","before":"46420611af84e62d722f470c2cf0d98636d045cd4b3b65feb9bfe531aee2b1a1","after":"c7f8d7686efa890dbad286549ae05d02f016d264826c7d586c71acb62d95f6e3"},
+    {"path":"app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt","before":"94647a31c2a298b9beba56e733c183dc3f40a4f0bb046d1b9095ccfe269e4401","after":"24f6aaab3010e8ba91ddd2cec2bc753dbe03c5687e848c6b977f93b00ef11f07"},
+    {"path":"app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt","before":null,"after":"1a81d3da2cee8f41b27a1e66c9cdbd7a6ea822e4d1e35a1386465ddbc5091e84"},
+    {"path":"app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedFindingReviewInstrumentationTest.kt","before":"3a2271e7f7796fc92c248556d0b8659fb3eea8a46b49775805af2bfbdced2462","after":"f843fcc0bae88c78c6b77825f099009f775a215757ad781096c56f8393d9f548"}
+  ],
+  "patches": [
+    {"name":"01.patch","sha256":"d850335da5aaf3508ee35456c30212a2645ed73d284a809875848c9eabc1d400"},
+    {"name":"02.patch","sha256":"e8822246b08d785eb67e049c9181edda1d63ecae10a8883ed50e5cf8fa1e207a"},
+    {"name":"03.patch","sha256":"b19cdd30f17dbe9f171fb89dbb680f7a91c7bfed0a0366451368dd35c7f1d0b5"},
+    {"name":"04.patch","sha256":"d2a314770b89afbbf8de3b95750fa47d3d26a04bbf5ccd832f1b5770ad52836a"},
+    {"name":"05.patch","sha256":"7097c356df482ca72af1fa79c733a3e19ad28600e297d1c36cc730a3910c8aa2"}
+  ]
+}

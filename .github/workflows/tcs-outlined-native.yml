@@ -14,7 +14,7 @@ concurrency:
 jobs:
   integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - name: Recover frozen source and apply integration
@@ -38,7 +38,7 @@ jobs:
         with:
           gradle-version: '9.6.0'
           cache-read-only: false
-      - name: Apply native authoring foundation and test affected contracts
+      - name: Apply native authoring and commissioning; test all core contracts
         run: |
           set -euo pipefail
           cp .tooling/tcs/phase6-overlay/app/*.kt tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/
@@ -58,7 +58,8 @@ jobs:
           cp tcs-src/core/src/test/resources/boundary/source-26435.jpg tcs-src/app/src/androidTest/assets/source-26435.jpg
           for source in .tooling/tcs/phase7/inputs/*.jpg; do cp "$source" "tcs-src/app/src/androidTest/assets/phase7-$(basename "$source")"; done
           cp .tooling/tcs/phase7/inputs/reference-a265.pdf tcs-src/app/src/androidTest/assets/phase7-reference-a265.pdf
-          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun --tests '*NativeSourceReconciliationTest' --tests '*SupplementalBuildingReferenceTest' --tests '*Outlined*Test') > evidence/core-tests.log 2>&1 || { cat evidence/core-tests.log; cp -r tcs-src/core/build/test-results/test evidence/core-results || true; exit 1; }
+          python .tooling/tcs/phase7/commissioning/apply.py tcs-src > evidence/commissioning-integration.json
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/core-tests.log 2>&1 || { cat evidence/core-tests.log; cp -r tcs-src/core/build/test-results/test evidence/core-results || true; exit 1; }
           cp -r tcs-src/core/build/test-results/test evidence/core-results
           python .tooling/tcs/phase6-overlay/python/native_source_reconciliation.py evidence/reconciliation-golden.json evidence/assignment-golden.json evidence/assignment-content.sha256 evidence/structural-parity.json > evidence/python-parity.json
       - name: Compile native application and device tests

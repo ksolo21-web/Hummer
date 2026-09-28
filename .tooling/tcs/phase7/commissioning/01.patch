@@ -1,0 +1,264 @@
+diff --git a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt
+--- a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt
+@@ -108,8 +108,14 @@
+         require(SHA256_HEX.matches(lockedReferenceSha256)) { "Invalid locked-reference SHA-256" }
+         require(lockedSourceHashes.isNotEmpty() && lockedSourceHashes.all(SHA256_HEX::matches)) { "Invalid locked source hashes" }
+         require(lockedSourceHashes.distinct().size == lockedSourceHashes.size) { "Duplicate locked source hashes" }
+-        require(assignmentSourceRole == "exact_assignment_reference") {
+-            "Only exact_assignment_reference may authorize known-territory geography"
++        require(assignmentSourceRole in setOf("exact_assignment_reference", "current_native_assignment_registration")) {
++            "A live request needs an exact assignment reference or a current native registration"
++        }
++        if (assignmentSourceRole == "current_native_assignment_registration") {
++            require(needsNewCard && candidateSourceSha256 !in lockedSourceHashes &&
++                sourceTruth.assignmentAuthoritySourceSha256 == candidateSourceSha256) {
++                "Native registration cannot be represented by legacy source bytes or an approved passthrough"
++            }
+         }
+         require(roadTargets.isNotEmpty()) { "Live verification requires candidate road topology" }
+         require(roadTargets.map { it.targetId }.toSet().size == roadTargets.size) { "Duplicate live road target IDs" }
+@@ -141,12 +147,15 @@
+             ?: error("${assignment.referenceFile} has no explicit source role")
+         require(referenceRole.displayId == displayId) { "Reference/source territory mismatch for $displayId" }
+         require(referenceRole.sha256 == assignment.referenceSha256) { "Reference role hash mismatch for $displayId" }
+-        require(referenceRole.role == "exact_assignment_reference") {
+-            "${referenceRole.role} cannot authorize $displayId geography; exact_assignment_reference required"
+-        }
+         require(!referenceRole.crossTerritoryGeographyAllowed) { "Cross-territory geography must remain disabled" }
+         val native = if (sourceTruth.assignmentAuthoritySourceSha256 in assignment.sourceHashes) null else
+             nativeEligibility.current(displayId, sourceTruth.assignmentAuthoritySourceSha256)
++        // A legacy reference does NOT become current geography. A new-card workspace may
++        // proceed only on a separately registered, current-source-bound native assignment.
++        require(referenceRole.role == "exact_assignment_reference" ||
++            (assignment.needsNewCard && referenceRole.role == "legacy_assignment_reference_needs_new_card" && native != null)) {
++            "${referenceRole.role} requires a current explicit native registration for $displayId"
++        }
+         require(sourceTruth.assignmentAuthoritySourceSha256 in assignment.sourceHashes || native != null) {
+             "Candidate assignment authority is not bound to locked sources or a current explicit local registration"
+         }
+@@ -197,7 +206,7 @@
+             knowledgeBaseRevision = kb.revision,
+             lockedReferenceSha256 = assignment.referenceSha256,
+             lockedSourceHashes = assignment.sourceHashes.sorted(),
+-            assignmentSourceRole = referenceRole.role,
++            assignmentSourceRole = if (native != null) "current_native_assignment_registration" else referenceRole.role,
+             jurisdiction = jurisdiction,
+             sourceTruth = sourceTruth,
+             roadTargets = roadTargets,
+diff --git a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/NativeCommissioningProjection.kt b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/NativeCommissioningProjection.kt
+new file mode 100644
+--- /dev/null
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/NativeCommissioningProjection.kt
+@@ -0,0 +1,44 @@
++package com.koenterprises.territorycardstudio.core
++
++/** A separate replacement-candidate workspace, NOT a change to the installed catalog.
++ * Application code must obtain its scope digest from the private, explicit commissioning
++ * ledger. This projection is data preparation only and grants no source or PDF approval. */
++object NativeCommissioningProjection {
++    fun project(baseline: TerritoryKnowledgeBase, territory: String,
++        lockedReferenceSha256: String, scopeSha256: String): TerritoryKnowledgeBase {
++        require(scopeSha256.matches(Regex("[0-9a-f]{64}"))) { "Invalid commissioning scope digest" }
++        val original = requireNotNull(baseline.assignments[territory]) { "Unknown or retired territory" }
++        require(!original.needsNewCard) { "This territory already has a new-card workspace" }
++        require(original.referenceSha256 == lockedReferenceSha256) { "Commissioning reference changed" }
++        val reference = requireNotNull(baseline.referenceRoles[original.referenceFile]) { "Original reference role is missing" }
++        require(reference.role == "exact_assignment_reference" && !reference.crossTerritoryGeographyAllowed) { "Only this territory's installed exact reference may be preserved" }
++        require(reference.displayId == territory && reference.sha256 == original.referenceSha256) { "Reference identity mismatch" }
++        require(baseline.assignments.values.count { it.referenceFile == original.referenceFile } == 1) { "Reference is shared by multiple assignments" }
++        val replacement = original.copy(
++            status = "needs_new_card",
++            needsNewCard = true,
++            newCardApproved = false,
++            fieldReleaseAllowedForExactArtifact = false,
++            sourceClass = "legacy_reference_not_current_approved_card",
++            legacyVisibleId = original.displayId,
++            legacyReferenceFile = original.referenceFile,
++            approvalNote = "Separate commissioned replacement candidate. The installed original remains unchanged; no candidate is pre-approved."
++        )
++        val revision = "commission-" + scopeSha256
++        val result = baseline.copy(
++            revision = revision,
++            assignments = baseline.assignments + (territory to replacement),
++            referenceRoles = baseline.referenceRoles + (original.referenceFile to reference.copy(
++                role = "legacy_assignment_reference_needs_new_card", fieldReleaseAllowed = false)),
++            needsNewCardQueue = baseline.needsNewCardQueue + (territory to NeedsNewCardEntry(
++                territory, "needs_new_card", original.canonicalFilename, original.referenceFile, false)),
++            populationSummary = baseline.populationSummary.copy(needsNewCardCount = baseline.populationSummary.needsNewCardCount + 1)
++        )
++        // No numbering, coverage, source geometry, overlap, housing, renderer or approval-policy changes.
++        require(result.assignments.filterKeys { it != territory } == baseline.assignments.filterKeys { it != territory })
++        require(result.policy == baseline.policy && result.classSupersessions == baseline.classSupersessions)
++        require(result.crossTerritoryOverlapAudit == baseline.crossTerritoryOverlapAudit && result.permanentPatches == baseline.permanentPatches)
++        require(result.assignments.getValue(territory).roads == original.roads && result.assignments.getValue(territory).buildings == original.buildings)
++        return result
++    }
++}
+diff --git a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt
+--- a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt
+@@ -400,10 +400,13 @@
+             }
+         }
+ 
++        val activeNative = if (kbAssignment != null && state.authoritySha256 !in kbAssignment.sourceHashes)
++            runCatching { nativeEligibility.current(state.displayId, state.authoritySha256) }.getOrNull() else null
+         if (kbAssignment != null && state.authoritySha256 !in kbAssignment.sourceHashes) {
+-            val native = runCatching { nativeEligibility.current(state.displayId, state.authoritySha256) }.getOrNull()
+-            if (native == null || !native.matches(kb, state, input.sourceTruth)) failures += "Current assignment has no matching active source registration"
+-        }
++            if (activeNative == null || !activeNative.matches(kb, state, input.sourceTruth)) failures += "Current assignment has no matching active source registration"
++        }
++        val expectedLiveRole = if (activeNative != null) "current_native_assignment_registration" else "exact_assignment_reference"
++        if (input.liveRequest.assignmentSourceRole != expectedLiveRole) failures += "Live verification source role does not match current assignment authority"
+         if (state.authorityRole != "current_authoritative_assignment") failures += "current_authoritative_assignment evidence is required"
+         if (state.coordinateSpace != RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN) failures += "unsupported render coordinate space"
+         if (state.layoutMode !in allowedLayouts) failures += "unsupported R48 layout mode '${state.layoutMode}'"
+diff --git a/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/OutlinedCommissioningContractTest.kt b/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/OutlinedCommissioningContractTest.kt
+new file mode 100644
+--- /dev/null
++++ b/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/OutlinedCommissioningContractTest.kt
+@@ -0,0 +1,141 @@
++package com.koenterprises.territorycardstudio.core
++
++import java.io.File
++import org.junit.jupiter.api.Test
++import org.junit.jupiter.api.Assertions.*
++
++class OutlinedCommissioningContractTest {
++    private val root=generateSequence(File(System.getProperty("user.dir")).absoluteFile){it.parentFile}
++        .first {File(it,"app/src/main/assets/territory").isDirectory}
++    private val assets=File(root,"app/src/main/assets/territory")
++    private val baseline=File(assets,"Territory-Knowledge-Base.json").reader().use(TerritoryKnowledgeBaseLoader::load)
++    private val policy=File(assets,"Online-Source-Policy.json").reader().use(OnlineSourcePolicyLoader::load)
++    private val original=baseline.assignments.getValue("A265")
++    private val hash="7".repeat(64)
++    private fun projected()=NativeCommissioningProjection.project(baseline,"A265",original.referenceSha256,hash)
++
++    @Test fun a265CanHaveASeparateCandidateWithoutChangingTheInstalledAssignment() {
++        val before=original.copy();val result=projected();val candidate=result.assignments.getValue("A265")
++        assertTrue(candidate.needsNewCard && candidate.newCardApproved==false && !candidate.fieldReleaseAllowedForExactArtifact)
++        assertTrue(candidate.identity==original.identity && candidate.canonicalFilename==original.canonicalFilename)
++        assertTrue(baseline.assignments.getValue("A265")==before && !original.needsNewCard)
++        assertTrue(result.revision=="commission-$hash" && result.revision!=baseline.revision)
++        assertTrue(result.needsNewCardQueue.size==baseline.needsNewCardQueue.size+1)
++    }
++    @Test fun allNeighborAssignmentsAndGeographyPoliciesRemainIdentical() {
++        val result=projected()
++        assertTrue(result.assignments.filterKeys {it!="A265"}==baseline.assignments.filterKeys {it!="A265"})
++        assertTrue(result.policy==baseline.policy && result.crossTerritoryOverlapAudit==baseline.crossTerritoryOverlapAudit)
++        assertTrue(result.masterCoverage==baseline.masterCoverage && result.coverageCandidates==baseline.coverageCandidates)
++        assertTrue(result.classSupersessions==baseline.classSupersessions && result.permanentPatches==baseline.permanentPatches)
++        assertTrue(result.assignments.getValue("A265").roads==original.roads && result.assignments.getValue("A265").buildings==original.buildings)
++    }
++    @Test fun originalExactExportRemainsAllowedButCannotBeReusedAsANewCandidate() {
++        val old=PdfArtifactBoundary.authorizeExactApprovedPassthrough(baseline,"A265",original.canonicalFilename,original.referenceSha256)
++        val candidate=PdfArtifactBoundary.authorizeExactApprovedPassthrough(projected(),"A265",original.canonicalFilename,original.referenceSha256)
++        assertTrue(old.fieldReleaseState==PdfFieldReleaseState.ALLOWED)
++        assertTrue(candidate.fieldReleaseState==PdfFieldReleaseState.BLOCKED)
++        assertTrue(projected().referenceRoles.getValue(original.referenceFile).role=="legacy_assignment_reference_needs_new_card")
++        assertTrue(baseline.referenceRoles.getValue(original.referenceFile).fieldReleaseAllowed)
++    }
++    @Test fun unknownRetiredAndAlreadyReservedTerritoriesCannotBeCommissionedThisWay() {
++        for(id in listOf("A296","R296","NOT-A-TERRITORY","A257")) {
++            assertTrue(runCatching {NativeCommissioningProjection.project(baseline,id,original.referenceSha256,hash)}.isFailure)
++        }
++        assertTrue(runCatching {NativeCommissioningProjection.project(projected(),"A265",original.referenceSha256,hash)}.isFailure)
++    }
++    @Test fun changedReferenceOrScopeDigestCannotReuseTheProjection() {
++        assertTrue(runCatching {NativeCommissioningProjection.project(baseline,"A265","0".repeat(64),hash)}.isFailure)
++        for(value in listOf("", "abc", "Z".repeat(64), "0".repeat(65)))
++            assertTrue(runCatching {NativeCommissioningProjection.project(baseline,"A265",original.referenceSha256,value)}.isFailure)
++        val other=NativeCommissioningProjection.project(baseline,"A265",original.referenceSha256,"8".repeat(64))
++        assertTrue(other.revision!=projected().revision)
++    }
++    @Test fun aStyleReferenceCannotBePromotedIntoACommissionedAssignment() {
++        val role=baseline.referenceRoles.getValue(original.referenceFile).copy(role="style_only",fieldReleaseAllowed=false)
++        val altered=baseline.copy(referenceRoles=baseline.referenceRoles+(original.referenceFile to role))
++        assertTrue(runCatching {NativeCommissioningProjection.project(altered,"A265",original.referenceSha256,hash)}.isFailure)
++    }
++
++    /** Synthetic core facts, not image/card acceptance. Real installed identities expose the
++     * legacy-reference role that the old synthetic-reserved-slot tests accidentally avoided. */
++    private inner class NativeFixture(val kb:TerritoryKnowledgeBase,val id:String):AutoCloseable {
++        val slot=kb.assignments.getValue(id)
++        val root=java.nio.file.Files.createTempDirectory("outlined-commissioning-test-only").toFile()
++        var currentSource:String?="b".repeat(64)
++        val road=RoadGeometry("TEST-alpha","Alpha Rd","alpha rd","context","context","",false,"termination","termination",4.0,
++            listOf(Point2D(250.0,140.0),Point2D(550.0,140.0)))
++        val building=BuildingGeometry("TEST-building","99999",slot.housingType,true,"",listOf("99999"),emptyList(),
++            listOf(Point2D(310.0,170.0),Point2D(350.0,170.0),Point2D(350.0,210.0),Point2D(310.0,210.0)))
++        val assignment=CurrentAuthoritativeAssignmentState(id,slot.identity,slot.canonicalFilename,kb.revision,"current_authoritative_assignment","0".repeat(64),
++            "SYNTHETIC CORE REGRESSION - NOT A TERRITORY CARD","TEST ONLY","9/28/2026",listOf("Directions: Synthetic native-role regression only."),"full_map",
++            slot.housingType,RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,listOf(road),listOf(building))
++        val facts=NativeSourceReconciliation(id,"REGULAR",kb.revision,requireNotNull(currentSource),slot.referenceSha256,"current_assignment_map","Synthetic reviewer",
++            "2026-09-28T21:00:00Z",NativeSourceReconciliationContract.assignmentContentSha256(assignment),null,true,true,false,false,
++            listOf(SourceSegmentObservation(road.segmentId,road.name,road.status,road.role,road.insideSide,road.accessOnly,road.endpointAKind,road.endpointBKind,"Synthetic test source observation",true)),
++            listOf(SourceBuildingObservation(building.buildingId,building.sourceMembers,true,"Synthetic test building observation",true)),
++            "00000000-0000-0000-0000-000000000077",null)
++        val ledger=NativeRegistrationLedger(root,kb,{currentSource},{_,_->null},{_,_->NativeSourceReconciliationContract.assignmentContentSha256(assignment)},
++            {_,_->NativeSourceReconciliationContract.draftFactsSha256(facts)})
++        val registered=ledger.register(facts,assignment,null)
++        val evidence=requireNotNull(ledger.current(id,registered.assignment.authoritySha256))
++        fun request(eligibility:NativeAssignmentEligibility=ledger,targetKb:TerritoryKnowledgeBase=kb)=LiveGeometryVerificationRequestFactory.create(
++            targetKb,policy,id,registered.assignment.authoritySha256,evidence.topology,evidence.buildingMembers,evidence.truth,
++            VerificationJurisdiction("Oakland County","Michigan","United States"),nativeEligibility=eligibility)
++        override fun close(){root.deleteRecursively()}
++    }
++    @Test fun actualReservedLegacyReferenceCanReachLiveVerificationOnlyThroughCurrentNativeAuthority() {
++        NativeFixture(baseline,"A257").use {f->
++            assertTrue(f.kb.referenceRoles.getValue(f.slot.referenceFile).role=="legacy_assignment_reference_needs_new_card")
++            assertTrue(runCatching {f.request(NativeAssignmentEligibility.NONE)}.isFailure)
++            val request=f.request()
++            assertTrue(request.assignmentSourceRole=="current_native_assignment_registration")
++            assertTrue(request.candidateSourceSha256!=request.lockedReferenceSha256 && request.needsNewCard)
++            assertTrue(LiveGeometryVerificationRequestFactory.fingerprintMatches(request))
++            assertTrue(request.siteAddressCrosscheckRequired && request.buildingOutlineCrosscheckRequired)
++        }
++    }
++    @Test fun commissionedA265AlsoUsesNativeAuthorityRatherThanPromotingItsOriginalPdf() {
++        NativeFixture(projected(),"A265").use {f->
++            val request=f.request()
++            assertTrue(request.assignmentSourceRole=="current_native_assignment_registration")
++            assertTrue(request.lockedReferenceSha256==original.referenceSha256)
++            assertTrue(request.knowledgeBaseRevision==projected().revision)
++            assertTrue(request.candidateBuildingMemberIds==listOf("99999"))
++        }
++    }
++    @Test fun legacySourceBytesWithoutALocalRegistrationRemainBlocked() {
++        val slot=baseline.assignments.getValue("A257")
++        NativeFixture(baseline,"A257").use {f->
++            val truth=f.evidence.truth.copy(assignmentAuthoritySourceSha256=slot.referenceSha256)
++            assertTrue(runCatching {LiveGeometryVerificationRequestFactory.create(baseline,policy,"A257",slot.referenceSha256,f.evidence.topology,
++                f.evidence.buildingMembers,truth,VerificationJurisdiction("Oakland County","Michigan","United States"))}.isFailure)
++        }
++    }
++    @Test fun sourceReplacementAndRevocationInvalidateNativeVerificationRequests() {
++        NativeFixture(baseline,"A257").use {f->
++            f.currentSource="c".repeat(64)
++            assertTrue(runCatching {f.request()}.isFailure)
++            f.currentSource=f.facts.importedSourceSha256
++            f.ledger.revoke(f.id,"REGULAR",f.registered.head.eventSha256,"Synthetic reviewer","2026-09-28T21:01:00Z")
++            assertTrue(runCatching {f.request()}.isFailure)
++        }
++    }
++    @Test fun nativeEvidenceCannotAuthorizeStyleOnlyOrAnotherCommissioningRevision() {
++        NativeFixture(projected(),"A265").use {f->
++            val role=f.kb.referenceRoles.getValue(f.slot.referenceFile).copy(role="style_only",fieldReleaseAllowed=false)
++            val style=f.kb.copy(referenceRoles=f.kb.referenceRoles+(f.slot.referenceFile to role))
++            assertTrue(runCatching {f.request(targetKb=style)}.isFailure)
++            val another=NativeCommissioningProjection.project(baseline,"A265",original.referenceSha256,"8".repeat(64))
++            assertTrue(runCatching {f.request(targetKb=another)}.isFailure)
++        }
++    }
++    @Test fun aNativeRequestCannotClaimAnApprovedPassthroughOrLegacyHash() {
++        NativeFixture(baseline,"A257").use {f->
++            val request=f.request()
++            assertTrue(runCatching {request.copy(needsNewCard=false)}.isFailure)
++            assertTrue(runCatching {request.copy(candidateSourceSha256=request.lockedReferenceSha256)}.isFailure)
++            assertTrue(runCatching {request.copy(assignmentSourceRole="legacy_assignment_reference_needs_new_card")}.isFailure)
++            assertTrue(!LiveGeometryVerificationRequestFactory.fingerprintMatches(request.copy(assignmentSourceRole="exact_assignment_reference")))
++        }
++    }
++}

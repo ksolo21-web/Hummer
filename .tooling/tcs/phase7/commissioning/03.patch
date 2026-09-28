@@ -1,0 +1,204 @@
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt b/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
+@@ -30,15 +30,21 @@
+ import java.nio.file.Files
+ import java.nio.file.StandardCopyOption
+ 
+-class TerritoryCardStudioServices(context: Context):ProductionWorkflowServices {
++class TerritoryCardStudioServices internal constructor(context: Context,
++    private val commissioningScope:NativeCommissioningScope?=null,
++    private val commissioningStore:AndroidCommissioningStore?=null):ProductionWorkflowServices {
+     private val appContext = context.applicationContext
+     private val authorityPath = "territory/"
+-    private val privateRoot = File(appContext.noBackupFilesDir, "territory-card-studio").apply {
++    private val verifiedCommissioningScope=commissioningScope?.also {requireNotNull(commissioningStore).assertCurrent(it)}
++    internal fun sourceMapStore():SourceMapIntakeStore = verifiedCommissioningScope?.let {requireNotNull(commissioningStore).guardedSources(it)}
++        ?: SourceMapIntakeStore(appContext)
++    private fun scopeWitness(id:String) {verifiedCommissioningScope?.let {requireNotNull(commissioningStore).assertCurrent(it,id)}}
++    private val privateRoot = File(appContext.noBackupFilesDir, "territory-card-studio" + (verifiedCommissioningScope?.let {"/commissioned/${it.sha256}"} ?: "")).apply {
+         require(exists() || mkdirs()) { "Unable to create app-private Territory Card Studio directory" }
+     }
+     private val cacheDirectory = File(privateRoot, "provider-evidence-v1")
+     private val endpointStore = ProviderEndpointSwitchStore(
+-        File(privateRoot, "provider-endpoints.active.properties")
++        File(appContext.noBackupFilesDir, "territory-card-studio/provider-endpoints.active.properties")
+     )
+ 
+     override val knowledgeBase: TerritoryKnowledgeBase
+@@ -50,11 +56,11 @@
+     val liveVerification: AndroidLiveVerificationService
+     val renderModels: AndroidRenderModelService
+     override val buildWorkflow: AndroidBuildWorkflowCoordinator by lazy {
+-        AndroidBuildWorkflowCoordinator(knowledgeBase, renderModels, pdfArtifacts, SourceMapIntakeStore(appContext))
++        AndroidBuildWorkflowCoordinator(knowledgeBase, renderModels, pdfArtifacts, sourceMapStore())
+     }
+ 
+     override val pdfPreview: AndroidPdfPreviewService by lazy {
+-        AndroidPdfPreviewService(buildWorkflow, File(appContext.cacheDir, "candidate-preview-v1"), pdfArtifacts)
++        AndroidPdfPreviewService(buildWorkflow, File(appContext.cacheDir, "candidate-preview-v1" + (verifiedCommissioningScope?.let {"/${it.sha256}"} ?: "")), pdfArtifacts)
+     }
+ 
+     override val candidateReview: AndroidCandidateReviewService by lazy {
+@@ -62,47 +68,55 @@
+     }
+ 
+     override val candidateLifecycle: AndroidCandidateLifecycleService by lazy {
+-        AndroidCandidateLifecycleService(knowledgeBase, buildWorkflow, SourceMapIntakeStore(appContext), File(privateRoot, "candidates-v1"))
++        AndroidCandidateLifecycleService(knowledgeBase, buildWorkflow, sourceMapStore(), File(privateRoot, "candidates-v1"))
+     }
+ 
+     override val editingDrafts: AndroidEditingDraftStore by lazy {
+-        AndroidEditingDraftStore(File(privateRoot, "editing-drafts-v1"), knowledgeBase, SourceMapIntakeStore(appContext))
++        AndroidEditingDraftStore(File(privateRoot, "editing-drafts-v1"), knowledgeBase, sourceMapStore())
+     }
+ 
+     override val extendedDrafts: AndroidExtendedDraftStore by lazy {
+-        AndroidExtendedDraftStore(File(privateRoot, "extended-drafts-v1"), knowledgeBase, SourceMapIntakeStore(appContext), buildWorkflow)
++        AndroidExtendedDraftStore(File(privateRoot, "extended-drafts-v1"), knowledgeBase, sourceMapStore(), buildWorkflow)
+     }
+ 
+     override val editingPreparation: AndroidEditingPreparationService by lazy {
+-        AndroidEditingPreparationService(knowledgeBase, activePolicy, editingDrafts, SourceMapIntakeStore(appContext),
++        AndroidEditingPreparationService(knowledgeBase, activePolicy, editingDrafts, sourceMapStore(),
+             buildWorkflow, renderModels, fetchEvidence = { request ->
+             liveVerification.verify(request, ProviderCacheMode.BYPASS).evidence
+         })
+     }
+ 
+     override val editingAuthority: AndroidEditingAuthorityStore by lazy {
+-        AndroidEditingAuthorityStore(File(privateRoot, "editing-authority-v1"), knowledgeBase, SourceMapIntakeStore(appContext), buildWorkflow)
++        AndroidEditingAuthorityStore(File(privateRoot, "editing-authority-v1"), knowledgeBase, sourceMapStore(), buildWorkflow)
+     }
+ 
+     override val extendedPreparation: AndroidExtendedPreparationService by lazy {
+         AndroidExtendedPreparationService(knowledgeBase, activePolicy, editingDrafts, extendedDrafts, editingAuthority,
+-            SourceMapIntakeStore(appContext), buildWorkflow, renderModels, fetchEvidence = { request ->
++            sourceMapStore(), buildWorkflow, renderModels, fetchEvidence = { request ->
+                 liveVerification.verify(request, ProviderCacheMode.BYPASS).evidence
+             })
+     }
+ 
+     override val nativeDrafts: AndroidNativeDraftStore by lazy {
+-        AndroidNativeDraftStore(appContext,knowledgeBase,SourceMapIntakeStore(appContext),File(privateRoot,"native-authoring-v1"))
++        val root=File(privateRoot,"native-authoring-v1")
++        verifiedCommissioningScope?.let {scope->
++            val bytes=requireNotNull(commissioningStore).evidenceBytes(scope)
++            require(root.isDirectory || root.mkdirs())
++            val file=android.util.AtomicFile(File(root,"commissioning-evidence.source"))
++            if(file.baseFile.exists())require(file.openRead().use {it.readBytes()}.contentEquals(bytes)) {"Commissioning evidence changed"}
++            else {val stream=file.startWrite();try {stream.write(bytes);file.finishWrite(stream)}catch(failure:Throwable){file.failWrite(stream);throw failure}}
++        }
++        AndroidNativeDraftStore(appContext,knowledgeBase,sourceMapStore(),root)
+     }
+     override val nativeAuthoring: AndroidNativeAuthoringService by lazy {
+         val template=appContext.assets.open(authorityPath+"render-authority/Canonical-New-Designed-Template-R48.pdf").use {it.readBytes()}
+         val style=assetReader("R48-Canonical-Style-Tokens.json").use(LabelStyleContractLoader::load)
+-        AndroidNativeAuthoringService(knowledgeBase,activePolicy,nativeDrafts,SourceMapIntakeStore(appContext),buildWorkflow,
++        AndroidNativeAuthoringService(knowledgeBase,activePolicy,nativeDrafts,sourceMapStore(),buildWorkflow,
+             NativeRoadLabelProducer(template,style),fetchEvidence={request->liveVerification.verify(request,ProviderCacheMode.BYPASS).evidence})
+     }
+ 
+     override val verifiedProject: AndroidVerifiedProjectIntake by lazy {
+-        AndroidVerifiedProjectIntake(knowledgeBase, activePolicy, buildWorkflow, SourceMapIntakeStore(appContext), File(privateRoot, "verified-project-v1"),
++        AndroidVerifiedProjectIntake(knowledgeBase, activePolicy, buildWorkflow, sourceMapStore(), File(privateRoot, "verified-project-v1"),
+             fetchEvidence = { request -> liveVerification.verify(request, ProviderCacheMode.BYPASS).evidence })
+     }
+ 
+@@ -117,7 +131,8 @@
+ 
+     init {
+         validateEmbeddedAuthorities()
+-        knowledgeBase = assetReader("Territory-Knowledge-Base.json").use(TerritoryKnowledgeBaseLoader::load)
++        val installedKnowledgeBase = assetReader("Territory-Knowledge-Base.json").use(TerritoryKnowledgeBaseLoader::load)
++        knowledgeBase = verifiedCommissioningScope?.let {requireNotNull(commissioningStore).candidateKnowledgeBase(it)} ?: installedKnowledgeBase
+         rendererContract = assetReader("R48-Canonical-Style-Tokens.json").use(LockedPdfRendererContractLoader::load)
+         val lockedTemplatePdf = appContext.assets.open(authorityPath + "render-authority/Canonical-New-Designed-Template-R48.pdf").use { it.readBytes() }
+         pdfArtifacts = AndroidPdfArtifactService(knowledgeBase, privateRoot, lockedTemplatePdf)
+@@ -132,9 +147,10 @@
+         )
+         liveVerification = AndroidLiveVerificationService(
+             policy = activePolicy,
+-            pipeline = LiveVerificationExecutionPipeline(coordinator)
++            pipeline = LiveVerificationExecutionPipeline(coordinator),
++            currentWitness = ::scopeWitness
+         )
+-        renderModels = AndroidRenderModelService(knowledgeBase,NativeAssignmentEligibility {id,sha->nativeDrafts.ledger.current(id,sha)})
++        renderModels = AndroidRenderModelService(knowledgeBase,NativeAssignmentEligibility {id,sha->nativeDrafts.ledger.current(id,sha)},::scopeWitness)
+     }
+ 
+     fun installEndpointSwitch(candidateText: String): ProviderEndpointSwitchConfig {
+@@ -160,9 +176,14 @@
+ }
+ 
+ 
+-class AndroidRenderModelService(private val knowledgeBase: TerritoryKnowledgeBase,private val nativeEligibility:NativeAssignmentEligibility=NativeAssignmentEligibility.NONE) {
+-    fun adaptProduction(input: ProductionRenderModelInput): RenderModelAdaptationResult =
+-        ProductionRenderModelAdapter.adaptProduction(knowledgeBase, input,nativeEligibility)
++class AndroidRenderModelService(private val knowledgeBase: TerritoryKnowledgeBase,private val nativeEligibility:NativeAssignmentEligibility=NativeAssignmentEligibility.NONE,
++    private val currentWitness:(String)->Unit={}) {
++    fun adaptProduction(input: ProductionRenderModelInput): RenderModelAdaptationResult {
++        currentWitness(input.assignment.displayId)
++        val result=ProductionRenderModelAdapter.adaptProduction(knowledgeBase, input,nativeEligibility)
++        currentWitness(input.assignment.displayId)
++        return result
++    }
+ 
+     fun adaptNonFieldFixture(input: ProductionRenderModelInput): RenderModelAdaptationResult =
+         ProductionRenderModelAdapter.adaptNonFieldFixture(knowledgeBase, input)
+@@ -170,7 +191,8 @@
+ 
+ class AndroidLiveVerificationService(
+     private val policy: OnlineSourcePolicy,
+-    private val pipeline: LiveVerificationExecutionPipeline
++    private val pipeline: LiveVerificationExecutionPipeline,
++    private val currentWitness:(String)->Unit={}
+ ) {
+     val policyRevision: String get() = policy.revision
+ 
+@@ -178,7 +200,12 @@
+     fun verify(
+         request: LiveGeometryVerificationRequest,
+         cacheMode: ProviderCacheMode = ProviderCacheMode.READ_WRITE
+-    ): LiveVerificationExecutionResult = pipeline.verify(request, policy, cacheMode)
++    ): LiveVerificationExecutionResult {
++        currentWitness(request.territoryDisplayId)
++        val result=pipeline.verify(request, policy, cacheMode)
++        currentWitness(request.territoryDisplayId)
++        return result
++    }
+ }
+ 
+ private class ProviderEndpointSwitchStore(private val file: File) {
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt
+@@ -205,7 +205,7 @@
+         activity?.lifecycle?.addObserver(observer)
+         onDispose { activity?.lifecycle?.removeObserver(observer) }
+     }
+-    val sourceStore = remember(context.applicationContext) { SourceMapIntakeStore(context) }
++    val sourceStore = remember(context.applicationContext,services) { if(services is TerritoryCardStudioServices)services.sourceMapStore() else SourceMapIntakeStore(context) }
+     var workflowScreen by rememberSaveable(assignment.displayId) { mutableStateOf("WORKSPACE") }
+     var sourceRevision by rememberSaveable(assignment.displayId) { mutableStateOf(0) }
+     var focusFinding by remember(assignment.displayId, mode, sourceRevision, refresh) { mutableStateOf<ScopedFinding?>(null) }
+@@ -229,6 +229,11 @@
+     val kb = knowledgeBase ?: services.knowledgeBase
+     val findings = Phase2KFindings.from(item, mode, currentVerification, kb, prepared)
+     val auditService = remember(kb, buildCoordinator, sourceStore) { Phase2KAuditService(kb, buildCoordinator, sourceStore, services.activePolicy, services.candidateReview) }
++    if (workflowScreen == "COMMISSION_REPLACEMENT") {
++        NativeCommissioningWorkflowScreen(modifier,item,kb,
++            onImportSource={workflowScreen="IMPORT"},onBack={workflowScreen="WORKSPACE"})
++        return
++    }
+     if (workflowScreen == "NATIVE_AUTHORING") {
+         NativeAuthoringScreen(modifier,assignment,mode,kb,services.nativeDrafts,services.nativeAuthoring,sourceStore,
+             onRegisteredImport={workflowScreen="INITIAL_PREPARATION"},onBack={workflowScreen="WORKSPACE"})
+@@ -361,6 +366,7 @@
+ 
+         item {
+             if (assignment.needsNewCard) Button(onClick = { workflowScreen = "NATIVE_AUTHORING" }, modifier = Modifier.fillMaxWidth().testTag("workspace-prepare-new")) { Text("Prepare a new card") }
++            else Button(onClick = { workflowScreen = "COMMISSION_REPLACEMENT" }, modifier = Modifier.fillMaxWidth().testTag("workspace-commission-replacement")) { Text("Create a reviewed replacement") }
+             OutlinedButton(onClick = { workflowScreen = "EDITING_PREPARATION" }, modifier = Modifier.fillMaxWidth().testTag("workspace-editing-preparation")) { Text("Validate and prepare changes") }
+             OutlinedButton(onClick = { workflowScreen = "EXTENDED_EDITOR" }, modifier = Modifier.fillMaxWidth().testTag("workspace-extended-editor")) { Text("Propose territory changes") }
+             OutlinedButton(onClick = { workflowScreen = "DRAFT_EDITOR" }, modifier = Modifier.fillMaxWidth().testTag("workspace-draft-editor")) { Text("Draft label corrections") }
