@@ -1,0 +1,53 @@
+{
+  "status": "IN_PROGRESS_NOT_ACCEPTED",
+  "source": "source-26435.jpg",
+  "sourceSha256": "a93294659bd8ec40937fde5b20a8e0f89315d20c69ebe25e92318fb5665bbec3",
+  "completedAcceptanceGates": 0,
+  "requiredAcceptanceGates": 6,
+  "current": "Boundary and lossless presentation triage verified; road interpretation is not yet usable for card production.",
+  "next": "Implement source-bound road classification and geometry/span coverage review; wire native input mode and invalidation; run actual-source native output journey and independent final review.",
+  "baselineSourceCommit": "e851c625b73dee83737810767856a741e9468d26",
+  "boundaryTests": {
+    "passed": 7,
+    "failed": 0,
+    "run": 36440890866,
+    "commit": "c2da74993fee4c9e1850f0fd2241e7a4a9ab0bcd"
+  },
+  "roadProposalReview": {
+    "rawProposals": 487,
+    "rawFindings": 673,
+    "accepted": false,
+    "reason": "Parking stripes and other non-road geometry dominate raw proposals. Require source-bound triage and typed review before native generation."
+  },
+  "sourceCommit": "041cd5e7cd4f2b2a39ff99cd89b338c595c4bafb",
+  "targetedTests": {
+    "passed": 8,
+    "failed": 0,
+    "run": 36441404778
+  },
+  "triage": {
+    "SURROUNDING_CONTEXT": 426,
+    "CONNECTED_APPROACH": 13,
+    "TERRITORY": 48
+  },
+  "remaining": [
+    "Road nuisance classification without losing legitimate short roads",
+    "OCR/name and occluded geometry handling",
+    "Typed per-candidate coverage and source-to-output span bindings",
+    "Native outlined-map selection, boundary overlay and review persistence",
+    "Neutral context rendering",
+    "Full native journey and actual final-card review"
+  ],
+  "independentReview": {
+    "finding": "Presentation grouping is safe; no full feature acceptance.",
+    "limitations": "A region rectangle can contain mixed geometry. No bulk dismiss may silently resolve its contents."
+  },
+  "evidence": {
+    "outlined-road-proposals.json": "55eb4782d2326bc8f6a5498ba3f873e825342d78e7db5590995e1983824e512b",
+    "core-tests.log": "837979c6daba023b39d4f3b216a874a245b5aa296e9dc030977cb87fcef6427e",
+    "boundary-analysis.json": "31f9821aaa4577191316057ffa18707b4ab549c000ec185de4b1525ef333c86d",
+    "core-results/TEST-com.koenterprises.territorycardstudio.core.OutlinedMapBoundaryTest.xml": "4629d18294c3d21a87fa54b6655a7b05f833575b5e8f0da6dc6203fe1d780f9d",
+    "core-results/binary/results-generic.bin": "29af83b174eea94e18133a51987da512dce1d91ae75fb44c44eae4cfc68e57cc",
+    "core-results/binary/output-events.bin": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
