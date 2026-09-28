@@ -66,5 +66,13 @@ jobs:
           path: package/apk-part-1
       - uses: actions/upload-artifact@v4
         with:
+          name: phase6-apk-part-2
+          path: package/apk-part-2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase6-apk-part-3
+          path: package/apk-part-3
+      - uses: actions/upload-artifact@v4
+        with:
           name: phase6-package-verification
           path: package/package-verification.json
