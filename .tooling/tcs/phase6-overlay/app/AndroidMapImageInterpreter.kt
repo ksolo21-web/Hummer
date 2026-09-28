@@ -71,7 +71,8 @@ class AndroidMapImageInterpreter {
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
                 fun recognized(rotation:Int):List<MapImageText> {
-                    val result=Tasks.await(recognizer.process(InputImage.fromBitmap(source,rotation)),60,TimeUnit.SECONDS)
+                    val bitmap=if(rotation==0)source else Bitmap.createBitmap(source,0,0,source.width,source.height,Matrix().apply {postRotate(rotation.toFloat())},true)
+                    val result=try {Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap,0)),60,TimeUnit.SECONDS)} finally {if(bitmap!==source)bitmap.recycle()}
                     val numeric=Regex("^[| ]*[0-9]+(?:[ \t]*[-/–—−][ \t]*[0-9]+)*(?:[ \t]*[A-Z])?[| ]*$")
                     fun box(b:android.graphics.Rect):AxisAlignedRect=when(rotation) {
                         90->AxisAlignedRect(b.top.toDouble(),source.height-b.right.toDouble(),b.bottom.toDouble(),source.height-b.left.toDouble())

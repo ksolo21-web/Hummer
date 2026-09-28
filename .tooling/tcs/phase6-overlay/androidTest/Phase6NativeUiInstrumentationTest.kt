@@ -81,7 +81,7 @@ class Phase6NativeUiInstrumentationTest {
     }
     private fun grant() {
         instrumentation.context.startActivity(android.content.Intent().setClassName(instrumentation.context.packageName,Phase56GrantActivity::class.java.name).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-        rule.waitUntil(15000){runCatching {instrumentation.targetContext.contentResolver.query(root,null,null,null,null)?.use {it.moveToFirst()}==true}.getOrDefault(false)}
+        rule.waitUntil(15000){runCatching {instrumentation.targetContext.contentResolver.query(root,null,null,null,null)?.use {it.moveToFirst()}==true && instrumentation.targetContext.contentResolver.query(DocumentsContract.buildChildDocumentsUri(Phase56SyntheticDocumentsProvider.AUTHORITY,"root"),null,null,null,null)?.use {true}==true}.getOrDefault(false)}
     }
     private fun document(name:String,mime:String,bytes:ByteArray):Uri {
         val resolver=instrumentation.targetContext.contentResolver;val uri=requireNotNull(DocumentsContract.createDocument(resolver,root,mime,name))
