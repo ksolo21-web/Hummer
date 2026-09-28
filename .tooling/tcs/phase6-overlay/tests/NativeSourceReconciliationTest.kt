@@ -29,6 +29,41 @@ class NativeSourceReconciliationTest {
         NativeSourceReconciliationContract.assess(kb,v,state,mode,source,inventory)
     private fun blocked(v:NativeSourceReconciliation, code:String) { val x=assess(v); assertFalse(x.passed);assertTrue(code in x.failures,x.failures.toString()) }
 
+    @Test fun strictDecimalFinalFileBoundary() {
+        assertTrue(GeneratedPdfSizeContract.accepts(299999));assertFalse(GeneratedPdfSizeContract.accepts(300000))
+        assertFalse(GeneratedPdfSizeContract.accepts(0));assertFalse(GeneratedPdfSizeContract.accepts(307200))
+    }
+    @Test fun nativeLabelTransformPreservesGeometryAndPerimeterExterior() {
+        val template=File(root,"app/src/main/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
+        val style=File(root,"app/src/main/assets/territory/R48-Canonical-Style-Tokens.json").reader().use(LabelStyleContractLoader::load)
+        val producer=NativeRoadLabelProducer(template,style)
+        val paths=listOf(listOf(Point2D(250.0,180.0),Point2D(650.0,180.0)),
+            listOf(Point2D(450.0,60.0),Point2D(450.0,320.0)),
+            listOf(Point2D(250.0,80.0),Point2D(650.0,300.0)))
+        paths.forEach {points->
+            val out=producer.labels(a.copy(roads=listOf(road.copy(points=points)))).single()
+            assertTrue(out.assignedRoadGapPx in 2.0..4.0)
+            assertTrue(out.baselineX in out.placement.bounds.left..out.placement.bounds.right)
+            assertTrue(out.baselineTopY in out.placement.bounds.top..out.placement.bounds.bottom)
+            assertFalse(out.placement.requiresReview)
+        }
+        val horizontal=producer.labels(a).single()
+        assertTrue(horizontal.placement.center.y>road.points.first().y,"left inside requires right exterior in top-origin geometry")
+    }
+
+    @Test fun portableStructuralDifferenceMatrix() {
+        val cases=listOf(r,r.copy(segments=listOf(r.segments.single().copy(segmentId="missing"))),
+            r.copy(segments=listOf(r.segments.single().copy(status="red"))),
+            r.copy(segments=listOf(r.segments.single().copy(confirmed=false))),
+            r.copy(buildings=listOf(SourceBuildingObservation("missing",listOf("1"),true,"Synthetic source",true))))
+        val rows=cases.map {v->
+            val t=assess(v).truth
+            val expected="""{"missingExpectedSegmentCount":${t.missingExpectedSegmentCount},"unexpectedMeaningChangingSegmentCount":${t.unexpectedMeaningChangingSegmentCount},"assignmentColorConflictCount":${t.assignmentColorConflictCount},"unresolvedPerimeterWorkedSideCount":${t.unresolvedPerimeterWorkedSideCount},"unresolvedBuildingSiteCount":${t.unresolvedBuildingSiteCount}}"""
+            """{"reconciliation":${NativeSourceReconciliationContract.encode(v).toString(Charsets.UTF_8)},"assignment":${NativeAssignmentCodec.encode(a).toString(Charsets.UTF_8)},"expected":$expected}"""
+        }
+        File(root,"../evidence/structural-parity.json").also {it.parentFile.mkdirs()}.writeText(rows.joinToString(",","[","]"))
+    }
+
     @Test fun canonicalRoundTripAndPortableGolden() {
         val bytes=NativeSourceReconciliationContract.encode(r)
         assertEquals(r,NativeSourceReconciliationContract.decode(bytes));assertTrue(assess().passed,assess().failures.toString())

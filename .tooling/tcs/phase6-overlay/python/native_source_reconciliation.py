@@ -162,4 +162,9 @@ if __name__=='__main__':
         assignment=json.load(open(sys.argv[2]))
         expected=open(sys.argv[3]).read().strip()
         require(assignment_content_sha256(assignment)==expected,'Assignment content digest parity failed')
-    print(json.dumps({'schema':SCHEMA,'sha256':hashlib.sha256(raw).hexdigest(),'byteParity':True,'differences':differences(r,r['segments'],r['buildings'])},sort_keys=True))
+    matrix_count=0
+    if len(sys.argv)>4:
+        for case in json.load(open(sys.argv[4])):
+            require(differences(case['reconciliation'],case['assignment']['roads'],case['assignment']['buildings'])==case['expected'],'Structural difference parity failed')
+            matrix_count+=1
+    print(json.dumps({'structuralMatrixCases':matrix_count,'schema':SCHEMA,'sha256':hashlib.sha256(raw).hexdigest(),'byteParity':True,'differences':differences(r,r['segments'],r['buildings'])},sort_keys=True))

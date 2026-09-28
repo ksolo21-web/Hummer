@@ -144,7 +144,7 @@ object NativeSourceReconciliationContract {
         r.inventorySha256?.let { require(hash.matches(it)) }
         require(r.sourceClass in setOf("current_assignment_map", "legacy_reference", "style_only"))
         text(r.author, 120); require(r.reviewedAtUtc.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")))
-        require(Instant.parse(r.reviewedAtUtc).toString() == r.reviewedAtUtc)
+        require(!r.reviewedAtUtc.startsWith("0000") && Instant.parse(r.reviewedAtUtc).toString() == r.reviewedAtUtc)
         require(r.segments.size in 1..512 && r.buildings.size <= 512)
         require(r.segments.map { it.segmentId }.distinct().size == r.segments.size)
         require(r.buildings.map { it.buildingId }.distinct().size == r.buildings.size)

@@ -24,6 +24,40 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
     private val sources:SourceMapIntakeStore,private val root:File) {
     companion object {const val MAX_DRAFT_BYTES=4*1024*1024;const val MAX_CONTACT_SOURCE_BYTES=4*1024*1024}
     private val documents=File(root,"contact-sources")
+    private val history=File(root,"draft-history")
+    private val mapEvidence=File(root,"map-evidence")
+    private fun archive(d:NativeAuthoringDraft) {
+        val bytes=encode(d);val sha=hash(bytes)
+        require(history.isDirectory || history.mkdirs())
+        val f=AtomicFile(File(history,"$sha.draft"))
+        require(f.baseFile.exists() || history.listFiles().orEmpty().count {it.extension=="draft"}<512) {"Draft history is full. Remove unused draft history before saving."}
+        if(!f.baseFile.exists())write(f,bytes)
+        require(f.openRead().use {hash(it.readBytes())}==sha) {"Archived draft changed"}
+    }
+    private fun preserveMap(id:String,expected:String) {
+        val source=requireNotNull(sources.verifiedFile(id));require(mapEvidence.isDirectory || mapEvidence.mkdirs())
+        val target=AtomicFile(File(mapEvidence,"$expected.source"))
+        val bytes=source.readBytes();require(hash(bytes)==expected)
+        if(!target.baseFile.exists())write(target,bytes)
+        require(target.openRead().use {hash(it.readBytes())}==expected) {"Archived map changed"}
+    }
+    /** Explicit cleanup preserves every selected draft and every registration attempt's evidence. */
+    @Synchronized fun pruneUnusedDraftHistory():Int {
+        val protected=root.listFiles().orEmpty().filter {it.extension=="draft"}.map {hash(AtomicFile(it).openRead().use {s->s.readBytes()})}.toSet()+
+            history.listFiles().orEmpty().filter {it.extension=="registered"}.map {it.nameWithoutExtension}
+        var removed=0
+        history.listFiles().orEmpty().filter {it.extension=="draft" && it.nameWithoutExtension !in protected}.forEach {if(it.delete())removed++}
+        val referenced=(history.listFiles().orEmpty().filter {it.extension=="draft"}+root.listFiles().orEmpty().filter {it.extension=="draft"}).flatMap {f->
+            val rows=JSONObject(AtomicFile(f).openRead().use {it.readBytes().toString(Charsets.UTF_8)}).getJSONArray("contacts")
+            (0 until rows.length()).map {rows.getJSONObject(it).getString("sourceSha256")}
+        }.toSet()
+        documents.listFiles().orEmpty().filter {it.extension=="source" && it.nameWithoutExtension !in referenced}.forEach {if(it.delete())removed++}
+        return removed
+    }
+    fun contactSource(document:NativeInventoryDocument):File {
+        require(contactWitness(document.sha256)) {"Contact source bytes are missing or changed"}
+        return File(documents,"${document.sha256}.source")
+    }
     val ledger=NativeRegistrationLedger(File(root,"registrations"),kb,
         {id->sources.verifiedRecord(id)?.sha256},
         {id,mode->read(id,WorkspaceMode.valueOf(mode))?.let {inventoryContentSha256(it)}},
@@ -76,6 +110,7 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         }
         val reset=d.copy(assignment=d.assignment.copy(authoritySha256="0".repeat(64)),reconciliation=d.reconciliation.copy(
             assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(d.assignment),explicitAssignmentConfirmation=false))
+        previous?.let(::archive);archive(reset);preserveMap(id,source.sha256)
         write(file(id,mode),encode(reset));return requireNotNull(read(id,mode))
     }
     fun importContactSource(uri:Uri):NativeInventoryDocument {
@@ -129,6 +164,11 @@ class AndroidNativeDraftStore internal constructor(private val context:Context,p
         val r=d.reconciliation.copy(author=d.reconciliation.author,reviewedAtUtc=Instant.now().truncatedTo(ChronoUnit.SECONDS).toString(),
             registrationId=UUID.randomUUID().toString(),predecessorEventSha256=prior,explicitAssignmentConfirmation=true,
             inventorySha256=inventoryContentSha256(d),assignmentContentSha256=NativeSourceReconciliationContract.assignmentContentSha256(d.assignment))
+        synchronized(this) {
+            archive(d);preserveMap(id,d.reconciliation.importedSourceSha256)
+            // Write the preservation marker first. A failed registration safely over-retains evidence.
+            write(AtomicFile(File(history,"${d.revisionSha256}.registered")),NativeSourceReconciliationContract.encode(r))
+        }
         return ledger.register(r,d.assignment,prior)
     }
 }

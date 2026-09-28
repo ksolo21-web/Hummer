@@ -20,7 +20,7 @@ class AndroidFinalOutputService internal constructor(private val kb:TerritoryKno
     private val coordinator:AndroidBuildWorkflowCoordinator,private val lifecycle:AndroidCandidateLifecycleService,
     private val directory:File,private val fetchEvidence:(LiveGeometryVerificationRequest)->List<ProviderVerificationEvidence>,
     private val clock:()->Long={SystemClock.elapsedRealtime()},private val nativeEligibility:NativeAssignmentEligibility=NativeAssignmentEligibility.NONE) {
-    companion object {const val MAX_PDF_BYTES=299999;const val MAX_AUDIT_BYTES=1024*1024
+    companion object {const val MAX_PDF_BYTES=GeneratedPdfSizeContract.MAX_BYTES;const val MAX_AUDIT_BYTES=1024*1024
         internal fun readBounded(input:InputStream,max:Int):ByteArray {val out=java.io.ByteArrayOutputStream();val buf=ByteArray(8192)
             while(true){val n=input.read(buf);if(n<0)break;require(out.size().toLong()+n<=max){"Output exceeds permitted size"};out.write(buf,0,n)};return out.toByteArray()}}
     private data class Session(val ticket:FinalOutputTicket,val audit:ByteArray,val issued:Long)

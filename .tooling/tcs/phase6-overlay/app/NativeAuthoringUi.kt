@@ -49,7 +49,7 @@ import java.util.UUID
     LaunchedEffect(file.path,page) {
         onReadable(false)
         val result=withContext(Dispatchers.IO) {runCatching {
-            if(file.extension.lowercase()=="pdf") {
+            if(file.inputStream().use {it.readNBytes(5)}.toString(Charsets.US_ASCII)=="%PDF-") {
                 PdfRenderer(ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY)).use {pdf->
                     val total=pdf.pageCount;require(total in 1..200)
                     pdf.openPage(page.coerceIn(0,total-1)).use {p->
@@ -72,6 +72,28 @@ import java.util.UUID
     bitmap?.let {Image(it.asImageBitmap(),"Imported territory source page ${page+1}",Modifier.fillMaxWidth().heightIn(max=480.dp).testTag("native-source-preview"))}
     error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
     if(pages>1)Row {TextButton(onClick={page--},enabled=page>0){Text("Previous source page")};Text("${page+1} / $pages");TextButton(onClick={page++},enabled=page+1<pages){Text("Next source page")}}
+}
+
+@Composable private fun NativeContactSourcePreview(store:AndroidNativeDraftStore,document:NativeInventoryDocument) {
+    var file by remember(document.sha256) {mutableStateOf<File?>(null)}
+    var text by remember(document.sha256) {mutableStateOf<String?>(null)}
+    var error by remember(document.sha256) {mutableStateOf<String?>(null)}
+    LaunchedEffect(document.sha256) {
+        runCatching {withContext(Dispatchers.IO) {
+            val f=store.contactSource(document)
+            if(f.inputStream().use {it.readNBytes(5)}.toString(Charsets.US_ASCII)=="%PDF-") f to null
+            else null to Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(f.readBytes())).toString()
+        }}.onSuccess {(f,t)->file=f;text=t}.onFailure {error=it.message}
+    }
+    file?.let {NativeSourcePreview(it){}}
+    text?.let {value->
+        var page by remember(document.sha256){mutableStateOf(0)}
+        val pages=maxOf(1,(value.length+3999)/4000)
+        Text("Exact contact source • page ${page+1} / $pages")
+        Text(value.substring(page*4000,minOf(value.length,(page+1)*4000)),modifier=Modifier.testTag("native-contact-source-text"))
+        Row {TextButton(onClick={page--},enabled=page>0){Text("Previous source text")};TextButton(onClick={page++},enabled=page+1<pages){Text("Next source text")}}
+    }
+    error?.let {Text("Cannot read source: $it",color=MaterialTheme.colorScheme.error)}
 }
 
 @Composable private fun NativeTrace(roads:List<RoadGeometry>,buildings:List<BuildingGeometry>,points:List<Point2D>,onPoint:(Point2D)->Unit) {
@@ -117,6 +139,19 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     val scope=rememberCoroutineScope()
     val source=runCatching {sources.verifiedRecord(id)}.getOrNull()
     val sourceFile=source?.let {runCatching {sources.verifiedFile(id)}.getOrNull()}
+    LaunchedEffect(source?.sha256) {
+        sourceReadable=false
+        sourceReadable=withContext(Dispatchers.IO) {runCatching {
+            val f=requireNotNull(sourceFile)
+            if(f.inputStream().use {it.readNBytes(5)}.toString(Charsets.US_ASCII)=="%PDF-") {
+                PdfRenderer(ParcelFileDescriptor.open(f,ParcelFileDescriptor.MODE_READ_ONLY)).use {require(it.pageCount in 1..200)}
+            } else {
+                val options=BitmapFactory.Options().apply {inJustDecodeBounds=true};BitmapFactory.decodeFile(f.path,options)
+                require(options.outWidth in 1..30000 && options.outHeight in 1..30000)
+            }
+            true
+        }.getOrDefault(false)}
+    }
     LaunchedEffect(id,mode) {
         runCatching {withContext(Dispatchers.IO) {store.read(id,mode)}}.onSuccess {d->
             draft=d
@@ -182,7 +217,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             if(mode!=WorkspaceMode.REGULAR)TextButton(onClick={section="Review"},modifier=Modifier.testTag("native-tab-Review")){Text("Review")}}
         if(!loaded) item {Text("Loading draft…")}
         if(sourceFile==null) item {Text("Import a current source map from the workspace before authoring.")}
-        else item {NativeSourcePreview(sourceFile){sourceReadable=it}}
+        else item {NativeSourcePreview(sourceFile){}}
         if(section=="Map") {
             item {Text("Describe the new card",style=MaterialTheme.typography.titleLarge);Text("Enter current source facts. Legacy geometry is not copied into this draft.")}
             item {NativeField("Locality",locality,"native-locality"){locality=it}}
@@ -235,6 +270,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
         }
         if(section=="Addresses" && mode!=WorkspaceMode.REGULAR) {
             item {Button(onClick={contactPicker.launch(arrayOf("application/pdf","text/plain","text/csv"))},modifier=Modifier.testTag("native-import-contacts")){Text("Import contact source")};Text(document?.label ?: "Import the source containing these records. A map import grants no telephone-use permission.")}
+            document?.let {doc->item {NativeContactSourcePreview(store,doc)}}
             item {NativeField("Record identifier",itemId,"native-contact-id"){itemId=it};NativeField("Street address",address,"native-address"){address=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("Unit",unit,"native-unit"){unit=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("City",city,"native-city"){city=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("State (two letters)",addressState,"native-address-state"){addressState=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("Postal code",postal,"native-postal"){postal=it;addressCheck=false;boundaryCheck=false;bindingCheck=false};NativeField("Building identifier, if applicable",buildingId,"native-address-building"){buildingId=it;boundaryCheck=false;bindingCheck=false}}
             item {NativeCheck("I verified this address in the imported contact source",addressCheck,"native-address-confirmed"){addressCheck=it};NativeCheck("I verified this address is inside this territory's worked area",boundaryCheck,"native-boundary-confirmed"){boundaryCheck=it};NativeCheck("I provided this source and authorize its address records for this card",addressUse,"native-address-authorized"){addressUse=it}}
             if(mode==WorkspaceMode.TELEPHONE) {
@@ -258,11 +294,12 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
             item {Button(enabled=sourceReadable && !busy && draft!=null,onClick={scope.launch {busy=true
                 runCatching {val proposed=proposal();val current=requireNotNull(draft);require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction){"Save all changes before registering"}
                     withContext(Dispatchers.IO) {store.register(id,mode,current.revisionSha256)}
-                }.onSuccess {message="Local assignment registered. Verify fresh sources to prepare the card."}.onFailure {message=it.message.orEmpty()};busy=false
+                }.onSuccess {message="Local assignment registered. Verify fresh sources to prepare the card."+(store.ledger.durabilityWarning?.let {" Storage warning: $it"} ?: "")}.onFailure {message=it.message.orEmpty()};busy=false
             }},modifier=Modifier.testTag("native-register")){Text("Register this reconciled assignment")}}
             item {Button(enabled=!busy && draft!=null,onClick={scope.launch {busy=true
                 runCatching {val current=requireNotNull(draft);val proposed=proposal();require(proposed.assignment==current.assignment && proposed.reconciliation==current.reconciliation && proposed.contacts==current.contacts && proposed.jurisdiction==current.jurisdiction){"Save all changes before preparation"};withContext(Dispatchers.IO) {service.prepare(id,mode,current.revisionSha256)}}.onSuccess {message="Prepared using fresh independent sources. Build the candidate, inspect its PDF and explicitly approve it in the workspace."}.onFailure {message=it.message.orEmpty()};busy=false
             }},modifier=Modifier.testTag("native-prepare")){Text("Verify sources and prepare")}}
+            item {OutlinedButton(onClick={runCatching {store.pruneUnusedDraftHistory()}.onSuccess {message="Removed $it unused draft versions. Registered evidence and current drafts were retained."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-prune-history")){Text("Remove unused draft history")}}
             item {OutlinedButton(onClick={runCatching {val head=store.ledger.history(id,mode.name).lastOrNull() ?: error("No registration exists");store.ledger.revoke(id,mode.name,head.eventSha256,author,Instant.now().truncatedTo(ChronoUnit.SECONDS).toString())}.onSuccess {message="Registration revoked. Prepared candidates and approvals are invalid."}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.testTag("native-revoke")){Text("Revoke local registration")}}
         }
     }

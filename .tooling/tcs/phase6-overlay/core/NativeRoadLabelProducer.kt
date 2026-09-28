@@ -42,6 +42,7 @@ class NativeRoadLabelProducer(template:ByteArray,private val style:LabelStyleCon
             fun side(s:LabelSide)=if(s==LabelSide.POSITIVE_NORMAL)LabelSide.NEGATIVE_NORMAL else LabelSide.POSITIVE_NORMAL
             val evidence=p.sideEvidence?.let {e->e.copy(sideOptionsReviewed=e.sideOptionsReviewed.map(::side).toSet(),preferredSide=side(e.preferredSide),usedSide=side(e.usedSide),candidates=e.candidates.map {it.copy(side=side(it.side))})}
             val mapped=p.copy(center=up(p.center),bounds=down(p.bounds),sideEvidence=evidence,
+                calloutEvidence=p.calloutEvidence?.let {it.copy(directCandidateSide=side(it.directCandidateSide))},
                 callout=p.callout?.let {it.copy(roadAnchor=up(it.roadAnchor),tailStart=up(it.tailStart),labelAttach=up(it.labelAttach))})
             val angle=Math.toRadians(p.angleDeg)
             val baselineX=p.center.x-cos(angle)*width/2+sin(angle)*size*0.26

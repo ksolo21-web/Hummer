@@ -163,10 +163,7 @@ class SourceMapIntakeStore(context: Context) {
                 provenanceType = "user_provided_source_map",
                 assignmentAuthority = false
             )
-            val previous = get(assignment.displayId)
-            if (previous != null && previous.localFilename != record.localFilename) {
-                File(territoryDir, previous.localFilename).delete()
-            }
+            // Historical registrations may reference earlier sources; preserve their exact bytes.
             require(preferences.edit().putString(key(assignment.displayId), encode(record)).commit()) {
                 "Unable to persist source-map intake metadata"
             }
@@ -178,10 +175,9 @@ class SourceMapIntakeStore(context: Context) {
     }
 
     fun clear(displayId: String) {
-        get(displayId)?.let { previous ->
-            File(File(root, safeTerritoryDirectory(displayId)), previous.localFilename).delete()
+        require(preferences.edit().remove(key(displayId)).commit()) {
+            "Unable to clear source-map selection"
         }
-        preferences.edit().remove(key(displayId)).commit()
     }
 
     private fun validateMagic(file: File, mimeType: String) {
