@@ -11,7 +11,7 @@ import re
 
 SCHEMA = 'native-source-reconciliation-v1'
 MAX_BYTES = 1024 * 1024
-ROOT = {'schema','territory','mode','knowledgeBaseRevision','importedSourceSha256',
+ROOT = {'schema','registrationId','predecessorEventSha256','territory','mode','knowledgeBaseRevision','importedSourceSha256',
         'lockedReferenceSha256','sourceClass','author','reviewedAtUtc',
         'assignmentContentSha256','inventorySha256','sourceCoverageComplete',
         'explicitAssignmentConfirmation','crossTerritoryInferenceUsed',
@@ -35,6 +35,8 @@ def boolean(value):
 
 def validate(r):
     require(type(r) is dict and set(r)==ROOT and r['schema']==SCHEMA,'Schema drift')
+    require(type(r['registrationId']) is str and re.fullmatch(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',r['registrationId']),'Invalid registration id')
+    require(r['predecessorEventSha256'] is None or (type(r['predecessorEventSha256']) is str and SHA.fullmatch(r['predecessorEventSha256'])),'Invalid predecessor hash')
     text(r['territory'],16)
     digits=re.sub(r'^(?:TA|A|T)?([0-9]+)[a-z]?$',r'\1',r['territory'])
     require(digits.isdigit() and int(digits)<=2147483647,'Territory number overflow')
@@ -119,8 +121,45 @@ def differences(r,roads,buildings):
         unresolvedPerimeterWorkedSideCount=sum(a['role']=='perimeter' and (a['insideSide'] not in {'left','right'} or a['segmentId'] not in expected or not expected[a['segmentId']]['confirmed'] or not same(expected[a['segmentId']],a)) for a in roads),
         unresolvedBuildingSiteCount=unresolved)
 
+def assignment_content_sha256(v):
+    """Exact native-assignment-content-v1 binary digest; authoritySha256 alone excluded."""
+    import struct
+    out=bytearray()
+    def text(s):
+        raw=s.encode('utf-8');out.extend(struct.pack('>i',len(raw)));out.extend(raw)
+    def integer(n):out.extend(struct.pack('>i',n))
+    def number(n):
+        import math
+        n=float(n);require(math.isfinite(n),'Nonfinite coordinate');out.extend(struct.pack('>d',n))
+    def boolean(b):require(type(b) is bool,'Not boolean');out.extend(b'\x01' if b else b'\x00')
+    def point(p):number(p['x']);number(p['y'])
+    def array(a,write):integer(len(a));[write(x) for x in a]
+    text('native-assignment-content-v1');text(v['displayId'])
+    m=re.fullmatch(r'(TA|A|T)?([1-9][0-9]*)([a-z])?',v['displayId']);require(m is not None,'Invalid identity')
+    integer(int(m[2]));text(m[1] or '');text(m[3] or '')
+    for k in ('canonicalFilename','knowledgeBaseRevision','authorityRole','sourceMasterLabel','locality','updated'):text(v[k])
+    array(v['directionsLines'],text)
+    for k in ('layoutMode','housingType','coordinateSpace'):text(v[k])
+    def road(r):
+        for k in ('segmentId','name','normalizedName','status','role','insideSide'):text(r[k])
+        boolean(r['accessOnly']);text(r['endpointAKind']);text(r['endpointBKind']);number(r['widthPt']);array(r['points'],point)
+    array(v['roads'],road)
+    def label(i):
+        text(i['text']);point(i['center']);boolean(i['origin'] is not None)
+        if i['origin'] is not None:point(i['origin'])
+        number(i['angleDeg']);number(i['fontSizePt'])
+    def building(b):
+        for k in ('buildingId','label','housingType'):text(b[k])
+        boolean(b['assigned']);text(b['attachedGroup']);array(b['sourceMembers'],text);array(b['labelItems'],label);array(b['polygon'],point)
+    array(v['buildings'],building)
+    return hashlib.sha256(out).hexdigest()
+
 if __name__=='__main__':
     import sys
     raw=open(sys.argv[1],'rb').read();r=decode(raw)
     require(encode(r)==raw,'Byte parity failure')
+    if len(sys.argv)>2:
+        assignment=json.load(open(sys.argv[2]))
+        expected=open(sys.argv[3]).read().strip()
+        require(assignment_content_sha256(assignment)==expected,'Assignment content digest parity failed')
     print(json.dumps({'schema':SCHEMA,'sha256':hashlib.sha256(raw).hexdigest(),'byteParity':True,'differences':differences(r,r['segments'],r['buildings'])},sort_keys=True))

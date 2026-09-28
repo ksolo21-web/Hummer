@@ -24,7 +24,7 @@ class NativeSourceReconciliationTest {
     private val r = NativeSourceReconciliation(identity.displayId, "REGULAR", kb.revision, "b".repeat(64),slot.referenceSha256,
         "current_assignment_map", "Synthetic reviewer", "2026-09-28T04:00:00Z", NativeSourceReconciliationContract.assignmentContentSha256(a), null,
         true,true,false,false,listOf(SourceSegmentObservation(road.segmentId,road.name,road.status,road.role,road.insideSide,
-            road.accessOnly,road.endpointAKind,road.endpointBKind,"Page 1: Alpha Rd inside side indicated left",true)),emptyList())
+            road.accessOnly,road.endpointAKind,road.endpointBKind,"Page 1: Alpha Rd inside side indicated left",true)),emptyList(),"00000000-0000-0000-0000-000000000001",null)
     private fun assess(v:NativeSourceReconciliation=r, state:CurrentAuthoritativeAssignmentState=a, mode:String="REGULAR", source:String=r.importedSourceSha256, inventory:String?=null) =
         NativeSourceReconciliationContract.assess(kb,v,state,mode,source,inventory)
     private fun blocked(v:NativeSourceReconciliation, code:String) { val x=assess(v); assertFalse(x.passed);assertTrue(code in x.failures,x.failures.toString()) }
@@ -99,6 +99,111 @@ class NativeSourceReconciliationTest {
         assertTrue("CLASS_MODE_MISMATCH" in result.failures)
         val excluded=SourceBuildingObservation("excluded",emptyList(),false,"Not assigned",true)
         assertEquals(excluded,NativeSourceReconciliationContract.decode(NativeSourceReconciliationContract.encode(r.copy(buildings=listOf(excluded)))).buildings.single())
+    }
+    @Test fun namedAssignmentRoundTripAndPortableBinding() {
+        val bytes=NativeAssignmentCodec.encode(a)
+        assertEquals(a,NativeAssignmentCodec.decode(bytes))
+        val out=File(root,"../evidence/assignment-golden.json");out.parentFile.mkdirs();out.writeBytes(bytes)
+        File(root,"../evidence/assignment-content.sha256").writeText(NativeSourceReconciliationContract.assignmentContentSha256(a))
+        assertThrows(Exception::class.java) {NativeAssignmentCodec.decode((" "+bytes.toString(Charsets.UTF_8)).toByteArray())}
+        val extra=bytes.toString(Charsets.UTF_8).replace("\"schema\":","\"unknown\":true,\"schema\":")
+        assertThrows(Exception::class.java) {NativeAssignmentCodec.decode(extra.toByteArray())}
+    }
+    @Test fun durableRegistrationRevocationAndFreshWitnessChecks() {
+        val dir=java.nio.file.Files.createTempDirectory("native-ledger").toFile()
+        var source:String?=r.importedSourceSha256
+        fun ledger()=NativeRegistrationLedger(dir,kb,{source},{_,_->null})
+        try {
+            val l=ledger();val saved=l.register(r,a,null)
+            assertEquals(1,saved.head.sequence);assertEquals(saved,ledger().active(r.territory,r.mode))
+            assertNotNull(l.current(r.territory,saved.assignment.authoritySha256))
+            source="c".repeat(64);assertNull(l.current(r.territory,saved.assignment.authoritySha256))
+            source=r.importedSourceSha256
+            assertThrows(Exception::class.java) {l.register(r.copy(explicitAssignmentConfirmation=false),a,saved.head.eventSha256)}
+            assertEquals(saved,ledger().active(r.territory,r.mode))
+            assertThrows(Exception::class.java) {l.register(r,a,null)}
+            val revoked=l.revoke(r.territory,r.mode,saved.head.eventSha256,"Synthetic reviewer","2026-09-28T04:01:00Z")
+            assertEquals(2,revoked.sequence);assertNull(ledger().current(r.territory,saved.assignment.authoritySha256))
+            assertNull(ledger().active(r.territory,r.mode))
+            assertThrows(Exception::class.java) {l.register(r,a,saved.head.eventSha256)}
+            // Deleting a committed revocation cannot reactivate its predecessor.
+            val event=dir.walkTopDown().single {it.name==revoked.eventSha256+".event"};assertTrue(event.delete())
+            assertNull(ledger().current(r.territory,saved.assignment.authoritySha256))
+            assertThrows(Exception::class.java) {ledger().history(r.territory,r.mode)}
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun tamperedArchivesAndUncommittedEventsCannotGrantAuthority() {
+        val dir=java.nio.file.Files.createTempDirectory("native-tamper").toFile()
+        try {
+            val l=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null})
+            val saved=l.register(r,a,null)
+            val archive=dir.walkTopDown().single {it.name==saved.head.assignmentSha256+".assignment"}
+            File(archive.parentFile,"unselected.event").writeText("Not a committed registration")
+            assertEquals(saved,l.active(r.territory,r.mode))
+            archive.appendText(" ")
+            assertNull(l.current(r.territory,saved.assignment.authoritySha256))
+            assertThrows(Exception::class.java) {l.active(r.territory,r.mode)}
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun nativeAuthorityCannotBypassRequestOrAssignmentBinding() {
+        val dir=java.nio.file.Files.createTempDirectory("native-request").toFile()
+        val boundKb=kb.copy(referenceRoles=kb.referenceRoles+(slot.referenceFile to kb.referenceRoles.getValue(slot.referenceFile).copy(displayId=identity.displayId,fieldReleaseAllowed=false)))
+        try {
+            val ledger=NativeRegistrationLedger(dir,boundKb,{r.importedSourceSha256},{_,_->null});val saved=ledger.register(r,a,null)
+            val evidence=requireNotNull(ledger.current(r.territory,saved.assignment.authoritySha256))
+            val policy=File(root,"app/src/main/assets/territory/Online-Source-Policy.json").reader().use(OnlineSourcePolicyLoader::load)
+            fun request(eligibility:NativeAssignmentEligibility)=LiveGeometryVerificationRequestFactory.create(boundKb,policy,r.territory,saved.assignment.authoritySha256,evidence.topology,emptyList(),evidence.truth,VerificationJurisdiction("Oakland County","Michigan","United States"),nativeEligibility=eligibility)
+            assertThrows(Exception::class.java) {request(NativeAssignmentEligibility.NONE)}
+            assertTrue(LiveGeometryVerificationRequestFactory.fingerprintMatches(request(ledger)))
+            assertFalse(evidence.matches(boundKb,saved.assignment.copy(locality="Changed"),evidence.truth))
+            assertThrows(Exception::class.java) {NativeAssignmentEvidence.fromCurrentLedger(boundKb,NativeSourceReconciliationContract.encode(r),a,r.mode,r.importedSourceSha256,null)}
+            ledger.revoke(r.territory,r.mode,saved.head.eventSha256,"Synthetic reviewer","2026-09-28T04:02:00Z")
+            assertThrows(Exception::class.java) {request(ledger)}
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun failedPrecommitPreservesSelectionAndPostcommitSyncFailureIsExplicit() {
+        val dir=java.nio.file.Files.createTempDirectory("native-commit").toFile()
+        var failBefore=false;var failAfter=false
+        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},
+            beforeCommit={if(failBefore)error("Injected before rename")},syncDirectory={if(failAfter)error("Injected directory sync failure")})
+        try {
+            val first=ledger.register(r,a,null)
+            val second=r.copy(registrationId="00000000-0000-0000-0000-000000000002",predecessorEventSha256=first.head.eventSha256)
+            failBefore=true
+            assertThrows(Exception::class.java) {ledger.register(second,a,first.head.eventSha256)}
+            assertEquals(first,ledger.active(r.territory,r.mode))
+            failBefore=false;failAfter=true
+            val committed=ledger.register(second,a,first.head.eventSha256)
+            assertEquals(committed,ledger.active(r.territory,r.mode));assertNotNull(ledger.durabilityWarning)
+            assertNull(ledger.current(r.territory,first.assignment.authoritySha256))
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun finalCapacityIsReservedForRevocation() {
+        val dir=java.nio.file.Files.createTempDirectory("native-capacity").toFile()
+        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},syncDirectory={})
+        try {
+            var head:String?=null
+            repeat(NativeRegistrationLedger.MAX_EVENTS-1) {i->
+                val row=r.copy(registrationId="00000000-0000-0000-0000-"+(i+1).toString().padStart(12,'0'),predecessorEventSha256=head)
+                head=ledger.register(row,a,head).head.eventSha256
+            }
+            val next=r.copy(registrationId="00000000-0000-0000-0000-000000001000",predecessorEventSha256=head)
+            assertThrows(Exception::class.java) {ledger.register(next,a,head)}
+            val revoked=ledger.revoke(r.territory,r.mode,requireNotNull(head),"Synthetic reviewer","2026-09-28T04:03:00Z")
+            assertEquals(NativeRegistrationLedger.MAX_EVENTS,revoked.sequence);assertNull(ledger.active(r.territory,r.mode))
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun lookupAndConcurrentRevocationLinearizeWithoutReactivatingAuthority() {
+        val dir=java.nio.file.Files.createTempDirectory("native-race").toFile()
+        val ledger=NativeRegistrationLedger(dir,kb,{r.importedSourceSha256},{_,_->null},syncDirectory={})
+        val executor=java.util.concurrent.Executors.newFixedThreadPool(2)
+        try {
+            val saved=ledger.register(r,a,null)
+            val revoked=java.util.concurrent.CountDownLatch(1)
+            val aTask=executor.submit {ledger.revoke(r.territory,r.mode,saved.head.eventSha256,"Synthetic reviewer","2026-09-28T04:04:00Z");revoked.countDown()}
+            val bTask=executor.submit {revoked.await();repeat(20) {assertNull(ledger.current(r.territory,saved.assignment.authoritySha256))}}
+            aTask.get(30,java.util.concurrent.TimeUnit.SECONDS);bTask.get(30,java.util.concurrent.TimeUnit.SECONDS)
+        } finally {executor.shutdownNow();dir.deleteRecursively()}
     }
     @Test fun sixRealAssignmentsAreUnchanged() {
         assertEquals(kb0.needsNewCardQueue,kb.needsNewCardQueue)
