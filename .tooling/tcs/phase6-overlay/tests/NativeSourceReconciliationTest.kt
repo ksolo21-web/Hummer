@@ -102,6 +102,15 @@ class NativeSourceReconciliationTest {
         assertNull(MapImageDraftExtractor.streetText("Enter Miller Ave. Work only the three green buildings"))
         assertEquals("Alpha Rd",MapImageDraftExtractor.streetText("Alpha Rd: inside RIGHT"))
         assertEquals("To Meadow Ln",MapImageDraftExtractor.streetText("To Meadow Ln"))
+        listOf("St Clair St","St John Dr","Parkway Dr","Court St","Trail Rd").forEach {assertEquals(it,MapImageDraftExtractor.streetText(it))}
+    }
+    @Test fun unicodeNumberRangesRemainBuildingEvidence() {
+        val w=200;val h=120;val pixels=IntArray(w*h){0xffffffff.toInt()}
+        for(y in 30..80)for(x in 30..150)pixels[y*w+x]=0xff00aa30.toInt()
+        listOf("440–456","440—456","440 − 456").forEach {label->
+            val result=MapImageDraftExtractor.extract(w,h,pixels,listOf(MapImageText(label,AxisAlignedRect(50.0,45.0,130.0,65.0))))
+            assertEquals(listOf(label),result.buildings.single().labels.map {it.text})
+        }
     }
     @Test fun shortContiguousWorkColorChangeCannotDisappearInMajority() {
         val w=500;val h=150;val pixels=IntArray(w*h){0xffffffff.toInt()}

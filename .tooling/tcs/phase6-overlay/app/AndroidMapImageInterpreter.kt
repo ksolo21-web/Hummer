@@ -32,6 +32,12 @@ data class NativeImageReview(val analysisJson:String,val acknowledged:Set<String
     }
     val sha256 get()=BundleIntegrity.sha256(analysisJson.byteInputStream())
     fun findings():List<Pair<String,String>> {val a=org.json.JSONObject(analysisJson).getJSONArray("findings");return (0 until a.length()).map {a.getJSONObject(it).let {v->v.getString("id") to v.getString("message")}}}
+    fun bounds(id:String):AxisAlignedRect? {
+        val rows=org.json.JSONObject(analysisJson).getJSONArray("findings")
+        val row=(0 until rows.length()).map {rows.getJSONObject(it)}.firstOrNull {it.getString("id")==id} ?: return null
+        if(row.isNull("sourceBounds"))return null
+        val a=row.getJSONArray("sourceBounds");return AxisAlignedRect(a.getDouble(0),a.getDouble(1),a.getDouble(2),a.getDouble(3))
+    }
     fun complete(roads:List<RoadGeometry> = emptyList())=findings().all {(id,_)->id in acknowledged && when {
         id.startsWith("side-")->roads.any {it.segmentId==id.removePrefix("side-") && it.insideSide in setOf("left","right")}
         id.startsWith("name-")->roads.any {it.segmentId=="image-road-${id.removePrefix("name-").toInt()+1}" && !it.name.startsWith("Unresolved road")}
@@ -71,7 +77,7 @@ class AndroidMapImageInterpreter {
             val multiUnit=housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home")
             require(!multiUnit || extraction.buildings.isEmpty() || buildingLabel!=null) {"Building label layout is required for extracted footprints"}
             val buildings=if(multiUnit && buildingLabel!=null)extraction.buildings.map {b->
-                val labels=b.labels.map {label->buildingLabel(label.text,mapped(Point2D((label.bounds.left+label.bounds.right)/2,(label.bounds.top+label.bounds.bottom)/2)))}
+                val labels=b.labels.map {label->buildingLabel(label.text.replace('–','-').replace('—','-').replace('−','-'),mapped(Point2D((label.bounds.left+label.bounds.right)/2,(label.bounds.top+label.bounds.bottom)/2)))}
                 if(b.status=="yellow")findings+=MapImageFinding("building-color-${b.id}","A yellow footprint requires assignment review.",null)
                 BuildingGeometry(b.id,labels.joinToString("/"){it.text},housingType,b.status=="green","",labels.map {it.text},labels,b.polygon.map(::mapped))
             } else emptyList()
@@ -80,7 +86,7 @@ class AndroidMapImageInterpreter {
             val roads=extraction.roads.map {r->
                 val name=r.name ?: "Unresolved road ${r.id.removePrefix("image-road-")}"
                 val role=when(r.status){"yellow"->"perimeter";"green"->"interior";"red"->"excluded";else->"context"}
-                if(r.status=="yellow")findings+=MapImageFinding("side-${r.id}","Confirm the worked side of $name from the source boundary.",null)
+                if(r.status=="yellow")findings+=MapImageFinding("side-${r.id}","Confirm the worked side of $name from the source boundary.",AxisAlignedRect(r.points.minOf {it.x},r.points.minOf {it.y},r.points.maxOf {it.x}+1,r.points.maxOf {it.y}+1))
                 RoadGeometry(r.id,name,TopologyOverlapDecisionEngine.normalizeRoadName(name),r.status,role,"",false,
                     if(r.junctionA)"junction" else "termination",if(r.junctionB)"junction" else "termination",4.0,
                     r.points.map(::mapped))

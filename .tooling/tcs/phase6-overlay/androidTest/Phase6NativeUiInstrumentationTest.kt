@@ -31,7 +31,10 @@ class Phase6NativeUiInstrumentationTest {
     }}
     private fun nodes():List<AccessibilityNodeInfo> {val out=mutableListOf<AccessibilityNodeInfo>();fun walk(n:AccessibilityNodeInfo?){if(n==null)return;out+=n;for(i in 0 until n.childCount)walk(n.getChild(i))};walk(automation.rootInActiveWindow);return out}
     private fun waitTag(tag:String){rule.waitUntil(30000){rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()};rule.waitForIdle()}
-    private fun click(list:String,tag:String){rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).assertIsEnabled().performClick();rule.waitForIdle()}
+    private fun click(list:String,tag:String){
+        rule.waitUntil(30000){runCatching {rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).assertIsEnabled();true}.getOrDefault(false)}
+        rule.onNodeWithTag(tag).performClick();rule.waitForIdle()
+    }
     private fun text(list:String,tag:String,value:String){rule.onNodeWithTag(list).performScrollToNode(hasTestTag(tag));rule.onNodeWithTag(tag).performTextReplacement(value)
         rule.activity.runOnUiThread {(rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(rule.activity.window.decorView.windowToken,0)};rule.waitForIdle()}
     private fun textClick(list:String,label:String){rule.onNodeWithTag(list).performScrollToNode(hasText(label));rule.onNodeWithText(label).performClick();rule.waitForIdle()}
@@ -50,7 +53,7 @@ class Phase6NativeUiInstrumentationTest {
     private fun chooseRoot() {
         if(nodes().none {it.isVisibleToUser && it.viewIdResourceName?.endsWith(":id/roots_list")==true})
             systemClick {it.contentDescription?.toString()?.let {s->s.contains("Show roots",true)||s.contains("navigation drawer",true)}==true || it.viewIdResourceName=="android:id/home"}
-        systemClick {it.text?.toString()=="Synthetic test files"}
+        systemClick {it.text?.toString()=="Synthetic test files" && it.viewIdResourceName=="android:id/title"}
     }
     private fun chooseInput(name:String) {
         rule.waitUntil(15000){automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true}
@@ -99,7 +102,12 @@ class Phase6NativeUiInstrumentationTest {
         x.app.appearancePreferences.setMode(theme)
         rule.activity.runOnUiThread {rule.activity.enableEdgeToEdge()}
         rule.setContent {TerritoryCardStudioProductionApp(x.kb,x.app.appearancePreferences,x.services)}
-        waitTag("territories-dashboard");text("territories-dashboard","territory-search",x.id);click("territories-dashboard","territory-row-${x.id}")
+        waitTag("territories-dashboard")
+        if(automatic) {
+            text("territories-dashboard","create-territory-number",x.identity.baseNumber.toString()+(x.identity.suffix?.toString() ?: ""))
+            click("territories-dashboard","create-territory-type-${x.identity.territoryClass.name}")
+            click("territories-dashboard","create-territory-continue")
+        } else {text("territories-dashboard","territory-search",x.id);click("territories-dashboard","territory-row-${x.id}")}
         waitTag("territory-workspace")
         if(mode==WorkspaceMode.LETTER_WRITING)click("territory-workspace","workspace-mode-Letter-Writing")
         assertFalse(x.coordinator.state(x.id,mode).inputReady)

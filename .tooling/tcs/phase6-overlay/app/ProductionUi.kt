@@ -415,6 +415,9 @@ private fun TerritoriesDashboard(
     var filterName by rememberSaveable { mutableStateOf(TerritoryDashboardFilter.ALL.name) }
     val filter = TerritoryDashboardFilter.valueOf(filterName)
     val filtered = remember(model, query, filter) { model.browse(query, filter) }
+    var createNumber by rememberSaveable { mutableStateOf("") }
+    var createClass by rememberSaveable { mutableStateOf(TerritoryClass.Residential.name) }
+    var createMessage by rememberSaveable { mutableStateOf("") }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("territories-dashboard"),
@@ -432,6 +435,26 @@ private fun TerritoriesDashboard(
         }
         item { PhaseOneLockedBanner() }
         item { DashboardStats(model) }
+        item {
+            Card(Modifier.fillMaxWidth()) {Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("Create from a map picture",style=MaterialTheme.typography.titleLarge)
+                OutlinedTextField(createNumber,{createNumber=it;createMessage=""},label={Text("Territory number")},supportingText={Text("Include a lowercase split suffix when needed, such as 300a.")},singleLine=true,modifier=Modifier.fillMaxWidth().testTag("create-territory-number"))
+                Text("Territory type",style=MaterialTheme.typography.titleSmall)
+                listOf(TerritoryClass.Residential to "Residential",TerritoryClass.Apartment to "Apartment",TerritoryClass.Telephone to "Telephone",TerritoryClass.TelephoneApartment to "Telephone apartment").forEach {(kind,label)->
+                    FilterChip(selected=createClass==kind.name,onClick={createClass=kind.name;createMessage=""},label={Text(label)},modifier=Modifier.testTag("create-territory-type-${kind.name}"))
+                }
+                TextButton(onClick={
+                    val candidate=runCatching {com.koenterprises.territorycardstudio.core.TerritoryIdentity.parse(TerritoryClass.valueOf(createClass).token+createNumber.trim())}.getOrNull()
+                    val item=model.items.firstOrNull {it.assignment.identity==candidate}
+                    when {
+                        candidate==null->createMessage="Enter a positive territory number and optional lowercase split suffix."
+                        item==null->createMessage="This number and type are not enrolled in the territory catalog yet."
+                        else->onOpenTerritory(item)
+                    }
+                },modifier=Modifier.testTag("create-territory-continue")){Text("Continue to map picture")}
+                if(createMessage.isNotBlank())Text(createMessage,color=MaterialTheme.colorScheme.error,modifier=Modifier.testTag("create-territory-message"))
+            }}
+        }
         item {
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth().testTag("territory-search"),

@@ -15,8 +15,17 @@ class Phase6ImageInterpretationInstrumentationTest {
     @Test fun representativeMapRetainsConnectedNumberedFootprints() {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         val context=instrumentation.targetContext
-        val source=File(context.cacheDir,"read-only-reference-map.pdf")
-        instrumentation.context.assets.open("reference300.pdf").use {input->source.outputStream().use {input.copyTo(it)}}
+        val pdf=File(context.cacheDir,"read-only-reference-map.pdf")
+        val source=File(context.cacheDir,"read-only-reference-map.png")
+        instrumentation.context.assets.open("reference300.pdf").use {input->pdf.outputStream().use {input.copyTo(it)}}
+        android.graphics.pdf.PdfRenderer(android.os.ParcelFileDescriptor.open(pdf,android.os.ParcelFileDescriptor.MODE_READ_ONLY)).use {renderer->
+            renderer.openPage(0).use {page->
+                val scale=minOf(1400.0/page.width,1400.0/page.height)
+                val bitmap=android.graphics.Bitmap.createBitmap((page.width*scale).toInt(),(page.height*scale).toInt(),android.graphics.Bitmap.Config.ARGB_8888)
+                bitmap.eraseColor(android.graphics.Color.WHITE);page.render(bitmap,null,null,android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                source.outputStream().use {bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
+            }
+        }
         try {
             val sha=source.inputStream().use(BundleIntegrity::sha256)
             val result=AndroidMapImageInterpreter().interpret(source,sha,"apartment") {text,center->BuildingLabelItem(text,center,center,0.0,9.0)}
@@ -31,6 +40,6 @@ class Phase6ImageInterpretationInstrumentationTest {
             assertTrue("Concave footprint lost",assigned.any {it.polygon.size>=6})
             assertTrue(result.roads.any {it.name.contains("Elizabeth",true)})
             assertTrue(result.roads.any {it.name.contains("Miller",true)})
-        } finally {source.delete()}
+        } finally {source.delete();pdf.delete()}
     }
 }

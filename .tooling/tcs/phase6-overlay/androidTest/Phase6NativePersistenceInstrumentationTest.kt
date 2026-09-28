@@ -62,17 +62,28 @@ class Phase6NativePersistenceInstrumentationTest {
         x.authoring.prepare(x.id,x.mode,d.revisionSha256)
         assertTrue(x.coordinator.state(x.id,x.mode).inputReady)
         File(x.app.filesDir,"phase6-restart-draft.sha256").writeText(d.revisionSha256)
+        File(x.app.filesDir,"phase6-restart-producer.pid").writeText(android.os.Process.myPid().toString())
     }}
     @Test fun recoverDraftAfterProcessDeathRequiresFreshPreparationAndApproval() {Phase6NativeFixture(WorkspaceMode.REGULAR,false).use {x->
         val d=requireNotNull(x.drafts.read(x.id,x.mode))
+        val producerPid=File(x.app.filesDir,"phase6-restart-producer.pid").readText().toInt()
+        assertNotEquals(producerPid,android.os.Process.myPid())
         assertEquals(File(x.app.filesDir,"phase6-restart-draft.sha256").readText(),d.revisionSha256)
         assertNotNull(x.drafts.ledger.active(x.id,x.mode.name))
         assertFalse(x.coordinator.state(x.id,x.mode).inputReady)
         assertFalse(x.lifecycle.state(x.id,x.mode).active)
         rejected {x.output.validate(x.id,x.mode)}
         x.authoring.prepare(x.id,x.mode,d.revisionSha256)
-        assertNotNull(x.coordinator.buildFront(x.id,x.mode).front)
+        assertNull(x.lifecycle.build(x.id,x.mode,false).error)
+        assertNotNull(x.coordinator.state(x.id,x.mode).front)
         assertFalse(x.lifecycle.state(x.id,x.mode).active)
         rejected {x.output.validate(x.id,x.mode)}
+        val pending=x.lifecycle.state(x.id,x.mode)
+        x.lifecycle.decide(requireNotNull(pending.ticket),"Explicit restart test reviewer",CandidateReviewChecks(true,true,true),true,true,pending.revision)
+        assertTrue(x.lifecycle.state(x.id,x.mode).active)
+        val ticket=x.output.validate(x.id,x.mode);val destination=Phase56Destination()
+        x.output.exportCreated(ticket,destination,false)
+        assertArrayEquals(x.lifecycle.readCurrentPdf(x.id,x.mode),destination.bytes)
+        File(x.app.filesDir,"phase6-restart-proof.json").writeText(org.json.JSONObject().put("producerPid",producerPid).put("consumerPid",android.os.Process.myPid()).put("freshPreparation",true).put("explicitReapproval",true).put("exportSha256",BundleIntegrity.sha256(destination.bytes.inputStream())).toString())
     }}
 }

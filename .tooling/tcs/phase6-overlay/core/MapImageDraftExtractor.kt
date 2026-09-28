@@ -15,8 +15,8 @@ object MapImageDraftExtractor {
         val clean=text.trim().replace(Regex("\\s+")," ")
         if(clean.length !in 3..100 || clean.any {it.code !in 32..126})return null
         val matches=suffix.findAll(clean).toList()
-        if(matches.size!=1 || clean.contains('=') || clean.startsWith("Directions",true) || clean.startsWith("Enter ",true) || clean.startsWith("Work ",true))return null
-        val match=matches.single()
+        if(matches.isEmpty() || clean.contains('=') || clean.startsWith("Directions",true) || clean.startsWith("Enter ",true) || clean.startsWith("Work ",true))return null
+        val match=matches.last()
         val trailing=clean.substring(match.range.last+1).trim()
         if(trailing.isNotEmpty() && trailing!="." && !trailing.startsWith(':'))return null
         val name=clean.substring(0,match.range.last+1)
@@ -47,7 +47,7 @@ object MapImageDraftExtractor {
             for(y in max(0,b.top.toInt()-4)..min(height-1,b.bottom.toInt()+4))
                 for(x in max(0,b.left.toInt()-80)..min(width-1,b.right.toInt()+5)) colors[y*width+x]=0
         }
-        val memberPattern=Regex("^[0-9]+(?:\\s*[-/]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
+        val memberPattern=Regex("^[0-9]+(?:\\s*[-/–—−]\\s*[0-9]+)*(?:\\s*[A-Z])?$")
         val numberLabels=mapText.filter {memberPattern.matches(it.text.trim())}
         val usedBuildingLabels=HashSet<MapImageText>()
         val mask=BooleanArray(colors.size){colors[it]!=0}

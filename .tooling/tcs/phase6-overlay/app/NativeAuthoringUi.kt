@@ -43,9 +43,10 @@ import java.util.UUID
     Column {choices.forEach {choice->FilterChip(selected=value==choice,onClick={onChange(choice)},label={Text(choice.replace('_',' '))},modifier=Modifier.testTag("$tag-$choice"))}}
 }
 
-@Composable private fun NativeSourcePreview(file:File,onReadable:(Boolean)->Unit) {
+@Composable private fun NativeSourcePreview(file:File,highlight:AxisAlignedRect?=null,onReadable:(Boolean)->Unit) {
     var page by remember(file.path) {mutableStateOf(0)}
     var pages by remember(file.path) {mutableStateOf(1)}
+    var analysisScale by remember(file.path) {mutableStateOf(1.0)}
     var bitmap by remember(file.path,page) {mutableStateOf<Bitmap?>(null)}
     var error by remember(file.path,page) {mutableStateOf<String?>(null)}
     LaunchedEffect(file.path,page) {
@@ -57,17 +58,24 @@ import java.util.UUID
                     pdf.openPage(page.coerceIn(0,total-1)).use {p->
                         val scale=minOf(900.0/p.width,1800.0/p.height)
                         val b=Bitmap.createBitmap(maxOf(1,(p.width*scale).toInt()),maxOf(1,(p.height*scale).toInt()),Bitmap.Config.ARGB_8888)
-                        b.eraseColor(android.graphics.Color.WHITE);p.render(b,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);b to total
+                        b.eraseColor(android.graphics.Color.WHITE);p.render(b,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);Triple(b,total,scale/minOf(1400.0/p.width,1400.0/p.height))
                     }
                 }
             } else {
-                AndroidMapImageInterpreter().decode(file) to 1
+                Triple(AndroidMapImageInterpreter().decode(file),1,1.0)
             }
         }}
-        result.onSuccess {(b,count)->bitmap=b;pages=count;onReadable(true)}.onFailure {error=it.message ?: "Source could not be displayed"}
+        result.onSuccess {(b,count,ratio)->bitmap=b;pages=count;analysisScale=ratio;onReadable(true)}.onFailure {error=it.message ?: "Source could not be displayed"}
     }
     Text("Exact imported source",style=MaterialTheme.typography.titleMedium)
-    bitmap?.let {Image(it.asImageBitmap(),"Imported territory source page ${page+1}",Modifier.fillMaxWidth().heightIn(max=480.dp).testTag("native-source-preview"))}
+    bitmap?.let {b->Box(Modifier.fillMaxWidth().heightIn(max=480.dp)) {
+        Image(b.asImageBitmap(),"Imported territory source page ${page+1}",Modifier.fillMaxWidth().heightIn(max=480.dp).testTag("native-source-preview"))
+        highlight?.let {area->Canvas(Modifier.matchParentSize()) {
+            val scale=minOf(size.width/b.width,size.height/b.height);val dx=(size.width-b.width*scale)/2;val dy=(size.height-b.height*scale)/2
+            drawRect(Color(0xFF0066FF),Offset(dx+(area.left*analysisScale*scale).toFloat(),dy+(area.top*analysisScale*scale).toFloat()),
+                androidx.compose.ui.geometry.Size(((area.right-area.left)*analysisScale*scale).toFloat().coerceAtLeast(4f),((area.bottom-area.top)*analysisScale*scale).toFloat().coerceAtLeast(4f)),style=androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
+        }}
+    }}
     error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
     if(pages>1)Row {TextButton(onClick={page--},enabled=page>0){Text("Previous source page")};Text("${page+1} / $pages");TextButton(onClick={page++},enabled=page+1<pages){Text("Next source page")}}
 }
@@ -110,7 +118,8 @@ import java.util.UUID
         roads.forEach {r->r.points.zipWithNext().forEach {(a,b)->drawLine(when(r.status){"yellow"->Color(0xFFD0AA00);"green"->Color(0xFF07883B);"red"->Color(0xFFD32222);else->Color.Gray},point(a),point(b),4f)}}
         val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {color=android.graphics.Color.BLACK;textSize=(9.0*size.width/571.0).toFloat();textAlign=android.graphics.Paint.Align.CENTER}
         buildings.forEach {b->b.labelItems.forEach {label->val p=point(label.center);drawContext.canvas.nativeCanvas.drawText(label.text,p.x,p.y,paint)}}
-        roads.forEach {r->val p=point(r.points[r.points.size/2]);drawContext.canvas.nativeCanvas.drawText(r.name,p.x,p.y-7f,paint)}
+        roads.forEach {r->val longest=r.points.zipWithNext().maxByOrNull {(a,b)->kotlin.math.hypot(b.x-a.x,b.y-a.y)}
+            if(longest!=null){val (a,b)=longest;val p=point(Point2D((a.x+b.x)/2,(a.y+b.y)/2));drawContext.canvas.nativeCanvas.drawText(r.name,p.x,p.y-7f,paint)}}
         points.zipWithNext().forEach {(a,b)->drawLine(Color.Blue,point(a),point(b),3f)}
         points.forEach {drawCircle(Color.Blue,5f,point(it))}
     }
@@ -142,6 +151,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
     var contacts by remember(id,mode) {mutableStateOf<List<NativeContactDraft>>(emptyList())}
     var coverage by remember(id,mode) {mutableStateOf(false)}
     var imageReview by remember(id,mode) {mutableStateOf<NativeImageReview?>(null)}
+    var selectedImageFinding by remember(id,mode) {mutableStateOf<String?>(null)}
     var replacePictureDraft by remember {mutableStateOf(false)}
     val scope=rememberCoroutineScope()
     val source=runCatching {sources.verifiedRecord(id)}.getOrNull()
@@ -331,6 +341,10 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
                     if(review.correctable(finding.first))NativeCheck("Resolved against the source: ${finding.second}",finding.first in review.acknowledged,"native-image-finding-$i") {checked->
                         imageReview=review.copy(acknowledged=if(checked)review.acknowledged+finding.first else review.acknowledged-finding.first);coverage=false
                     } else Text("Generation blocked: ${finding.second} Use a clearer map crop or correct the source image and generate again.",color=MaterialTheme.colorScheme.error)
+                    if(sourceFile!=null && review.bounds(finding.first)!=null) {
+                        TextButton(onClick={selectedImageFinding=if(selectedImageFinding==finding.first)null else finding.first}){Text(if(selectedImageFinding==finding.first)"Hide source location" else "Show source location")}
+                        if(selectedImageFinding==finding.first)NativeSourcePreview(sourceFile,review.bounds(finding.first)){}
+                    }
                 }
                 item {OutlinedButton(onClick={runCatching {
                     require(roads.none {it.name.startsWith("Unresolved road") || it.role=="perimeter" && it.insideSide !in setOf("left","right")}) {"Resolve missing road names and worked sides in Roads first"}
