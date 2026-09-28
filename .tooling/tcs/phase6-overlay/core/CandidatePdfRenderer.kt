@@ -397,13 +397,13 @@ object CandidatePdfRenderer {
         layout.sourceBuildingIds.forEach { buildingId ->
             val base = baseBuildingsById[buildingId] ?: error("site_building_assignment unknown source building $buildingId")
             val binding = bindingsById.getValue(buildingId)
-            require(binding.sourceMemberIds.isNotEmpty() && binding.sourceMemberIds.distinct().size == binding.sourceMemberIds.size) {
+            require((!base.assigned || binding.sourceMemberIds.isNotEmpty()) && binding.sourceMemberIds.distinct().size == binding.sourceMemberIds.size) {
                 "site_building_assignment $buildingId source member IDs must be non-empty and unique"
             }
-            require(binding.verifiedLabelTexts.isNotEmpty() && binding.verifiedLabelTexts.distinct().size == binding.verifiedLabelTexts.size) {
+            require((!base.assigned || binding.verifiedLabelTexts.isNotEmpty()) && binding.verifiedLabelTexts.distinct().size == binding.verifiedLabelTexts.size) {
                 "site_building_assignment $buildingId verified building labels must be non-empty and unique"
             }
-            require(base.labelItems.isNotEmpty()) { "site_building_assignment $buildingId requires verified interior label items" }
+            require(!base.assigned || base.labelItems.isNotEmpty()) { "site_building_assignment $buildingId requires verified interior label items" }
             require(binding.verifiedLabelTexts.sorted() == base.labelItems.map { it.text }.sorted()) {
                 "site_building_assignment $buildingId verified label binding drift"
             }

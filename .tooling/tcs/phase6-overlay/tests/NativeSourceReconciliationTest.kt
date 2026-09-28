@@ -52,6 +52,22 @@ class NativeSourceReconciliationTest {
         ProductionRenderModelAdapterTest.run(kb0,assets)
     }
 
+    @Test fun siteLayoutPreservesUnlabeledExcludedFootprint() {
+        val template=File(root,"app/src/main/assets/territory/render-authority/Canonical-New-Designed-Template-R48.pdf").readBytes()
+        val base=CandidatePdfRendererTest.siteBuildingAssignmentFixtureSpec()
+        val excluded=PdfBuildingShape("excluded-context","",listOf(410.0 to 180.0,450.0 to 180.0,450.0 to 220.0,410.0 to 220.0),assigned=false)
+        val layout=requireNotNull(base.siteBuildingAssignment)
+        val spec=base.copy(buildings=base.buildings+excluded,siteBuildingAssignment=layout.copy(
+            sourceBuildingIds=layout.sourceBuildingIds+excluded.buildingId,
+            buildingBindings=layout.buildingBindings+PdfBuildingMemberLabelBinding(excluded.buildingId,emptyList(),emptyList())))
+        val rendered=CandidatePdfRenderer.renderNonFieldFixture(template,spec)
+        assertTrue(rendered.exactValidation.passed)
+        assertTrue(rendered.pdfBytes.toString(Charsets.ISO_8859_1).contains("% TCS_BUILDING_WORK_STATUS excluded-context excluded"))
+        assertThrows(IllegalArgumentException::class.java) {
+            CandidatePdfRenderer.renderNonFieldFixture(template,spec.copy(buildings=base.buildings+excluded.copy(assigned=true)))
+        }
+    }
+
     @Test fun strictDecimalFinalFileBoundary() {
         assertTrue(GeneratedPdfSizeContract.accepts(299999));assertFalse(GeneratedPdfSizeContract.accepts(300000))
         assertFalse(GeneratedPdfSizeContract.accepts(0));assertFalse(GeneratedPdfSizeContract.accepts(307200))

@@ -65,17 +65,22 @@ class Phase6NativeUiInstrumentationTest {
         systemClick {it.text?.toString()=="Synthetic test files" && it.viewIdResourceName=="android:id/title"}
     }
     private fun selectDocument(name:String,returnTag:String) {
-        rule.waitUntil(20000) {
+        var lastClick=0L
+        val trace=File(instrumentation.targetContext.filesDir,"phase6-picker-actions.txt")
+        rule.waitUntil(30000) {
             if(automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")!=true)true
             else {
-                nodes().firstOrNull {it.isVisibleToUser && it.text?.toString()==name}?.let {node->
-                    val bounds=android.graphics.Rect();node.getBoundsInScreen(bounds)
-                    val now=android.os.SystemClock.uptimeMillis()
-                    val down=android.view.MotionEvent.obtain(now,now,android.view.MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY(),0)
-                    val up=android.view.MotionEvent.obtain(now,now+80,android.view.MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY(),0)
-                    down.source=android.view.InputDevice.SOURCE_TOUCHSCREEN;up.source=android.view.InputDevice.SOURCE_TOUCHSCREEN
-                    try {automation.injectInputEvent(down,true);android.os.SystemClock.sleep(80);automation.injectInputEvent(up,true)} finally {down.recycle();up.recycle()}
-                    runCatching {automation.waitForIdle(500,3000)}
+                val now=android.os.SystemClock.uptimeMillis()
+                if(now-lastClick>=1000) {
+                    val selected=nodes().firstOrNull {it.isVisibleToUser && it.text?.toString()==name}
+                    if(selected!=null) {
+                        var node:AccessibilityNodeInfo=selected
+                        while(!node.isClickable && node.parent!=null)node=requireNotNull(node.parent)
+                        val bounds=android.graphics.Rect();node.getBoundsInScreen(bounds)
+                        val activated=node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} action=$activated\n")
+                        lastClick=now
+                    }
                 }
                 false
             }

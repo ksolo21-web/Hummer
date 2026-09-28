@@ -1044,8 +1044,8 @@ object ProductionRenderModelAdapter {
             } else if (binding == null) {
                 failures += "site_building_assignment missing building binding $id"
             } else {
-                if (binding.sourceMemberIds.isEmpty() || binding.sourceMemberIds.distinct().size != binding.sourceMemberIds.size) failures += "$id: site source member IDs must be non-empty and unique"
-                if (binding.verifiedLabelTexts.isEmpty() || binding.verifiedLabelTexts.distinct().size != binding.verifiedLabelTexts.size) failures += "$id: site verified label texts must be non-empty and unique"
+                if ((building.assigned && binding.sourceMemberIds.isEmpty()) || binding.sourceMemberIds.distinct().size != binding.sourceMemberIds.size) failures += "$id: site source member IDs must be non-empty and unique"
+                if ((building.assigned && binding.verifiedLabelTexts.isEmpty()) || binding.verifiedLabelTexts.distinct().size != binding.verifiedLabelTexts.size) failures += "$id: site verified label texts must be non-empty and unique"
                 if (binding.sourceMemberIds.sorted() != building.sourceMembers.sorted()) failures += "$id: 300/301 source-member binding drift"
                 val expectedLabels = building.labelItems.map { it.text }.sorted()
                 if (binding.verifiedLabelTexts.sorted() != expectedLabels) failures += "$id: 300/301 member/label binding drift"

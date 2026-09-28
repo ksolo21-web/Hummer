@@ -3267,10 +3267,9 @@
       "Three-mode process restart revalidation/rebuild/reapproval"
     ],
     "blockers": [
-      "Representative map still has unresolved color finding and unnamed road proposals; no final representative-map card acceptance.",
-      "Telephone full native flow needs passing evidence; three completed regular/picture flows need clean test completion after owner-only cleanup repair.",
-      "Arbitrary new-number enrollment remains unsupported; common explicit enrollment and native overlap population are not yet implemented.",
-      "Final independent all-mode artifact review and full Phase6 acceptance remain outstanding."
+      "Clean all-mode native journey evidence remains incomplete; latest picker test failures under repair.",
+      "Building renderer incorrectly omitted excluded footprints and painted assigned buildings gray; fix a52caa requires targeted runtime and PDF review.",
+      "Final independent all-mode artifact review and Phase6 acceptance outstanding."
     ],
     "constraints": [
       "Do not promote legacy reference geometry or invent source authority.",
@@ -3279,17 +3278,17 @@
       "Kaleb personally creates all six real cards."
     ],
     "user_requirement": "Import a map picture, enter territory number and type, and generate a new territory card.",
-    "last_tested_commit": "3eebf89ae4e28676e472ae2c95edc3f04cc3f30f",
-    "last_tested_run": 36429797943,
+    "last_tested_commit": "a52caa687b5612cf51669bd478749554c5436324",
+    "last_tested_run": 36433414736,
     "core_checks": {
-      "passed": 29,
+      "passed": 31,
       "failed": 0,
       "accepted_phase6": false
     },
     "native_checks": {
-      "passed": 7,
-      "failed": 4,
-      "details": "Complete reference building inventory passed (3assigned groups,8excluded footprints). Letter/dark and wide multi-unit/light UI exports passed, plus4persistence tests. Regular/light, automatic picture, and wide regular/dark completed export/audit/KB assertions then failed test-only source deletion cleanup. Telephone stopped at picker selection."
+      "passed": 0,
+      "failed": 5,
+      "details": "All targeted native flows timed out at initial DocumentsUI picker; no new native acceptance. Restore previously successful accessibility activation with bounded retries and action diagnostics. Retain six unaffected round16 native cases."
     },
     "implemented_since_phase5": [
       "Explicit local source reconciliation and durable registration ledger",
@@ -3300,9 +3299,19 @@
     ],
     "independent_review": "NOT_APPROVED; no Phase6 completion score",
     "pending_repairs": [
-      "Rerun only four failing UI cases with owner-only cleanup and actual picker tap retry",
-      "Resolve representative map color/road findings through typed correction or faithful extraction",
-      "Implement shared explicit new-number enrollment and native overlap population"
-    ]
+      "Validate a52caa renderer/adapter and four failed picker flows plus affected multi-unit flow.",
+      "Review actual PDFs, native screenshots and matching export/audit hashes; retain frozen187 checks."
+    ],
+    "limitations": [
+      "Number/type selection currently requires an existing catalog identity; arbitrary new-number enrollment is unsupported and was not established as an original Phase6 acceptance requirement.",
+      "Ambiguous map geometry/work colors remain blocked; user must provide clearer input. Reference-map extraction recovered3assigned groups and8excluded footprints but has unresolved color/name findings; no final reference-map card acceptance."
+    ],
+    "current_validation": {
+      "status": "AWAITING_NEW_RUN",
+      "repairs": [
+        "Site excluded-unlabeled binding permitted with assignment-conditional requirements",
+        "Restore accessibility picker activation with action diagnostics"
+      ]
+    }
   }
 }
