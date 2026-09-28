@@ -1,6 +1,6 @@
 # Create a territory card from a map picture
 
-Development build: Phase 6 validation is still in progress. This is not a production-signed or field-release build.
+Phase 6 passed independent application review (9.5/10). This Android debug build is for testing; production signing and real-card commissioning remain separate.
 
 1. On the dashboard, use **Create from a map picture**. Enter the territory number (including a lowercase split suffix if needed), choose its territory type, and select **Continue to map picture**. The number/type must already exist in the territory catalog.
 2. Choose the appropriate workspace mode and **Import Map**. Select a clear, marked PNG/JPEG map or a single-page map PDF using Android's file picker.

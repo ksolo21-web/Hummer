@@ -1,0 +1,115 @@
+{
+  "schema": "phase6-independent-review-v1",
+  "reviewer": "phase6_critic",
+  "status": "PASS",
+  "score": 9.5,
+  "commit": "e851c625b73dee83737810767856a741e9468d26",
+  "run": "36435295587",
+  "scope": "Phase 6 native Android application acceptance; not commissioning or field release of real territory cards",
+  "mandatoryGates": {
+    "nativeThreeModes": "PASS",
+    "supportedPictureToCard": "PASS",
+    "explicitRegistrationAndSourceBinding": "PASS",
+    "telephoneAuthorizationAndUnavailable": "PASS",
+    "pdfColorsLabelsDimensionsPageRolesAndAudit": "PASS",
+    "lightDarkPhoneWideScreenshots": "PASS",
+    "persistenceFreshVerificationExplicitReapproval": "PASS_RETAINED_ROUND16",
+    "safeRetentionAndRollover": "PASS",
+    "strictDecimalSizeBoundary": "PASS",
+    "portableReconciliationByteAndFiveCaseStructuralParity": "PASS",
+    "excludedUnlabeledSiteRegression": "PASS",
+    "finalProvenanceAndImmutableAssets": "PASS"
+  },
+  "evidence": {
+    "round20CoreTests": 32,
+    "round20CoreFailures": 0,
+    "round20NativePasses": 5,
+    "retainedRound16Cases": 6,
+    "priorAcceptedChecksPreserved": 187,
+    "outputs": [
+      {
+        "file": "phase6/round20/phase6-letter_writing-light-multiunit.pdf",
+        "sha256": "0e738fe989a3857974c911f58b202d8088b481ca463f1eac6971ba4eb0f03357",
+        "bytes": 85048,
+        "pages": 2,
+        "auditHashMatches": true,
+        "pageSizePoints": [
+          768,
+          480.5
+        ],
+        "visuallyInspected": true
+      },
+      {
+        "file": "phase6/round20/phase6-regular-dark.pdf",
+        "sha256": "4fa80183ca3317da5319048b3438adc4a72758483bfbf1f43c2a91f4d2361892",
+        "bytes": 81598,
+        "pages": 1,
+        "auditHashMatches": true,
+        "pageSizePoints": [
+          768,
+          480.5
+        ],
+        "visuallyInspected": true
+      },
+      {
+        "file": "phase6/round20/phase6-regular-light.pdf",
+        "sha256": "2be70f55027cdc5b01cbb007395aeede92c7d51453251595a05d86dc7844879b",
+        "bytes": 81598,
+        "pages": 1,
+        "auditHashMatches": true,
+        "pageSizePoints": [
+          768,
+          480.5
+        ],
+        "visuallyInspected": true
+      },
+      {
+        "file": "phase6/round20/phase6-regular-light-automatic.pdf",
+        "sha256": "e10bac2891161a6b3b536a85ddb7b9f547fc6a65135d5a84df71356328c8ce6a",
+        "bytes": 81609,
+        "pages": 1,
+        "auditHashMatches": true,
+        "pageSizePoints": [
+          768,
+          480.5
+        ],
+        "visuallyInspected": true
+      },
+      {
+        "file": "phase6/round20/phase6-telephone-light.pdf",
+        "sha256": "a4a98078936e3bab555b9c04dee2045cffd04a6a1a07a9d4061788fc49ef4bbb",
+        "bytes": 84584,
+        "pages": 2,
+        "auditHashMatches": true,
+        "pageSizePoints": [
+          768,
+          480.5
+        ],
+        "visuallyInspected": true
+      }
+    ]
+  },
+  "limitations": [
+    "Automatic interpretation supports clear compatible colored maps; unresolved geometry/color blocks registration and requires clearer input. No arbitrary-image guarantee.",
+    "Existing immutable-catalog identities only; unknown identities remain blocked.",
+    "Synthetic runtime fixtures do not certify live provider availability or real territory truth.",
+    "Six reserved real assignments must remain uncommissioned."
+  ],
+  "nonblockingObservations": [
+    "Wide PDF preview leaves unused horizontal space; zoom is available.",
+    "Completion screenshots may briefly retain the checking indicator alongside confirmed save/readback text."
+  ],
+  "remainingBlockers": [],
+  "provenance": {
+    "localVerification": "phase6/local-source-verification.json",
+    "packagingVerification": "phase6/delivery/package-verification.json",
+    "packagingRun": "36437031479",
+    "sourceSha256IndependentlyChecked": "3e11018d80273866855440d10a111c00da7e711e20d6f20feb3a75dd737bf201",
+    "apkSha256": "31920acf188379bf35c64d06f8521c373ba88f1bf14ab1df7d0b57445ed5ccc2",
+    "aabSha256": "ddba7c24c06567c4b104fb1358c07c2e63f513c0f1da490feff05b9a6f34c4de",
+    "immutableAssetCount": 25,
+    "reservedAssignments": "UNCHANGED_IN_EXACT_KB_AND_QUEUE"
+  },
+  "acceptance": "All mandatory Phase 6 application gates passed using current plus explicitly retained unaffected evidence. This is not real territory card commissioning or field release.",
+  "deliveryCondition": "Local reconstructed APK must match the tested APK SHA-256 before handoff; packaging proof already verifies original CI artifact."
+}

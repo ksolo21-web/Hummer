@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "sourceCommit": "e851c625b73dee83737810767856a741e9468d26",
+  "testedRun": 36435295587,
+  "files": {
+    "TerritoryCardStudio-Android-0.6.1.apk": "31920acf188379bf35c64d06f8521c373ba88f1bf14ab1df7d0b57445ed5ccc2",
+    "TerritoryCardStudio-Android-0.6.1.aab": "ddba7c24c06567c4b104fb1358c07c2e63f513c0f1da490feff05b9a6f34c4de",
+    "phase6-source.tar.xz": "3e11018d80273866855440d10a111c00da7e711e20d6f20feb3a75dd737bf201"
+  },
+  "immutableAssetCount": 25,
+  "assetHashes": {
+    "Knowledge_Base_Assignment_Status.csv": "426fd44ae4a5084b24c4f738e0eb8a11ca437050b4b5a53c6f010ab66e8800bf",
+    "NEEDS_NEW_CARD_QUEUE.json": "efd22d7ea6e9913305a0898f1b0728865138b59b065fd7083f79f2225ffb9a3b",
+    "Online-Source-Policy.json": "7a42a1462bdd679d56fb02c0b88e4090e2598c4cfc6793b0af4b8538e5f2d3f1",
+    "Provider-Endpoint-Switches.properties": "1e023870483def138eb6b512f6f6ce2af6edaede341c5836fc570e78f72781ad",
+    "R48-Canonical-Style-Tokens.json": "ced211f7df0d2dafffb6d05bde4640a8bd2c1b0a44719b986a57c11a65d792fe",
+    "REFERENCE-MANIFEST.json": "f09bbe2ca432f5999576eaab0c1b7da2e09ec3c50f7d3500dce0b426c81f2907",
+    "Territory-Identity-Naming-Contract.md": "b72ac28a1fcc13fa04b083ff85c2d107754f17d8afef83ed539c99aac58abe69",
+    "Territory-Knowledge-Base.json": "1f228ee88905f98cb5affc7db016ff35303c45c460c149ec03f84afb5e2d9f4a",
+    "Territory-Source-Truth-Knowledge-Base-Contract.md": "7ced301b10f07e6043ce374148529159194494f14e390e5b83e7547a88c53540",
+    "label-authority/Territory-Critic-Visual-Hard-Override-2026-09-21.md": "0e26a779ae27fb7e4bcb4f6353f84f7a1bf3d1297fbc77ad922fc46cc0ba4b2d",
+    "label-authority/Territory-Label-Completeness-Preflight-Contract.md": "72146df5a5c7921111f156d32aeb227d9570f286f9725edcf0c4499ef8373eaa",
+    "label-authority/Territory-Label-Uniformity-and-Road-Line-Quality-Override-2026-09-18.md": "b485f1be9828e1a4a33fcbb47c64befc6098b46529c08a0390d7b19f32a6bb80",
+    "label-authority/Territory-PDF-Label-Metric-Contract.md": "621b430f87268abe6ebf57387c59993428e2dc9962b77fb4503c2600222ca252",
+    "label-authority/Territory-Segment-Role-Whole-Label-Contract.md": "ef99639bc11dc6d00c98d7d0062ad61d266399862c242d7dc88b722b827341ca",
+    "render-authority/Canonical-New-Designed-Template-R48.pdf": "9de0e819a0301b6d6b7dfdce8851e94839d4de2b72f5e3f2ca55d27579973ee4",
+    "render-authority/Locked-Template-Style-Token-Contract.md": "f337f59fd235347d2d04431c664101273bc83e43ca7713ef20016827a7da0bc7",
+    "render-authority/a33-directions-car.png": "34c61891dcfd6d5c7a45cf0acbbead99184d5141f8578860a688880d715d636d",
+    "render-authority/render_locked_template.py": "8a79a906b0c2b80d3346283ddb9c83211f2c7a628674504d13a71dee155bc70a",
+    "render-authority/validators/territory_identity.py": "4b61a1806574b9007fd3ab9602c46c4984892b435da43622411743948925fba8",
+    "render-authority/validators/validate_critic_visual_hard_overrides.py": "65b2c640e8f3344ee2d71af14beba5a5b7bf02e36f9aedf9b28edcb61c8bc920",
+    "render-authority/validators/validate_label_navigation_contract.py": "38c2205b16b7e4e858a7027d0ad0495c50531f3d182b2a46fc230ed488f8ea4f",
+    "render-authority/validators/validate_pdf_identity.py": "1e7faa125511cf937bef4eaa183388aa12e7b58a61bc6bd0a772d6f95ad69aa3",
+    "render-authority/validators/validate_pdf_label_metrics.py": "510a028e53a42ecac376cb32995981caed7f9909d565d22f69804d7b7596d0c1",
+    "render-authority/validators/validate_style_token_layer.py": "f65bad6f9cf2f2b6f7765a2e092c073a7e23c606f28df25d6fa0b072651b8184",
+    "render-authority/validators/validate_territory_identity.py": "d80fbba2e0fc6bbe3ab947ee1a092d517e4952f6bfcb0478271cff3961ed7c9b"
+  },
+  "reservedAssignments": "UNCHANGED_IN_EXACT_KB_AND_QUEUE"
+}

@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "sourceCommit": "e851c625b73dee83737810767856a741e9468d26",
+  "testedRun": 36435295587,
+  "sourceManifestFiles": 184,
+  "overlayFilesExact": 32,
+  "frozenAuthorityAssetsExact": 25,
+  "sourcePackageSha256": "3e11018d80273866855440d10a111c00da7e711e20d6f20feb3a75dd737bf201"
+}
