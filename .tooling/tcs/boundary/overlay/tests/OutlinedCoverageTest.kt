@@ -15,7 +15,8 @@ class OutlinedCoverageTest {
     private fun span(id:String,from:Double,to:Double,out:String?,order:Int=0,reverse:Boolean=false,kind:OutlinedSpanDisposition=OutlinedSpanDisposition.ROAD)=
         OutlinedSourceSpan(id,from,to,kind,out,order,reverse,"Source crop reviewed against the corresponding street trace")
     private fun review(e:OutlinedMapExtraction,roads:List<RoadGeometry>,spans:List<OutlinedSourceSpan>)=OutlinedCoverageDecision(
-        OutlinedCoverageContract.analysisSha256(source,e,transform),OutlinedCoverageContract.outputSha256(roads),true,spans)
+        OutlinedCoverageContract.analysisSha256(source,e,transform),OutlinedCoverageContract.outputSha256(roads),true,
+        spans.map {s->s.copy(reviewedOutputSha256=roads.firstOrNull {it.segmentId==s.outputId}?.let {OutlinedCoverageContract.outputSha256(listOf(it))}.orEmpty())})
     private fun assess(e:OutlinedMapExtraction,roads:List<RoadGeometry>,spans:List<OutlinedSourceSpan>)=
         OutlinedCoverageContract.assess(source,e,transform,review(e,roads,spans),roads)
     @Test fun completeSplitAccountsForEverySourceInterval() {

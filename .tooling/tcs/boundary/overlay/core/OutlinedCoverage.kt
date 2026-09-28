@@ -13,7 +13,7 @@ data class OutlinedMapTransform(val scale:Double,val offsetX:Double,val offsetY:
 enum class OutlinedSpanDisposition { ROAD, NON_ROAD, OUTSIDE_CONTEXT }
 data class OutlinedSourceSpan(val candidateId:String,val from:Double,val to:Double,
     val disposition:OutlinedSpanDisposition,val outputId:String?,val outputOrder:Int=0,
-    val reversed:Boolean=false,val evidence:String="")
+    val reversed:Boolean=false,val evidence:String="",val reviewedOutputSha256:String="")
 data class OutlinedCoverageDecision(val analysisSha256:String,val outputSha256:String,
     val boundaryConfirmed:Boolean,val spans:List<OutlinedSourceSpan>)
 data class OutlinedCoverageResult(val failures:List<String>) {val passed get()=failures.isEmpty()}
@@ -82,9 +82,13 @@ object OutlinedCoverageContract {
                 if(abs(s.from-end)>EPS)errors+="SPAN_GAP_OR_OVERLAP:$id"
                 end=s.to
                 if(s.evidence.trim().length !in 8..2000)errors+="SOURCE_EVIDENCE_REQUIRED:$id"
-                if(s.disposition==OutlinedSpanDisposition.ROAD){if(s.outputId !in output)errors+="MISSING_OUTPUT:$id"}
+                if(s.disposition==OutlinedSpanDisposition.ROAD){
+                    val r=output[s.outputId]
+                    if(r==null)errors+="MISSING_OUTPUT:$id"
+                    else if(s.reviewedOutputSha256!=outputSha256(listOf(r)))errors+="SPAN_OUTPUT_REVIEW_CHANGED:$id"
+                }
                 else {
-                    if(s.outputId!=null || s.reversed || s.outputOrder!=0)errors+="OMISSION_HAS_OUTPUT:$id"
+                    if(s.outputId!=null || s.reversed || s.outputOrder!=0 || s.reviewedOutputSha256.isNotEmpty())errors+="OMISSION_HAS_OUTPUT:$id"
                     if(s.disposition==OutlinedSpanDisposition.OUTSIDE_CONTEXT &&
                         OutlinedMapRoadExtractor.relationship(slice(proposal.road.points,s.from,s.to),e.boundary.polygon)!=BoundaryRoadRelation.EXTERIOR)
                         errors+="NONEXTERIOR_CONTEXT_OMISSION:$id"
