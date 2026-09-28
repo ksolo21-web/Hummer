@@ -23,6 +23,24 @@ class OutlinedMapBoundaryTest {
         val out=File(root.parentFile,"evidence/boundary-analysis.json");out.parentFile.mkdirs()
         out.writeText("""{"width":${b.width},"height":${b.height},"enclosedPixels":${b.enclosedPixels},"polygon":[${b.polygon.joinToString(","){"[${it.x},${it.y}]"}}]}""")
     }
+    @Test fun actualImageRoadProposalsRemainNeutralUntilReviewed() {
+        val image=source();val p=IntArray(image.width*image.height);image.getRGB(0,0,image.width,image.height,p,0,image.width)
+        val result=OutlinedMapRoadExtractor.extract(image.width,image.height,p,emptyList())
+        assertTrue(result.roads.isNotEmpty())
+        assertTrue(result.roads.all {it.road.status=="context"})
+        assertTrue(result.roads.any {it.relation==BoundaryRoadRelation.INTERIOR})
+        val out=File(root.parentFile,"evidence/outlined-road-proposals.json");out.parentFile.mkdirs()
+        out.writeText("""{"roads":[${result.roads.joinToString(","){r->"""{"id":"${r.road.id}","relation":"${r.relation}","points":[${r.road.points.joinToString(","){"[${it.x},${it.y}]"}}]}"""}}],"findingCount":${result.findings.size}}""")
+    }
+    @Test fun sourceSpaceRoadRelationsDistinguishCrossingsAndSides() {
+        val polygon=listOf(Point2D(0.0,0.0),Point2D(100.0,0.0),Point2D(100.0,100.0),Point2D(0.0,100.0))
+        fun relation(x1:Double,y1:Double,x2:Double,y2:Double)=OutlinedMapRoadExtractor.relationship(listOf(Point2D(x1,y1),Point2D(x2,y2)),polygon)
+        assertEquals(BoundaryRoadRelation.INTERIOR,relation(20.0,20.0,80.0,80.0))
+        assertEquals(BoundaryRoadRelation.EXTERIOR,relation(-20.0,20.0,-20.0,80.0))
+        assertEquals(BoundaryRoadRelation.CROSSING,relation(-20.0,50.0,120.0,50.0))
+        assertEquals(BoundaryRoadRelation.BOUNDARY_FOLLOWING,relation(0.0,20.0,0.0,80.0))
+        assertEquals(BoundaryRoadRelation.BOUNDARY_ENDPOINT,relation(50.0,50.0,100.0,50.0))
+    }
     @Test fun brokenUserOutlineIsNotSilentlyClosed() {
         val image=source();val p=IntArray(image.width*image.height);image.getRGB(0,0,image.width,image.height,p,0,image.width)
         for(y in 82..92)for(x in 584..590)p[y*image.width+x]=0xFFFFFFFF.toInt()

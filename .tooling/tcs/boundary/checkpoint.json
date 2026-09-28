@@ -4,7 +4,13 @@
   "sourceSha256": "a93294659bd8ec40937fde5b20a8e0f89315d20c69ebe25e92318fb5665bbec3",
   "completedAcceptanceGates": 0,
   "requiredAcceptanceGates": 6,
-  "current": "closed-outline detector implementation",
+  "current": "neutral road proposal and relationship extraction; native integration outstanding",
   "next": "compile and test exact-source boundary detection, then road proposal and typed coverage integration",
-  "baselineSourceCommit": "e851c625b73dee83737810767856a741e9468d26"
+  "baselineSourceCommit": "e851c625b73dee83737810767856a741e9468d26",
+  "boundaryTests": {
+    "passed": 4,
+    "failed": 0,
+    "run": 36439696560,
+    "commit": "68b9c815779a4d970ae5c31f9824e31e26a6faa0"
+  }
 }
