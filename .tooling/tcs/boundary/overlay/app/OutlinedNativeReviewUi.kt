@@ -41,13 +41,13 @@ import java.io.File
                 Text("${span.from}–${span.to}: ${span.disposition.name}; output ${span.outputId ?: "none"}")
             }
             Text("$id • ${p.relation.name.replace('_',' ')}"+(if(id in reviewed)" • review recorded" else ""))
-            OutlinedTextField(fromText,{fromText=it},label={Text("Source interval start (0 to 1)")},modifier=Modifier.fillMaxWidth())
-            OutlinedTextField(toText,{toText=it},label={Text("Source interval end (0 to 1)")},modifier=Modifier.fillMaxWidth())
+            OutlinedTextField(fromText,{fromText=it},label={Text("Source interval start (0 to 1)")},modifier=Modifier.fillMaxWidth().testTag("outlined-span-start"))
+            OutlinedTextField(toText,{toText=it},label={Text("Source interval end (0 to 1)")},modifier=Modifier.fillMaxWidth().testTag("outlined-span-end"))
             val selectedPath=runCatching {OutlinedCoverageContract.slice(p.road.points,fromText.toDouble(),toText.toDouble())}.getOrNull()
             if(source!=null && selectedPath!=null)NativeSourcePreview(source,outline=review.extraction.boundary.polygon,sourceRoad=selectedPath){}
             TextButton(onClick={runCatching {val (r,out)=review.clearCandidate(id,roads);onChanged(r,out);message="Cleared decisions for $id"}.onFailure {message=it.message.orEmpty()}},enabled=sourceReadable){Text("Clear this trace’s decisions")}
             Text("Orange shows this exact source trace. Its name and work instruction are proposals until you check them.")
-            listOf("ROAD","NON_ROAD","OUTSIDE_CONTEXT").forEach {value->FilterChip(kind==value,{kind=value},label={Text(value.replace('_',' '))})}
+            listOf("ROAD","NON_ROAD","OUTSIDE_CONTEXT").forEach {value->FilterChip(kind==value,{kind=value},label={Text(value.replace('_',' '))},modifier=Modifier.testTag("outlined-disposition-$value"))}
             if(kind=="ROAD") {
                 OutlinedTextField(name,{name=it},label={Text("Verified street name")},modifier=Modifier.fillMaxWidth().testTag("outlined-road-name"))
                 listOf("context" to "Navigation context only","green" to "Work both sides","yellow" to "Work inside only","red" to "Explicit do not work").forEach {(value,label)->FilterChip(status==value,{status=value},label={Text(label)})}

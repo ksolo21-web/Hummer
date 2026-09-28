@@ -66,7 +66,10 @@ class OutlinedImageInstrumentationTest {
                 val imported=x.sources.importFromStream(x.slot,"outlined-source.jpg","image/jpeg",file.inputStream())
                 val a=CurrentAuthoritativeAssignmentState(x.id,x.identity,x.identity.canonicalFilename,x.kb.revision,"current_authoritative_assignment","0".repeat(64),imported.sourceFilename,"Rochester","9/28/2026",listOf("Directions: Synthetic review only; not for field use."),"full_map",x.slot.housingType,RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,result.roads,emptyList())
                 val reconciliation=NativeSourceReconciliation(x.id,x.mode.name,x.kb.revision,hash,x.slot.referenceSha256,"current_assignment_map","Synthetic reviewer","2026-09-28T15:00:00Z",NativeSourceReconciliationContract.assignmentContentSha256(a),null,false,false,false,false,result.observations,emptyList(),"00000000-0000-0000-0000-000000000010",null,boundaryReviewed.sha256)
+                val olderManual=x.drafts.save(NativeAuthoringDraft(a,reconciliation.copy(mode=WorkspaceMode.LETTER_WRITING.name,imageInterpretationSha256=null),VerificationJurisdiction("Oakland County","Michigan","United States"),emptyList()),null)
                 val saved=x.drafts.save(NativeAuthoringDraft(a,reconciliation,VerificationJurisdiction("Oakland County","Michigan","United States"),emptyList(),outlinedReview=boundaryReviewed),null)
+                val blockedOtherMode=runCatching {x.drafts.register(x.id,WorkspaceMode.LETTER_WRITING,olderManual.revisionSha256)}.exceptionOrNull()
+                assertEquals("This source requires its outlined-map review",blockedOtherMode?.message)
                 val reloaded=AndroidNativeDraftStore(x.app,x.kb,x.sources,File(x.root,"native")).read(x.id,x.mode)
                 val downgraded=saved.copy(outlinedReview=null,reconciliation=saved.reconciliation.copy(imageInterpretationSha256=null))
                 assertTrue("Outlined review removal bypassed mandatory gates",runCatching {x.drafts.save(downgraded,saved.revisionSha256)}.isFailure)
@@ -86,7 +89,16 @@ class OutlinedImageInstrumentationTest {
         val finding=MapImageFinding("component-mixed","Geometry was not recovered",AxisAlignedRect(20.0,40.0,80.0,60.0))
         val extraction=OutlinedMapExtraction(OutlinedMapBoundary(100,100,polygon,6400,AxisAlignedRect(10.0,10.0,90.0,90.0)),listOf(candidate),listOf(finding))
         val transform=OutlinedMapTransform(2.0,200.0,40.0)
-        val draft=InterpretedMapDraft("a".repeat(64),emptyList(),emptyList(),listOf(finding),emptyList(),outlined=extraction,sourceToPage=transform)
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val fixture=File(context.cacheDir,"outlined-span-fixture.png")
+        val bitmap=android.graphics.Bitmap.createBitmap(100,100,android.graphics.Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.LTGRAY)
+        val canvas=android.graphics.Canvas(bitmap)
+        val paint=android.graphics.Paint().apply {color=android.graphics.Color.BLACK;style=android.graphics.Paint.Style.STROKE;strokeWidth=2f}
+        canvas.drawRect(10f,10f,90f,90f,paint);paint.color=android.graphics.Color.WHITE;canvas.drawLine(20f,50f,80f,50f,paint)
+        fixture.outputStream().use {bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
+        val fixtureHash=fixture.inputStream().use(BundleIntegrity::sha256)
+        val draft=InterpretedMapDraft(fixtureHash,emptyList(),emptyList(),listOf(finding),emptyList(),outlined=extraction,sourceToPage=transform)
         var review=OutlinedNativeReview.from(draft).confirmBoundary(true)
         fun output(id:String,from:Double,to:Double)=RoadGeometry(id,"Alpha Rd","alpha rd","context","context","",false,"termination","termination",4.0,OutlinedCoverageContract.slice(path,from,to).map(transform::page))
         var roads=listOf(output("part-a",0.0,0.5),output("part-b",0.5,1.0))
@@ -103,6 +115,20 @@ class OutlinedImageInstrumentationTest {
         assertTrue(undone.first.spans.isEmpty());assertTrue(undone.second.isEmpty())
         val invalid=OutlinedNativeReview.from(draft).confirmBoundary(true).reviewSpan("source-a",0.0,0.5,OutlinedSpanDisposition.OUTSIDE_CONTEXT,"Incorrect exterior claim",emptyList(),null)
         assertTrue(invalid.coverageFailures(emptyList()).contains("NONEXTERIOR_CONTEXT_OMISSION:source-a"))
+        val uiReview=mutableStateOf(OutlinedNativeReview.from(draft))
+        rule.setContent {Column(Modifier.verticalScroll(rememberScrollState())) {
+            OutlinedNativeReviewPanel(uiReview.value,emptyList(),fixture){r,_->uiReview.value=r}
+        }}
+        rule.waitUntil(30000){runCatching {rule.onNodeWithTag("outlined-boundary-confirm").assertIsEnabled();true}.getOrDefault(false)}
+        rule.onNodeWithTag("outlined-span-end").performScrollTo().performTextReplacement("0.5")
+        rule.onNodeWithTag("outlined-disposition-OUTSIDE_CONTEXT").performScrollTo().performClick()
+        rule.onNodeWithTag("outlined-source-evidence").performScrollTo().performTextReplacement("Incorrect exterior claim")
+        rule.activity.runOnUiThread {(rule.activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(rule.activity.window.decorView.windowToken,0)}
+        rule.waitForIdle()
+        rule.onNodeWithTag("outlined-review-trace").performScrollTo().performClick()
+        rule.onNodeWithTag("outlined-review-status").performScrollTo().assertTextContains("NONEXTERIOR_CONTEXT_OMISSION",substring=true)
+        rule.runOnIdle {assertTrue(uiReview.value.spans.isEmpty())}
+        fixture.delete()
     }
 
 }
