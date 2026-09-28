@@ -94,7 +94,11 @@ class Phase4LifecycleInstrumentationTest {
                 2->x.authority.revoke(x.id,x.mode,x.authority.status(x.id,x.mode).receiptId!!)
                 3->x.now+=900001
             }
-            assertFalse(s.state(x.id,x.mode).active);assertNull(s.state(x.id,x.mode).ticket)
+            val invalidated=s.state(x.id,x.mode)
+            assertFalse(invalidated.active);assertNull(invalidated.ticket);assertNull(invalidated.promoted)
+            assertEquals("INVALIDATED",invalidated.history.last().action)
+            assertEquals(t.manifest.canonicalSha256(),invalidated.history.last().candidateSha256)
+            assertEquals(invalidated.history,s.state(x.id,x.mode).history)
             denied{s.decideLatest(t,"Reviewer",checks,true,true)};denied{s.readCurrentPdf(x.id,x.mode)}
         }
     }

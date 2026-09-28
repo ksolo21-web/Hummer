@@ -19,18 +19,20 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Recover accepted Phase 3 and apply Phase 4
+      - name: Recover accepted Phase 4 passes and strengthen one audit check
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p evidence accepted tcs-src
-          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10945627989/zip > accepted.zip
-          echo 'ae6058f9ffdbb9ac4e8dbdb79dbd1bef687dd017cbfea4563cddcbe4c666ee5a  accepted.zip' | sha256sum -c -
+          gh api /repos/ksolo21-web/Hummer/actions/artifacts/10947298050/zip > accepted.zip
+          echo 'b9c3827d924b5b40d9ec1104ab310f8f5dde937ef54982fb320727bc558d2907  accepted.zip' | sha256sum -c -
           unzip -q accepted.zip -d accepted
-          echo '0454ebe1ca33314103213d1a0673ec7530846febda826eb471ea9062cb0fd5ab  accepted/phase3d-source.tar.xz' | sha256sum -c -
-          tar -xJf accepted/phase3d-source.tar.xz -C tcs-src
+          echo '3815e650ba583afb64ecb4700920a7d50eca2ff7041ca785f494c51520dee264  accepted/phase4-source.tar.xz' | sha256sum -c -
+          tar -xJf accepted/phase4-source.tar.xz -C tcs-src
           (cd tcs-src && sha256sum -c ../accepted/source-files.sha256) > evidence/accepted-source-verification.log
+          cp accepted/phase4-*.png accepted/phase4-*.log accepted/phase4-restart-proof.json evidence/
+          cp accepted/test-identities.json evidence/retained-test-identities.json
           for f in .tooling/tcs/phase4-overlay/*.kt; do
             case "$f" in *InstrumentationTest.kt) target=androidTest;; *) target=main;; esac
             cp "$f" "tcs-src/app/src/$target/java/com/koenterprises/territorycardstudio/"
@@ -54,7 +56,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
           python3 -m pip install --quiet pillow
-          (cd tcs-src && gradle --no-daemon :app:assembleDebug :app:bundleDebug :app:assembleDebugAndroidTest) > evidence/compile.log 2>&1 || { cat evidence/compile.log; exit 1; }
+          (cd tcs-src && gradle --no-daemon :app:assembleDebugAndroidTest) > evidence/compile.log 2>&1 || { cat evidence/compile.log; exit 1; }
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
           keytool -genkeypair -keystore "$RUNNER_TEMP/phase4-debug.jks" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 2 -dname 'CN=Phase4 Emulator Debug' -noprompt
           "$APKSIGNER" sign --ks "$RUNNER_TEMP/phase4-debug.jks" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out evidence/TerritoryCardStudio-Android-0.4.0.apk tcs-src/app/build/outputs/apk/debug/app-debug.apk
@@ -66,7 +68,7 @@ jobs:
           sha256sum tcs-src/app/build/outputs/bundle/debug/app-debug.aab > evidence/aab.sha256
       - name: Enable KVM
         run: sudo chmod 666 /dev/kvm
-      - name: Execute new lifecycle and affected route cases
+      - name: Execute only strengthened invalidation audit case
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

@@ -2,7 +2,7 @@ from pathlib import Path
 import json,hashlib,sys,xml.etree.ElementTree as E
 from PIL import Image
 root=Path(sys.argv[1]);passed=[];failed=[];rows=[]
-for name,count in [('main',17),('before-restart',1),('after-restart',1),('wide',2),('affected',2)]:
+for name,count in [('main',17),('before-restart',1),('after-restart',1),('wide',2),('affected',2),('audit-retry',1)]:
  raw=(root/f'phase4-{name}.log').read_text();c=n=None;ok=[];bad=[]
  for line in raw.splitlines():
   if line.startswith('INSTRUMENTATION_STATUS: class='):c=line.split('=',1)[1]
