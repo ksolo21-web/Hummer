@@ -18,7 +18,13 @@ object OutlinedMapBoundaryDetector {
                 for(dy in -1..1)for(dx in -1..1){val nx=x+dx;val ny=y+dy
                     if(nx in 0 until width&&ny in 0 until height){val n=ny*width+nx;if(dark[n]&&!seen[n]){seen[n]=true;queue[tail++]=n}}}}
             if(tail<max(80,(width+height)/3)||right-left<width/20||bottom-top<height/20)continue
-            require(left>0&&top>0&&right<width-1&&bottom<height-1){"Black outline touches the image edge. Supply the complete closed boundary."}
+            if(left==0||top==0||right==width-1||bottom==height-1){
+                val boxArea=(right-left+1).toLong()*(bottom-top+1).toLong()
+                // A screenshot's solid full-width toolbar is not map linework. A thin
+                // clipped outline remains a hard failure, even beside valid shapes.
+                if(right-left+1 >= width*0.95 && tail.toDouble()/boxArea >= 0.75)continue
+                throw IllegalArgumentException("Black outline touches the image edge. Supply the complete closed boundary.")
+            }
             val edge=BooleanArray(pixels.size);for(i in 0 until tail)edge[queue[i]]=true
             val exterior=BooleanArray(pixels.size);head=0;tail=0;queue[tail++]=0;exterior[0]=true
             while(head<tail){val p=queue[head++];val x=p%width;val y=p/width

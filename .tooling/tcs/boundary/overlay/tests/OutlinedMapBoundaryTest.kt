@@ -85,6 +85,19 @@ class OutlinedMapBoundaryTest {
         p.fill(0xFFDDDDDD.toInt());rect(0,20,170,200)
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
     }
+    @Test fun solidScreenshotToolbarDoesNotHideTheOnlyClosedSourceOutline() {
+        val w=400;val h=300;val p=IntArray(w*h){0xFFEEEEEE.toInt()}
+        for(x in 0 until w)for(y in 270 until h)p[y*w+x]=0xFF000000.toInt()
+        for(x in 40..350){p[30*w+x]=0xFF000000.toInt();p[240*w+x]=0xFF000000.toInt()}
+        for(y in 30..240){p[y*w+40]=0xFF000000.toInt();p[y*w+350]=0xFF000000.toInt()}
+        val b=OutlinedMapBoundaryDetector.detect(w,h,p)
+        assertTrue(b.enclosedPixels in 60000..66000)
+        p.fill(0xFFEEEEEE.toInt())
+        for(x in 0 until w)for(y in 270 until h)p[y*w+x]=0xFF000000.toInt()
+        for(x in 0..350){p[30*w+x]=0xFF000000.toInt();p[240*w+x]=0xFF000000.toInt()}
+        for(y in 30..240){p[y*w]=0xFF000000.toInt();p[y*w+350]=0xFF000000.toInt()}
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
+    }
     @Test fun connectedEnclosuresAndInteriorHolesCannotBeFilledSilently() {
         val w=400;val h=300;val p=IntArray(w*h){0xFFDDDDDD.toInt()}
         fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){p[t*w+x]=0xFF000000.toInt();p[b*w+x]=0xFF000000.toInt()};for(y in t..b){p[y*w+l]=0xFF000000.toInt();p[y*w+r]=0xFF000000.toInt()}}
