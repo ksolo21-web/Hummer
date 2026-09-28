@@ -1,0 +1,23 @@
+[
+  {
+    "run_id": 36365246562,
+    "source_commit": "cfe62feadb5352f89ccfdd12bf38f3e3d05efaff",
+    "artifact_id": 10947298050,
+    "artifact_sha256": "b9c3827d924b5b40d9ec1104ab310f8f5dde937ef54982fb320727bc558d2907",
+    "new_identities_passed": 19,
+    "affected_prior_passed": 2,
+    "executions": 23,
+    "images": 24,
+    "failures": 0,
+    "retained": true
+  },
+  {
+    "run_id": 36366049514,
+    "source_commit": "04fd9b8e32090f5dc00a343d190557d460ab4042",
+    "purpose": "One affected test strengthened to assert exact INVALIDATED audit event and cleared pointer; no production changes or blanket rerun",
+    "status": "PASS",
+    "executions": 1,
+    "failures": 0,
+    "artifact_id": 10946773809
+  }
+]

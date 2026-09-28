@@ -1,0 +1,4 @@
+Signer #1 certificate DN: CN=Phase4 Emulator Debug
+Signer #1 certificate SHA-256 digest: c1f7d3d7a27188ce8e9439eef312d00e71477eb15a290f9cfa8ce1996ded3335
+Signer #1 certificate SHA-1 digest: 3c2fbc74c92d2f6670f1ae70f38f3e53aaa52a8b
+Signer #1 certificate MD5 digest: 2853a7da44fcb53b478972a73e7e1794

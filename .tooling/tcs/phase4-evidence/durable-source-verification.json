@@ -1,0 +1,7 @@
+{
+  "file": "Phase4-Android-0.4.0-source.tar.xz",
+  "bytes": 942888,
+  "sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965",
+  "verified_files": 162,
+  "purpose": "Complete rebuildable source/assets/config, excluding disposable build outputs and caches"
+}

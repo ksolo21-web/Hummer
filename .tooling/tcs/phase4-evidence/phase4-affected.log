@@ -1,0 +1,38 @@
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase2FReviewUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase2FReviewUiInstrumentationTest:
+INSTRUMENTATION_STATUS: test=candidateChangedWhileConfirmationOpenCannotBeApproved
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase2FReviewUiInstrumentationTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=candidateChangedWhileConfirmationOpenCannotBeApproved
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase2DBNavigationInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=
+com.koenterprises.territorycardstudio.Phase2DBNavigationInstrumentationTest:
+INSTRUMENTATION_STATUS: test=realWorkspaceOpensBlockedBuildWithoutCommissioningTerritory
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.koenterprises.territorycardstudio.Phase2DBNavigationInstrumentationTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=2
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=realWorkspaceOpensBlockedBuildWithoutCommissioningTerritory
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 14.015
+
+OK (2 tests)
+
+
+INSTRUMENTATION_CODE: -1

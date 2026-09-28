@@ -1,8 +1,8 @@
 {
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
-  "current_phase": 4,
-  "current_checkpoint": "0.3.4-phase3-complete",
+  "current_phase": 5,
+  "current_checkpoint": "0.4.0-phase4-complete",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -13,8 +13,8 @@
     "1E_final_renderer_parity": "PASSED",
     "2_production_ui": "PASSED",
     "3_editing_commissioning_workflow": "PASSED",
-    "4_candidate_lifecycle_approval": "IN_PROGRESS",
-    "5_pdf_output_validation_completion": "NOT_STARTED_DEPENDS_PHASE4",
+    "4_candidate_lifecycle_approval": "PASSED",
+    "5_pdf_output_validation_completion": "NOT_STARTED_READY",
     "6_end_to_end_android_integration": "NOT_STARTED_DEPENDS_PHASE5",
     "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
     "8_release_hardening": "NOT_STARTED_DEPENDS_PHASE7",
@@ -50,11 +50,11 @@
     "3CC_preparation_ui": "PASSED",
     "3D_editing_integration": "PASSED"
   },
-  "phase_milestone_before": "Phase3D runtime integration open; Phase3 IN_PROGRESS",
-  "phase_milestone_after": "Phase3A\u20133D PASSED; aggregate Phase3 PASSED; Phase4 next",
-  "last_completed_package": "0.3.4-phase3d-complete",
-  "next_open_gate": "Phase4 targeted runtime and independent acceptance",
-  "next_bounded_task": "Complete all Phase4 gates in one run: retain passing identities, repair only failed/affected checks, review24images, persist finalcheckpoint.",
+  "phase_milestone_before": "Phase3 PASSED; Phase4 IN_PROGRESS",
+  "phase_milestone_after": "Phase4 PASSED; Phase5 next",
+  "last_completed_package": "0.4.0-phase4-complete",
+  "next_open_gate": "Phase5 final PDF and output validation",
+  "next_bounded_task": "Complete Phase5 final PDF/output validation against the accepted local-reference lifecycle: exact packet integrity, print readiness, canonical naming, guarded export and audit evidence. Preserve159 accepted distinct identities; rerun only new/failed/affected checks. Kaleb personally creates the six real replacement cards; agent tests synthetic fixtures only.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-28T00:08:48.199994+00:00",
+  "saved_at_utc": "2026-09-28T01:39:16.683127+00:00",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -614,7 +614,7 @@
     "evidence": ".tooling/tcs/phase2k-evidence/aggregate-audit.md",
     "independent_score": 10
   },
-  "last_completed_task": "phase3-complete-editing-integration-closeout",
+  "last_completed_task": "phase4-complete-candidate-lifecycle-approval-closeout",
   "phase2h_freeze_evidence": {
     "status": "PASS",
     "run_id": 36295828394,
@@ -2520,11 +2520,390 @@
     "real_territory_commissioning": false
   },
   "phase4_progress": {
-    "status": "IMPLEMENTED_PENDING_RUNTIME_AND_CRITIC",
+    "status": "PASSED",
     "new_identities": 19,
     "prior_identities_retained": 140,
     "affected_prior_rechecks": 2,
-    "required_images": 24
+    "required_images": 24,
+    "verified_images": 24,
+    "critic_score": 10
   },
-  "six_real_territories_owner": "Kaleb personally creates/reviews/exports through app; agent uses synthetic tests only; never agent commission."
+  "six_real_territories_owner": "Kaleb personally creates/reviews/exports through app; agent uses synthetic tests only; never agent commission.",
+  "phase4_freeze_evidence": {
+    "run_id": 36366049514,
+    "source_commit": "04fd9b8e32090f5dc00a343d190557d460ab4042",
+    "artifact_id": 10946773809,
+    "artifact_sha256": "2cb95b10fecbb760414d1af87973f80ada0696c7f1e53066d54aab2d833b90da",
+    "artifact_size": 74648729,
+    "retained_run_id": 36365246562,
+    "retained_source_commit": "cfe62feadb5352f89ccfdd12bf38f3e3d05efaff",
+    "retained_artifact_id": 10947298050,
+    "retained_artifact_sha256": "b9c3827d924b5b40d9ec1104ab310f8f5dde937ef54982fb320727bc558d2907",
+    "preserved_source_files": 147,
+    "changed_files": [
+      "app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt",
+      "app/src/main/java/com/koenterprises/territorycardstudio/BuildWorkflowUi.kt",
+      "app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt"
+    ],
+    "added_files": [
+      "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase4LifecycleInstrumentationTest.kt",
+      "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase4LifecycleUiInstrumentationTest.kt",
+      "app/src/main/java/com/koenterprises/territorycardstudio/AndroidCandidateLifecycleService.kt",
+      "app/src/main/java/com/koenterprises/territorycardstudio/CandidateLifecycleUi.kt"
+    ],
+    "source_manifest_files": 154,
+    "source_package_sha256": "adbf0a7d2ca0dd9d5246720a193936f23380429794e81124a8f5339198306653",
+    "apk_sha256": "c15618b47d37dc99b2d74dd7f1668855ced1e22f37db7db340220ddcb0e2ca8b",
+    "aab_sha256": "c1f946c203a60a1cbc79a1e9678b04806a58f5555e279dbf246822675e5ba50f",
+    "exact_non_signing_apk_entries": 146,
+    "status": "PASS",
+    "version": "0.4.0",
+    "version_code": 42,
+    "run_conclusion": "success",
+    "new_phase4_tests": 19,
+    "frozen_prior_tests": 140,
+    "affected_prior_rechecked": 2,
+    "strengthened_test_rechecked": 1,
+    "combined_distinct_identities": 159,
+    "full_prior_suite_rerun": false,
+    "failures": 0,
+    "screenshots": [
+      {
+        "file": "phase4-approved-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "76831ecd103ba99ad73970f819fb1b467edc1ba833a7fb25df6deed6b1885ca3"
+      },
+      {
+        "file": "phase4-approved-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "c0d6cef9ec3426d42c1b2c7a91450307bef8ae6a17e47738af6455ee2f0c4c6e"
+      },
+      {
+        "file": "phase4-confirmation-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "7d5f6b856b23baada06007d13e0928492684d5e2ef4ecb0cf5dca49d865ce819"
+      },
+      {
+        "file": "phase4-confirmation-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "580e9cfdc1847537d797799937336c726bc84f0fc40438dd7b21ea77d4b7f968"
+      },
+      {
+        "file": "phase4-invalidated-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "dd0dd2db2a3861cc998dbf1b4caf5479e26668fdff1fc258e432031ebe634a10"
+      },
+      {
+        "file": "phase4-invalidated-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "268ec7be770aa9b12ac5033257110ba519b07d8fd5ddc60c372e517e1a1807c3"
+      },
+      {
+        "file": "phase4-rejected-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "e406bf449e426ad587d91bddcd0dd11c37509b0509262de3c14146aea1816850"
+      },
+      {
+        "file": "phase4-rejected-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "bea9888cbf18f7b6ab713f3811efbcdff10a8693df91e2c6b2faa30ce7e193bc"
+      },
+      {
+        "file": "phase4-suspended-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "4a8eff2a004725898c0ef635dd7c0a152c925fc8f8101c43eb9f19431c572f05"
+      },
+      {
+        "file": "phase4-suspended-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "5c66f0a683016c2f0227b5eeb276f1140bb425b3d19ce63203bd1a87f0447719"
+      },
+      {
+        "file": "phase4-unapproved-dark.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "697d1177c1d1a1785738fa5f576d3363a8fd3d5cac4bd0354a466e4415515f02"
+      },
+      {
+        "file": "phase4-unapproved-light.png",
+        "width": 1080,
+        "height": 2400,
+        "sha256": "65eee051b30637b8fe3d700dd234a19e2c02cc89add3e1565dc10441e29ed8f3"
+      },
+      {
+        "file": "phase4-wide-approved-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "461cdb8a989a2200848b56cde7ec4db0fde816597dd02a3135e2c4f80b8188d1"
+      },
+      {
+        "file": "phase4-wide-approved-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "25f2fb0fa24699e868a14134f645a4c49c67014a5cdfa20e4df4b81ce615ca50"
+      },
+      {
+        "file": "phase4-wide-confirmation-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "f3b983940dde3f7186d4aec822bba65fa59a5193be9303d8a70b259d73e2a767"
+      },
+      {
+        "file": "phase4-wide-confirmation-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "009b5dad8f78eca51606b67f627677626001084e165028e9daee3bbb5b48f6f6"
+      },
+      {
+        "file": "phase4-wide-invalidated-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "788869868aa6b994989632e9b9dd9a1515bbb89e393baca7651830c5eba9baa2"
+      },
+      {
+        "file": "phase4-wide-invalidated-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "e05060f90ba6756f793ef75aa4f0fd18c620b8ec5873db338f51642c113c96b9"
+      },
+      {
+        "file": "phase4-wide-rejected-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "b0775418cc71bec3ad34df562e5975d558c3ae4cddd96c72b58e17907253b4d3"
+      },
+      {
+        "file": "phase4-wide-rejected-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "487be35c3ee56e05be78ec3e707e148c6e4f12383fd49fb09890aa0480f1c512"
+      },
+      {
+        "file": "phase4-wide-suspended-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "cfd4b1b1fa5751e8947805f2d54a8f323612cbf6f7df1d89b6ce6aa8b4978507"
+      },
+      {
+        "file": "phase4-wide-suspended-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "0613772a46c9da87c4a3b1230cf18f7980dbf862b9176f8d13dbd21db5207c11"
+      },
+      {
+        "file": "phase4-wide-unapproved-dark.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "a3f1936dea610f5654bb59d5e777b5d5d001bb1d9d57e60097a4d83a7ed989de"
+      },
+      {
+        "file": "phase4-wide-unapproved-light.png",
+        "width": 1920,
+        "height": 1200,
+        "sha256": "6856a3a773a3fcefb7c111dbebedc51f7d80c53f6c15a67ad336c1afedd5c047"
+      }
+    ],
+    "independent_critic": {
+      "critic": "/root/phase3cc_critic",
+      "independent": true,
+      "passed": true,
+      "score": 10.0,
+      "scale": 10,
+      "scope": "Whole Phase4 candidate lifecycle technical and visual acceptance",
+      "all_mandatory_technical_visual_gates_passed": true,
+      "final_run": "36366049514",
+      "source_commit": "04fd9b8e32090f5dc00a343d190557d460ab4042",
+      "artifact_id": "10946773809",
+      "artifact_sha256": "2cb95b10fecbb760414d1af87973f80ada0696c7f1e53066d54aab2d833b90da",
+      "initial_run": "36365246562",
+      "mandatory_gates": {
+        "candidate_creation_all_three_modes": "PASS: complete exact packets archive as unapproved; repeated capture is idempotent.",
+        "explicit_decision_and_exact_promotion": "PASS: reviewer, mandatory checks, confirmation, exact ticket and journal revision required; validation alone cannot promote.",
+        "stale_confirmation_and_concurrency": "PASS: stale same-candidate decision and old-version ticket rejected; shared-lock revision CAS permits one concurrent writer.",
+        "atomic_storage_and_integrity": "PASS: failed journal write preserves prior decision and removes uncommitted PDF; interrupted AtomicFile recovery, bounded canonical schema/hash chain, nesting, missing/tampered/oversize data and capacity tested.",
+        "invalidation_and_audit": "PASS: final targeted raw pass exercises label mutation, extended-journal discard, authority revocation and expiry in letter and telephone modes; exact INVALIDATED manifest hash, cleared promoted pointer and idempotent subsequent read asserted.",
+        "process_restart": "PASS: actual PID4517 to4558; exact runtime/source/lifecycle bytes retained across three modes; durable approval survives while use and new decisions remain suspended.",
+        "production_integration_and_export_isolation": "PASS: build wrapper and workspace lifecycle route integrated; legacy local review and export authority remain separate; two affected prior route/confirmation identities pass.",
+        "visual": "PASS: all24 native images individually viewed, six states across phone/wide light/dark, preserved byte-for-byte in final artifact.",
+        "preservation": "PASS:147 prior files exact;3 intended integration files modified;4 additions;154 final manifest hashes independently verified.140 prior identities preserved,19 new gives159 distinct;2 old reruns not double-counted.",
+        "provenance": "PASS: final archive SHA and all entries verified; five original raw logs exact retained; targeted retry code0 and terminal success;146 nonsigning APK payload entries identical between runs; Actual AAB bytes extracted from both source archives hash identically to their recorded digest (c1f946c203a60a1cbc79a1e9678b04806a58f5555e279dbf246822675e5ba50f).",
+        "user_owned_real_cards": "PASS: six real assignments and bundled authority unchanged; runtime fixtures synthetic only."
+      },
+      "screenshots": [
+        {
+          "file": "phase4-approved-dark.png",
+          "sha256": "76831ecd103ba99ad73970f819fb1b467edc1ba833a7fb25df6deed6b1885ca3",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-approved-light.png",
+          "sha256": "c0d6cef9ec3426d42c1b2c7a91450307bef8ae6a17e47738af6455ee2f0c4c6e",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-confirmation-dark.png",
+          "sha256": "7d5f6b856b23baada06007d13e0928492684d5e2ef4ecb0cf5dca49d865ce819",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-confirmation-light.png",
+          "sha256": "580e9cfdc1847537d797799937336c726bc84f0fc40438dd7b21ea77d4b7f968",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-invalidated-dark.png",
+          "sha256": "dd0dd2db2a3861cc998dbf1b4caf5479e26668fdff1fc258e432031ebe634a10",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-invalidated-light.png",
+          "sha256": "268ec7be770aa9b12ac5033257110ba519b07d8fd5ddc60c372e517e1a1807c3",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-rejected-dark.png",
+          "sha256": "e406bf449e426ad587d91bddcd0dd11c37509b0509262de3c14146aea1816850",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-rejected-light.png",
+          "sha256": "bea9888cbf18f7b6ab713f3811efbcdff10a8693df91e2c6b2faa30ce7e193bc",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-suspended-dark.png",
+          "sha256": "4a8eff2a004725898c0ef635dd7c0a152c925fc8f8101c43eb9f19431c572f05",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-suspended-light.png",
+          "sha256": "5c66f0a683016c2f0227b5eeb276f1140bb425b3d19ce63203bd1a87f0447719",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-unapproved-dark.png",
+          "sha256": "697d1177c1d1a1785738fa5f576d3363a8fd3d5cac4bd0354a466e4415515f02",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-unapproved-light.png",
+          "sha256": "65eee051b30637b8fe3d700dd234a19e2c02cc89add3e1565dc10441e29ed8f3",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-approved-dark.png",
+          "sha256": "461cdb8a989a2200848b56cde7ec4db0fde816597dd02a3135e2c4f80b8188d1",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-approved-light.png",
+          "sha256": "25f2fb0fa24699e868a14134f645a4c49c67014a5cdfa20e4df4b81ce615ca50",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-confirmation-dark.png",
+          "sha256": "f3b983940dde3f7186d4aec822bba65fa59a5193be9303d8a70b259d73e2a767",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-confirmation-light.png",
+          "sha256": "009b5dad8f78eca51606b67f627677626001084e165028e9daee3bbb5b48f6f6",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-invalidated-dark.png",
+          "sha256": "788869868aa6b994989632e9b9dd9a1515bbb89e393baca7651830c5eba9baa2",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-invalidated-light.png",
+          "sha256": "e05060f90ba6756f793ef75aa4f0fd18c620b8ec5873db338f51642c113c96b9",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-rejected-dark.png",
+          "sha256": "b0775418cc71bec3ad34df562e5975d558c3ae4cddd96c72b58e17907253b4d3",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-rejected-light.png",
+          "sha256": "487be35c3ee56e05be78ec3e707e148c6e4f12383fd49fb09890aa0480f1c512",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-suspended-dark.png",
+          "sha256": "cfd4b1b1fa5751e8947805f2d54a8f323612cbf6f7df1d89b6ce6aa8b4978507",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-suspended-light.png",
+          "sha256": "0613772a46c9da87c4a3b1230cf18f7980dbf862b9176f8d13dbd21db5207c11",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-unapproved-dark.png",
+          "sha256": "a3f1936dea610f5654bb59d5e777b5d5d001bb1d9d57e60097a4d83a7ed989de",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        },
+        {
+          "file": "phase4-wide-unapproved-light.png",
+          "sha256": "6856a3a773a3fcefb7c111dbebedc51f7d80c53f6c15a67ad336c1afedd5c047",
+          "passed": true,
+          "inspection": "Individually viewed native screenshot; required lifecycle state readable, status/navigation bars intact, no foreign overlays."
+        }
+      ],
+      "unresolved_defects": [],
+      "limitations": [
+        "Parent durable evidence/checkpoint save and remote readback remains a closeout gate outside this technical/visual review.",
+        "Phase4 local reference is not field-export release; Phase5 and later remain outside scope.",
+        "Synthetic fixtures certify lifecycle behavior, not geography or six real card commissioning.",
+        "APK signatures are ephemeral emulator/debug signatures, not production signing."
+      ]
+    },
+    "durable_source": {
+      "file": "Phase4-Android-0.4.0-source.tar.xz",
+      "bytes": 942888,
+      "sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965",
+      "verified_files": 162,
+      "purpose": "Complete rebuildable source/assets/config, excluding disposable build outputs and caches"
+    },
+    "process_restart": "PASS_THREE_MODES_DIFFERENT_PIDS_FULL_PERSISTED_STATE",
+    "reserved_real_cards": "USER_OWNED_UNTOUCHED",
+    "field_export_integration": "PHASE5",
+    "production_signing": "PHASE8",
+    "next": "5_pdf_output_validation_completion"
+  }
 }

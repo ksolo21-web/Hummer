@@ -1,0 +1,19 @@
+{
+  "preserved_source_files": 147,
+  "changed_files": [
+    "app/src/main/java/com/koenterprises/territorycardstudio/WorkspaceModeUi.kt",
+    "app/src/main/java/com/koenterprises/territorycardstudio/BuildWorkflowUi.kt",
+    "app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt"
+  ],
+  "added_files": [
+    "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase4LifecycleInstrumentationTest.kt",
+    "app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase4LifecycleUiInstrumentationTest.kt",
+    "app/src/main/java/com/koenterprises/territorycardstudio/AndroidCandidateLifecycleService.kt",
+    "app/src/main/java/com/koenterprises/territorycardstudio/CandidateLifecycleUi.kt"
+  ],
+  "source_manifest_files": 154,
+  "source_package_sha256": "adbf0a7d2ca0dd9d5246720a193936f23380429794e81124a8f5339198306653",
+  "apk_sha256": "c15618b47d37dc99b2d74dd7f1668855ced1e22f37db7db340220ddcb0e2ca8b",
+  "aab_sha256": "c1f946c203a60a1cbc79a1e9678b04806a58f5555e279dbf246822675e5ba50f",
+  "exact_non_signing_apk_entries": 146
+}

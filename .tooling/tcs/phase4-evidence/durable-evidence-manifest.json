@@ -1,0 +1,250 @@
+[
+  {
+    "path": ".tooling/tcs/phase4-evidence/Phase4-Android-0.4.0-source.tar.xz",
+    "sha256": "12bbae2c2abb7dd820367ba9837476c39e86ae2ca854e4dccea21a6528272965"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/TEST-phase4.xml",
+    "sha256": "ed2abe42ea2f77149e8e1fe505138e0efae5bfe5d6e3d54cc1b41012fcc0ce85"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/aab.sha256",
+    "sha256": "d2d2482cd32f0a9780e5706a2a3f308f8abaf823be333f5871cde657813a4ddb"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/apk-payload-parity.json",
+    "sha256": "71486277cb8e1776aaab8837f1d15cdadca2cf11a8503fa27d02cdaeb27ef9bd"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/apk-signature.txt",
+    "sha256": "29d6ae3b2391f13f3a02b2ad6c05234eba1e840369639584e6ec9b488118022e"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/apk.sha256",
+    "sha256": "2ac18ff869be9c093e4cc69c85f920ecd9acc3d5e8b3bb40c9d4c85643d9d7d5"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/app-install.log",
+    "sha256": "fce0b7407a6e77a32b88ae3d1e1f560a69fe3cf2cd23dba7b7a764f26ead7936"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/artifact-provenance.json",
+    "sha256": "45ca6109b18de2181745cc3fe56ef311fd2ae3573284238dc0c7ce55779e7d7a"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/capture-paths.txt",
+    "sha256": "3786c2cbf3ef1b5ed67348bba64563bd88c9919788a8c4374c52add4c05efc43"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/compile.log",
+    "sha256": "d9216f6521161b1bcb03f6d94d88aa957bf408d23605c33bf7c87e23cf1f150a"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/completion.md",
+    "sha256": "2c4001327afa0df04e67d0416c3fba5d9e5216e8118ce2d93ec6cb2888cf6ba0"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/durable-source-verification.json",
+    "sha256": "205ffab8aea8e3ba8e8475e7950ff4b172248fe587df96eb9a38d02f6221356b"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/execution-history.json",
+    "sha256": "50ec8cfe5b600b11185e9e4c1aa7a97e0d28748a0cbf2055c4628cfdb1f0f0d6"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/execution-results.json",
+    "sha256": "01b32d64a2922a5286ca733f0fc26b040e4828fc001048ba96f5032bd27eb645"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/implementation-summary.md",
+    "sha256": "876311b464e7650ede01b99a4b2131bef2c6358a126219c1c0d4dedeb758700f"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/independent-review.json",
+    "sha256": "ffe13f066d3ed9b89e178af6b1afb737f576f2613312cac1c4ea554811b15b0e"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/independent-review.md",
+    "sha256": "1d921c76d5187817248e1efd0b4005f98ba0dbc77233b7fe90bce96390db7ed2"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/logs.sha256",
+    "sha256": "3f4b3ab0bbf90d8a6ed576366e8e5bb49dfa5bcac87f2413df2cdad905d853b2"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-affected.log",
+    "sha256": "30c9c9a28609419d3a64c14b3b2318d9c617507c084121099308795d093ff512"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-after-restart.log",
+    "sha256": "9e8b07cb285e0e9eb281e208116904eb9a1b6f3967a6049e4699258e817bfb9d"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-approved-dark.png",
+    "sha256": "76831ecd103ba99ad73970f819fb1b467edc1ba833a7fb25df6deed6b1885ca3"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-approved-light.png",
+    "sha256": "c0d6cef9ec3426d42c1b2c7a91450307bef8ae6a17e47738af6455ee2f0c4c6e"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-audit-retry.log",
+    "sha256": "60a93adf746441bc0ed393cc851038bcbe298d942d8ce255c6d7eb97c05d1a98"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-before-restart.log",
+    "sha256": "e3e8d77906411c07170bb7e066903ff8f4a91d606bbe4fa907d10bbd50f746dd"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-confirmation-dark.png",
+    "sha256": "7d5f6b856b23baada06007d13e0928492684d5e2ef4ecb0cf5dca49d865ce819"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-confirmation-light.png",
+    "sha256": "580e9cfdc1847537d797799937336c726bc84f0fc40438dd7b21ea77d4b7f968"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-freeze.json",
+    "sha256": "534f96350196f46e2a88fe20552c15dd4eeccfef08f9c88efb9b91b168be9f88"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-independent-source-review.md",
+    "sha256": "d27470083d8a12b651603efad9a32f63ae8993bee1316f83c073f035f2b2483e"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-invalidated-dark.png",
+    "sha256": "dd0dd2db2a3861cc998dbf1b4caf5479e26668fdff1fc258e432031ebe634a10"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-invalidated-light.png",
+    "sha256": "268ec7be770aa9b12ac5033257110ba519b07d8fd5ddc60c372e517e1a1807c3"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-main.log",
+    "sha256": "de99dfa25167ec7c7e6eef88cebf1209e71ffbc316536fd5ec46428bac84c2a1"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-rejected-dark.png",
+    "sha256": "e406bf449e426ad587d91bddcd0dd11c37509b0509262de3c14146aea1816850"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-rejected-light.png",
+    "sha256": "bea9888cbf18f7b6ab713f3811efbcdff10a8693df91e2c6b2faa30ce7e193bc"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-restart-proof.json",
+    "sha256": "a20a1068c7fdf9cdcf998428b87afd7839b8d63605c3d7bb38c27018fde4b985"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-suspended-dark.png",
+    "sha256": "4a8eff2a004725898c0ef635dd7c0a152c925fc8f8101c43eb9f19431c572f05"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-suspended-light.png",
+    "sha256": "5c66f0a683016c2f0227b5eeb276f1140bb425b3d19ce63203bd1a87f0447719"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-unapproved-dark.png",
+    "sha256": "697d1177c1d1a1785738fa5f576d3363a8fd3d5cac4bd0354a466e4415515f02"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-unapproved-light.png",
+    "sha256": "65eee051b30637b8fe3d700dd234a19e2c02cc89add3e1565dc10441e29ed8f3"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-approved-dark.png",
+    "sha256": "461cdb8a989a2200848b56cde7ec4db0fde816597dd02a3135e2c4f80b8188d1"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-approved-light.png",
+    "sha256": "25f2fb0fa24699e868a14134f645a4c49c67014a5cdfa20e4df4b81ce615ca50"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-confirmation-dark.png",
+    "sha256": "f3b983940dde3f7186d4aec822bba65fa59a5193be9303d8a70b259d73e2a767"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-confirmation-light.png",
+    "sha256": "009b5dad8f78eca51606b67f627677626001084e165028e9daee3bbb5b48f6f6"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-invalidated-dark.png",
+    "sha256": "788869868aa6b994989632e9b9dd9a1515bbb89e393baca7651830c5eba9baa2"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-invalidated-light.png",
+    "sha256": "e05060f90ba6756f793ef75aa4f0fd18c620b8ec5873db338f51642c113c96b9"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-rejected-dark.png",
+    "sha256": "b0775418cc71bec3ad34df562e5975d558c3ae4cddd96c72b58e17907253b4d3"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-rejected-light.png",
+    "sha256": "487be35c3ee56e05be78ec3e707e148c6e4f12383fd49fb09890aa0480f1c512"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-suspended-dark.png",
+    "sha256": "cfd4b1b1fa5751e8947805f2d54a8f323612cbf6f7df1d89b6ce6aa8b4978507"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-suspended-light.png",
+    "sha256": "0613772a46c9da87c4a3b1230cf18f7980dbf862b9176f8d13dbd21db5207c11"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-unapproved-dark.png",
+    "sha256": "a3f1936dea610f5654bb59d5e777b5d5d001bb1d9d57e60097a4d83a7ed989de"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide-unapproved-light.png",
+    "sha256": "6856a3a773a3fcefb7c111dbebedc51f7d80c53f6c15a67ad336c1afedd5c047"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/phase4-wide.log",
+    "sha256": "9641e83a31af9cf9150051fb15e4894079cf85d9a262789bb647e7e750156995"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/preservation-verification.json",
+    "sha256": "152612a9f13d3b63ff9484c41914b69173bdb8a459fc327ded4ab847f14758f4"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/requirements.md",
+    "sha256": "83f624de2d7540484139a8b66db7c32364729f0a34e1f5e29e483053f4a2069f"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/retained-test-identities.json",
+    "sha256": "c055a0c19cb099a374285a6e1256ad6e3efa75d53a929da5bb2af9cbacbaf63f"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/screenshot-manifest.json",
+    "sha256": "91412048f0aad3cd0f61ad878ee6c9fb772e1c1687225cb03816dea193d9d621"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/source-files.sha256",
+    "sha256": "c34833e829f90736b1f7735ab953b7ff1a5ee2af13caab3b63b66dea7d4ff363"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/source-package.sha256",
+    "sha256": "109b0fd6d383799ffe7c8f33d3571f4ceae5f8b328367020c2333138fc99e494"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/status.txt",
+    "sha256": "394bdda0e230687bbcbb1168a5397d8cf6c56993dd7fe4742d0872b80a4516ec"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/test-identities.json",
+    "sha256": "01bcd80671928aca59ca172198a5d24fb89f351b36f8667442c4835a082fe492"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/test-install.log",
+    "sha256": "776aa08869a057cfdff3a9e6d28f48959b7c87afc327da9430cfb03b5de1f3c0"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/test-signature.txt",
+    "sha256": "29d6ae3b2391f13f3a02b2ad6c05234eba1e840369639584e6ec9b488118022e"
+  },
+  {
+    "path": ".tooling/tcs/phase4-evidence/ui-implementation-notes.md",
+    "sha256": "ff5120005aff8420b2fdf4e5a65cb4b22609b194f07f0e6166d8d9f1c2be03af"
+  }
+]

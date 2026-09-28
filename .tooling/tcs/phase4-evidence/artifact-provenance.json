@@ -1,0 +1,11 @@
+{
+  "run_id": 36366049514,
+  "source_commit": "04fd9b8e32090f5dc00a343d190557d460ab4042",
+  "artifact_id": 10946773809,
+  "artifact_sha256": "2cb95b10fecbb760414d1af87973f80ada0696c7f1e53066d54aab2d833b90da",
+  "artifact_size": 74648729,
+  "retained_run_id": 36365246562,
+  "retained_source_commit": "cfe62feadb5352f89ccfdd12bf38f3e3d05efaff",
+  "retained_artifact_id": 10947298050,
+  "retained_artifact_sha256": "b9c3827d924b5b40d9ec1104ab310f8f5dde937ef54982fb320727bc558d2907"
+}

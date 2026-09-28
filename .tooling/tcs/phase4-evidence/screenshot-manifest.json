@@ -1,0 +1,146 @@
+[
+  {
+    "file": "phase4-approved-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "76831ecd103ba99ad73970f819fb1b467edc1ba833a7fb25df6deed6b1885ca3"
+  },
+  {
+    "file": "phase4-approved-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "c0d6cef9ec3426d42c1b2c7a91450307bef8ae6a17e47738af6455ee2f0c4c6e"
+  },
+  {
+    "file": "phase4-confirmation-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "7d5f6b856b23baada06007d13e0928492684d5e2ef4ecb0cf5dca49d865ce819"
+  },
+  {
+    "file": "phase4-confirmation-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "580e9cfdc1847537d797799937336c726bc84f0fc40438dd7b21ea77d4b7f968"
+  },
+  {
+    "file": "phase4-invalidated-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "dd0dd2db2a3861cc998dbf1b4caf5479e26668fdff1fc258e432031ebe634a10"
+  },
+  {
+    "file": "phase4-invalidated-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "268ec7be770aa9b12ac5033257110ba519b07d8fd5ddc60c372e517e1a1807c3"
+  },
+  {
+    "file": "phase4-rejected-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "e406bf449e426ad587d91bddcd0dd11c37509b0509262de3c14146aea1816850"
+  },
+  {
+    "file": "phase4-rejected-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "bea9888cbf18f7b6ab713f3811efbcdff10a8693df91e2c6b2faa30ce7e193bc"
+  },
+  {
+    "file": "phase4-suspended-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "4a8eff2a004725898c0ef635dd7c0a152c925fc8f8101c43eb9f19431c572f05"
+  },
+  {
+    "file": "phase4-suspended-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "5c66f0a683016c2f0227b5eeb276f1140bb425b3d19ce63203bd1a87f0447719"
+  },
+  {
+    "file": "phase4-unapproved-dark.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "697d1177c1d1a1785738fa5f576d3363a8fd3d5cac4bd0354a466e4415515f02"
+  },
+  {
+    "file": "phase4-unapproved-light.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "65eee051b30637b8fe3d700dd234a19e2c02cc89add3e1565dc10441e29ed8f3"
+  },
+  {
+    "file": "phase4-wide-approved-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "461cdb8a989a2200848b56cde7ec4db0fde816597dd02a3135e2c4f80b8188d1"
+  },
+  {
+    "file": "phase4-wide-approved-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "25f2fb0fa24699e868a14134f645a4c49c67014a5cdfa20e4df4b81ce615ca50"
+  },
+  {
+    "file": "phase4-wide-confirmation-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "f3b983940dde3f7186d4aec822bba65fa59a5193be9303d8a70b259d73e2a767"
+  },
+  {
+    "file": "phase4-wide-confirmation-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "009b5dad8f78eca51606b67f627677626001084e165028e9daee3bbb5b48f6f6"
+  },
+  {
+    "file": "phase4-wide-invalidated-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "788869868aa6b994989632e9b9dd9a1515bbb89e393baca7651830c5eba9baa2"
+  },
+  {
+    "file": "phase4-wide-invalidated-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "e05060f90ba6756f793ef75aa4f0fd18c620b8ec5873db338f51642c113c96b9"
+  },
+  {
+    "file": "phase4-wide-rejected-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "b0775418cc71bec3ad34df562e5975d558c3ae4cddd96c72b58e17907253b4d3"
+  },
+  {
+    "file": "phase4-wide-rejected-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "487be35c3ee56e05be78ec3e707e148c6e4f12383fd49fb09890aa0480f1c512"
+  },
+  {
+    "file": "phase4-wide-suspended-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "cfd4b1b1fa5751e8947805f2d54a8f323612cbf6f7df1d89b6ce6aa8b4978507"
+  },
+  {
+    "file": "phase4-wide-suspended-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "0613772a46c9da87c4a3b1230cf18f7980dbf862b9176f8d13dbd21db5207c11"
+  },
+  {
+    "file": "phase4-wide-unapproved-dark.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "a3f1936dea610f5654bb59d5e777b5d5d001bb1d9d57e60097a4d83a7ed989de"
+  },
+  {
+    "file": "phase4-wide-unapproved-light.png",
+    "width": 1920,
+    "height": 1200,
+    "sha256": "6856a3a773a3fcefb7c111dbebedc51f7d80c53f6c15a67ad336c1afedd5c047"
+  }
+]
