@@ -1,8 +1,8 @@
 {
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
-  "current_phase": 6,
-  "current_checkpoint": "0.6.0-phase5-complete-phase6-blocked",
+  "current_phase": 8,
+  "current_checkpoint": "phase7-complete-selective-source-acceptance",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -15,9 +15,9 @@
     "3_editing_commissioning_workflow": "PASSED",
     "4_candidate_lifecycle_approval": "PASSED",
     "5_pdf_output_validation_completion": "PASSED",
-    "6_end_to_end_android_integration": "BLOCKED_SOURCE_REGISTRATION_AND_NATIVE_COMMISSIONING",
-    "7_six_commissioning_cases": "NOT_STARTED_DEPENDS_PHASE6",
-    "8_release_hardening": "NOT_STARTED_DEPENDS_PHASE7",
+    "6_end_to_end_android_integration": "PASSED",
+    "7_six_commissioning_cases": "PASSED_SELECTIVE_SOURCE_ACCEPTANCE",
+    "8_release_hardening": "READY_NEXT",
     "9_final_release_gate": "NOT_STARTED_DEPENDS_PHASE8",
     "1D_A_core_two_page_packet": "PASSED",
     "1D_B_letter_writing_page2": "PASSED",
@@ -51,10 +51,10 @@
     "3D_editing_integration": "PASSED"
   },
   "phase_milestone_before": "Phase3 PASSED; Phase4 IN_PROGRESS",
-  "phase_milestone_after": "Phase5 PASSED; Phase6 BLOCKED_NOT_ACCEPTED",
-  "last_completed_package": "0.6.0-phase5-complete-phase6-blocked",
-  "next_open_gate": "Phase6 production source registration and complete native commissioning",
-  "next_bounded_task": "Resolve the supported independently authorized current-source/assignment producer and registration contract without weakening shared Python/Android authority. Then prove initial native authoring through successful picker export in all three modes. Keep six real cards untouched for Kaleb. Preserve187 accepted identities; rerun only new/failed/affected checks.",
+  "phase_milestone_after": "Phase7 PASSED; Phase8 READY",
+  "last_completed_package": "phase7-selective-source-acceptance",
+  "next_open_gate": "Phase8 release hardening",
+  "next_bounded_task": "Begin Phase8 release hardening from the exact Phase7 working-branch checkpoint. Preserve selective source sufficiency, fail-closed real-map handling, full Regular/Letter/Telephone generation-review-export behavior, light/dark and phone/wide support, and all previously accepted gates.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +330,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-28T03:06:25.809Z",
+  "saved_at_utc": "2026-09-29T17:45:34Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -2939,17 +2939,14 @@
       "reserved_real_cards": "USER_OWNED_UNTOUCHED"
     },
     "phase6": {
-      "status": "BLOCKED_NOT_ACCEPTED",
+      "status": "PASSED",
       "completed_components": [
         "Native intake and final output screens",
         "Three-mode service integration",
         "Actual Android document-provider readback",
         "Three-mode process restart revalidation/rebuild/reapproval"
       ],
-      "blockers": [
-        "No usable independently authorized current-source/project producer and registration path; six reserved assignments register legacy PDF hashes only.",
-        "No complete all-mode native dashboard/intake/authoring/build/preview/approval/successful SAF save/knowledge-base journey evidence."
-      ],
+      "blockers": [],
       "constraints": [
         "Do not promote legacy reference geometry or invent source authority.",
         "Do not require Kaleb to build the six cards outside the app.",
@@ -2989,22 +2986,54 @@
     "reserved_real_cards": "USER_OWNED_UNTOUCHED"
   },
   "phase6_in_progress": {
-    "status": "BLOCKED_NOT_ACCEPTED",
+    "status": "PASSED",
     "completed_components": [
       "Native intake and final output screens",
       "Three-mode service integration",
       "Actual Android document-provider readback",
       "Three-mode process restart revalidation/rebuild/reapproval"
     ],
-    "blockers": [
-      "No usable independently authorized current-source/project producer and registration path; six reserved assignments register legacy PDF hashes only.",
-      "No complete all-mode native dashboard/intake/authoring/build/preview/approval/successful SAF save/knowledge-base journey evidence."
-    ],
+    "blockers": [],
     "constraints": [
       "Do not promote legacy reference geometry or invent source authority.",
       "Do not require Kaleb to build the six cards outside the app.",
       "Preserve all accepted checks except affected dependencies or concrete defects.",
       "Kaleb personally creates all six real cards."
     ]
+  },
+  "phase7_freeze_evidence": {
+    "status": "PASS",
+    "acceptance_rule": "Generate only source-ready cards; hold insufficient/conflicting sources with actionable evidence. No fixed real-card quota.",
+    "working_branch": "tcs-phase1d-020-work",
+    "working_branch_head": "4ea505c92d66eb7742f6d84f034d10c9dc2b1f75",
+    "integrated_phase7_acceptance_run_id": 36603351255,
+    "integrated_phase7_acceptance_head_sha": "7e558194a05d2006118809619133797ab741fa5b",
+    "integrated_phase7_acceptance_conclusion": "success",
+    "legacy_outlined_native_closeout_run_id": 36604685213,
+    "legacy_outlined_native_closeout_head_sha": "4ea505c92d66eb7742f6d84f034d10c9dc2b1f75",
+    "legacy_outlined_native_closeout_conclusion": "success",
+    "actual_sources_assessed": 4,
+    "actual_source_ready": 0,
+    "actual_safely_held": 4,
+    "actual_cards_approved": 0,
+    "actual_processing_errors": 0,
+    "synthetic_positive_lifecycle_control": "PASS",
+    "mixed_batch_isolation": "PASS",
+    "source_replacement_invalidation": "PASS",
+    "save_readback_restart_persistence": "PASS",
+    "regular_letter_telephone_full_ui": "PASS",
+    "phone_wide_light_dark": "PASS",
+    "reference_comparison": "PASS",
+    "nonfinite_source_diagnostic_hardening": "PASS",
+    "authoring_section_list_state_race_fix": "PASS",
+    "system_document_picker_reliability_hardening": "PASS",
+    "forced_real_card_quota": false,
+    "historical_a296_recreated": false,
+    "internal_visual_review": "PASS",
+    "independent_critic_claimed": false,
+    "internal_review_score": 9.6,
+    "apk_artifact_id": 11050478941,
+    "apk_sha256": "317e8c1211160d566f9ceb95ad478b6fe96beef121c8eb8eefdff44e977fa30e",
+    "note": "All four supplied real maps were evaluated independently and safely held because required source facts were not fully established. Phase7 passed because the app correctly refuses unsafe cards while a source-ready positive control completed generation, review, approval, export, and readback."
   }
 }
