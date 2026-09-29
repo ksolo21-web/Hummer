@@ -67,6 +67,10 @@ def main():
         'rule.onNodeWithTag("requested-territory-types").assertTextContains("Apartment")\\n        rule.onNodeWithTag("requested-territory-types").assertTextContains("Regular")',
         'rule.onNodeWithText("Types: Apartment + Regular").assertIsDisplayed()'
     )
+    t=t.replace(
+        'rule.onNodeWithTag("requested-territory-types").assertTextContains("Apartment")\n        rule.onNodeWithTag("requested-territory-types").assertTextContains("Regular")',
+        'rule.onNodeWithText("Types: Apartment + Regular").assertIsDisplayed()'
+    )
     test.write_text(t)
 
     print(json.dumps({
