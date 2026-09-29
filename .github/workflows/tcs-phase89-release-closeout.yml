@@ -229,7 +229,7 @@ jobs:
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
 
-      - name: Phase 7 regression plus Phase 9 signed release runtime
+      - name: Phase 7 regression on hardened source
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -241,6 +241,18 @@ jobs:
           script: |
             set -euo pipefail
             bash .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
+
+      - name: Phase 9 signed release install and runtime
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: |
+            set -euo pipefail
             bash .tooling/tcs/phase89/run-release-smoke.sh
 
       - name: Close Phase 8 and Phase 9 only after every gate passes
