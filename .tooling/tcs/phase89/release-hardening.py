@@ -14,7 +14,7 @@ BASE_MANIFEST_SHA = "4b0daaed3ce7f58b996ad1f6a9902ea182694467c7d10f42dc9cd0f657a
 EXPECTED = {
     "app/build.gradle.kts": "f1ef9d3f6db077a5e03616cc41df73b3e6180f2c143ec1cb54342a5ccdf5d3df",
     "app/src/main/AndroidManifest.xml": "aa1458b9cda320c69c4960f25236efd3ce4f5e2531dac79bbb2a37170371d00d",
-    "app/proguard-rules.pro": "d84f15f3bc5514b0c60b94919f86496645709c63abcc8318e062d67d12b4aee7",
+    "app/proguard-rules.pro": "bc5ec6fa14af2a6848531e1f180f1238ab2790253bb6a900d02939852b14a97c",
     "app/src/main/res/xml/network_security_config.xml": "dbc726438a7e99c69fdfc39146cd51ef8300dacb236843bbce3ecd2a1712a80f",
     "app/src/main/res/xml/data_extraction_rules.xml": "eda9dddce1e895de1efd716fe75e244187bf8f91a3bb7444c6ea1731e51c74a8",
 }
