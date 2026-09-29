@@ -1,0 +1,87 @@
+name: Territory Phase A 1.1.0
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-phaseA-110.yml
+      - .tooling/tcs/phaseA-110/**
+permissions:
+  contents: read
+concurrency:
+  group: territory-phase-a-110
+  cancel-in-progress: true
+
+jobs:
+  phase-a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare private signer
+        run: bash .tooling/tcs/phaseA-110/prepare-signer.sh
+      - name: Reconstruct 1.0.1 and apply Phase A
+        run: bash .tooling/tcs/phaseA-110/prepare-source.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+      - name: Install Android toolchain
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+      - name: Core regression, lint, build and release audit
+        run: bash .tooling/tcs/phaseA-110/build-and-audit.sh
+      - name: Boot emulator
+        run: bash .tooling/tcs/phaseA-110/boot-emulator.sh
+      - name: Test Phase A UI and multi-select
+        run: bash .tooling/tcs/phaseA-110/run-device-tests.sh
+      - name: Test hardened private release
+        run: bash .tooling/tcs/phaseA-110/run-release-smoke.sh
+      - name: Finalize Phase A
+        run: python3 .tooling/tcs/phaseA-110/finalize.py evidence
+      - name: Stop emulator
+        if: always()
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          [[ -f evidence/emulator.pid ]] && kill "$(cat evidence/emulator.pid)" >/dev/null 2>&1 || true
+      - name: Preserve source
+        if: always()
+        run: |
+          if [[ -d tcs-src ]]; then
+            tar -cJf evidence/Territory-Android-1.1.0-PhaseA-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-PhaseA-1.1.0-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.aab
+            !evidence/*.tar.xz
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Territory-Android-1.1.0-PhaseA-private-apk
+          path: evidence/Territory-Android-1.1.0-PhaseA-private.apk
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Territory-Android-1.1.0-PhaseA-private-aab
+          path: evidence/Territory-Android-1.1.0-PhaseA-private.aab
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-Android-1.1.0-PhaseA-source
+          path: evidence/Territory-Android-1.1.0-PhaseA-source.tar.xz
+          retention-days: 30
