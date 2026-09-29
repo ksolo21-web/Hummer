@@ -1,0 +1,11 @@
+--- a/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7AncillaryUiInstrumentationTest.kt
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase7AncillaryUiInstrumentationTest.kt
+@@ -67,7 +67,7 @@
+             listOf("Directions: Synthetic editor regression. NOT FOR FIELD USE."),"full_map",x.slot.housingType,
+             RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,listOf(road),listOf(red))
+         val facts=NativeSourceReconciliation(x.id,x.mode.name,x.kb.revision,imported.sha256,x.slot.referenceSha256,"current_assignment_map",
+-            "Synthetic regression reviewer",Instant.now().toString(),NativeSourceReconciliationContract.assignmentContentSha256(assignment),null,
++            "Synthetic regression reviewer",Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString(),NativeSourceReconciliationContract.assignmentContentSha256(assignment),null,
+             false,false,false,false,
+             listOf(SourceSegmentObservation(road.segmentId,road.name,road.status,road.role,road.insideSide,road.accessOnly,road.endpointAKind,road.endpointBKind,"Synthetic source context road; not registered",false)),
+             listOf(SourceBuildingObservation(red.buildingId,red.sourceMembers,false,"Synthetic source red residence; not registered",false)),UUID.randomUUID().toString(),null)

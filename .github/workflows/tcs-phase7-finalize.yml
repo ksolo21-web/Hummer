@@ -1,0 +1,91 @@
+name: TCS Phase7 Finalize Software Gate
+on:
+  push:
+    branches: [phase7-real-image-acceptance]
+    paths:
+      - .github/workflows/tcs-phase7-finalize.yml
+      - .tooling/tcs/phase7-finalize/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase7-finalize-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover exact successful reference-repair source
+        run: |
+          set -euo pipefail
+          bash .tooling/tcs/phase7-reference-repair/recover.sh
+          python3 .tooling/tcs/phase7-finalize/apply.py tcs-src > evidence/finalize-integration.json
+          cp .tooling/tcs/phase7-finalize/Phase7FinalizeContractTest.kt tcs-src/core/src/test/kotlin/com/koenterprises/territorycardstudio/core/
+          cp .tooling/tcs/phase7-finalize/Phase7AncillaryUiInstrumentationTest.kt tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+      - name: Run all core contracts
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/finalize-core-tests.log 2>&1 || { cat evidence/finalize-core-tests.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/finalize-core-results
+      - name: Compile application and Android tests
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest) > evidence/finalize-compile.log 2>&1 || { cat evidence/finalize-compile.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase7-Finalize-debug.apk
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase7-Reference-Repair-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/finalize-emulator-test.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/emulator-test.apk
+          sha256sum evidence/*.apk > evidence/finalize-builds.sha256
+      - name: Enable emulator hardware acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Run affected reference and ancillary Android flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: |
+            bash .tooling/tcs/phase7-reference-repair/run-device-tests.sh
+            bash .tooling/tcs/phase7-finalize/run-device-tests.sh
+      - name: Preserve exact rebuilt source
+        if: always()
+        run: |
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/finalize-source-files.sha256
+          tar -cJf evidence/phase7-finalize-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+          sha256sum evidence/phase7-finalize-source.tar.xz > evidence/finalize-source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-finalize-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-finalize-source
+          path: evidence/phase7-finalize-source.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-finalize-debug-apk
+          path: evidence/TerritoryCardStudio-Phase7-Finalize-debug.apk
+          retention-days: 14
