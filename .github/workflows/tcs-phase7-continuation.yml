@@ -21,6 +21,7 @@ jobs:
           set -euo pipefail
           bash .tooling/tcs/phase7-reference-repair/recover.sh
           python3 .tooling/tcs/phase7-continuation/apply.py tcs-src > evidence/continuation-integration.json
+          python3 .tooling/tcs/phase7-continuation/apply-device-test-fix.py tcs-src > evidence/continuation-device-test-fix.txt
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
