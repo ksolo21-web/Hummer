@@ -122,52 +122,37 @@ for theme in ['light','dark']:
 PY
   verify_screens "phase7-commissioning-*-$viewport" 8
 done
-# Build the first exact real-source A265 candidate through the production registration,
-# fresh-provider and native PDF pipeline. Stop before approval so the exact candidate can
-# be independently visually inspected; a test assertion is never substituted for that gate.
-adb shell wm size reset
-adb shell wm density reset
-adb logcat -b crash -c
-adb logcat -b events -c
-timeout 1500 adb shell am instrument -w -r -e class "$PKG.Phase7A265CandidateInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/phase7-a265-candidate.log 2>&1 || true
-adb logcat -b crash -d > evidence/phase7-a265-candidate-crash.log
-adb logcat -b events -d -s am_anr:I > evidence/phase7-a265-candidate-anr.log
-capture_phase7
-python3 - <<'PY'
-from pathlib import Path
-import json,hashlib
-log=Path('evidence/phase7-a265-candidate.log').read_text()
-assert 'OK (1 test)' in log and 'FAILURES!!!' not in log and 'INSTRUMENTATION_FAILED' not in log,log
-assert 'FATAL EXCEPTION' not in Path('evidence/phase7-a265-candidate-crash.log').read_text()
-assert 'com.koenterprises.territorycardstudio' not in Path('evidence/phase7-a265-candidate-anr.log').read_text()
-report=json.loads(Path('evidence/phase7-a265-candidate.json').read_text())
-assert report['territory']=='A265'
-assert report['sourceSha256']=='8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d'
-assert report['referenceSha256']=='2220b772daef3aff751a4fcffddfdbf385944af9cffad9378e2aaccb0bc81a94'
-assert report['candidateStatus']=='CANDIDATE-UNAPPROVED'
-assert report['freshProviderVerificationPassed'] is True and report['saveReadbackVerified'] is True
-assert report['cardApproved'] is False and report['visualReviewRequired'] is True
-pdf=Path('evidence/phase7-a265-candidate.pdf'); png=Path('evidence/phase7-a265-candidate.png')
-assert pdf.stat().st_size==report['candidatePdfBytes']
-assert hashlib.sha256(pdf.read_bytes()).hexdigest()==report['candidatePdfSha256']
-assert png.stat().st_size>1000
-required={'oakland_county_roads','census_tigerweb_transportation','oakland_county_site_addresses','oakland_county_buildings'}
-assert required.issubset(set(report['providers'])),report['providers']
-PY
+# Phase 7 selective-source policy supersedes the old fixed-output A265 candidate gate.
+# This legacy outlined component still verifies real-source intake, finding review,
+# commissioning, persistence and theme/viewport behavior above, but it must not
+# manufacture a field candidate from A265 merely to satisfy an output quota.
+# The dedicated TCS Phase7 Source Sufficiency workflow proves the supported
+# generation -> review -> approval -> export lifecycle with a source-ready control.
 python3 - <<'PY'
 from pathlib import Path
 import json
-Path('evidence/phase7-acceptance-status.json').write_text(json.dumps({
-  'scope':'software_regression_plus_real_a265_candidate',
-  'phase7Complete':False,
-  'nativeCardsApprovedByThisRun':0,
-  'realCandidatesBuiltByThisRun':1,
-  'a265VisualGatePending':True,
-  'requiredRealImageCards':4,
-  'intakeTestsPassed':5,
+intake=json.loads(Path('evidence/phase7-a265-intake.json').read_text())
+repair=json.loads(Path('evidence/phase7-a265-repair-review.json').read_text())
+assert intake['case']=='a265'
+assert intake['sourceSha256']=='8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d'
+assert intake['inputKind']=='OUTLINED_AREA'
+assert repair['sourceSha256']==intake['sourceSha256']
+assert repair['pendingBlocked'] is True
+assert repair['roundTripMatched'] is True
+assert repair['tamperRejected'] is True
+assert repair['rejectionInvalidatedConfirmation'] is True
+assert repair['cardApproved'] is False
+Path('evidence/phase7-outlined-component-status.json').write_text(json.dumps({
+  'schema':'phase7-outlined-component-v2',
+  'componentPassed':True,
+  'overallPhase7Status':'see TCS Phase7 Source Sufficiency / phase7-acceptance-status.json',
+  'forcedRealCardQuota':False,
+  'forcedA265Candidate':False,
+  'actualA265SourceIntakeVerified':True,
+  'a265UnsafeExportBlocked':True,
   'findingReviewTestsPassed':{'phone':4,'wide':4},
   'commissioningTestsPassed':{'phone':6,'wide':6},
   'activeWindowBoundScreenshots':20,
-  'note':'Real A265 now reaches an exact unapproved native PDF after current-source registration and fresh provider verification. The exact PDF still requires independent visual review before approval. The other three source cases remain fail-closed pending their authority/source reconciliation.'
+  'note':'A265 is retained as source-bound review evidence only. This component no longer forces an unapproved candidate from insufficient real-source evidence.'
 },indent=2)+'\n')
 PY
