@@ -59,6 +59,10 @@ def main():
         'rule.onNodeWithTag("simple-territory-workspace").assertIsDisplayed()',
         'rule.waitForIdle()\n        rule.onNodeWithTag("simple-territory-workspace").assertIsDisplayed()'
     )
+    t=t.replace(
+        'rule.onNodeWithTag("selected-create-types").assertTextContains("Apartment").assertTextContains("Regular")',
+        'rule.onNodeWithText("Selected: Apartment + Regular").performScrollTo().assertIsDisplayed()'
+    )
     test.write_text(t)
 
     print(json.dumps({
