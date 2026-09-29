@@ -9,7 +9,6 @@ import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
@@ -79,9 +78,9 @@ class SimpleCreate101InstrumentationTest {
         rule.onNodeWithText("Create Territory T250").assertIsDisplayed()
         rule.onNodeWithText("Add the territory map and the app will do the rest.").assertIsDisplayed()
         rule.onNodeWithTag("simple-create-card").assertTextContains("Choose Map")
-        rule.onAllNodesWithText("Build remains locked").assertDoesNotExist()
-        rule.onAllNodesWithText("Live geometry").assertDoesNotExist()
-        rule.onAllNodesWithText("Source truth").assertDoesNotExist()
+        rule.onNodeWithText("Build remains locked").assertDoesNotExist()
+        rule.onNodeWithText("Live geometry").assertDoesNotExist()
+        rule.onNodeWithText("Source truth").assertDoesNotExist()
         screenshot("simple-create-101-light-empty.png")
     }
 
@@ -93,7 +92,7 @@ class SimpleCreate101InstrumentationTest {
         rule.onNodeWithText("Map added ✓").assertIsDisplayed()
         rule.onNodeWithText("my-territory-map.jpg").assertIsDisplayed()
         rule.onNodeWithTag("simple-create-card").assertTextContains("Create Card From This Map")
-        rule.onAllNodesWithText("minimum 2 independent geometry sources").assertDoesNotExist()
+        rule.onNodeWithText("minimum 2 independent geometry sources").assertDoesNotExist()
         rule.onAllNodesWithText("Build remains locked").assertDoesNotExist()
         rule.onNodeWithTag("show-advanced-tools").assertExists()
         screenshot("simple-create-101-dark-map-ready.png")
