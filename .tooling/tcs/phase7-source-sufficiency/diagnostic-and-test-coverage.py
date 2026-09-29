@@ -6,9 +6,12 @@ root=Path(sys.argv[1]).resolve(strict=True)
 assessment=root/'app/src/main/java/com/koenterprises/territorycardstudio/NativeSourceAssessment.kt'
 s=assessment.read_text()
 needle='        val location=SourceLocation(sha);val facts=mutableListOf<SourceFact>()\n'
-replacement=needle+'''        // OCR/triage diagnostic rectangles may extend a few pixels beyond the bitmap edge.
-        // Clip only the diagnostic highlight to valid source-pixel coordinates; never alter source facts.
+replacement=needle+'''        // OCR/triage diagnostic rectangles can extend beyond the bitmap or contain
+        // non-finite sentinel coordinates. Preserve the finding, but only attach a
+        // pixel highlight when the source rectangle itself is finite and valid.
+        // This never changes boundary/work facts or upgrades source readiness.
         fun sourceRegion(box:AxisAlignedRect?):SourcePixelRegion?=box?.let {
+            if(!listOf(it.left,it.top,it.right,it.bottom).all(Double::isFinite)) return@let null
             val left=maxOf(0.0,it.left);val top=maxOf(0.0,it.top)
             SourcePixelRegion(left,top,maxOf(left,it.right),maxOf(top,it.bottom))
         }
