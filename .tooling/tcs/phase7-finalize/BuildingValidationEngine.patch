@@ -1,0 +1,47 @@
+diff --git a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/BuildingValidationEngine.kt b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/BuildingValidationEngine.kt
+index f67950d..f4df4be 100644
+--- a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/BuildingValidationEngine.kt
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/BuildingValidationEngine.kt
+@@ -73,6 +73,7 @@ object BuildingValidationEngine {
+         val polygons = mutableListOf<Pair<BuildingGeometry, List<Point2D>>>()
+ 
+         buildings.forEach { building ->
++            failures.addAll(NativeBuildingWorkSemantics.failures(building))
+             if (building.housingType !in supportedHousingTypes) {
+                 failures.add("${building.buildingId}: unsupported housing_type '${building.housingType}'")
+             }
+@@ -92,8 +93,7 @@ object BuildingValidationEngine {
+             if (building.labelItems.isNotEmpty()) {
+                 val itemTexts = building.labelItems.map { it.text }
+                 building.labelItems.forEach { item ->
+-                    val rect = labelRectangle(item)
+-                    if (!polygonCoversShapeWithBuffer(building.polygon, rect, LABEL_BUFFER_PT)) {
++                    if (!labelFits(building.polygon, item)) {
+                         failures.add("${building.buildingId}: source-bound label '${item.text}' is not fully inside its footprint")
+                     }
+                 }
+@@ -134,9 +134,22 @@ object BuildingValidationEngine {
+ 
+     internal fun normalizeMemberId(raw: String): String = raw.lowercase().filter { it.isLetterOrDigit() }
+ 
+-    private fun labelRectangle(item: BuildingLabelItem): List<Point2D> {
+-        val width = helveticaTextWidth(item.text, item.fontSizePt).coerceAtLeast(1.0)
++    /** BuildingLabelItem angles, footprints, centers and origins all use top-origin
++     * page geometry. Only BuildingLabelCoordinateTransform reflects angles for PDF.
++     * Native placement supplies actual locked-font advances; legacy validation retains
++     * its original Helvetica fallback, preserving the immutable catalog audit. */
++    internal fun labelFits(polygon: List<Point2D>, item: BuildingLabelItem, actualWidthPt: Double? = null): Boolean {
++        if (!item.center.x.isFinite() || !item.center.y.isFinite() || !item.angleDeg.isFinite() ||
++            !item.fontSizePt.isFinite() || item.fontSizePt <= 0.0 ||
++            actualWidthPt?.let { !it.isFinite() || it <= 0.0 } == true) return false
++        return polygonCoversShapeWithBuffer(polygon, labelRectangle(item, actualWidthPt), LABEL_BUFFER_PT)
++    }
++
++    internal fun labelRectangle(item: BuildingLabelItem, actualWidthPt: Double? = null): List<Point2D> {
++        val width = actualWidthPt ?: helveticaTextWidth(item.text, item.fontSizePt).coerceAtLeast(1.0)
+         val height = item.fontSizePt * 0.86
++        // Keep the catalog/native source convention (y-down). The PDF adapter,
++        // not the stored facts or audit engine, handles the y-up text rotation.
+         val angle = Math.toRadians(item.angleDeg)
+         val ux = cos(angle)
+         val uy = sin(angle)

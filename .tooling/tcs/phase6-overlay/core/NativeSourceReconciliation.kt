@@ -11,7 +11,8 @@ data class SourceSegmentObservation(
     val endpointBKind: String, val evidenceNote: String, val confirmed: Boolean
 )
 data class SourceBuildingObservation(val buildingId: String, val sourceMembers: List<String>,
-    val assigned: Boolean, val evidenceNote: String, val confirmed: Boolean)
+    val assigned: Boolean, val evidenceNote: String, val confirmed: Boolean,
+    val supplementalReference: SupplementalBuildingReference? = null)
 
 data class NativeSourceReconciliation(
     val territory: String, val mode: String, val knowledgeBaseRevision: String,
@@ -116,8 +117,14 @@ object NativeSourceReconciliationContract {
         val actualBuildings = a.buildings.associateBy { it.buildingId }
         val unresolvedBuildings = (observedBuildings.keys union actualBuildings.keys).count { id ->
             val s = observedBuildings[id]; val b = actualBuildings[id]
-            s == null || b == null || !s.confirmed || s.assigned != b.assigned || s.sourceMembers.sorted() != b.sourceMembers.sorted()
+            s == null || b == null || !s.confirmed || s.assigned != b.assigned || s.sourceMembers.sorted() != b.sourceMembers.sorted() ||
+                s.supplementalReference?.let { SupplementalBuildingReferenceContract.failures(it,b,sourceSha256,r.lockedReferenceSha256).isNotEmpty() } == true
         }
+        r.buildings.forEach { observation -> observation.supplementalReference?.let { reference ->
+            actualBuildings[observation.buildingId]?.let { building ->
+                errors += SupplementalBuildingReferenceContract.failures(reference,building,sourceSha256,r.lockedReferenceSha256)
+            }
+        } }
         val color = TopologyOverlapDecisionEngine.validateIntersectionColorRoles(a.roads)
         if (!color.passed) errors += "TOPOLOGY_COLOR_INVALID"
         val truth = CandidateSourceTruthState(a.displayId, a.authoritySha256,
@@ -156,6 +163,7 @@ object NativeSourceReconciliationContract {
         }
         r.buildings.forEach {
             text(it.buildingId, 120); text(it.evidenceNote, 1000, true)
+            it.supplementalReference?.let(SupplementalBuildingReferenceContract::validate)
             require(it.sourceMembers.size in (if (it.assigned) 1 else 0)..512 && it.sourceMembers.distinct().size == it.sourceMembers.size)
             it.sourceMembers.forEach { member -> text(member, 120) }
         }
@@ -178,7 +186,12 @@ object NativeSourceReconciliationContract {
                 "endpointAKind" to s(it.endpointAKind), "endpointBKind" to s(it.endpointBKind), "evidenceNote" to s(it.evidenceNote), "confirmed" to b(it.confirmed)) }),
             "buildings" to JsonValue.Arr(r.buildings.map { obj("buildingId" to s(it.buildingId),
                 "sourceMembers" to JsonValue.Arr(it.sourceMembers.map(::s)), "assigned" to b(it.assigned),
-                "evidenceNote" to s(it.evidenceNote), "confirmed" to b(it.confirmed)) }))
+                "evidenceNote" to s(it.evidenceNote), "confirmed" to b(it.confirmed)).let { building ->
+                    it.supplementalReference?.let { ref -> JsonValue.Obj(LinkedHashMap(building.values + ("supplementalReference" to obj(
+                        "referenceSha256" to s(ref.referenceSha256), "currentSourceSha256" to s(ref.currentSourceSha256),
+                        "buildingContentSha256" to s(ref.buildingContentSha256), "referenceLocation" to s(ref.referenceLocation),
+                        "correspondenceEvidence" to s(ref.correspondenceEvidence), "confirmed" to b(ref.confirmed))))) } ?: building
+                } }))
         return canonical(root).toByteArray(Charsets.UTF_8).also { require(it.size <= MAX_BYTES) }
     }
 
@@ -199,8 +212,12 @@ object NativeSourceReconciliationContract {
             keys(x, "segmentId", "name", "status", "role", "insideSide", "accessOnly", "endpointAKind", "endpointBKind", "evidenceNote", "confirmed")
             SourceSegmentObservation(x.str("segmentId"), x.str("name"), x.str("status"), x.str("role"), x.str("insideSide"), x.bool("accessOnly"), x.str("endpointAKind"), x.str("endpointBKind"), x.str("evidenceNote"), x.bool("confirmed")) }
         val buildings = o.getValue("buildings").arr("buildings").map { v -> val x = v.obj("building")
-            keys(x, "buildingId", "sourceMembers", "assigned", "evidenceNote", "confirmed")
-            SourceBuildingObservation(x.str("buildingId"), x.getValue("sourceMembers").arr("members").map { it.string("member") }, x.bool("assigned"), x.str("evidenceNote"), x.bool("confirmed")) }
+            keys(x.filterKeys { it != "supplementalReference" }, "buildingId", "sourceMembers", "assigned", "evidenceNote", "confirmed")
+            val supplemental=x["supplementalReference"]?.obj("supplemental reference")?.let { ref ->
+                keys(ref,"referenceSha256","currentSourceSha256","buildingContentSha256","referenceLocation","correspondenceEvidence","confirmed")
+                SupplementalBuildingReference(ref.str("referenceSha256"),ref.str("currentSourceSha256"),ref.str("buildingContentSha256"),ref.str("referenceLocation"),ref.str("correspondenceEvidence"),ref.bool("confirmed"))
+            }
+            SourceBuildingObservation(x.str("buildingId"), x.getValue("sourceMembers").arr("members").map { it.string("member") }, x.bool("assigned"), x.str("evidenceNote"), x.bool("confirmed"), supplemental) }
         val r = NativeSourceReconciliation(o.str("territory"), o.str("mode"), o.str("knowledgeBaseRevision"), o.str("importedSourceSha256"), o.str("lockedReferenceSha256"), o.str("sourceClass"), o.str("author"), o.str("reviewedAtUtc"), o.str("assignmentContentSha256"), if (o["inventorySha256"] == JsonValue.Null) null else o.str("inventorySha256"), o.bool("sourceCoverageComplete"), o.bool("explicitAssignmentConfirmation"), o.bool("crossTerritoryInferenceUsed"), o.bool("styleOnlyGeographyUsed"), roads, buildings, o.str("registrationId"), if (o["predecessorEventSha256"] == JsonValue.Null) null else o.str("predecessorEventSha256"), if(o["imageInterpretationSha256"]==JsonValue.Null)null else o.str("imageInterpretationSha256"))
         require(encode(r).contentEquals(bytes)) { "Use canonical reconciliation encoding" }
         return r

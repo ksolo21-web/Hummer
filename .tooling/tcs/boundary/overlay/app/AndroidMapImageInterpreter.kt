@@ -76,7 +76,7 @@ class AndroidMapImageInterpreter {
         val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
         var inFlight:com.google.android.gms.tasks.Task<com.google.mlkit.vision.text.Text>?=null
         try {
-            val outlinedBoundary=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapBoundaryDetector.detect(source.width,source.height,pixels) else null
+            val outlinedBoundary=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapBoundaryDetector.detect(source.width,source.height,pixels,proposeShortGaps=true) else null
             val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             val text=try {
                 fun recognized(rotation:Int,region:AxisAlignedRect?=null,highContrast:Boolean=false,scaleOverride:Double?=null):List<MapImageText> {
@@ -141,7 +141,7 @@ class AndroidMapImageInterpreter {
                 if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {recognizer.close()}
                 else recognizer.close()
             }
-            val outlined=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapRoadExtractor.extract(source.width,source.height,pixels,text) else null
+            val outlined=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapRoadExtractor.extract(source.width,source.height,pixels,text,proposeShortGaps=true) else null
             val extraction=if(outlined==null)MapImageDraftExtractor.extract(source.width,source.height,pixels,text) else {
                 val triage=OutlinedMapTriageBuilder.build(outlined)
                 MapImageExtraction(outlined.roads.filter {triage.priorities[it.road.id]!=OutlinedProposalPriority.SURROUNDING_CONTEXT}.map {it.road},outlined.findings,source.width,source.height)

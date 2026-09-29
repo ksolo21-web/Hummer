@@ -4,12 +4,13 @@ import kotlin.math.*
 
 enum class BoundaryRoadRelation { INTERIOR, EXTERIOR, BOUNDARY_FOLLOWING, CROSSING, BOUNDARY_ENDPOINT }
 data class OutlinedRoadProposal(val road:MapImageRoad,val relation:BoundaryRoadRelation)
-data class OutlinedMapExtraction(val boundary:OutlinedMapBoundary,val roads:List<OutlinedRoadProposal>,val findings:List<MapImageFinding>)
+enum class OutlinedRoadPaintMode { LIGHT_NEUTRAL, BLUE_GRAY }
+data class OutlinedMapExtraction(val boundary:OutlinedMapBoundary,val roads:List<OutlinedRoadProposal>,val findings:List<MapImageFinding>,val paintMode:OutlinedRoadPaintMode=OutlinedRoadPaintMode.LIGHT_NEUTRAL)
 
 /** Only proposes visible neutral road paint. Source colors never enter the work-status classifier. */
 object OutlinedMapRoadExtractor {
-    fun extract(width:Int,height:Int,pixels:IntArray,text:List<MapImageText>):OutlinedMapExtraction {
-        val boundary=OutlinedMapBoundaryDetector.detect(width,height,pixels)
+    fun extract(width:Int,height:Int,pixels:IntArray,text:List<MapImageText>,proposeShortGaps:Boolean=false):OutlinedMapExtraction {
+        val boundary=OutlinedMapBoundaryDetector.detect(width,height,pixels,proposeShortGaps)
         val pad=max(32.0,(boundary.sourceBounds.bottom-boundary.sourceBounds.top)*0.4)
         val roi=AxisAlignedRect(max(0.0,boundary.sourceBounds.left-pad),max(0.0,boundary.sourceBounds.top-pad),min(width.toDouble(),boundary.sourceBounds.right+pad),min(height.toDouble(),boundary.sourceBounds.bottom+pad))
         val interior=BooleanArray(pixels.size);val luminance=IntArray(pixels.size);val neutral=BooleanArray(pixels.size)
@@ -25,11 +26,21 @@ object OutlinedMapRoadExtractor {
             require(h[background]>=32){"Insufficient neutral road contrast; use a clearer map."}
             return min(250,background+12)
         }
-        val insideThreshold=threshold(insideHistogram);val outsideThreshold=threshold(outsideHistogram)
+        fun blueGray(p:Int):Boolean {
+            val r=(p ushr 16)and 255;val g=(p ushr 8)and 255;val b=p and 255
+            return b-r in 8..45 && g>=r && b>=g && (r+g+b)/3 in 110..235
+        }
+        var blueCount=0
+        for(y in roi.top.toInt() until roi.bottom.toInt())for(x in roi.left.toInt() until roi.right.toInt())if(blueGray(pixels[y*width+x]))blueCount++
+        // Blue-gray road surfaces on a pale basemap have opposite contrast to white
+        // streets on shaded gray maps. Keep both paint models; neither assigns work.
+        val blueRoads=blueCount>=max(256,((roi.right-roi.left)*(roi.bottom-roi.top)/50).toInt())
+        val insideThreshold=if(blueRoads)0 else threshold(insideHistogram)
+        val outsideThreshold=if(blueRoads)0 else threshold(outsideHistogram)
         val proposed=IntArray(pixels.size){0xFFFFFFFF.toInt()}
         for(y in roi.top.toInt() until roi.bottom.toInt())for(x in roi.left.toInt() until roi.right.toInt()) {
             val i=y*width+x
-            if(neutral[i]&&luminance[i]>=(if(interior[i])insideThreshold else outsideThreshold))proposed[i]=0xFF51C72B.toInt()
+            if(if(blueRoads)blueGray(pixels[i])else neutral[i]&&luminance[i]>=(if(interior[i])insideThreshold else outsideThreshold))proposed[i]=0xFF51C72B.toInt()
         }
         // Reuse only the neutral mask's geometric skeleton; its temporary color is not a work decision.
         val labels=deduplicatedStreetText(text)
@@ -45,7 +56,7 @@ object OutlinedMapRoadExtractor {
                 findings+=MapImageFinding("unmatched-label-$i","No aligned road geometry was recovered for ${label.text}; check the source.",label.bounds)
         }
         if(roads.isEmpty())findings+=MapImageFinding("boundary-no-roads","No reliable visible roads were recovered inside the outlined area.",boundary.sourceBounds)
-        return OutlinedMapExtraction(boundary,roads,findings)
+        return OutlinedMapExtraction(boundary,roads,findings,if(blueRoads)OutlinedRoadPaintMode.BLUE_GRAY else OutlinedRoadPaintMode.LIGHT_NEUTRAL)
     }
     /** OCR text is a proposal only when its orientation and source location agree with a road.
      * Nearby labels on a perpendicular street or across a block cannot supply its name. */

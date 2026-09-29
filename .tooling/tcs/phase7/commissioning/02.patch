@@ -1,0 +1,368 @@
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/AndroidCommissioningStore.kt b/app/src/main/java/com/koenterprises/territorycardstudio/AndroidCommissioningStore.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/AndroidCommissioningStore.kt
+@@ -0,0 +1,194 @@
++package com.koenterprises.territorycardstudio
++
++import android.content.Context
++import android.util.AtomicFile
++import com.koenterprises.territorycardstudio.core.*
++import org.json.JSONObject
++import java.io.File
++import java.time.Instant
++import java.util.UUID
++
++/** An application-owned scope recovered only from the private commissioning ledger.
++ * Its source and original-reference witnesses are checked again at every service boundary. */
++class NativeCommissioningScope internal constructor(
++    val territory:String, val sha256:String, val baselineRevision:String,
++    val baselineSha256:String, val referenceSha256:String, val sourceSha256:String,
++    val actor:String, val reason:String, val createdAtUtc:String
++)
++
++/** Opens an isolated candidate workspace; never edits the installed Knowledge Base or any
++ * approved PDF. Importing a picture/JSON/archive cannot open a scope. Only start() records
++ * the explicit same-territory and original-preservation decision from the native UI. */
++class AndroidCommissioningStore internal constructor(
++    context:Context,
++    private val baseline:TerritoryKnowledgeBase,
++    private val root:File=File(context.applicationContext.noBackupFilesDir,"territory-card-studio/commissioning-v1"),
++    private val sources:SourceMapIntakeStore=SourceMapIntakeStore(context),
++    private val beforeHeadWrite:()->Unit={}
++) {
++    private val context=context.applicationContext
++    private val baselineSha256:String by lazy {
++        this.context.assets.open("territory/Territory-Knowledge-Base.json").use(BundleIntegrity::sha256)
++            .also {
++                require(it==BundleIntegrity.requiredSha256.getValue("Territory-Knowledge-Base.json")) {"Installed catalog bytes changed"}
++                val installed=this.context.assets.open("territory/Territory-Knowledge-Base.json").bufferedReader().use(TerritoryKnowledgeBaseLoader::load)
++                require(installed==baseline) {"Commissioning requires the unchanged installed catalog"}
++            }
++    }
++    private data class Event(val hash:String,val sequence:Int,val action:String,val scopeSha256:String,
++        val previous:String?,val actor:String,val at:String)
++    companion object {private val LOCK=Any();private val HASH=Regex("[0-9a-f]{64}");private const val LIMIT=128}
++    private fun digest(bytes:ByteArray)=BundleIntegrity.sha256(bytes.inputStream())
++    private fun directory(id:String):File {
++        require(id in baseline.assignments && !baseline.revision.startsWith("commission-")) {"Unknown, retired or nested commissioning territory"}
++        val key=digest((baseline.revision+"|"+baselineSha256+"|"+id).toByteArray())
++        return File(root,key)
++    }
++    private fun <T> mutation(id:String,block:()->T):T=synchronized(LOCK) {
++        val dir=directory(id)
++        require(root.isDirectory || root.mkdirs())
++        java.io.RandomAccessFile(File(root,dir.name+".lock"),"rw").use {file->file.channel.lock().use {block()}}
++    }
++    private fun read(file:AtomicFile,max:Int=16384):ByteArray {
++        val bytes=file.openRead().use {input->AndroidFinalOutputService.readBounded(input,max)}
++        require(bytes.isNotEmpty());return bytes
++    }
++    private fun write(file:AtomicFile,bytes:ByteArray) {
++        require(file.baseFile.parentFile.isDirectory || file.baseFile.parentFile.mkdirs())
++        val out=file.startWrite()
++        try {out.write(bytes);file.finishWrite(out)} catch(failure:Throwable){file.failWrite(out);throw failure}
++    }
++    private fun archive(dir:File,bytes:ByteArray,extension:String):String {
++        val hash=digest(bytes);val file=AtomicFile(File(dir,"$hash.$extension"))
++        if(file.baseFile.exists())require(read(file).contentEquals(bytes)) {"Commissioning evidence changed"}
++        else write(file,bytes)
++        return hash
++    }
++    private fun canonical(value:JSONObject)=ExtendedValues.canonical(value).toByteArray(Charsets.UTF_8)
++    private fun events(id:String):List<Event> {
++        val dir=directory(id);val pointer=AtomicFile(File(dir,"head"))
++        if(!pointer.baseFile.exists() && !File(dir,"head.bak").exists())return emptyList()
++        var hash=read(pointer,128).toString(Charsets.US_ASCII)
++        require(HASH.matches(hash)) {"Invalid commissioning head"}
++        val rows=mutableListOf<Event>();var expected:Int?=null
++        while(true) {
++            require(rows.size<LIMIT) {"Commissioning history is oversized"}
++            val bytes=read(AtomicFile(File(dir,"$hash.event")))
++            require(digest(bytes)==hash) {"Commissioning event bytes changed"}
++            val j=JSONObject(bytes.toString(Charsets.UTF_8))
++            ExtendedValues.keys(j,"schema","territory","baselineRevision","baselineSha256","sequence","action","scopeSha256","previous","actor","at")
++            require(canonical(j).contentEquals(bytes) && j.getString("schema")=="native-commissioning-event-v1")
++            require(j.getString("territory")==id && j.getString("baselineRevision")==baseline.revision && j.getString("baselineSha256")==baselineSha256)
++            val sequence=j.getInt("sequence");require(sequence in 1..LIMIT && (expected==null || sequence==expected))
++            val action=j.getString("action");require(action in setOf("OPEN","REVOKE"))
++            val scope=j.getString("scopeSha256");require(HASH.matches(scope))
++            val previous=if(j.isNull("previous"))null else j.getString("previous").also {require(HASH.matches(it))}
++            val actor=j.getString("actor");require(actor.isNotBlank() && actor.length<=120)
++            val at=j.getString("at");Instant.parse(at)
++            rows+=Event(hash,sequence,action,scope,previous,actor,at)
++            if(sequence==1){require(previous==null);break}
++            hash=requireNotNull(previous);expected=sequence-1
++        }
++        val history=rows.reversed()
++        history.forEachIndexed {i,event->
++            if(event.action=="REVOKE")require(i>0 && history[i-1].action=="OPEN" && history[i-1].scopeSha256==event.scopeSha256)
++        }
++        return history
++    }
++    private fun scope(id:String,sha:String):NativeCommissioningScope {
++        val bytes=read(AtomicFile(File(directory(id),"$sha.scope")))
++        require(digest(bytes)==sha) {"Commissioning scope bytes changed"}
++        val j=JSONObject(bytes.toString(Charsets.UTF_8))
++        ExtendedValues.keys(j,"schema","id","territory","baselineRevision","baselineSha256","referenceSha256","sourceSha256","actor","reason","createdAtUtc","identityConfirmed","originalPreserved")
++        require(canonical(j).contentEquals(bytes) && j.getString("schema")=="native-commissioning-scope-v1")
++        UUID.fromString(j.getString("id"))
++        require(j.getString("territory")==id && j.getString("baselineRevision")==baseline.revision && j.getString("baselineSha256")==baselineSha256)
++        val slot=baseline.assignments.getValue(id)
++        require(!slot.needsNewCard && j.getString("referenceSha256")==slot.referenceSha256)
++        val source=j.getString("sourceSha256");require(HASH.matches(source) && source!=slot.referenceSha256)
++        require(j.getBoolean("identityConfirmed") && j.getBoolean("originalPreserved"))
++        val actor=j.getString("actor");val reason=j.getString("reason")
++        require(actor==actor.trim() && actor.length in 1..120 && reason==reason.trim() && reason.length in 8..2000)
++        val at=j.getString("createdAtUtc");Instant.parse(at)
++        return NativeCommissioningScope(id,sha,baseline.revision,baselineSha256,slot.referenceSha256,source,actor,reason,at)
++    }
++    fun headSha256(id:String):String?=synchronized(LOCK){events(id).lastOrNull()?.hash}
++    /** Metadata only. A retained scope may be stale; every operation must call assertCurrent. */
++    fun recordedScope(id:String):NativeCommissioningScope?=synchronized(LOCK) {
++        val head=events(id).lastOrNull() ?: return@synchronized null
++        if(head.action=="OPEN")scope(id,head.scopeSha256) else null
++    }
++    fun current(id:String):NativeCommissioningScope?=synchronized(LOCK) {
++        val head=events(id).lastOrNull() ?: return@synchronized null
++        if(head.action!="OPEN")return@synchronized null
++        val value=scope(id,head.scopeSha256)
++        assertCurrent(value,id);value
++    }
++    fun assertCurrent(value:NativeCommissioningScope,id:String=value.territory)=synchronized(LOCK) {
++        require(id==value.territory && value.baselineRevision==baseline.revision && value.baselineSha256==baselineSha256) {"Commissioning scope mismatch"}
++        val event=events(id).lastOrNull()
++        require(event?.action=="OPEN" && event.scopeSha256==value.sha256) {"This candidate workspace was replaced or closed. Return to the original territory."}
++        val retained=scope(id,value.sha256)
++        require(retained.sourceSha256==value.sourceSha256 && retained.referenceSha256==value.referenceSha256 && retained.actor==value.actor && retained.reason==value.reason && retained.createdAtUtc==value.createdAtUtc) {"Commissioning scope changed"}
++        val source=requireNotNull(sources.verifiedRecord(id)) {"The commissioned source is missing. Import and review a source again."}
++        require(source.sha256==value.sourceSha256 && source.canonicalFilename==baseline.assignments.getValue(id).canonicalFilename) {"The source changed. A new same-territory commissioning review is required."}
++    }
++    private fun append(id:String,action:String,sha:String,actor:String,expectedHead:String?):Event {
++        val history=events(id);require(history.lastOrNull()?.hash==expectedHead) {"Commissioning history changed; reload before confirming"}
++        require(history.size<LIMIT && (action=="REVOKE" || history.size<LIMIT-1)) {"Commissioning history is full; the final entry is reserved for closing the active workspace"}
++        val j=JSONObject().put("schema","native-commissioning-event-v1").put("territory",id)
++            .put("baselineRevision",baseline.revision).put("baselineSha256",baselineSha256)
++            .put("sequence",history.size+1).put("action",action).put("scopeSha256",sha)
++            .put("previous",expectedHead ?: JSONObject.NULL).put("actor",actor).put("at",Instant.now().toString())
++        val digest=archive(directory(id),canonical(j),"event")
++        beforeHeadWrite()
++        write(AtomicFile(File(directory(id),"head")),digest.toByteArray(Charsets.US_ASCII))
++        return events(id).last().also {require(it.hash==digest)}
++    }
++    fun start(id:String,sourceSha256:String,actor:String,reason:String,confirmedTerritoryId:String,
++        preserveOriginal:Boolean,expectedHead:String?):NativeCommissioningScope=mutation(id) {
++        val slot=requireNotNull(baseline.assignments[id]) {"Unknown or retired territory"}
++        require(!slot.needsNewCard) {"Use this territory's existing new-card workspace"}
++        require(confirmedTerritoryId==id && preserveOriginal) {"Confirm the exact territory identity and preservation of its original card"}
++        require(actor==actor.trim() && actor.length in 1..120 && reason==reason.trim() && reason.length in 8..2000) {"Enter the reviewer and specific same-territory source evidence"}
++        require(events(id).lastOrNull()?.hash==expectedHead) {"Commissioning history changed; reload before confirming"}
++        val source=requireNotNull(sources.verifiedRecord(id)) {"Import the new current source first"}
++        require(source.canonicalFilename==slot.canonicalFilename) {"Imported source identity mismatch"}
++        require(HASH.matches(sourceSha256) && source.sha256==sourceSha256 && source.sha256!=slot.referenceSha256) {"The exact original card is not a new current source"}
++        val j=JSONObject().put("schema","native-commissioning-scope-v1").put("id",UUID.randomUUID().toString()).put("territory",id)
++            .put("baselineRevision",baseline.revision).put("baselineSha256",baselineSha256)
++            .put("referenceSha256",slot.referenceSha256).put("sourceSha256",source.sha256)
++            .put("actor",actor).put("reason",reason).put("createdAtUtc",Instant.now().toString())
++            .put("identityConfirmed",true).put("originalPreserved",true)
++        val digest=archive(directory(id),canonical(j),"scope")
++        require(sources.verifiedRecord(id)==source) {"Source changed during commissioning"}
++        append(id,"OPEN",digest,actor,expectedHead)
++        scope(id,digest).also {assertCurrent(it)}
++    }
++    fun close(id:String,actor:String,expectedHead:String)=mutation(id) {
++        require(actor==actor.trim() && actor.length in 1..120)
++        val head=events(id).lastOrNull();require(head?.hash==expectedHead && head.action=="OPEN") {"Commissioning history changed or is already closed"}
++        append(id,"REVOKE",head.scopeSha256,actor,expectedHead)
++        Unit
++    }
++    fun candidateKnowledgeBase(value:NativeCommissioningScope):TerritoryKnowledgeBase=synchronized(LOCK) {
++        assertCurrent(value)
++        NativeCommissioningProjection.project(baseline,value.territory,value.referenceSha256,value.sha256)
++    }
++    /** Retained in native draft history. Copying these bytes never activates a workspace. */
++    fun evidenceBytes(value:NativeCommissioningScope):ByteArray=synchronized(LOCK) {
++        assertCurrent(value)
++        val history=events(value.territory)
++        val selected=history.last();require(selected.scopeSha256==value.sha256 && selected.action=="OPEN")
++        val scopeBytes=read(AtomicFile(File(directory(value.territory),"${value.sha256}.scope")))
++        val j=JSONObject().put("schema","native-commissioning-evidence-v1")
++            .put("purpose","Evidence only; not assignment activation or PDF approval")
++            .put("scopeSha256",value.sha256).put("scope",JSONObject(scopeBytes.toString(Charsets.UTF_8)))
++            .put("headSha256",selected.hash).put("head",JSONObject(read(AtomicFile(File(directory(value.territory),"${selected.hash}.event"))).toString(Charsets.UTF_8)))
++        canonical(j)
++    }
++    fun guardedSources(value:NativeCommissioningScope):SourceMapIntakeStore {
++        assertCurrent(value)
++        return SourceMapIntakeStore(context) {id->assertCurrent(value,id)}
++    }
++}
+ diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/NativeCommissioningUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/NativeCommissioningUi.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/NativeCommissioningUi.kt
+@@ -0,0 +1,112 @@
++package com.koenterprises.territorycardstudio
++
++import androidx.compose.foundation.layout.*
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.foundation.verticalScroll
++import androidx.compose.material3.*
++import androidx.compose.runtime.*
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.platform.testTag
++import androidx.compose.ui.unit.dp
++import com.koenterprises.territorycardstudio.core.*
++import java.io.File
++
++/** This confirmation only opens an isolated draft. It never confirms coverage or work facts. */
++@Composable internal fun NativeCommissioningAuthorizationPanel(assignment:KnowledgeBaseAssignment,
++    source:File?,sourceSha256:String?,onConfirm:(String,String,String,Boolean)->Unit) {
++    key(assignment.displayId,source?.path,sourceSha256) {
++        var actor by remember {mutableStateOf("")}
++        var reason by remember {mutableStateOf("")}
++        var identity by remember {mutableStateOf("")}
++        var preserve by remember {mutableStateOf(false)}
++        var readable by remember {mutableStateOf(false)}
++        var inspected by remember(actor,reason,identity) {mutableStateOf(false)}
++        Text("Create a replacement candidate",style=MaterialTheme.typography.headlineSmall)
++        Text("Original territory: ${assignment.displayId}",modifier=Modifier.testTag("commissioning-original-id"))
++        Text("The original card and installed catalog will stay unchanged. The replacement has separate drafts, reviews and approvals.")
++        Text("Original reference: ${assignment.referenceSha256.take(16)}…")
++        val names=assignment.roadNameInventory.distinct()
++        if(names.isNotEmpty())Text("Original catalog streets: "+names.take(20).joinToString(", ")+(if(names.size>20)" …" else ""))
++        if(source!=null && sourceSha256!=null) {
++            Box(Modifier.testTag("commissioning-source-preview")) {
++                NativeSourcePreview(source) {shown->
++                    readable=shown && runCatching {source.inputStream().use(BundleIntegrity::sha256)==sourceSha256}.getOrDefault(false)
++                }
++            }
++        } else Text("Import the new source map before opening a replacement workspace.",color=MaterialTheme.colorScheme.error)
++        Text("An unclear boundary or conflicting territory number is not resolved by this step. Source reconciliation and the full card review remain mandatory.")
++        OutlinedTextField(actor,{actor=it},label={Text("Reviewer name")},modifier=Modifier.fillMaxWidth().testTag("commissioning-actor"))
++        OutlinedTextField(identity,{identity=it},label={Text("Type ${assignment.displayId} to confirm the same territory")},modifier=Modifier.fillMaxWidth().testTag("commissioning-identity"))
++        OutlinedTextField(reason,{reason=it},label={Text("Evidence that this new source belongs to this territory")},modifier=Modifier.fillMaxWidth().testTag("commissioning-reason"))
++        Row {Checkbox(inspected,{inspected=it},enabled=readable,modifier=Modifier.testTag("commissioning-source-inspected"));Text("I inspected this exact new source and confirmed its territory identity",Modifier.weight(1f).padding(top=12.dp))}
++        Row {Checkbox(preserve,{preserve=it},modifier=Modifier.testTag("commissioning-preserve-original"));Text("Keep the original card unchanged; create an unapproved replacement candidate",Modifier.weight(1f).padding(top=12.dp))}
++        Button(onClick={onConfirm(actor.trim(),reason.trim(),identity,preserve)},
++            enabled=readable && inspected && preserve && identity==assignment.displayId && actor.trim().length in 1..120 && reason.trim().length in 8..2000,
++            modifier=Modifier.fillMaxWidth().testTag("commissioning-start")){Text("Open separate candidate workspace")}
++    }
++}
++
++@Composable internal fun NativeCommissioningWorkflowScreen(modifier:Modifier,item:TerritoryDashboardItem,
++    baseline:TerritoryKnowledgeBase,onImportSource:()->Unit,onBack:()->Unit) {
++    val context=LocalContext.current
++    val store=remember(context,baseline){AndroidCommissioningStore(context,baseline)}
++    val sources=remember(context){SourceMapIntakeStore(context)}
++    val id=item.assignment.displayId
++    var refresh by remember(id){mutableStateOf(0)}
++    var selected by remember(id){mutableStateOf<NativeCommissioningScope?>(null)}
++    var recorded by remember(id){mutableStateOf<NativeCommissioningScope?>(null)}
++    var head by remember(id){mutableStateOf<String?>(null)}
++    var message by remember(id){mutableStateOf("")}
++    var closeConfirmation by remember(id){mutableStateOf(false)}
++    var loaded by remember(id){mutableStateOf(false)}
++    LaunchedEffect(id,refresh) {
++        loaded=false
++        runCatching {head=store.headSha256(id);recorded=store.recordedScope(id)}
++            .onFailure {message=it.message.orEmpty()}
++        loaded=true
++    }
++    selected?.let {scope->
++        val result=remember(scope.sha256){runCatching {TerritoryCardStudioServices(context,scope,store)}}
++        val services=result.getOrNull()
++        if(services==null) {
++            Column(modifier.padding(20.dp)) {Text(result.exceptionOrNull()?.message ?: "Candidate workspace unavailable");TextButton(onClick={selected=null;refresh++}){Text("Return to commissioning review")}}
++        } else {
++            val candidate=item.copy(assignment=services.knowledgeBase.assignments.getValue(id),status=TerritoryUiStatus.NEEDS_NEW_CARD)
++            Column(modifier.fillMaxSize()) {
++                Surface(tonalElevation=2.dp) {Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp)) {
++                    Text("Replacement candidate · original preserved",style=MaterialTheme.typography.titleSmall,modifier=Modifier.testTag("commissioning-candidate-banner"))
++                    Text("Separate workspace ${scope.sha256.take(12)}",style=MaterialTheme.typography.bodySmall)
++                }}
++                key(scope.sha256) {ModeAwareTerritoryWorkspace(Modifier.weight(1f),candidate,services.knowledgeBase.revision,
++                    onBack={selected=null;refresh++},knowledgeBase=services.knowledgeBase,servicesOverride=services)}
++            }
++        }
++        return
++    }
++    val source=remember(id,refresh){runCatching {sources.verifiedRecord(id)}.getOrNull()}
++    val file=remember(source){source?.let {runCatching {sources.verifiedFile(id)}.getOrNull()}}
++    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
++        TextButton(onClick=onBack){Text("← Original territory")}
++        Text(message,modifier=Modifier.testTag("commissioning-status"))
++        recorded?.let {scope->
++            Text("A separate candidate workspace is retained. It is not the original approved card.")
++            Button(onClick={runCatching {store.assertCurrent(scope);selected=scope}.onFailure {message=it.message.orEmpty()}},modifier=Modifier.fillMaxWidth().testTag("commissioning-resume")){Text("Resume retained candidate")}
++            TextButton(onClick={closeConfirmation=true},modifier=Modifier.testTag("commissioning-close")){Text("Close this candidate workspace")}
++        }
++        OutlinedButton(onClick=onImportSource,modifier=Modifier.fillMaxWidth()){Text("Choose or change the new source map")}
++        if(loaded)NativeCommissioningAuthorizationPanel(item.assignment,file,source?.sha256) {actor,reason,identity,preserve->
++            runCatching {store.start(id,requireNotNull(source).sha256,actor,reason,identity,preserve,head)}
++                .onSuccess {selected=it;message="Separate candidate opened. The original is unchanged."}
++                .onFailure {message=it.message.orEmpty()}
++        } else CircularProgressIndicator()
++    }
++    if(closeConfirmation)AlertDialog(onDismissRequest={closeConfirmation=false},title={Text("Close this candidate?")},
++        text={Text("The original card and all saved evidence stay unchanged. This candidate will no longer be eligible for building or export. A later replacement needs a new commissioning review.")},
++        confirmButton={TextButton(onClick={
++            runCatching {store.close(id,requireNotNull(recorded).actor,requireNotNull(head))}
++                .onSuccess {recorded=null;message="Candidate workspace closed. The original card and evidence were retained.";refresh++}
++                .onFailure {message=it.message.orEmpty()}
++            closeConfirmation=false
++        }){Text("Close candidate")}},dismissButton={TextButton(onClick={closeConfirmation=false}){Text("Keep open")}})
++}
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt b/app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/SourceMapIntakeStore.kt
+@@ -38,7 +38,7 @@
+     }
+ }
+ 
+-class SourceMapIntakeStore(context: Context) {
++class SourceMapIntakeStore(context: Context, private val scopeGuard: (String) -> Unit = {}) {
+     private val appContext = context.applicationContext
+     private val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+     private val root = File(appContext.noBackupFilesDir, "territory-card-studio/source-intake-v1").apply {
+@@ -46,6 +46,7 @@
+     }
+ 
+     fun get(displayId: String): SourceMapIntakeRecord? {
++        scopeGuard(displayId)
+         val raw = preferences.getString(key(displayId), null) ?: return null
+         return parse(raw)
+     }
+@@ -82,6 +83,7 @@
+         assignment: KnowledgeBaseAssignment,
+         uri: Uri
+     ): SourceMapIntakeRecord {
++        scopeGuard(assignment.displayId)
+         val resolver = appContext.contentResolver
+         val mime = resolver.getType(uri)?.lowercase()
+             ?: error("Source map MIME type is unavailable")
+@@ -117,6 +119,7 @@
+         input: InputStream,
+         importedAtUtc: String = Instant.now().toString()
+     ): SourceMapIntakeRecord {
++        scopeGuard(assignment.displayId)
+         require(mimeType in ALLOWED_MIME_TYPES) { "Unsupported source map type: $mimeType" }
+         require(sourceFilename.isNotBlank()) { "Source filename is required" }
+ 
+@@ -147,6 +150,7 @@
+             val localName = sha + extensionFor(mimeType)
+             val destination = File(territoryDir, localName)
+             // Replace even an existing hash-named file: it may have been corrupted after intake.
++            scopeGuard(assignment.displayId)
+             java.nio.file.Files.move(temp.toPath(), destination.toPath(),
+                 java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                 java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+@@ -175,6 +179,7 @@
+     }
+ 
+     fun clear(displayId: String) {
++        scopeGuard(displayId)
+         require(preferences.edit().remove(key(displayId)).commit()) {
+             "Unable to clear source-map selection"
+         }

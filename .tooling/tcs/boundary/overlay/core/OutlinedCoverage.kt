@@ -15,7 +15,7 @@ data class OutlinedSourceSpan(val candidateId:String,val from:Double,val to:Doub
     val disposition:OutlinedSpanDisposition,val outputId:String?,val outputOrder:Int=0,
     val reversed:Boolean=false,val evidence:String="",val reviewedOutputSha256:String="")
 data class OutlinedCoverageDecision(val analysisSha256:String,val outputSha256:String,
-    val boundaryConfirmed:Boolean,val spans:List<OutlinedSourceSpan>)
+    val boundaryConfirmed:Boolean,val spans:List<OutlinedSourceSpan>,val boundaryRepairEvidence:Map<String,String> = emptyMap())
 data class OutlinedCoverageResult(val failures:List<String>) {val passed get()=failures.isEmpty()}
 
 /** This gate proves exact candidate accounting and source-to-output geometry, not geographic
@@ -41,6 +41,12 @@ object OutlinedCoverageContract {
         o.writeInt(e.roads.size);e.roads.forEach {p->val r=p.road;o.text(r.id);o.text(r.name ?: "");o.text(r.status)
             o.text(p.relation.name);o.writeBoolean(r.junctionA);o.writeBoolean(r.junctionB);o.points(r.points)}
         o.writeInt(e.findings.size);e.findings.forEach {f->o.text(f.id);o.text(f.message);o.writeBoolean(f.sourceBounds!=null);f.sourceBounds?.let {o.bounds(it)}}
+        if(e.paintMode!=OutlinedRoadPaintMode.LIGHT_NEUTRAL){o.text("outlined-road-paint-v1");o.text(e.paintMode.name)}
+        // Preserve existing no-repair hashes; repaired analyses carry a versioned extension.
+        if(e.boundary.gapRepairs.isNotEmpty()) {
+            o.text("boundary-repair-proposals-v1");o.writeInt(e.boundary.gapRepairs.size)
+            e.boundary.gapRepairs.forEach {r->o.text(r.id);o.text(r.algorithm);o.point(r.start);o.point(r.end);o.points(r.addedPixels)}
+        }
     }
     fun outputSha256(roads:List<RoadGeometry>):String=digest {o->
         o.text("outlined-coverage-output-v1");o.writeInt(roads.size)
@@ -111,6 +117,8 @@ object OutlinedCoverageContract {
         if(decision.analysisSha256!=analysisSha256(sourceSha256,e,t))errors+="SOURCE_ANALYSIS_CHANGED"
         if(decision.outputSha256!=outputSha256(roads))errors+="OUTPUT_CHANGED"
         if(!decision.boundaryConfirmed)errors+="BOUNDARY_UNCONFIRMED"
+        for(repair in e.boundary.gapRepairs)if(decision.boundaryRepairEvidence[repair.id]?.trim()?.length !in 8..2000)errors+="BOUNDARY_REPAIR_UNREVIEWED:${repair.id}"
+        if(decision.boundaryRepairEvidence.keys.any {id->e.boundary.gapRepairs.none {it.id==id}})errors+="UNKNOWN_BOUNDARY_REPAIR"
         val candidates=e.roads.associateBy {it.road.id};val output=roads.associateBy {it.segmentId}
         if(output.size!=roads.size)errors+="DUPLICATE_OUTPUT_ID"
         if(decision.spans.size>16384)return OutlinedCoverageResult(errors+"TOO_MANY_SPANS")

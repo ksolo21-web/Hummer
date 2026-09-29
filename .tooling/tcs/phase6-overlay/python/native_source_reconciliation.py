@@ -62,12 +62,21 @@ def validate(r):
         require(row['insideSide'] in {'','left','right'} and row['endpointAKind'] in {'junction','termination'} and row['endpointBKind'] in {'junction','termination'},'Invalid road topology')
         boolean(row['confirmed']);boolean(row['accessOnly'])
     for row in r['buildings']:
-        require(type(row) is dict and set(row)==BUILDING,'Building schema drift')
+        require(type(row) is dict and set(row) in (BUILDING,BUILDING|{'supplementalReference'}),'Building schema drift')
         text(row['buildingId'],120);text(row['evidenceNote'],1000,True)
         require(type(row['sourceMembers']) is list and (1 if row['assigned'] else 0)<=len(row['sourceMembers'])<=512,'Invalid members')
         for m in row['sourceMembers']:text(m,120)
         require(len(set(row['sourceMembers']))==len(row['sourceMembers']),'Duplicate members')
         boolean(row['assigned']);boolean(row['confirmed'])
+        if 'supplementalReference' in row:
+            ref=row['supplementalReference']
+            require(type(ref) is dict and set(ref)=={'referenceSha256','currentSourceSha256','buildingContentSha256','referenceLocation','correspondenceEvidence','confirmed'},'Supplemental schema drift')
+            for key in ('referenceSha256','currentSourceSha256','buildingContentSha256'):
+                require(type(ref[key]) is str and SHA.fullmatch(ref[key]),'Invalid supplemental hash')
+            require(ref['referenceSha256']!=ref['currentSourceSha256'],'Reference cannot replace current geometry source')
+            for key in ('referenceLocation','correspondenceEvidence'):
+                text(ref[key],1000);require(len(ref[key])>=8,'Missing supplemental match evidence')
+            boolean(ref['confirmed'])
     require(len({v['segmentId'] for v in r['segments']})==len(r['segments']),'Duplicate road')
     require(len({v['buildingId'] for v in r['buildings']})==len(r['buildings']),'Duplicate building')
 
@@ -101,9 +110,11 @@ def decode(raw):
     require(encode(r)==raw,'Noncanonical encoding')
     return r
 
-def differences(r,roads,buildings):
+def differences(r,roads,buildings,current_source_sha256=None,locked_reference_sha256=None):
     """Compare explicit user observations to named candidate geometry records."""
     validate(r)
+    current_source_sha256=current_source_sha256 or r['importedSourceSha256']
+    locked_reference_sha256=locked_reference_sha256 or r['lockedReferenceSha256']
     expected={x['segmentId']:x for x in r['segments']}
     actual={x['segmentId']:x for x in roads}
     require(len(actual)==len(roads),'Duplicate candidate road')
@@ -115,12 +126,42 @@ def differences(r,roads,buildings):
     unresolved=0
     for k in observed_buildings.keys()|actual_buildings.keys():
         s=observed_buildings.get(k);b=actual_buildings.get(k)
-        if s is None or b is None or not s['confirmed'] or s['assigned']!=b['assigned'] or sorted(s['sourceMembers'])!=sorted(b['sourceMembers']):unresolved+=1
+        if s is None or b is None or not s['confirmed'] or s['assigned']!=b['assigned'] or sorted(s['sourceMembers'])!=sorted(b['sourceMembers']):
+            unresolved+=1
+        elif 'supplementalReference' in s:
+            ref=s['supplementalReference']
+            if (not ref['confirmed'] or ref['currentSourceSha256']!=current_source_sha256 or
+                ref['referenceSha256']!=locked_reference_sha256 or
+                not {'label','housingType','attachedGroup','polygon','labelItems'}<=set(b) or
+                ref['buildingContentSha256']!=supplemental_building_content_sha256(b)):
+                unresolved+=1
     return dict(missingExpectedSegmentCount=len(expected.keys()-actual.keys()),
         unexpectedMeaningChangingSegmentCount=len(actual.keys()-expected.keys()),
         assignmentColorConflictCount=sum(not same(s,actual[k]) for k,s in expected.items() if k in actual),
         unresolvedPerimeterWorkedSideCount=sum(a['role']=='perimeter' and (a['insideSide'] not in {'left','right'} or a['segmentId'] not in expected or not expected[a['segmentId']]['confirmed'] or not same(expected[a['segmentId']],a)) for a in roads),
         unresolvedBuildingSiteCount=unresolved)
+
+def supplemental_building_content_sha256(b):
+    """Exact supplemental-building-match-v1 digest; no inference from reference geometry."""
+    import struct, math
+    out=bytearray()
+    def integer(n):out.extend(struct.pack('>i',n))
+    def text(s):
+        raw=s.encode('utf-8');integer(len(raw));out.extend(raw)
+    def number(n):
+        n=float(n);require(math.isfinite(n),'Nonfinite coordinate');out.extend(struct.pack('>d',n))
+    def boolean(v):require(type(v) is bool,'Not boolean');out.extend(b'\x01' if v else b'\x00')
+    def point(p):number(p['x']);number(p['y'])
+    def array(values,write):integer(len(values));[write(v) for v in values]
+    text('supplemental-building-match-v1')
+    for name in ('buildingId','label','housingType'):text(b[name])
+    boolean(b['assigned']);text(b['attachedGroup']);array(b['sourceMembers'],text);array(b['polygon'],point)
+    def label(v):
+        text(v['text']);point(v['center']);boolean(v['origin'] is not None)
+        if v['origin'] is not None:point(v['origin'])
+        number(v['angleDeg']);number(v['fontSizePt'])
+    array(b['labelItems'],label)
+    return hashlib.sha256(out).hexdigest()
 
 def assignment_content_sha256(v):
     """Exact native-assignment-content-v1 binary digest; authoritySha256 alone excluded."""

@@ -85,6 +85,19 @@ class OutlinedMapBoundaryTest {
         p.fill(0xFFDDDDDD.toInt());rect(0,20,170,200)
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
     }
+    @Test fun solidScreenshotToolbarDoesNotHideTheOnlyClosedSourceOutline() {
+        val w=400;val h=300;val p=IntArray(w*h){0xFFEEEEEE.toInt()}
+        for(x in 0 until w)for(y in 270 until h)p[y*w+x]=0xFF000000.toInt()
+        for(x in 40..350){p[30*w+x]=0xFF000000.toInt();p[240*w+x]=0xFF000000.toInt()}
+        for(y in 30..240){p[y*w+40]=0xFF000000.toInt();p[y*w+350]=0xFF000000.toInt()}
+        val b=OutlinedMapBoundaryDetector.detect(w,h,p)
+        assertTrue(b.enclosedPixels in 60000..66000)
+        p.fill(0xFFEEEEEE.toInt())
+        for(x in 0 until w)for(y in 270 until h)p[y*w+x]=0xFF000000.toInt()
+        for(x in 0..350){p[30*w+x]=0xFF000000.toInt();p[240*w+x]=0xFF000000.toInt()}
+        for(y in 30..240){p[y*w]=0xFF000000.toInt();p[y*w+350]=0xFF000000.toInt()}
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
+    }
     @Test fun connectedEnclosuresAndInteriorHolesCannotBeFilledSilently() {
         val w=400;val h=300;val p=IntArray(w*h){0xFFDDDDDD.toInt()}
         fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){p[t*w+x]=0xFF000000.toInt();p[b*w+x]=0xFF000000.toInt()};for(y in t..b){p[y*w+l]=0xFF000000.toInt();p[y*w+r]=0xFF000000.toInt()}}
@@ -93,6 +106,50 @@ class OutlinedMapBoundaryTest {
         p.fill(0xFFDDDDDD.toInt());rect(20,20,300,260);rect(120,100,160,140)
         for(x in 20..120)p[120*w+x]=0xFF000000.toInt()
         assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,p)}
+    }
+    @Test fun shortGapIsARecordedProposalAndNeverChangesSourcePixels() {
+        val w=400;val h=300;val pixels=IntArray(w*h){0xFFFFFFFF.toInt()}
+        fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){pixels[t*w+x]=0xFF000000.toInt();pixels[b*w+x]=0xFF000000.toInt()};for(y in t..b){pixels[y*w+l]=0xFF000000.toInt();pixels[y*w+r]=0xFF000000.toInt()}}
+        rect(30,30,360,260)
+        val exact=OutlinedMapBoundaryDetector.detect(w,h,pixels,true)
+        assertTrue(exact.gapRepairs.isEmpty())
+        for(x in 140..145)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        val before=pixels.copyOf()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels)}
+        val proposal=OutlinedMapBoundaryDetector.detect(w,h,pixels,true)
+        assertArrayEquals(before,pixels)
+        assertEquals(1,proposal.gapRepairs.size)
+        assertEquals(exact.enclosedPixels,proposal.enclosedPixels)
+        assertEquals((140..145).map {Point2D(it.toDouble(),30.0)},proposal.gapRepairs.single().addedPixels)
+        for(x in 130..175)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
+    }
+    @Test fun repairProposalsDoNotCloseClippedOrCompetingBoundaries() {
+        val w=500;val h=300;val pixels=IntArray(w*h){0xFFFFFFFF.toInt()}
+        fun rect(l:Int,t:Int,r:Int,b:Int){for(x in l..r){pixels[t*w+x]=0xFF000000.toInt();pixels[b*w+x]=0xFF000000.toInt()};for(y in t..b){pixels[y*w+l]=0xFF000000.toInt();pixels[y*w+r]=0xFF000000.toInt()}}
+        rect(0,30,200,260)
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
+        pixels.fill(0xFFFFFFFF.toInt());rect(20,30,220,260);rect(270,30,470,260)
+        for(x in 100..105)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        for(x in 350..355)pixels[30*w+x]=0xFFFFFFFF.toInt()
+        assertThrows(IllegalArgumentException::class.java){OutlinedMapBoundaryDetector.detect(w,h,pixels,true)}
+    }
+    @Test fun blueGrayRoadsOnPaleMapsRemainNeutralAndDoNotTraceBuildingFill() {
+        val w=400;val h=300;val pixels=IntArray(w*h){0xFFF5F5F5.toInt()}
+        for(x in 25..375){pixels[25*w+x]=0xFF000000.toInt();pixels[275*w+x]=0xFF000000.toInt()}
+        for(y in 25..275){pixels[y*w+25]=0xFF000000.toInt();pixels[y*w+375]=0xFF000000.toInt()}
+        for(y in 140..160)for(x in 40..360)pixels[y*w+x]=0xFFB9C8D2.toInt()
+        for(y in 60..160)for(x in 190..210)pixels[y*w+x]=0xFFB9C8D2.toInt()
+        for(y in 60..110)for(x in 60..130)pixels[y*w+x]=0xFFE4E4E9.toInt()
+        for(y in 200..245)for(x in 60..130)pixels[y*w+x]=0xFF77CCEE.toInt()
+        for(y in 60..110)for(x in 280..330)pixels[y*w+x]=0xFFC0CDD8.toInt()
+        val result=OutlinedMapRoadExtractor.extract(w,h,pixels,emptyList())
+        assertEquals(OutlinedRoadPaintMode.BLUE_GRAY,result.paintMode)
+        assertTrue(result.findings.any {it.id.startsWith("component-") && it.sourceBounds?.left==280.0})
+        assertTrue(result.roads.isNotEmpty())
+        assertTrue(result.roads.all {it.road.status=="context"})
+        assertTrue(result.roads.flatMap {it.road.points}.any {it.x<150 && it.y in 140.0..160.0})
+        assertFalse(result.roads.flatMap {it.road.points}.any {it.x in 60.0..130.0 && (it.y in 60.0..110.0 || it.y in 200.0..245.0)})
     }
     @Test fun neutralColoredAreasDoNotEstablishBoundaryOrWorkStatus() {
         val w=300;val h=200;val p=IntArray(w*h){when(it%w/75){0->0xFF51C72B.toInt();1->0xFFFF1435.toInt();2->0xFF22CCFF.toInt();else->0xFFFFDC18.toInt()}}

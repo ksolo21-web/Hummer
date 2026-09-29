@@ -1,0 +1,30 @@
+diff --git a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt
+index 7abc15a..3940b29 100644
+--- a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt
+@@ -665,23 +665,8 @@ object ProductionRenderModelAdapter {
+         )
+     }
+ 
+-    private fun toPdfBuildingShape(building: BuildingGeometry): PdfBuildingShape = PdfBuildingShape(
+-        buildingId = building.buildingId,
+-        label = building.label,
+-        points = building.polygon.map { it.x to it.y },
+-        assigned = building.assigned,
+-        labelItems = building.labelItems.map { item ->
+-            PdfBuildingLabelItem(
+-                text = item.text,
+-                centerX = item.center.x,
+-                centerTopY = item.center.y,
+-                originX = item.origin?.x,
+-                originTopY = item.origin?.y,
+-                rotationDegrees = item.angleDeg,
+-                fontSizePt = item.fontSizePt
+-            )
+-        }
+-    )
++    private fun toPdfBuildingShape(building: BuildingGeometry): PdfBuildingShape =
++        NativeBuildingWorkSemantics.toPdf(building)
+ 
+     private fun validateHousingAndBuildings(
+         state: CurrentAuthoritativeAssignmentState,

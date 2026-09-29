@@ -1,0 +1,27 @@
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+index 0443353..3d3edef 100644
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+@@ -309,15 +309,13 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+                 }},modifier=Modifier.testTag("native-generate-picture")){Text(if(busy)"Reading map…" else "Generate card draft from picture")}
+                 if(assignment.roads.isNotEmpty() || assignment.buildings.isNotEmpty()) {
+                     OutlinedButton(enabled=sourceReadable && !busy && roads.isEmpty() && buildings.isEmpty(),onClick={
+-                        roads=assignment.roads
+-                        buildings=assignment.buildings
+-                        roadFacts=roads.map {r->SourceSegmentObservation(r.segmentId,r.name,r.status,r.role,r.insideSide,r.accessOnly,r.endpointAKind,r.endpointBKind,
+-                            "Locked reference comparison only; verify this exact segment against the current uploaded source before confirmation",false)}
+-                        buildingFacts=buildings.map {b->SourceBuildingObservation(b.buildingId,b.sourceMembers,b.assigned,
+-                            "Locked reference comparison only; trace/match this footprint against the current uploaded source before confirmation",false)}
+-                        imageReview=null;outlinedReview=null;coverage=false
+-                        section=if(roads.isNotEmpty())"Roads" else if(buildings.isNotEmpty())"Buildings" else "Map"
+-                        message="Loaded the locked card only as unconfirmed comparison geometry. Nothing was accepted as current. Reconcile every retained item against the uploaded source; remove stale items and trace missing current items before registration."
++                        runCatching {NativeReferenceComparison.propose(assignment)}.onSuccess {comparison->
++                            roads=comparison.roads;buildings=comparison.buildings
++                            roadFacts=comparison.segments;buildingFacts=comparison.buildingObservations
++                            imageReview=null;outlinedReview=null;coverage=false
++                            section=if(roads.isNotEmpty())"Roads" else if(buildings.isNotEmpty())"Buildings" else "Map"
++                            message="Loaded unconfirmed comparison geometry. ${comparison.textChanges.size} range-label punctuation changes use the locked font; building numbers and work rules are unchanged. Nothing was accepted as current. Reconcile every retained item against the uploaded source, remove stale items and trace missing current items before registration."
++                        }.onFailure {message=it.message ?: "The reference comparison could not be loaded. The current draft is unchanged."}
+                     },modifier=Modifier.testTag("native-seed-reference-comparison")){Text("Use locked card as unconfirmed comparison")}
+                     Text("This shortcut never approves old geometry. Every retained road/building starts unconfirmed, and current-source coverage, fresh GIS verification and exact PDF approval remain required.")
+                 }

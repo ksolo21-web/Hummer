@@ -1,0 +1,69 @@
+diff --git a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+index 3d3edef..16bf1ea 100644
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+@@ -130,7 +130,7 @@ import java.util.UUID
+         drawRect(Color.White);drawRect(border,style=androidx.compose.ui.graphics.drawscope.Stroke(2f))
+         buildings.forEach {b->
+             val path=androidx.compose.ui.graphics.Path();b.polygon.forEachIndexed {i,p->val v=point(p);if(i==0)path.moveTo(v.x,v.y)else path.lineTo(v.x,v.y)};path.close()
+-            val color=if(b.assigned)Color(0xFF51C72B) else Color(0xFFFF1435)
++            val color=if(NativeBuildingWorkSemantics.isContextOnly(b))Color(0xFF858B94) else if(b.assigned)Color(0xFF51C72B) else Color(0xFFFF1435)
+             drawPath(path,color.copy(alpha=if(b.assigned)0.7f else 0.12f));drawPath(path,color,style=androidx.compose.ui.graphics.drawscope.Stroke(1f))
+         }
+         roads.forEach {r->r.points.zipWithNext().forEach {(a,b)->drawLine(when(r.status){"yellow"->Color(0xFFD0AA00);"green"->Color(0xFF07883B);"red"->Color(0xFFD32222);else->Color.Gray},point(a),point(b),4f)}}
+@@ -230,6 +230,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+     var pointText by rememberSaveable {mutableStateOf("")}
+     var members by rememerSaveable {mutableStateOf("")}
+     var assigned by rememberSaveable {mutableStateOf(false)}
++    var ancillaryContext by rememberSaveable {mutableStateOf(false)}
+     var address by rememerSaveable {mutableStateOf("")}
+     var unit by rememerSaveable {mutableStateOf("")}
+     var city by rememerSaveable {mutableStateOf("")}
+@@ -253,7 +254,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+     var referenceLocation by rememerSaveable(id){mutableStateOf("")}
+     var correspondenceEvidence by rememerSaveable(id){mutableStateOf("")}
+     var correspondenceConfirmed by rememberSaveable(id){mutableStateOf(false)}
+-    LaunchedEffect(source?.sha256,itemId,points,members,assigned,assignment.housingType) {
++    LaunchedEffect(source?.sha256,itemId,points,members,assigned,ancillaryContext,assignment.housingType) {
+         correspondenceConfirmed=false
+     }
+     val referencePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+@@ -342,7 +343,15 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+                 item {NativeChoice("First endpoint",endA,listOf("junction","termination"),"native-end-a"){endA=it;confirmed=false};NativeChoice("Last endpoint",endB,listOf("junction","termination"),"native-end-b"){endB=it;confirmed=false}}
+                 item {NativeCheck("This segment is access only",accessOnly,"native-access-only"){accessOnly=it;confirmed=false}}
+             } else {
+-                item {NativeField("Assigned building/member identifiers, separated by commas",members,"native-building-members"){members=it;confirmed=false;correspondenceConfirmed=false};NativeCheck("This footprint is assigned",assigned,"native-building-assigned"){assigned=it;confirmed=false;correspondenceConfirmed=false}}
++                item {
++                    NativeCheck("Ancillary structure / gray context only",ancillaryContext,"native-building-ancillary") {
++                        ancillaryContext=it;confirmed=false;correspondenceConfirmed=false
++                    }
++                    Text("Choose gray only for an explicitly sourced nonresidential structure. An excluded residence stays red, even without a readable number.")
++                    NativeField("Residential building/member identifiers, separated by commas",members,"native-building-members"){members=it;confirmed=false;correspondenceConfirmed=false}
++                    NativeCheck("This footprint is assigned",assigned,"native-building-assigned"){assigned=it;confirmed=false;correspondenceConfirmed=false}
++                    if(ancillaryContext)Text("Ancillary context requires no residential members and no worked assignment. Conflicting entries will not be silently cleared.")
++                }
+                 item {
+                     NativeCheck("Use the locked reference for building numbers and work instructions",useReference,"native-use-building-reference"){useReference=it;confirmed=false;correspondenceConfirmed=false}
+                     if(useReference){
+@@ -365,9 +374,7 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+                     roadFacts=roadFacts.filter {it.segmentId!=r.segmentId}+SourceSegmentObservation(r.segmentId,r.name,r.status,r.role,r.insideSide,r.accessOnly,r.endpointAKind,r.endpointBKind,note.trim(),confirmed)
+                 } else {
+                     require(points.size>=3);val ms=members.split(',').map {it.trim()}.filter {it.isNotBlank()};require(!assigned || ms.isNotEmpty())
+-                    val center=Point2D(points.map {it.x}.average(),points.map {it.y}.average())
+-                    val labels=service.buildingLabels(ms,points)
+-                    val b=BuildingGeometry(itemId.trim(),ms.joinToString("/"),assignment.housingType,assigned,"",ms,labels,points)
++                    val b=service.sourceBuilding(itemId.trim(),assignment.housingType,assigned,ancillaryContext,ms,points)
+                     val supplemental=if(useReference){
+                         require(referenceReadable && correspondenceConfirmed){"Inspect the imported reference and explicitly match this footprint"}
+                         referenceStore.verifiedFile(assignment.referenceSha256)
+@@ -385,8 +392,8 @@ fun NativeAuthoringScreen(modifier:Modifier,assignment:KnowledgeBaseAssignment,m
+             items(roads.size) {i->val r=roads[i];Text("${r.segmentId}: ${r.name} • ${r.status} • ${r.role}")
+                 TextButton(onClick={itemId=r.segmentId;name=r.name;status=r.status;role=r.role;side=r.insideSide;endA=r.endpointAKind;endB=r.endpointBKind;accessOnly=r.accessOnly;points=r.points;pointText=r.points.joinToString("; "){"${it.x},${it.y}"};note=roadFacts.firstOrNull{it.segmentId==r.segmentId}?.evidenceNote.orEmpty();confirmed=false;section="Roads"}){Text("Edit ${r.segmentId}")}
+                 TextButton(enabled=roads.size>1,onClick={roads=roads.filter {it.segmentId!=r.segmentId};roadFacts=roadFacts.filter {it.segmentId!=r.segmentId};coverage=false;save()}){Text("Remove source item ${r.segmentId}")}}
+-            items(buildings.size) {i->val b=buildings[i];Text("${b.buildingId}: ${b.sourceMembers.joinToString()}")
+-                TextButton(onClick={val priorReference=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.supplementalReference;useReference=priorReference!=null;referenceLocation=priorReference?.referenceLocation.orEmpty();correspondenceEvidence=priorReference?.correspondenceEvidence.orEmpty();correspondenceConfirmed=false;itemId=b.buildingId;members=b.sourceMembers.joinToString(",");assigned=b.assigned;points=b.polygon;pointText=b.polygon.joinToString("; "){"${it.x},${it.y}"};note=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.evidenceNote.orEmpty();confirmed=false;section="Buildings"}){Text("Edit ${b.buildingId}")}
++            items(buildings.size) {i->val b=buildings[i];Text("${b.buildingId}: "+(if(NativeBuildingWorkSemantics.isContextOnly(b))"Ancillary / context only" else b.sourceMembers.joinToString()))
++                TextButton(onClick={val priorReference=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.supplementalReference;useReference=priorReference!=null;referenceLocation=priorReference?.referenceLocation.orEmpty();correspondenceEvidence=priorReference?.correspondenceEvidence.orEmpty();correspondenceConfirmed=false;itemId=b.buildingId;members=b.sourceMembers.joinToString(",");assigned=b.assigned;ancillaryContext=NativeBuildingWorkSemantics.isContextOnly(b);points=b.polygon;pointText=b.polygon.joinToString("; "){"${it.x},${it.y}"};note=buildingFacts.firstOrNull{it.buildingId==b.buildingId}?.evidenceNote.orEmpty();confirmed=false;section="Buildings"}){Text("Edit ${b.buildingId}")}
+                 TextButton(onClick={buildings=buildings.filter {it.buildingId!=b.buildingId};buildingFacts=buildingFacts.filter {it.buildingId!=b.buildingId};coverage=false;save()}){Text("Remove source item ${b.buildingId}")}}
+         }
+         if(section=="Addresses" && mode!=WorkspaceMode.REGULAR) {

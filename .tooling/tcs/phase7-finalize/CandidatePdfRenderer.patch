@@ -1,0 +1,137 @@
+diff --git a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt
+index ab8a175..f286ce9 100644
+--- a/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt
++++ b/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt
+@@ -326,7 +326,7 @@ object CandidatePdfRenderer {
+         val actualBuildings = panel.buildings.sortedBy { it.buildingId }
+         require(actualBuildings.size == expectedBuildings.size) { "full_plus_detail must preserve every declared source building exactly once" }
+         expectedBuildings.zip(actualBuildings).forEach { (base, detail) ->
+-            require(base.buildingId == detail.buildingId && base.label == detail.label && base.assigned == detail.assigned) { "full_plus_detail building meaning drift for ${base.buildingId}" }
++            require(base.buildingId == detail.buildingId && base.label == detail.label && base.assigned == detail.assigned && base.contextOnly == detail.contextOnly) { "full_plus_detail building meaning drift for ${base.buildingId}" }
+             require(base.points.size == detail.points.size) { "full_plus_detail building vertex-count drift for ${base.buildingId}" }
+             base.points.zip(detail.points).forEach { (src, dst) ->
+                 require(eq(dst.first, mapX(src.first)) && eq(dst.second, mapY(src.second))) { "full_plus_detail building geometry is not declared mapping for ${base.buildingId}" }
+@@ -530,7 +530,7 @@ object CandidatePdfRenderer {
+         panel.buildings.forEach { building ->
+             require(building.buildingId in panel.sourceBuildingIds) { "${panel.panelId}: rendered building targets undeclared source building ${building.buildingId}" }
+             val base = baseBuildingsById.getValue(building.buildingId)
+-            require(building.label == base.label && building.assigned == base.assigned) { "${panel.panelId}: building label meaning drift for ${building.buildingId}" }
++            require(building.label == base.label && building.assigned == base.assigned && building.contextOnly == base.contextOnly) { "${panel.panelId}: building label meaning drift for ${building.buildingId}" }
+             require(building.points.all { panel.destinationBounds.contains(it.first, it.second) }) {
+                 "${panel.panelId}: rendered building escapes destination panel"
+             }
+@@ -849,9 +849,10 @@ object CandidatePdfRenderer {
+     }
+ 
+     private fun drawBuilding(b: StringBuilder, building: PdfBuildingShape) {
+-        b.append("% TCS_BUILDING_WORK_STATUS ").append(building.buildingId).append(' ').append(if(building.assigned)"assigned" else "excluded").append('\n')
+-        fillColor(b, if(building.assigned)PdfRoadStatus.WORK_BOTH_SIDES.hex else "#FFFFFF")
+-        strokeColor(b, if(building.assigned)PdfRoadStatus.WORK_BOTH_SIDES.hex else PdfRoadStatus.DO_NOT_WORK.hex);lineWidth(b,0.8)
++        b.append("% TCS_BUILDING_WORK_STATUS ").append(building.buildingId).append(' ')
++            .append(if (building.contextOnly) "context" else if (building.assigned) "assigned" else "excluded").append('\n')
++        fillColor(b, if (building.contextOnly) "#E3E7E9" else if(building.assigned)PdfRoadStatus.WORK_BOTH_SIDES.hex else "#FFFFFF")
++        strokeColor(b, if (building.contextOnly) PdfRoadStatus.CONTEXT_ONLY.hex else if(building.assigned)PdfRoadStatus.WORK_BOTH_SIDES.hex else PdfRoadStatus.DO_NOT_WORK.hex);lineWidth(b,0.8)
+         val first = building.points.first()
+         b.append(num(first.first)).append(' ').append(num(PAGE_H - first.second)).append(" m\n")
+         building.points.drop(1).forEach { (x, y) -> b.append(num(x)).append(' ').append(num(PAGE_H - y)).append(" l\n") }
+@@ -860,7 +861,7 @@ object CandidatePdfRenderer {
+         if (building.labelItems.isNotEmpty()) {
+             b.append("% TCS_BUILDING_LABEL_ITEMS_EXACT ").append(building.buildingId).append('\n')
+             building.labelItems.forEach { drawBuildingLabelItem(b, it) }
+-        } else {
++        } else if (!building.contextOnly) {
+             val cx = building.points.map { it.first }.average()
+             val cyTop = building.points.map { it.second }.average()
+             text(b, "F2+0", 8.0, cx - (building.label.length * 2.0), PAGE_H - cyTop + 2.5, building.label)
+@@ -881,8 +882,10 @@ object CandidatePdfRenderer {
+         } else {
+             val halfW = width / 2.0
+             val baselineRise = item.fontSizePt * 0.26
+-            baselineX = item.centerX - c * halfW - s * baselineRise
+-            baselineTopY = item.centerTopY - s * halfW + c * baselineRise
++            // Reflect PDF y-up displacement into the top-origin center geometry.
++            // Matches the explicit origin emitted by NativeBuildingLabelPlacement.
++            baselineX = item.centerX - c * halfW + s * baselineRise
++            baselineTopY = item.centerTopY + s * halfW + c * baselineRise
+         }
+         b.append("BT /F2+0 ").append(num(item.fontSizePt)).append(" Tf ")
+             .append(num(c)).append(' ').append(num(s)).append(' ')
+@@ -1079,8 +1082,15 @@ data class PdfBuildingShape(
+     val label: String,
+     val points: List<Pair<Double, Double>>,
+     val labelItems: List<PdfBuildingLabelItem> = emptyList(),
+-    val assigned: Boolean = true
+-)
++    val assigned: Boolean = true,
++    val contextOnly: Boolean = false
++) {
++    init {
++        require(!contextOnly || (!assigned && label.isBlank() && labelItems.isEmpty())) {
++            "Ancillary context cannot be worked or carry residential member labels"
++        }
++    }
++}
+ 
+ data class PdfDetailRect(
+     val left: Double,
+@@ -1210,6 +1220,7 @@ data class CandidatePdfRenderSpec(
+             }
+             buildings.forEachIndexed { i, x ->
+                 append("building[").append(i).append("]=").append(x.buildingId).append('|').append(x.label).append("|assigned:").append(x.assigned)
++                if (x.contextOnly) append("|context-only-v1:true")
+                 x.points.forEach { p -> append('|').append(p.first).append(',').append(p.second) }
+                 x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) }
+                 append('\n')
+@@ -1241,7 +1252,7 @@ data class CandidatePdfRenderSpec(
+                         append("|road:").append(r.segmentId).append(',').append(r.roadName).append(',').append(r.x1).append(',').append(r.topY1).append(',').append(r.x2).append(',').append(r.topY2).append(',',').append(r.status.name).append(',')').append(r.strokeWidthPt) }
+                     }
+                     panel.labels.sortedBy { it.labelId }.forEach { l -> append("|label:").append(l.labelId).append(',').append(l.segmentId).append(',').append(l.text).append(',').append(l.x).append(',').append(l.baselineTopY).append(',').append(l.mode.name) }
+-                    panel.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label).append("|assigned:").append(x.assigned); x.points.forEach { p -> append('@').append(p.first).append(',').append(p.second) }; x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) } }
++                    panel.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label).append("|assigned:").append(x.assigned); if (x.contextOnly) append("|context-only-v1:true"); x.points.forEach { p -> append('@').append(p.first).append(',').append(p.second) }; x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) } }
+                     append('\n')
+                 }
+                 appendPanel(split.northPanel)
+@@ -1258,7 +1269,7 @@ data class CandidatePdfRenderSpec(
+                 p.sourceLabelIds.sorted().forEach { append("|labelSource:").append(it) }
+                 p.roads.sortedWith(compareBy<PdfRoadStroke>({ it.segmentId }, { it.x1 }, { it.topY1 }, { it.x2 }, { it.topY2 })).forEach { r -> append("|road:").append(r.segmentId).append(',').append(r.roadName).append(',').append(r.x1).append(',').append(r.topY1).append(',').append(r.x2).append(',').append(r.topY2).append(',').append(r.status.name).append(',').append(r.strokeWidthPt) }
+                 p.detailLabels.sortedBy { it.labelId }.forEach { l -> append("|label:").append(l.labelId).append(',').append(l.segmentId).append(',').append(l.text).append(',').append(l.x).append(',').append(l.baselineTopY).append(',').append(l.mode.name) }
+-                p.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label).append("|assigned:").append(x.assigned); x.points.forEach { pt -> append('@').append(pt.first).append(',').append(pt.second) }; x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) } }
++                p.buildings.sortedBy { it.buildingId }.forEach { x -> append("|building:").append(x.buildingId).append(',').append(x.label).append("|assigned:").append(x.assigned); if (x.contextOnly) append("|context-only-v1:true"); x.points.forEach { pt -> append('@').append(pt.first).append(',').append(pt.second) }; x.labelItems.forEach { item -> append("|memberLabel:").append(item.text).append('@').append(item.centerX).append(',').append(item.centerTopY).append(',').append(item.originX ?: "").append(',').append(item.originTopY ?: "").append(',').append(item.rotationDegrees).append(',').append(item.fontSizePt) } }
+                 append('\n')
+             }
+             siteBuildingAssignment?.let { layout ->
+@@ -1329,6 +1340,17 @@ object CandidatePdfExactValidator {
+         if (spec.layoutMode == "full_plus_detail" && !raw.contains("% TCS_FULL_PLUS_DETAIL_EXPLICIT_MAPPING")) errors += "Explicit full-plus-detail mapping marker missing"
+         if (spec.layoutMode == "site_building_assignment" && !raw.contains("% TCS_SITE_BUILDING_ASSIGNMENT_EXPLICIT")) errors += "Explicit site/building assignment marker missing"
+         if (spec.buildings.any { it.labelItems.size > 1 } && !raw.contains("% TCS_BUILDING_LABEL_ITEMS_EXACT")) errors += "Exact multi-label building rendering marker missing"
++        // Validate the actual gray paint AND exact footprint command, not merely a comment.
++        // Only explicit ancillary items use this extension; legacy spec/output bytes are unchanged.
++        val contextBuildings = (when (spec.layoutMode) {
++            "split_detail" -> spec.splitDetail?.let { it.northPanel.buildings + it.southPanel.buildings }.orEmpty()
++            "full_plus_detail" -> spec.buildings + spec.fullPlusDetail?.detail?.buildings.orEmpty()
++            else -> spec.buildings
++        }).filter { it.contextOnly }
++        contextBuildings.groupingBy(::contextShapeCommand).eachCount().forEach { (command, expectedCount) ->
++            val count = Regex(Regex.escape(command)).findAll(raw).count()
++            if (count != expectedCount) errors += "Exact ancillary context paint/geometry count differs: $count / $expectedCount"
++        }
+         return CandidatePdfExactValidation(
+             passed = errors.isEmpty(),
+             errors = errors,
+@@ -1339,6 +1361,16 @@ object CandidatePdfExactValidator {
+         )
+     }
+ 
++    private fun contextShapeCommand(building: PdfBuildingShape): String = buildString {
++        fun number(v: Double): String = String.format(Locale.US, "%.4f", v).trimEnd('0').trimEnd('.').let { if (it == "-0") "0" else it }
++        append("% TCS_BUILDING_WORK_STATUS ").append(building.buildingId).append(" context\n")
++        append("0.8902 0.9059 0.9137 rg\n0.5216 0.5451 0.5804 RG\n0.8 w\n")
++        building.points.forEachIndexed { index, (x, topY) ->
++            append(number(x)).append(' ').append(number(PAGE_H - topY)).append(if (index == 0) " m\n" else " l\n")
++        }
++        append("h B\n")
++    }
++
+     private const val PAGE_W = 768.0
+     private const val PAGE_H = 480.5
+ }

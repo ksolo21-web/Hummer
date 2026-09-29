@@ -1,0 +1,50 @@
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+--- a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+@@ -123,12 +123,21 @@
+     @Test fun staleSourceScopeOrRevisionCannotBeReusedByTheOldCandidate()=Fixture().use {x->
+         val first=x.start();val services=x.services(first);val saved=services.nativeDrafts.save(x.pending(services.knowledgeBase),null)
+         val guarded=services.sourceMapStore()
++        // Exercise both lifetimes: a retained coordinator must report a blocked state,
++        // while a not-yet-created scoped service must reject construction after invalidation.
++        val retainedCoordinator=services.buildWorkflow
++        val coldServices=x.services(first)
+         assertEquals(HASH,guarded.verifiedRecord(ID)?.sha256)
+         x.sources.importFromStream(x.slot,"different-source.jpg","image/jpeg",InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-01-26588.jpg"))
+         assertTrue(runCatching {x.store.current(ID)}.isFailure)
+         assertTrue(runCatching {guarded.verifiedRecord(ID)}.isFailure)
+         assertTrue(runCatching {services.nativeDrafts.save(saved,saved.revisionSha256)}.isFailure)
+-        assertFalse(services.buildWorkflow.state(ID,WorkspaceMode.REGULAR).canBuild)
++        val blockedSource=retainedCoordinator.state(ID,WorkspaceMode.REGULAR)
++        assertFalse(blockedSource.canBuild)
++        assertTrue(blockedSource.buildBlockers.any {it.contains("source changed",ignoreCase=true)})
++        val rejectedSourceBuild=retainedCoordinator.buildFront(ID,WorkspaceMode.REGULAR)
++        assertFalse(rejectedSourceBuild.canBuild);assertNull(rejectedSourceBuild.front);assertNotNull(rejectedSourceBuild.error)
++        assertTrue(runCatching {coldServices.buildWorkflow}.isFailure)
+         x.importExact()
+         val previousHead=requireNotNull(x.store.headSha256(ID));val second=x.start(head=previousHead)
+         assertNotEquals(first.sha256,second.sha256)
+@@ -138,13 +147,21 @@
+         val newServices=x.services(second)
+         assertNull(newServices.nativeDrafts.read(ID,WorkspaceMode.REGULAR))
+         val newSaved=newServices.nativeDrafts.save(x.pending(newServices.knowledgeBase),null)
++        val retainedNewCoordinator=newServices.buildWorkflow
++        val coldNewServices=x.services(second)
+         x.store.close(ID,"Instrumentation reviewer",requireNotNull(x.store.headSha256(ID)))
+         assertNull(x.store.current(ID))
+         assertTrue(runCatching {newServices.nativeDrafts.save(newSaved,newSaved.revisionSha256)}.isFailure)
+-        assertFalse(newServices.buildWorkflow.state(ID,WorkspaceMode.REGULAR).canBuild)
++        val closedState=retainedNewCoordinator.state(ID,WorkspaceMode.REGULAR)
++        assertFalse(closedState.canBuild)
++        assertTrue(closedState.buildBlockers.any {it.contains("closed",ignoreCase=true)})
++        val rejectedClosedBuild=retainedNewCoordinator.buildFront(ID,WorkspaceMode.REGULAR)
++        assertFalse(rejectedClosedBuild.canBuild);assertNull(rejectedClosedBuild.front);assertNotNull(rejectedClosedBuild.error)
++        assertTrue(runCatching {coldNewServices.buildWorkflow}.isFailure)
+         assertEquals(x.slot,x.app.services.knowledgeBase.assignments.getValue(ID))
+         report("invalidation",JSONObject().put("sourceReplacementRejected",true).put("oldScopeRejected",true).put("staleHeadRejected",true)
+-            .put("newScopeHasSeparateDrafts",true).put("closedScopeCannotSaveOrBuild",true))
++            .put("newScopeHasSeparateDrafts",true).put("closedScopeCannotSaveOrBuild",true)
++            .put("retainedCoordinatorReportsBlockedState",true).put("coldServiceConstructionRejected",true))
+     }
+     @Test fun identityAndOriginalPreservationAreRequiredAndExactOldPdfIsNotNewAuthority()=Fixture().use {x->
+         fun rejects(id:String=ID,hash:String=HASH,actor:String="Instrumentation reviewer",reason:String="Test-only source identity review",typed:String=ID,preserve:Boolean=true) {

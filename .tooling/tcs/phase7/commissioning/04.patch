@@ -1,0 +1,233 @@
+diff --git a/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/OutlinedCommissioningInstrumentationTest.kt
+@@ -0,0 +1,228 @@
++package com.koenterprises.territorycardstudio
++
++import android.view.WindowInsets
++import androidx.activity.ComponentActivity
++import androidx.compose.material3.Surface
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.test.*
++import androidx.compose.ui.test.junit4.createAndroidComposeRule
++import androidx.test.core.app.ApplicationProvider
++import androidx.test.ext.junit.runners.AndroidJUnit4
++import androidx.test.platform.app.InstrumentationRegistry
++import com.koenterprises.territorycardstudio.core.*
++import org.json.JSONObject
++import org.junit.Assert.*
++import org.junit.BeforeClass
++import org.junit.Rule
++import org.junit.Test
++import org.junit.runner.RunWith
++import java.io.File
++import java.util.UUID
++import java.util.zip.ZipFile
++
++/** Real installed A265 and exact supplied image. These tests open unapproved candidate
++ * workspaces only; no synthetic registration, geographic approval or passing card is made. */
++@RunWith(AndroidJUnit4::class)
++class OutlinedCommissioningInstrumentationTest {
++    @get:Rule val rule=createAndroidComposeRule<ComponentActivity>()
++    companion object {
++        private const val ID="A265"
++        private const val HASH="8b17f90abfac5afe4e3de08f696494199ae88f97cfbb5d1fb035a0153e08a29d"
++        private lateinit var draft:InterpretedMapDraft
++        @JvmStatic @BeforeClass fun analyzeExactSourceOnce() {
++            val app=ApplicationProvider.getApplicationContext<TerritoryCardStudioApplication>()
++            val file=File.createTempFile("commissioning-source-",".jpg",app.cacheDir)
++            try {
++                InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-03-26175.jpg").use {input->file.outputStream().use {input.copyTo(it)}}
++                draft=AndroidMapImageInterpreter().interpretOutlined(file,HASH)
++            } finally {file.delete()}
++        }
++    }
++    private val viewport get()=InstrumentationRegistry.getArguments().getString("phase7Viewport","phone")
++    private inner class Fixture:AutoCloseable {
++        val app=ApplicationProvider.getApplicationContext<TerritoryCardStudioApplication>()
++        val baseline=app.services.knowledgeBase
++        val slot=baseline.assignments.getValue(ID)
++        val sources=SourceMapIntakeStore(app)
++        private val previous=sources.verifiedRecord(ID)
++        private val previousBytes=previous?.let {sources.verifiedFile(ID).readBytes()}
++        val root=File(app.cacheDir,"commissioning-test-${UUID.randomUUID()}").apply {mkdirs()}
++        val store=AndroidCommissioningStore(app,baseline,root,sources)
++        val candidateRoots=mutableListOf<File>()
++        init {assertFalse(slot.needsNewCard);importExact()}
++        fun importExact()=sources.importFromStream(slot,"real-a265.jpg","image/jpeg",
++            InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-03-26175.jpg")).also {assertEquals(HASH,it.sha256)}
++        fun start(store:AndroidCommissioningStore=this.store,head:String?=store.headSha256(ID))=store.start(ID,HASH,"Instrumentation reviewer",
++            "Test-only same-territory candidate: exact supplied image identifies A265; no field approval",ID,true,head)
++        fun services(scope:NativeCommissioningScope,store:AndroidCommissioningStore=this.store):TerritoryCardStudioServices {
++            candidateRoots+=File(app.noBackupFilesDir,"territory-card-studio/commissioned/${scope.sha256}")
++            return TerritoryCardStudioServices(app,scope,store)
++        }
++        fun pending(kb:TerritoryKnowledgeBase):NativeAuthoringDraft {
++            val slot=kb.assignments.getValue(ID);val review=OutlinedNativeReview.from(draft)
++            val assignment=CurrentAuthoritativeAssignmentState(ID,slot.identity,slot.canonicalFilename,kb.revision,"current_authoritative_assignment","0".repeat(64),
++                "real-a265.jpg","Rochester","9/28/2026",listOf("Directions: Test-only source intake; not for field use."),"full_map",slot.housingType,
++                RenderCoordinateSpace.LOCKED_R48_PAGE_POINTS_TOP_ORIGIN,draft.roads,emptyList())
++            val facts=NativeSourceReconciliation(ID,"REGULAR",kb.revision,HASH,slot.referenceSha256,"current_assignment_map","Instrumentation reviewer",
++                "2026-09-28T21:00:00Z",NativeSourceReconciliationContract.assignmentContentSha256(assignment),null,false,false,false,false,draft.observations,emptyList(),
++                "00000000-0000-0000-0000-000000000071",null,review.sha256)
++            return NativeAuthoringDraft(assignment,facts,VerificationJurisdiction("Oakland County","Michigan","United States"),emptyList(),outlinedReview=review)
++        }
++        override fun close() {
++            if(previous==null)sources.clear(ID)
++            else sources.importFromStream(slot,previous.sourceFilename,previous.mimeType,requireNotNull(previousBytes).inputStream(),previous.importedAtUtc)
++            candidateRoots.forEach {it.deleteRecursively()};root.deleteRecursively()
++        }
++    }
++    private fun report(name:String,value:JSONObject=JSONObject()) {
++        val app=ApplicationProvider.getApplicationContext<TerritoryCardStudioApplication>()
++        File(app.filesDir,"phase7-commissioning-$name-$viewport.json").writeText(value.put("sourceSha256",HASH).put("territory",ID)
++            .put("viewport",viewport).put("testOnly",true).put("cardApproved",false).toString(2))
++    }
++    private fun screenshot(name:String) {
++        rule.runOnUiThread {rule.activity.window.insetsController?.hide(WindowInsets.Type.ime())}
++        rule.waitUntil(10000){!rule.activity.window.decorView.rootWindowInsets.isVisible(WindowInsets.Type.ime())}
++        rule.waitForIdle()
++        val i=InstrumentationRegistry.getInstrumentation();val image=requireNotNull(i.uiAutomation.takeScreenshot())
++        File(i.targetContext.filesDir,"phase7-commissioning-$name-$viewport.png").outputStream().use {
++            assertTrue(image.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it))
++        };image.recycle()
++    }
++    @Test fun actualA265DraftPersistsInIsolatedServicesAndOriginalApprovalIsUntouched()=Fixture().use {x->
++        val originalAssignment=x.slot.copy();val originalExport=x.app.services.approvedExport.state(ID)
++        assertTrue(runCatching {x.app.services.nativeDrafts.save(x.pending(x.baseline),null)}.isFailure)
++        val scope=x.start();val services=x.services(scope)
++        val current=services.knowledgeBase.assignments.getValue(ID)
++        assertTrue(current.needsNewCard);assertFalse(current.fieldReleaseAllowedForExactArtifact)
++        assertEquals(originalAssignment,x.app.services.knowledgeBase.assignments.getValue(ID))
++        assertEquals(originalExport,x.app.services.approvedExport.state(ID))
++        assertFalse(services.approvedExport.state(ID).canAttach)
++        val saved=services.nativeDrafts.save(x.pending(services.knowledgeBase),null)
++        val reopened=AndroidCommissioningStore(x.app,x.baseline,x.root,x.sources)
++        val resumed=x.services(requireNotNull(reopened.current(ID)),reopened)
++        assertEquals(saved,resumed.nativeDrafts.read(ID,WorkspaceMode.REGULAR))
++        assertTrue(runCatching {resumed.nativeDrafts.register(ID,WorkspaceMode.REGULAR,saved.revisionSha256)}.isFailure)
++        assertFalse(resumed.buildWorkflow.state(ID,WorkspaceMode.REGULAR).canBuild)
++        assertTrue(resumed.buildWorkflow.state(ID,WorkspaceMode.REGULAR).buildBlockers.none {it.contains("requires the commissioning workflow")})
++        val archive=File(x.root,"native-history.zip")
++        val received=resumed.nativeDrafts.exportHistory(object:CreatedExportDestination {
++            override fun openOutput()=archive.outputStream()
++            override fun openInput()=archive.inputStream()
++            override fun deleteCreated()=archive.delete()
++        })
++        assertEquals(received,archive.inputStream().use(BundleIntegrity::sha256))
++        ZipFile(archive).use {zip->
++            val entry=requireNotNull(zip.getEntry("commissioning-evidence.source"))
++            val evidence=zip.getInputStream(entry).use {JSONObject(it.readBytes().toString(Charsets.UTF_8))}
++            assertEquals(scope.sha256,evidence.getString("scopeSha256"))
++            assertTrue(evidence.getString("purpose").contains("not assignment activation"))
++        }
++        report("persistence",JSONObject().put("originalAssignmentUnchanged",true).put("originalExportUnchanged",true)
++            .put("exactNativeDraftResumed",true).put("commissioningEvidenceSavedAndReadBack",true).put("registrationStillBlocked",true))
++    }
++    @Test fun staleSourceScopeOrRevisionCannotBeReusedByTheOldCandidate()=Fixture().use {x->
++        val first=x.start();val services=x.services(first);val saved=services.nativeDrafts.save(x.pending(services.knowledgeBase),null)
++        val guarded=services.sourceMapStore()
++        assertEquals(HASH,guarded.verifiedRecord(ID)?.sha256)
++        x.sources.importFromStream(x.slot,"different-source.jpg","image/jpeg",InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-01-26588.jpg"))
++        assertTrue(runCatching {x.store.current(ID)}.isFailure)
++        assertTrue(runCatching {guarded.verifiedRecord(ID)}.isFailure)
++        assertTrue(runCatching {services.nativeDrafts.save(saved,saved.revisionSha256)}.isFailure)
++        assertFalse(services.buildWorkflow.state(ID,WorkspaceMode.REGULAR).canBuild)
++        x.importExact()
++        val previousHead=requireNotNull(x.store.headSha256(ID));val second=x.start(head=previousHead)
++        assertNotEquals(first.sha256,second.sha256)
++        assertTrue(runCatching {x.store.assertCurrent(first)}.isFailure)
++        assertTrue(runCatching {guarded.verifiedRecord(ID)}.isFailure)
++        assertTrue(runCatching {x.start(head=previousHead)}.isFailure)
++        val newServices=x.services(second)
++        assertNull(newServices.nativeDrafts.read(ID,WorkspaceMode.REGULAR))
++        val newSaved=newServices.nativeDrafts.save(x.pending(newServices.knowledgeBase),null)
++        x.store.close(ID,"Instrumentation reviewer",requireNotNull(x.store.headSha256(ID)))
++        assertNull(x.store.current(ID))
++        assertTrue(runCatching {newServices.nativeDrafts.save(newSaved,newSaved.revisionSha256)}.isFailure)
++        assertFalse(newServices.buildWorkflow.state(ID,WorkspaceMode.REGULAR).canBuild)
++        assertEquals(x.slot,x.app.services.knowledgeBase.assignments.getValue(ID))
++        report("invalidation",JSONObject().put("sourceReplacementRejected",true).put("oldScopeRejected",true).put("staleHeadRejected",true)
++            .put("newScopeHasSeparateDrafts",true).put("closedScopeCannotSaveOrBuild",true))
++    }
++    @Test fun identityAndOriginalPreservationAreRequiredAndExactOldPdfIsNotNewAuthority()=Fixture().use {x->
++        fun rejects(id:String=ID,hash:String=HASH,actor:String="Instrumentation reviewer",reason:String="Test-only source identity review",typed:String=ID,preserve:Boolean=true) {
++            assertTrue(runCatching {x.store.start(id,hash,actor,reason,typed,preserve,null)}.isFailure)
++            assertNull(x.store.headSha256(ID))
++        }
++        rejects(typed="A295");rejects(preserve=false);rejects(actor="");rejects(reason="short");rejects(hash="0".repeat(64))
++        rejects(id="A296",typed="A296");rejects(id="R296",typed="R296");rejects(id="A257",typed="A257")
++        x.sources.clear(ID);rejects();x.importExact()
++        val old=InstrumentationRegistry.getInstrumentation().context.assets.open("phase7-reference-a265.pdf")
++        val imported=x.sources.importFromStream(x.slot,"exact-old-a265.pdf","application/pdf",old)
++        assertEquals(x.slot.referenceSha256,imported.sha256);rejects(hash=imported.sha256)
++        x.importExact();val scope=x.start()
++        assertTrue(runCatching {x.store.assertCurrent(scope,"A295")}.isFailure)
++        report("authorization",JSONObject().put("typedIdentityRequired",true).put("originalPreservationRequired",true).put("retiredAndUnknownSlotsBlocked",true)
++            .put("oldPdfNotPromoted",true).put("crossTerritoryUseBlocked",true))
++    }
++    @Test fun interruptedHeadWriteAndTamperedPrivateEvidenceNeverActivateAWorkspace()=Fixture().use {x->
++        val failing=AndroidCommissioningStore(x.app,x.baseline,x.root,x.sources){error("Injected interruption before activation")}
++        assertTrue(runCatching {x.start(failing,null)}.isFailure)
++        assertNull(x.store.current(ID));assertNull(x.store.headSha256(ID))
++        assertTrue(x.root.walkTopDown().any {it.extension=="scope"})
++        val scope=x.start();val currentHead=x.store.headSha256(ID)
++        assertTrue(runCatching {x.start(failing,currentHead)}.isFailure)
++        assertEquals(currentHead,x.store.headSha256(ID));assertEquals(scope.sha256,x.store.current(ID)?.sha256)
++        val evidence=x.root.walkTopDown().single {it.name==scope.sha256+".scope"};val original=evidence.readBytes()
++        evidence.writeText("{}");assertTrue(runCatching {x.store.current(ID)}.isFailure)
++        evidence.writeBytes(original);assertEquals(scope.sha256,x.store.current(ID)?.sha256)
++        val event=x.root.walkTopDown().single {it.name==requireNotNull(currentHead)+".event"}
++        event.writeText("{}");assertTrue(runCatching {x.store.current(ID)}.isFailure)
++        report("atomic-history",JSONObject().put("orphanEvidenceCannotActivate",true).put("interruptedReplacementKeepsPreviousHead",true)
++            .put("scopeTamperingRejected",true).put("eventTamperingRejected",true))
++    }
++    private fun actualUi(appearance:AppearanceMode)=Fixture().use {x->
++        val store=AndroidCommissioningStore(x.app,x.baseline)
++        require(store.recordedScope(ID)==null) {"Do not alter a pre-existing candidate during instrumentation"}
++        var scope:NativeCommissioningScope?=null
++        try {
++            rule.setContent {TerritoryCardStudioTheme(appearance){Surface {
++                ModeAwareTerritoryWorkspace(Modifier,TerritoryDashboardItem(x.slot,TerritoryUiStatus.REAUDIT_REQUIRED,"Apartments"),x.baseline.revision,
++                    onBack={},knowledgeBase=x.baseline,servicesOverride=x.app.services)
++            }}}
++            rule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-commission-replacement"))
++            rule.onNodeWithTag("workspace-commission-replacement").performClick()
++            rule.waitUntil(10000){rule.onAllNodesWithTag("commissioning-start").fetchSemanticsNodes().isNotEmpty()}
++            rule.onNodeWithTag("commissioning-start").performScrollTo().assertIsNotEnabled()
++            rule.onNodeWithTag("commissioning-actor").performScrollTo().performTextInput("Instrumentation reviewer")
++            rule.onNodeWithTag("commissioning-identity").performScrollTo().performTextInput("A295")
++            rule.onNodeWithTag("commissioning-reason").performScrollTo().performTextInput("Test-only same-territory review: exact supplied map identifies A265; this is not card approval")
++            rule.onNodeWithTag("commissioning-preserve-original").performScrollTo().performClick()
++            rule.waitUntil(30000){runCatching {rule.onNodeWithTag("commissioning-source-inspected").assertIsEnabled();true}.getOrDefault(false)}
++            rule.onNodeWithTag("commissioning-source-inspected").performScrollTo().performClick()
++            rule.onNodeWithTag("commissioning-start").performScrollTo().assertIsNotEnabled()
++            rule.onNodeWithTag("commissioning-identity").performScrollTo().performTextReplacement(ID)
++            rule.onNodeWithTag("commissioning-source-inspected").assertIsOff()
++            rule.onNodeWithTag("commissioning-start").performScrollTo().assertIsNotEnabled()
++            rule.onNodeWithTag("commissioning-source-inspected").performScrollTo().performClick()
++            rule.onNodeWithTag("commissioning-start").performScrollTo().assertIsEnabled()
++            screenshot(appearance.name.lowercase()+"-confirmation")
++            rule.onNodeWithTag("commissioning-start").performScrollTo().performClick()
++            rule.waitUntil(20000){rule.onAllNodesWithTag("commissioning-candidate-banner").fetchSemanticsNodes().isNotEmpty()}
++            scope=requireNotNull(store.current(ID));x.candidateRoots+=File(x.app.noBackupFilesDir,"territory-card-studio/commissioned/${scope!!.sha256}")
++            rule.onNodeWithTag("territory-workspace").performScrollToNode(hasTestTag("workspace-prepare-new"))
++            rule.onNodeWithTag("workspace-prepare-new").assertIsDisplayed().assertIsEnabled()
++            rule.onNodeWithTag("workspace-commission-replacement").assertDoesNotExist()
++            screenshot(appearance.name.lowercase()+"-candidate")
++            assertEquals(x.slot,x.app.services.knowledgeBase.assignments.getValue(ID))
++            assertFalse(x.slot.needsNewCard)
++            report(appearance.name.lowercase(),JSONObject().put("actualWorkspaceRouteTested",true).put("typedIdentityMismatchBlocks",true)
++                .put("identityEditResetsInspection",true).put("unapprovedReplacementReachesNewCardAction",true).put("originalAssignmentUnchanged",true))
++        } finally {
++            val retained=store.recordedScope(ID)
++            if(retained!=null){
++                x.candidateRoots+=File(x.app.noBackupFilesDir,"territory-card-studio/commissioned/${retained.sha256}")
++                store.close(ID,"Instrumentation reviewer",requireNotNull(store.headSha256(ID)))
++            }
++        }
++    }
++    @Test fun lightThemeActualWorkspaceCanOpenAnExplicitUnapprovedReplacement()=actualUi(AppearanceMode.LIGHT)
++    @Test fun darkThemeActualWorkspaceCanOpenAnExplicitUnapprovedReplacement()=actualUi(AppearanceMode.DARK)
++}
