@@ -26,6 +26,7 @@ jobs:
           python3 .tooling/tcs/phase7-source-sufficiency/apply.py tcs-src > evidence/source-sufficiency-integration.json
           python3 .tooling/tcs/phase7-source-sufficiency/tighten-positive-control.py tcs-src > evidence/positive-control-coverage.txt
           bash -n .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
+          bash -n .tooling/tcs/phase7-source-sufficiency/run-full-ui-tests.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -51,7 +52,7 @@ jobs:
           sha256sum evidence/*.apk > evidence/builds.sha256
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
-      - name: Test real sources, no bypass, restart, themes and preserved native flows
+      - name: Test source decisions and complete native generation-review-export flows
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -68,6 +69,7 @@ jobs:
             cp evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk evidence/TerritoryCardStudio-Phase7-Continuation-debug.apk
             cp evidence/source-sufficiency-androidTest.apk evidence/TerritoryCardStudio-Phase7-Continuation-androidTest.apk
             bash .tooling/tcs/phase7-continuation/run-device-tests.sh
+            bash .tooling/tcs/phase7-source-sufficiency/run-full-ui-tests.sh
       - name: Preserve exact effective source and all test results
         if: always()
         run: |
