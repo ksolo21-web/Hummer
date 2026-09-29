@@ -23,6 +23,9 @@ if grep -qx "package:$LAUNCHER" <(tr -d '\r' < "$OUT/launcher-before.txt") && ! 
   adb shell am force-stop "$LAUNCHER"
   changed_launcher=true
 fi
+# A freshly installed application has not necessarily created Context.filesDir yet.
+# Create only that empty evidence parent; never fabricate test reports or clear app data.
+adb shell run-as "$PKG" mkdir -p files
 capture() {
   adb shell run-as "$PKG" ls files > "$OUT/files.txt"
   while IFS= read -r name; do
