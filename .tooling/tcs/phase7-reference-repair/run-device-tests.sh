@@ -56,4 +56,4 @@ for theme in ['light','dark']:
     assert hashlib.sha256((root/(stem+'.png')).read_bytes()).hexdigest()==witness['screenshotSha256']
 PY
 done
-printf '%s\n' '{"scope":"reference_comparison_software_repair_only","phase7Complete":false,"approvedRealCards":0,"requiredRealCards":4,"androidCases":4,"screenshots":4}' > evidence/status.json
+printf '%s\n' '{"schema":"phase7-reference-component-v2","scope":"reference_comparison_software_repair_only","overallPhase7Status":"see phase7-acceptance-status.json","forcedRealCardQuota":false,"approvedRealCardsByThisComponent":0,"androidCases":4,"screenshots":4,"componentPassed":true}' > evidence/reference-component-status.json
