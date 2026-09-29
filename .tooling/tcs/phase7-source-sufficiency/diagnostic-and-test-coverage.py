@@ -22,6 +22,19 @@ assert s.count(old)==1;s=s.replace(old,'sourceRegion(review.bounds(id))')
 old='f.sourceBounds?.let {SourcePixelRegion(it.left,it.top,it.right,it.bottom)}'
 assert s.count(old)==1;s=s.replace(old,'sourceRegion(f.sourceBounds)')
 assessment.write_text(s)
+# Give each authoring section a fresh LazyListState. Reusing one scroll state across
+# sections with different interval counts can transiently ask Compose to measure a
+# stale index after a tab switch (for example index 4 when the new content has 4).
+# This is a real UI race; do not weaken the reference comparison regression.
+ui=root/'app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt'
+s=ui.read_text()
+old='import androidx.compose.foundation.lazy.LazyColumn\n'
+new='import androidx.compose.foundation.lazy.LazyColumn\nimport androidx.compose.foundation.lazy.rememberLazyListState\n'
+assert s.count(old)==1;s=s.replace(old,new)
+old='    LazyColumn(modifier.fillMaxSize().testTag("native-authoring-screen"),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {'
+new='    val authoringListState=key(section) { rememberLazyListState() }\n    LazyColumn(modifier.fillMaxSize().testTag("native-authoring-screen"),state=authoringListState,contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {'
+assert s.count(old)==1;s=s.replace(old,new)
+ui.write_text(s)
 store=root/'app/src/main/java/com/koenterprises/territorycardstudio/AndroidNativeDraftStore.kt'
 s=store.read_text()
 old='(error.message ?: error.javaClass.simpleName).take(4000),"Source checking failed. Retry or repair the processing/storage error; the map has not been judged insufficient."'
