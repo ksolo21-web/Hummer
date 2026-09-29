@@ -27,8 +27,10 @@ jobs:
           python3 .tooling/tcs/phase7-source-sufficiency/apply.py tcs-src > evidence/source-sufficiency-integration.json
           python3 .tooling/tcs/phase7-source-sufficiency/tighten-positive-control.py tcs-src > evidence/positive-control-coverage.txt
           python3 .tooling/tcs/phase7-source-hardening.py tcs-src > evidence/source-hardening-integration.json
+          python3 .tooling/tcs/phase7-source-sufficiency/diagnostic-and-test-coverage.py tcs-src > evidence/source-diagnostic-integration.json
           bash -n .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
           bash -n .tooling/tcs/phase7-source-sufficiency/run-full-ui-tests.sh
+          bash -n .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -63,15 +65,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
-          script: |
-            bash .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
-            cp evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk evidence/TerritoryCardStudio-Phase7-Reference-Repair-debug.apk
-            cp evidence/source-sufficiency-androidTest.apk evidence/emulator-test.apk
-            bash .tooling/tcs/phase7-reference-repair/run-device-tests.sh
-            cp evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk evidence/TerritoryCardStudio-Phase7-Continuation-debug.apk
-            cp evidence/source-sufficiency-androidTest.apk evidence/TerritoryCardStudio-Phase7-Continuation-androidTest.apk
-            bash .tooling/tcs/phase7-continuation/run-device-tests.sh
-            bash .tooling/tcs/phase7-source-sufficiency/run-full-ui-tests.sh
+          script: bash .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
       - name: Preserve exact effective source and all test results
         if: always()
         run: |
