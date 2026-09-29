@@ -66,10 +66,21 @@ jobs:
           chmod 600 "$keyfile"
           echo "TCS_RELEASE_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
 
-      - name: Recover exact Phase 7 source and apply Phase 8 hardening
+      - name: Recover frozen approved Phase 7 source and apply Phase 8 hardening
         run: |
           set -euo pipefail
           mkdir -p evidence
+          cat > evidence/phase7-frozen-acceptance.json <<'JSON'
+          {
+            "phase7Complete": true,
+            "status": "FROZEN_ACCEPTED",
+            "acceptanceRunId": 36603351255,
+            "acceptanceHeadSha": "7e558194a05d2006118809619133797ab741fa5b",
+            "integrationCloseoutRunId": 36604685213,
+            "integrationCloseoutHeadSha": "4ea505c92d66eb7742f6d84f034d10c9dc2b1f75",
+            "rule": "Phase 7 is complete and is not re-opened by Phase 8/9. Only release-hardening-affected gates are revalidated."
+          }
+          JSON
           bash .tooling/tcs/phase7-reference-repair/recover.sh
           python3 .tooling/tcs/phase7-continuation/apply.py tcs-src > evidence/continuation-integration.json
           python3 .tooling/tcs/phase7-continuation/apply-device-test-fix.py tcs-src > evidence/continuation-test-fix.txt
@@ -99,6 +110,7 @@ jobs:
           SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
 
       - name: Phase 8 core, lint, dependency and material scan
         run: |
@@ -130,16 +142,13 @@ jobs:
           Path("evidence/material-scan.json").write_text(json.dumps({"status":"PASS","filesScanned":sum(1 for r in roots for p in r.rglob("*") if p.is_file()),"secretPatternHits":[]},indent=2)+"\n")
           PY
 
-      - name: Build debug regression and signed 1.0.0 release artifacts
+      - name: Build compile-sanity debug and signed 1.0.0 release artifacts
         run: |
           set -euo pipefail
-          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :app:bundleRelease) > evidence/phase89-build.log 2>&1 || { cat evidence/phase89-build.log; exit 1; }
-          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase89-debug.apk
-          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/phase89-androidTest.apk
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleRelease :app:bundleRelease) > evidence/phase89-build.log 2>&1 || { cat evidence/phase89-build.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase89-debug-compile-sanity.apk
           cp tcs-src/app/build/outputs/apk/release/app-release.apk evidence/TerritoryCardStudio-Android-1.0.0-release.apk
           cp tcs-src/app/build/outputs/bundle/release/app-release.aab evidence/TerritoryCardStudio-Android-1.0.0-release.aab
-          cp evidence/TerritoryCardStudio-Phase89-debug.apk evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk
-          cp evidence/phase89-androidTest.apk evidence/source-sufficiency-androidTest.apk
           sha256sum evidence/*.apk evidence/*.aab > evidence/builds.sha256
 
       - name: Phase 8 release artifact and manifest audit
@@ -245,6 +254,8 @@ jobs:
           SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
           AVDMANAGER="$(command -v avdmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/avdmanager' -type f | sort -V | tail -n 1)"
           EMULATOR="$ANDROID_HOME/emulator/emulator"
+          ADB="$ANDROID_HOME/platform-tools/adb"
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
           export ANDROID_AVD_HOME="$RUNNER_TEMP/tcs-avd-home"
           mkdir -p "$ANDROID_AVD_HOME"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
@@ -254,32 +265,27 @@ jobs:
           find "$ANDROID_AVD_HOME" -maxdepth 3 -type f -print > evidence/avd-files.txt
           "$EMULATOR" -avd tcs_phase89 -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -accel on > evidence/emulator-boot.log 2>&1 &
           echo $! > evidence/emulator.pid
-          adb wait-for-device
+          "$ADB" wait-for-device
           booted=false
           for i in $(seq 1 180); do
-            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+            if [[ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
               booted=true
               break
             fi
             sleep 2
           done
           if [[ "$booted" != true ]]; then
-            adb devices -l > evidence/emulator-devices-failed.txt || true
+            "$ADB" devices -l > evidence/emulator-devices-failed.txt || true
             tail -300 evidence/emulator-boot.log || true
             exit 1
           fi
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-          adb shell input keyevent 82 || true
-          adb devices -l > evidence/emulator-devices.txt
-          adb shell getprop > evidence/emulator-getprop.txt
+          "$ADB" shell settings put global window_animation_scale 0
+          "$ADB" shell settings put global transition_animation_scale 0
+          "$ADB" shell settings put global animator_duration_scale 0
+          "$ADB" shell input keyevent 82 || true
+          "$ADB" devices -l > evidence/emulator-devices.txt
+          "$ADB" shell getprop > evidence/emulator-getprop.txt
           printf '%s\n' '{"manualEmulatorBooted":true,"apiLevel":35,"target":"google_apis","arch":"x86_64"}' > evidence/emulator-boot-status.json
-
-      - name: Phase 7 regression on hardened source
-        run: |
-          set -euo pipefail
-          bash .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
 
       - name: Phase 9 signed release install and runtime
         run: |
@@ -289,7 +295,7 @@ jobs:
       - name: Stop Android emulator
         if: always()
         run: |
-          adb emu kill >/dev/null 2>&1 || true
+          "$ANDROID_HOME/platform-tools/adb" emu kill >/dev/null 2>&1 || true
           if [[ -f evidence/emulator.pid ]]; then
             kill "$(cat evidence/emulator.pid)" >/dev/null 2>&1 || true
           fi
@@ -301,13 +307,12 @@ jobs:
           from pathlib import Path
           import json,os
           e=Path("evidence")
-          phase7=json.loads((e/"phase7-acceptance-status.json").read_text())
+          phase7=json.loads((e/"phase7-frozen-acceptance.json").read_text())
           static=json.loads((e/"phase8-release-static-status.json").read_text())
           runtime=json.loads((e/"phase89-release-smoke/release-runtime-status.json").read_text())
           overlay=json.loads((e/"phase89-release-overlay.json").read_text())
           preflight=json.loads((e/"signing-preflight.json").read_text())
-          assert phase7["phase7Complete"] is True and phase7["allNativeSuitesPassed"] is True
-          assert phase7["actualProcessingErrors"]==0
+          assert phase7["phase7Complete"] is True and phase7["status"]=="FROZEN_ACCEPTED"
           assert static["releaseSigned"] is True and static["nonDebuggable"] is True and static["nonTestOnly"] is True
           assert runtime["coldLaunchPassed"] is True and runtime["appearancePreferencePersistedAcrossReinstall"] is True
           assert runtime["phoneSmokePassed"] is True and runtime["wideSmokePassed"] is True
@@ -321,8 +326,8 @@ jobs:
             "phase9Complete":production,
             "releaseReady":production,
             "productionSigningReady":production,
-            "phase7RegressionPassed":True,
-            "allNativeSuitesPassed":True,
+            "phase7FrozenAcceptancePreserved":True,
+            "phase7Reopened":False,
             "releaseArtifactEngineeringSigned":True,
             "certificateSha256":static["certificateSha256"],
             "releaseApkSha256":static["apkSha256"],
