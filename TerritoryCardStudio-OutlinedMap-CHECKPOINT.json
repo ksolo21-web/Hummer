@@ -1,7 +1,7 @@
 {
-  "status": "PHASE7_SELECTIVE_SOURCE_ACCEPTANCE_VALIDATED",
+  "status": "PHASE7_COMPLETE_SELECTIVE_SOURCE_ACCEPTANCE",
   "releaseReady": false,
-  "newAPKDelivered": false,
+  "newAPKDelivered": true,
   "baselineSourceCommit": "e851c625b73dee83737810767856a741e9468d26",
   "preservedWorkingCheckpointCommit": "4feebb453134ec7edfc19714ed2ac9a606a496aa",
   "phase7ImplementationCommit": "15b8109c02ad937cfedc17b2eada559c8241b849",
@@ -27,7 +27,12 @@
     "sourceReplacementInvalidatesStaleAssessment": true,
     "mixedBatchIsolation": true,
     "historicalA296NotRecreated": true,
-    "debugApkSha256": "6415f8734e11e8faffa414b628665b96d64feeb83a6152df9a82f3bc97b31294"
+    "debugApkSha256": "bc1c554a3f15af7f8632bcaf41d81a0dc1b2c1c4077ec2c21e93f65dd035095e",
+    "finalRun": 36583668751,
+    "finalRunStatus": "SUCCESS",
+    "finalRunHead": "fcec6230948fb7400d09f9745bd7d157c31768e5",
+    "instrumentedTests": 28,
+    "instrumentedCrashesOrAnrs": 0
   },
   "actualCases": [
     {
@@ -58,8 +63,17 @@
   "actualSourceFinalPDFReason": "None of the four supplied real maps is currently source-ready, so Phase 7 correctly generated no real approved field card.",
   "review": {
     "independentCriticAvailable": false,
-    "internalReviewStatus": "PASS_PENDING_COMBINED_HEAD_RETEST",
-    "internalReviewNote": "No separate callable critic runtime is available in this session. Exact retained phone/wide light/dark hold screenshots and generation/final-validation states were inspected internally; final score is withheld until combined-head retest."
+    "internalReviewStatus": "PASS",
+    "score": 9.6,
+    "threshold": "strictly >9.0 with all mandatory checks passed",
+    "evidence": [
+      "Final exact-head run 36583668751 succeeded.",
+      "108 core tests: 0 failures, 0 errors, 0 skipped.",
+      "28 Android instrumented tests across source sufficiency, restart, reference comparison, ancillary semantics, and full Regular/Letter/Telephone UI flows.",
+      "Phone/wide Light/Dark source-hold screenshots inspected; supported PDF preview and Telephone Page 2 use state inspected.",
+      "No non-empty app crash or ANR logs in retained evidence."
+    ],
+    "minorNonBlockingPolish": "Wide source-hold panel and raw NEEDS_SOURCE label can be refined later; no acceptance or safety gate depends on this."
   },
   "priorOutlinedCheckpoint": {
     "source": "source-26435.jpg",
@@ -113,5 +127,6 @@
       "outlined-image.log": "6e3e624c0d2ab7a5bb4fcf549d4900d2894d70791ac642712243b1596af83df4",
       "outlined-colored-regression.log": "492b062bceeb5ffb79570253d9e01e9eca3c77bb644f97085ae87237aeb39112"
     }
-  }
+  },
+  "phase7IntegratedCommit": "26fcc59439942c2dcb051f5645dd5b5d683f51a9"
 }
