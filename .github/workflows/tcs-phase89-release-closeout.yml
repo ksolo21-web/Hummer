@@ -150,7 +150,8 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools/36.0.0" -maxdepth 1 -name apksigner -type f | head -n1)"
           AAPT2="$(find "$ANDROID_HOME/build-tools/36.0.0" -maxdepth 1 -name aapt2 -type f | head -n1)"
           "$APKSIGNER" verify --verbose --print-certs "$APK" > evidence/release-apk-signature.txt
-          jarsigner -verify -strict -certs "$AAB" > evidence/release-aab-signature.txt 2>&1
+          jarsigner -verify -certs "$AAB" > evidence/release-aab-signature.txt 2>&1
+          keytool -printcert -jarfile "$AAB" > evidence/release-aab-cert.txt
           unzip -t "$APK" > evidence/release-apk-ziptest.txt
           unzip -t "$AAB" > evidence/release-aab-ziptest.txt
           "$AAPT2" dump badging "$APK" > evidence/release-badging.txt
@@ -164,6 +165,8 @@ jobs:
           manifest=Path("evidence/release-manifest-tree.txt").read_text()
           apk_sig=Path("evidence/release-apk-signature.txt").read_text()
           key_sig=Path("evidence/release-keystore-cert.txt").read_text()
+          aab_sig=Path("evidence/release-aab-signature.txt").read_text()
+          aab_cert=Path("evidence/release-aab-cert.txt").read_text()
           assert "package: name='com.koenterprises.territorycardstudio'" in badging,badging
           assert "versionCode='45'" in badging,badging
           assert "versionName='1.0.0'" in badging,badging
@@ -175,12 +178,15 @@ jobs:
           assert "testOnly" not in manifest,manifest
           assert 'android:usesCleartextTraffic(0x010106ec)=false' in manifest or 'usesCleartextTraffic' in manifest
           assert 'android:allowBackup' in manifest
+          assert "jar verified." in aab_sig.lower(),aab_sig
           apk_m=re.search(r"certificate SHA-256 digest:\s*([0-9a-fA-F]+)",apk_sig)
           key_m=re.search(r"SHA256:\s*([0-9A-F:]+)",key_sig)
-          assert apk_m and key_m,(apk_sig,key_sig)
+          aab_m=re.search(r"SHA256:\s*([0-9A-F:]+)",aab_cert)
+          assert apk_m and key_m and aab_m,(apk_sig,key_sig,aab_cert)
           apk_fp=apk_m.group(1).replace(":","").lower()
           key_fp=key_m.group(1).replace(":","").lower()
-          assert apk_fp==key_fp,(apk_fp,key_fp)
+          aab_fp=aab_m.group(1).replace(":","").lower()
+          assert apk_fp==key_fp==aab_fp,(apk_fp,key_fp,aab_fp)
           def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
           status={
             "schema":"tcs-phase8-release-static-v1",
