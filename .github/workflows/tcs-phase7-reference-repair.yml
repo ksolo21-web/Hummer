@@ -1,0 +1,80 @@
+name: TCS Phase7 Reference Repair
+on:
+  push:
+    branches: [phase7-real-image-acceptance]
+    paths:
+      - .github/workflows/tcs-phase7-reference-repair.yml
+      - .tooling/tcs/phase7-reference-repair/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase7-reference-repair-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  reference-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover exact native source and apply hash-locked repair
+        run: bash .tooling/tcs/phase7-reference-repair/recover.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+      - name: All core contracts with real JUnit
+        run: |
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/core-tests.log 2>&1 || { cat evidence/core-tests.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/core-results
+      - name: Compile application and instrumented tests
+        run: |
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest) > evidence/compile.log 2>&1 || { cat evidence/compile.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase7-Reference-Repair-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/emulator-test.apk
+          sha256sum evidence/*.apk > evidence/builds.sha256
+      - name: Enable emulator hardware acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Actual reference comparison save and recovery in four UI configurations
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: bash .tooling/tcs/phase7-reference-repair/run-device-tests.sh
+      - name: Preserve exact source and evidence
+        if: always()
+        run: |
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/source-files.sha256
+          tar -cJf evidence/phase7-reference-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+          sha256sum evidence/phase7-reference-source.tar.xz > evidence/source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-reference-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-reference-source
+          path: evidence/phase7-reference-source.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-reference-debug-apk
+          path: evidence/TerritoryCardStudio-Phase7-Reference-Repair-debug.apk
+          retention-days: 14
