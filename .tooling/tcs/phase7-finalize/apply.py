@@ -8,7 +8,6 @@ do not weaken baseline, transport or result validation to make a patch apply.
 This script grants no card approval and does not close Phase 7 or issue #31.
 """
 from pathlib import Path
-import hashlib
 import json
 import subprocess
 import sys
@@ -19,7 +18,6 @@ def main() -> None:
         raise SystemExit("Usage: apply.py <reference-repair-source>")
     target = Path(sys.argv[1]).resolve(strict=True)
     continuation = Path(__file__).resolve().parent.parent / "phase7-continuation" / "apply.py"
-    expected = "07d0b15d8c"  # descriptive marker only; the script itself verifies its full transport
     result = subprocess.run(
         [sys.executable, str(continuation), str(target)],
         check=True, capture_output=True, text=True,
