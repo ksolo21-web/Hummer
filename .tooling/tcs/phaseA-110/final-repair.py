@@ -57,7 +57,7 @@ def main():
     )
     t=t.replace(
         'rule.onNodeWithTag("simple-territory-workspace").assertIsDisplayed()',
-        'rule.waitUntilAtLeastOneExists(hasTestTag("simple-territory-workspace"), 5_000)\n        rule.onNodeWithTag("simple-territory-workspace").assertIsDisplayed()'
+        'rule.waitForIdle()\n        rule.onNodeWithTag("simple-territory-workspace").assertIsDisplayed()'
     )
     test.write_text(t)
 
@@ -66,7 +66,7 @@ def main():
         "visibleMinimumTypeRequirement":True,
         "newCardAcceptanceFixture":True,
         "scrollSafeCreateActions":True,
-        "workspaceTransitionWait":True
+        "workspaceTransitionWaitForIdle":True
     },indent=2))
 
 if __name__=="__main__":
