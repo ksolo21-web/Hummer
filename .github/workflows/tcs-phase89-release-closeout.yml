@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Require permanent Territory release signing
+      - name: Prepare release signing without weakening final gate
         run: |
           set -euo pipefail
           mkdir -p evidence
@@ -33,29 +33,37 @@ jobs:
           [[ -n "${TCS_RELEASE_STORE_PASSWORD:-}" ]] || missing+=(TCS_RELEASE_STORE_PASSWORD)
           [[ -n "${TCS_RELEASE_KEY_ALIAS:-}" ]] || missing+=(TCS_RELEASE_KEY_ALIAS)
           [[ -n "${TCS_RELEASE_KEY_PASSWORD:-}" ]] || missing+=(TCS_RELEASE_KEY_PASSWORD)
+          keyfile="$RUNNER_TEMP/tcs-release-keystore.jks"
           if (( ${#missing[@]} )); then
+            ci_pass="phase89-ci-only-not-production"
+            ci_alias="tcs-ci-release"
+            keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$keyfile" -storepass "$ci_pass" -keypass "$ci_pass" -alias "$ci_alias" -dname "CN=Territory Card Studio CI, OU=Nonproduction, O=KO Enterprises, C=US" -keyalg RSA -keysize 3072 -validity 3650
+            echo "TCS_RELEASE_STORE_PASSWORD=$ci_pass" >> "$GITHUB_ENV"
+            echo "TCS_RELEASE_KEY_PASSWORD=$ci_pass" >> "$GITHUB_ENV"
+            echo "TCS_RELEASE_KEY_ALIAS=$ci_alias" >> "$GITHUB_ENV"
+            echo "TCS_RELEASE_SIGNING_PRODUCTION=false" >> "$GITHUB_ENV"
+            keytool -list -v -keystore "$keyfile" -alias "$ci_alias" -storepass "$ci_pass" -keypass "$ci_pass" > evidence/release-keystore-cert.txt
             python3 - "${missing[@]}" <<'PY'
           import json,sys
           from pathlib import Path
-          Path("evidence/phase89-final-status.json").write_text(json.dumps({
-            "schema":"tcs-phase89-release-closeout-v1",
-            "phase8Complete":False,
-            "phase9Complete":False,
-            "signingReady":False,
-            "blocker":"Missing permanent Territory release-signing secrets",
-            "missingSigningSecrets":sys.argv[1:]
+          Path("evidence/signing-preflight.json").write_text(json.dumps({
+            "productionSigningReady":False,
+            "ciOnlySigningUsed":True,
+            "missingSigningSecrets":sys.argv[1:],
+            "note":"CI-only signing permits engineering validation but can never satisfy the Phase 9 production release gate."
           },indent=2)+"\n")
           PY
-            printf '::error::Phase 8/9 blocked: missing permanent Territory release signing configuration (%s).\n' "${missing[*]}"
-            exit 86
+          else
+            echo "::add-mask::$TCS_RELEASE_STORE_PASSWORD"
+            echo "::add-mask::$TCS_RELEASE_KEY_PASSWORD"
+            printf '%s' "$TCS_RELEASE_KEYSTORE_B64" | base64 --decode > "$keyfile"
+            chmod 600 "$keyfile"
+            [[ -s "$keyfile" ]] || { echo "::error::Decoded release keystore is empty"; exit 87; }
+            keytool -list -v -keystore "$keyfile" -alias "$TCS_RELEASE_KEY_ALIAS" -storepass "$TCS_RELEASE_STORE_PASSWORD" -keypass "$TCS_RELEASE_KEY_PASSWORD" > evidence/release-keystore-cert.txt
+            echo "TCS_RELEASE_SIGNING_PRODUCTION=true" >> "$GITHUB_ENV"
+            printf '%s\n' '{"productionSigningReady":true,"ciOnlySigningUsed":false,"missingSigningSecrets":[]}' > evidence/signing-preflight.json
           fi
-          echo "::add-mask::$TCS_RELEASE_STORE_PASSWORD"
-          echo "::add-mask::$TCS_RELEASE_KEY_PASSWORD"
-          keyfile="$RUNNER_TEMP/tcs-release-keystore.jks"
-          printf '%s' "$TCS_RELEASE_KEYSTORE_B64" | base64 --decode > "$keyfile"
           chmod 600 "$keyfile"
-          [[ -s "$keyfile" ]] || { echo "::error::Decoded release keystore is empty"; exit 87; }
-          keytool -list -v -keystore "$keyfile" -alias "$TCS_RELEASE_KEY_ALIAS" -storepass "$TCS_RELEASE_STORE_PASSWORD" -keypass "$TCS_RELEASE_KEY_PASSWORD" > evidence/release-keystore-cert.txt
           echo "TCS_RELEASE_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
 
       - name: Recover exact Phase 7 source and apply Phase 8 hardening
@@ -150,7 +158,7 @@ jobs:
           "$AAPT2" dump xmltree "$APK" --file AndroidManifest.xml > evidence/release-manifest-tree.txt
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib,json,re
+          import hashlib,json,re,os
           badging=Path("evidence/release-badging.txt").read_text()
           perms=Path("evidence/release-permissions.txt").read_text()
           manifest=Path("evidence/release-manifest-tree.txt").read_text()
@@ -183,6 +191,7 @@ jobs:
             "minSdk":29,
             "targetSdk":37,
             "releaseSigned":True,
+            "productionSigning":os.environ.get("TCS_RELEASE_SIGNING_PRODUCTION")=="true",
             "certificateSha256":apk_fp,
             "permissions":["android.permission.INTERNET"],
             "nonDebuggable":True,
@@ -219,12 +228,13 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib,json
+          import json,os
           e=Path("evidence")
           phase7=json.loads((e/"phase7-acceptance-status.json").read_text())
           static=json.loads((e/"phase8-release-static-status.json").read_text())
           runtime=json.loads((e/"phase89-release-smoke/release-runtime-status.json").read_text())
           overlay=json.loads((e/"phase89-release-overlay.json").read_text())
+          preflight=json.loads((e/"signing-preflight.json").read_text())
           assert phase7["phase7Complete"] is True and phase7["allNativeSuitesPassed"] is True
           assert phase7["actualProcessingErrors"]==0
           assert static["releaseSigned"] is True and static["nonDebuggable"] is True and static["nonTestOnly"] is True
@@ -232,15 +242,17 @@ jobs:
           assert runtime["phoneSmokePassed"] is True and runtime["wideSmokePassed"] is True
           assert runtime["targetCrashFree"] is True and runtime["targetAnrFree"] is True
           assert overlay["releaseVersionCode"]==45 and overlay["releaseVersionName"]=="1.0.0"
-          def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+          production=preflight["productionSigningReady"] is True and os.environ.get("TCS_RELEASE_SIGNING_PRODUCTION")=="true"
           final={
             "schema":"tcs-phase89-release-closeout-v1",
-            "phase8Complete":True,
-            "phase9Complete":True,
-            "releaseReady":True,
+            "phase8EngineeringValidationComplete":True,
+            "phase8Complete":production,
+            "phase9Complete":production,
+            "releaseReady":production,
+            "productionSigningReady":production,
             "phase7RegressionPassed":True,
             "allNativeSuitesPassed":True,
-            "releaseSigned":True,
+            "releaseArtifactEngineeringSigned":True,
             "certificateSha256":static["certificateSha256"],
             "releaseApkSha256":static["apkSha256"],
             "releaseAabSha256":static["aabSha256"],
@@ -252,10 +264,14 @@ jobs:
             "minificationAndResourceShrinking":True,
             "internalVisualReviewRequired":True,
             "independentReviewImplied":False,
-            "nextGate":"Internal visual review of exact retained release screenshots; no further engineering phase remains if that review passes."
+            "blocker":None if production else "Permanent Territory release-signing secrets are not configured; CI-only signing cannot satisfy Phase 9."
           }
           (e/"phase89-final-status.json").write_text(json.dumps(final,indent=2)+"\n")
           PY
+          if [[ "${TCS_RELEASE_SIGNING_PRODUCTION:-false}" != "true" ]]; then
+            echo "::error::Engineering validation passed, but Phase 8/9 remain blocked on permanent Territory release signing."
+            exit 89
+          fi
 
       - name: Preserve exact hardened source
         if: always()
@@ -278,14 +294,14 @@ jobs:
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
-        if: success()
+        if: ${{ success() && env.TCS_RELEASE_SIGNING_PRODUCTION == 'true' }}
         with:
           name: TerritoryCardStudio-Android-1.0.0-release-apk
           path: evidence/TerritoryCardStudio-Android-1.0.0-release.apk
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
-        if: success()
+        if: ${{ success() && env.TCS_RELEASE_SIGNING_PRODUCTION == 'true' }}
         with:
           name: TerritoryCardStudio-Android-1.0.0-release-aab
           path: evidence/TerritoryCardStudio-Android-1.0.0-release.aab
