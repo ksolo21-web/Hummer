@@ -1,0 +1,28 @@
+name: TCS Phase7 Official Source Survey
+on:
+  push:
+    branches: [phase7-real-image-acceptance]
+    paths:
+      - .github/workflows/tcs-phase7-source-survey.yml
+      - .tooling/tcs/phase7-survey/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase7-official-survey-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-survey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve bounded official source data and exact completeness witnesses
+        run: |
+          python3 -m py_compile .tooling/tcs/phase7-survey/survey.py
+          python3 .tooling/tcs/phase7-survey/survey.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-official-source-survey
+          path: evidence/survey
+          retention-days: 14
