@@ -1,0 +1,100 @@
+name: TCS Phase7 Source Sufficiency
+on:
+  push:
+    branches: [phase7-real-image-acceptance]
+    paths:
+      - .github/workflows/tcs-phase7-source-sufficiency.yml
+      - .tooling/tcs/phase7-source-sufficiency/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase7-source-sufficiency-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-sufficiency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover exact tested baseline and integrate source sufficiency
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          bash .tooling/tcs/phase7-reference-repair/recover.sh
+          python3 .tooling/tcs/phase7-continuation/apply.py tcs-src > evidence/continuation-integration.json
+          python3 .tooling/tcs/phase7-continuation/apply-device-test-fix.py tcs-src > evidence/continuation-test-fix.txt
+          python3 .tooling/tcs/phase7-source-sufficiency/apply.py tcs-src > evidence/source-sufficiency-integration.json
+          python3 .tooling/tcs/phase7-source-sufficiency/tighten-positive-control.py tcs-src > evidence/positive-control-coverage.txt
+          bash -n .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+      - name: Run full core regression suite including selective source policy
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/source-sufficiency-core.log 2>&1 || { cat evidence/source-sufficiency-core.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/core-results
+      - name: Compile app and Android instrumentation
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest) > evidence/source-sufficiency-compile.log 2>&1 || { cat evidence/source-sufficiency-compile.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/source-sufficiency-androidTest.apk
+          sha256sum evidence/*.apk > evidence/builds.sha256
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Test real sources, no bypass, restart, themes and preserved native flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: |
+            bash .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
+            cp evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk evidence/TerritoryCardStudio-Phase7-Reference-Repair-debug.apk
+            cp evidence/source-sufficiency-androidTest.apk evidence/emulator-test.apk
+            bash .tooling/tcs/phase7-reference-repair/run-device-tests.sh
+            cp evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk evidence/TerritoryCardStudio-Phase7-Continuation-debug.apk
+            cp evidence/source-sufficiency-androidTest.apk evidence/TerritoryCardStudio-Phase7-Continuation-androidTest.apk
+            bash .tooling/tcs/phase7-continuation/run-device-tests.sh
+      - name: Preserve exact effective source and all test results
+        if: always()
+        run: |
+          if [ -d tcs-src ]; then
+            (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/effective-source-files.sha256
+            tar -cJf evidence/phase7-source-sufficiency-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+            sha256sum evidence/phase7-source-sufficiency-source.tar.xz > evidence/source-package.sha256
+            if [ -d tcs-src/core/build/test-results ]; then cp -r tcs-src/core/build/test-results evidence/all-core-test-results; fi
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-source-sufficiency-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-source-sufficiency-apk
+          path: evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-source-sufficiency-source
+          path: evidence/phase7-source-sufficiency-source.tar.xz
+          retention-days: 14
