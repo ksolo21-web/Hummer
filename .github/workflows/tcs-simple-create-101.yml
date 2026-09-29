@@ -1,0 +1,190 @@
+name: Territory 1.0.1 Simple Create
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-simple-create-101.yml
+      - .tooling/tcs/simple-create-101/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-simple-create-101
+  cancel-in-progress: true
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create private test/release signer
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          pass='territory-private-101'
+          alias='territory-private'
+          keyfile="$RUNNER_TEMP/territory-private-101.p12"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$keyfile" -storepass "$pass" -keypass "$pass" -alias "$alias" -dname "CN=Territory Card Studio Private 1.0.1, O=KO Enterprises, C=US" -keyalg RSA -keysize 3072 -validity 3650
+          echo "TCS_RELEASE_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_STORE_PASSWORD=$pass" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_KEY_PASSWORD=$pass" >> "$GITHUB_ENV"
+
+      - name: Reconstruct accepted 1.0.0 source and apply simple-create 1.0.1
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          bash .tooling/tcs/phase7-reference-repair/recover.sh
+          python3 .tooling/tcs/phase7-continuation/apply.py tcs-src > evidence/continuation-integration.json
+          python3 .tooling/tcs/phase7-continuation/apply-device-test-fix.py tcs-src > evidence/continuation-test-fix.txt
+          python3 .tooling/tcs/phase7-source-sufficiency/apply.py tcs-src > evidence/source-sufficiency-integration.json
+          python3 .tooling/tcs/phase7-source-sufficiency/tighten-positive-control.py tcs-src > evidence/positive-control-coverage.txt
+          python3 .tooling/tcs/phase7-source-hardening.py tcs-src > evidence/source-hardening-integration.json
+          python3 .tooling/tcs/phase7-source-sufficiency/diagnostic-and-test-coverage.py tcs-src > evidence/source-diagnostic-integration.json
+          python3 .tooling/tcs/phase89/release-hardening.py tcs-src > evidence/private-release-overlay.json
+          python3 .tooling/tcs/simple-create-101/apply.py tcs-src > evidence/simple-create-integration.json
+          cp .tooling/tcs/simple-create-101/SimpleCreate101InstrumentationTest.kt tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
+          grep -q 'versionCode = 46' tcs-src/app/build.gradle.kts
+          grep -q 'versionName = "1.0.1"' tcs-src/app/build.gradle.kts
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+
+      - name: Install Android toolchain
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Run core regression and compile all affected variants
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/core.log 2>&1 || { cat evidence/core.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/core-results
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest :app:lintRelease :app:assembleRelease :app:bundleRelease) > evidence/build.log 2>&1 || { cat evidence/build.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-1.0.1-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/TerritoryCardStudio-1.0.1-androidTest.apk
+          cp tcs-src/app/build/outputs/apk/release/app-release.apk evidence/TerritoryCardStudio-Android-1.0.1-private.apk
+          cp tcs-src/app/build/outputs/bundle/release/app-release.aab evidence/TerritoryCardStudio-Android-1.0.1-private.aab
+          cp evidence/TerritoryCardStudio-Android-1.0.1-private.apk evidence/TerritoryCardStudio-Android-1.0.0-release.apk
+          sha256sum evidence/*.apk evidence/*.aab > evidence/builds.sha256
+          AAPT2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          "$AAPT2" dump badging evidence/TerritoryCardStudio-Android-1.0.1-private.apk > evidence/badging.txt
+          grep -q "versionCode='46'" evidence/badging.txt
+          grep -q "versionName='1.0.1'" evidence/badging.txt
+
+      - name: Boot Android 35 emulator
+        run: |
+          set -euo pipefail
+          sudo chmod 666 /dev/kvm
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/tcs-simple-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          AVDMANAGER="$(command -v avdmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/avdmanager' -type f | sort -V | tail -n1)"
+          echo no | "$AVDMANAGER" create avd --force --name tcs_simple_101 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          "$ANDROID_HOME/emulator/emulator" -avd tcs_simple_101 -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -accel on > evidence/emulator.log 2>&1 &
+          echo $! > evidence/emulator.pid
+          adb wait-for-device
+          for i in $(seq 1 180); do
+            [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]] && break
+            sleep 2
+          done
+          [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == 1 ]]
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+      - name: Test simple one-map creation and real source-backed preparation
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb install -r evidence/TerritoryCardStudio-1.0.1-debug.apk
+          adb install -r evidence/TerritoryCardStudio-1.0.1-androidTest.apk
+          adb shell am instrument -w -r -e class "$PKG.SimpleCreate101InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/simple-create-ui.log
+          grep -q 'OK (2 tests)' evidence/simple-create-ui.log
+          adb shell am instrument -w -r -e class "$PKG.Phase7SourceSufficiencyInstrumentationTest#positiveSourceCompletesTheExistingApprovalAndExportLifecycle" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" > evidence/source-backed-lifecycle.log
+          grep -q 'OK (1 test)' evidence/source-backed-lifecycle.log
+          for f in simple-create-101-light-empty.png simple-create-101-dark-map-ready.png; do
+            adb exec-out run-as "$PKG" cat "files/$f" > "evidence/$f"
+            test -s "evidence/$f"
+          done
+
+      - name: Test hardened 1.0.1 private release runtime
+        run: |
+          set -euo pipefail
+          bash .tooling/tcs/phase89/run-release-smoke.sh
+          cp -r evidence/phase89-release-smoke evidence/simple-create-release-smoke
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          e=Path("evidence")
+          apk=e/"TerritoryCardStudio-Android-1.0.1-private.apk"
+          aab=e/"TerritoryCardStudio-Android-1.0.1-private.aab"
+          status={
+            "schema":"territory-simple-create-101-final",
+            "version":"1.0.1",
+            "phase7Frozen":True,
+            "simpleDefaultWorkspace":True,
+            "verificationEngineHiddenByDefault":True,
+            "advancedToolsStillAvailable":True,
+            "oneCompleteUserMapCanBeSufficient":True,
+            "secondGeometryProviderNotRequiredForCurrentUserMap":True,
+            "sourceSufficiencyStillFailClosed":True,
+            "sourceBackedLifecyclePassed":True,
+            "releaseRuntimePassed":True,
+            "apkSha256":hashlib.sha256(apk.read_bytes()).hexdigest(),
+            "aabSha256":hashlib.sha256(aab.read_bytes()).hexdigest()
+          }
+          (e/"simple-create-101-final-status.json").write_text(json.dumps(status,indent=2)+"\n")
+          PY
+
+      - name: Stop emulator
+        if: always()
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          [[ -f evidence/emulator.pid ]] && kill "$(cat evidence/emulator.pid)" >/dev/null 2>&1 || true
+
+      - name: Preserve exact source
+        if: always()
+        run: |
+          if [[ -d tcs-src ]]; then
+            tar -cJf evidence/TerritoryCardStudio-Android-1.0.1-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+            sha256sum evidence/TerritoryCardStudio-Android-1.0.1-source.tar.xz > evidence/source.sha256
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-1.0.1-simple-create-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.aab
+            !evidence/*.tar.xz
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: TerritoryCardStudio-Android-1.0.1-private-apk
+          path: evidence/TerritoryCardStudio-Android-1.0.1-private.apk
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: TerritoryCardStudio-Android-1.0.1-private-aab
+          path: evidence/TerritoryCardStudio-Android-1.0.1-private.aab
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TerritoryCardStudio-Android-1.0.1-source
+          path: evidence/TerritoryCardStudio-Android-1.0.1-source.tar.xz
+          retention-days: 30
