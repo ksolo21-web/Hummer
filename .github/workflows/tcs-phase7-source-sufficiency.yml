@@ -1,7 +1,7 @@
 name: TCS Phase7 Source Sufficiency
 on:
   push:
-    branches: [phase7-real-image-acceptance]
+    branches: [phase7-real-image-acceptance, tcs-phase1d-020-work]
     paths:
       - .github/workflows/tcs-phase7-source-sufficiency.yml
       - .tooling/tcs/phase7-source-sufficiency/**
