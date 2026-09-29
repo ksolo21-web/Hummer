@@ -1,0 +1,85 @@
+name: TCS Phase7 Continuation Repair
+on:
+  push:
+    branches: [phase7-real-image-acceptance]
+    paths:
+      - .github/workflows/tcs-phase7-continuation.yml
+      - .tooling/tcs/phase7-continuation/**
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase7-continuation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  continuation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recover accepted source and apply continuation
+        run: |
+          set -euo pipefail
+          bash .tooling/tcs/phase7-reference-repair/recover.sh
+          python3 .tooling/tcs/phase7-continuation/apply.py tcs-src > evidence/continuation-integration.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+      - name: Run complete core regression suite
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/continuation-core-tests.log 2>&1 || { cat evidence/continuation-core-tests.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/continuation-core-results
+      - name: Compile Android app and affected instrumentation
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest) > evidence/continuation-compile.log 2>&1 || { cat evidence/continuation-compile.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase7-Continuation-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/TerritoryCardStudio-Phase7-Continuation-androidTest.apk
+          sha256sum evidence/TerritoryCardStudio-Phase7-Continuation-*.apk > evidence/continuation-builds.sha256
+      - name: Enable emulator hardware acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Phone and wide native ancillary regression
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: bash .tooling/tcs/phase7-continuation/run-device-tests.sh
+      - name: Preserve integrated source
+        if: always()
+        run: |
+          (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/continuation-source-files.sha256
+          tar -cJf evidence/phase7-continuation-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+          sha256sum evidence/phase7-continuation-source.tar.xz > evidence/continuation-source-package.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-continuation-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.tar.xz
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-continuation-apk
+          path: evidence/TerritoryCardStudio-Phase7-Continuation-debug.apk
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-continuation-source
+          path: evidence/phase7-continuation-source.tar.xz
+          retention-days: 14
