@@ -5,10 +5,11 @@ on:
     paths:
       - .github/workflows/tcs-phase7-source-sufficiency.yml
       - .tooling/tcs/phase7-source-sufficiency/**
+      - .tooling/tcs/phase7-source-hardening.py
 permissions:
   contents: read
 concurrency:
-  group: tcs-phase7-source-sufficiency-${{ github.ref }}
+  group: tcs-phase7-source-hardened-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   source-sufficiency:
@@ -25,6 +26,7 @@ jobs:
           python3 .tooling/tcs/phase7-continuation/apply-device-test-fix.py tcs-src > evidence/continuation-test-fix.txt
           python3 .tooling/tcs/phase7-source-sufficiency/apply.py tcs-src > evidence/source-sufficiency-integration.json
           python3 .tooling/tcs/phase7-source-sufficiency/tighten-positive-control.py tcs-src > evidence/positive-control-coverage.txt
+          python3 .tooling/tcs/phase7-source-hardening.py tcs-src > evidence/source-hardening-integration.json
           bash -n .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
           bash -n .tooling/tcs/phase7-source-sufficiency/run-full-ui-tests.sh
       - uses: actions/setup-java@v4
