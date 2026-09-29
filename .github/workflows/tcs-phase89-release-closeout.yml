@@ -245,8 +245,13 @@ jobs:
           SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
           AVDMANAGER="$(command -v avdmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/avdmanager' -type f | sort -V | tail -n 1)"
           EMULATOR="$ANDROID_HOME/emulator/emulator"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/tcs-avd-home"
+          mkdir -p "$ANDROID_AVD_HOME"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          echo no | "$AVDMANAGER" create avd --force --name tcs_phase89 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          echo no | "$AVDMANAGER" create avd --force --name tcs_phase89 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6' > evidence/avd-create.log 2>&1
+          "$EMULATOR" -list-avds > evidence/avd-list.txt
+          grep -qx 'tcs_phase89' evidence/avd-list.txt
+          find "$ANDROID_AVD_HOME" -maxdepth 3 -type f -print > evidence/avd-files.txt
           "$EMULATOR" -avd tcs_phase89 -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -accel on > evidence/emulator-boot.log 2>&1 &
           echo $! > evidence/emulator.pid
           adb wait-for-device
