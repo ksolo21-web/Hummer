@@ -173,9 +173,18 @@ jobs:
           assert "sdkVersion:'29'" in badging,badging
           assert "targetSdkVersion:'37'" in badging,badging
           permission_names=set(re.findall(r"name='([^']+)'",perms))
-          assert permission_names=={"android.permission.INTERNET"},permission_names
+          expected_permissions={
+            "android.permission.INTERNET",
+            "android.permission.ACCESS_NETWORK_STATE",
+            "com.koenterprises.territorycardstudio.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+          }
+          assert permission_names==expected_permissions,permission_names
           assert "debuggable" not in manifest.lower(),manifest
           assert "testOnly" not in manifest,manifest
+          assert manifest.count("android:exported(0x01010010)=true")==2,manifest
+          assert "com.koenterprises.territorycardstudio.MainActivity" in manifest
+          assert "androidx.profileinstaller.ProfileInstallReceiver" in manifest
+          assert 'android:permission(0x01010006)="android.permission.DUMP"' in manifest
           assert 'android:usesCleartextTraffic(0x010106ec)=false' in manifest or 'usesCleartextTraffic' in manifest
           assert 'android:allowBackup' in manifest
           assert "jar verified." in aab_sig.lower(),aab_sig
@@ -199,7 +208,12 @@ jobs:
             "releaseSigned":True,
             "productionSigning":os.environ.get("TCS_RELEASE_SIGNING_PRODUCTION")=="true",
             "certificateSha256":apk_fp,
-            "permissions":["android.permission.INTERNET"],
+            "permissions":[
+              "android.permission.INTERNET",
+              "android.permission.ACCESS_NETWORK_STATE",
+              "com.koenterprises.territorycardstudio.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+            ],
+            "exportedComponentsAudit":"PASS_MAIN_ACTIVITY_PLUS_DUMP_PROTECTED_PROFILE_RECEIVER",
             "nonDebuggable":True,
             "nonTestOnly":True,
             "cleartextDisabled":True,
