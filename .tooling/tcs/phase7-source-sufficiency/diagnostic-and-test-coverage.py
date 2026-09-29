@@ -35,6 +35,30 @@ old='    LazyColumn(modifier.fillMaxSize().testTag("native-authoring-screen"),co
 new='    val authoringListState=key(section) { rememberLazyListState() }\n    LazyColumn(modifier.fillMaxSize().testTag("native-authoring-screen"),state=authoringListState,contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {'
 assert s.count(old)==1;s=s.replace(old,new)
 ui.write_text(s)
+# DocumentsUI occasionally acknowledges Accessibility ACTION_CLICK on a grid item
+# without actually dispatching the OpenDocument selection. Exercise the same user
+# action with a real injected tap first, then keep accessibility as a fallback.
+# This strengthens the full UI test harness; it does not bypass the system picker.
+ui_test=root/'app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase6NativeUiInstrumentationTest.kt'
+s=ui_test.read_text()
+old='import android.view.accessibility.AccessibilityNodeInfo\n'
+new='import android.view.accessibility.AccessibilityNodeInfo\nimport android.view.MotionEvent\n'
+assert s.count(old)==1;s=s.replace(old,new)
+old='''                        val activated=node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} action=$activated\\n")
+                        lastClick=now
+'''
+new='''                        val eventTime=android.os.SystemClock.uptimeMillis()
+                        val down=MotionEvent.obtain(eventTime,eventTime,MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY(),0)
+                        val up=MotionEvent.obtain(eventTime,eventTime+50,MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY(),0)
+                        val injected=try { automation.injectInputEvent(down,true) && automation.injectInputEvent(up,true) } finally { down.recycle();up.recycle() }
+                        val activated=if(injected) true else node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} injected=$injected action=$activated\\n")
+                        lastClick=now
+'''
+if(!s.includes(old)) throw new Error("Picker action block not found");
+s=s.replace(old,new);
+ui_test.write_text(s)
 store=root/'app/src/main/java/com/koenterprises/territorycardstudio/AndroidNativeDraftStore.kt'
 s=store.read_text()
 old='(error.message ?: error.javaClass.simpleName).take(4000),"Source checking failed. Retry or repair the processing/storage error; the map has not been judged insufficient."'
