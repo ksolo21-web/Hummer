@@ -170,7 +170,7 @@ jobs:
           assert "package: name='com.koenterprises.territorycardstudio'" in badging,badging
           assert "versionCode='45'" in badging,badging
           assert "versionName='1.0.0'" in badging,badging
-          assert "sdkVersion:'29'" in badging,badging
+          assert "minSdkVersion:'29'" in badging,badging
           assert "targetSdkVersion:'37'" in badging,badging
           permission_names=set(re.findall(r"name='([^']+)'",perms))
           expected_permissions={
