@@ -25,11 +25,11 @@ new_files=[
 ]
 patches=[
  ("NativeAuthoringUi.patch","app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt",
-  "db5be2020c5c3ad680e46427ec7d02bd249e3b5659032f26570c007c684e8095","4aa6fe6c0086577636b2b45aefa5a1c7f243446287f30f9cfa0914238cc2d86a","68edb7b2054d8590d84b78ef199787e7c6b49ef6c618aa227bebc685cbe4b9d9"),
+  "db5be2020c5c3ad680e46427ec7d02bd249e3b5659032f26570c007c684e8095","4aa6fe6c0086577636b2b45aefa5a1c7f243446287f30f9cfa0914238cc2d86a","3a90d7907d1596aafdb41a575dbf1c16da201b39332f1654a914a25886ff60bf"),
  ("BuildingValidationEngine.patch","core/src/main/kotlin/com/koenterprises/territorycardstudio/core/BuildingValidationEngine.kt",
   "a9e3eea17c262a302b50dbf7fe886db2668f136ebe46ef2259b408977dc1c207","4f7531fad76a9e07fd447ed51508cb398addf4375131230f570b7cb59988de5a","3f29f5ae8a6e55b500d5afb2ea18e67696d73a86d17e80c1923bbc13fd35cc94"),
  ("CandidatePdfRenderer.patch","core/src/main/kotlin/com/koenterprises/territorycardstudio/core/CandidatePdfRenderer.kt",
-  "becb73831a59495390cb6df47f845d0f1b0d3972fa11f6f9022aa26077d13084","80c8d4eebbd4622e80248438a6f2b6918aacaad82fcbbed90704b0ea7f3e1fe5","86867d46eb3a1527c0737e7140da2a1856094aced0dfebfa44cb94ec38555cfe"),
+  "becb73831a59495390cb6df47f845d0f1b0d3972fa11f6f9022aa26077d13084","80c8d4eebbd4622e80248438a6f2b6918aacaad82fcbbed90704b0ea7f3e1fe5","2e656fb2d6fde5daff00f80ebc440e542d80c0935faecfd3fb1af7b979b4f5fb"),
  ("ProductionRenderModelAdapter.patch","core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ProductionRenderModelAdapter.kt",
   "849a211784f6a12d487b5e80fc4fa5fdbeb79f211c7ee4b1ad592bd06aa2c527","6850789d5c440b2bdf51d0aad98f8e0991866be5c9c5e0d93a356ad6fc3f7659","e8bb0ee80c02724ed9093760920e0f1d80b56f0b73b1757a68ce5dd992201801"),
 ]
