@@ -226,6 +226,16 @@ jobs:
           Path("evidence/phase8-release-static-status.json").write_text(json.dumps(status,indent=2)+"\n")
           PY
 
+      - name: Reclaim runner disk for device gates
+        run: |
+          set -euo pipefail
+          df -h > evidence/disk-before-device-cleanup.txt
+          du -sh tcs-src/app/build tcs-src/core/build "$HOME/.gradle/caches" "$ANDROID_HOME" 2>/dev/null > evidence/disk-usage-before-device-cleanup.txt || true
+          rm -rf tcs-src/app/build tcs-src/core/build
+          rm -rf "$HOME/.gradle/caches/modules-2/files-2.1" "$HOME/.gradle/caches/transforms-"* "$HOME/.gradle/caches/"*/transforms 2>/dev/null || true
+          sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/local/lib/android/sdk/cmake 2>/dev/null || true
+          df -h > evidence/disk-after-device-cleanup.txt
+
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
 
