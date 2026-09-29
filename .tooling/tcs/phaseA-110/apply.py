@@ -53,6 +53,11 @@ def main() -> None:
             assert src is not None
             target.write_bytes(src.read())
 
+    production_path = root / "app/src/main/java/com/koenterprises/territorycardstudio/ProductionUi.kt"
+    production_text = production_path.read_text()
+    production_text = production_text.replace("import androidx.compose.foundation.layout.weight\\n", "")
+    production_path.write_text(production_text)
+
     build = (root / "app/build.gradle.kts").read_text()
     manifest = (root / "app/src/main/AndroidManifest.xml").read_text()
     production = (root / "app/src/main/java/com/koenterprises/territorycardstudio/ProductionUi.kt").read_text()
