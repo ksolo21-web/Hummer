@@ -3,6 +3,22 @@
 from pathlib import Path
 import json,sys
 root=Path(sys.argv[1]).resolve(strict=True)
+assessment=root/'app/src/main/java/com/koenterprises/territorycardstudio/NativeSourceAssessment.kt'
+s=assessment.read_text()
+needle='        val location=SourceLocation(sha);val facts=mutableListOf<SourceFact>()\n'
+replacement=needle+'''        // OCR/triage diagnostic rectangles may extend a few pixels beyond the bitmap edge.
+        // Clip only the diagnostic highlight to valid source-pixel coordinates; never alter source facts.
+        fun sourceRegion(box:AxisAlignedRect?):SourcePixelRegion?=box?.let {
+            val left=maxOf(0.0,it.left);val top=maxOf(0.0,it.top)
+            SourcePixelRegion(left,top,maxOf(left,it.right),maxOf(top,it.bottom))
+        }
+'''
+assert s.count(needle)==1;s=s.replace(needle,replacement)
+old='review.bounds(id)?.let {SourcePixelRegion(it.left,it.top,it.right,it.bottom)}'
+assert s.count(old)==1;s=s.replace(old,'sourceRegion(review.bounds(id))')
+old='f.sourceBounds?.let {SourcePixelRegion(it.left,it.top,it.right,it.bottom)}'
+assert s.count(old)==1;s=s.replace(old,'sourceRegion(f.sourceBounds)')
+assessment.write_text(s)
 store=root/'app/src/main/java/com/koenterprises/territorycardstudio/AndroidNativeDraftStore.kt'
 s=store.read_text()
 old='(error.message ?: error.javaClass.simpleName).take(4000),"Source checking failed. Retry or repair the processing/storage error; the map has not been judged insufficient."'
