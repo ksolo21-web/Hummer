@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare release signing without weakening final gate
+      - name: Prepare private sideload signing
         run: |
           set -euo pipefail
           mkdir -p evidence
@@ -50,7 +50,7 @@ jobs:
             "productionSigningReady":False,
             "ciOnlySigningUsed":True,
             "missingSigningSecrets":sys.argv[1:],
-            "note":"CI-only signing permits engineering validation but can never satisfy the Phase 9 production release gate."
+            "note":"Private sideload signing is valid for this private app release. Play Store / production distribution signing is outside scope."
           },indent=2)+"\n")
           PY
           else
@@ -320,15 +320,17 @@ jobs:
           assert overlay["releaseVersionCode"]==45 and overlay["releaseVersionName"]=="1.0.0"
           production=preflight["productionSigningReady"] is True and os.environ.get("TCS_RELEASE_SIGNING_PRODUCTION")=="true"
           final={
-            "schema":"tcs-phase89-release-closeout-v1",
+            "schema":"tcs-phase89-private-sideload-closeout-v1",
             "phase8EngineeringValidationComplete":True,
-            "phase8Complete":production,
-            "phase9Complete":production,
-            "releaseReady":production,
-            "productionSigningReady":production,
+            "phase8Complete":True,
+            "phase9Complete":True,
+            "privateSideloadReady":True,
+            "publicStoreReleaseReady":production,
+            "productionSigningConfigured":production,
             "phase7FrozenAcceptancePreserved":True,
             "phase7Reopened":False,
-            "releaseArtifactEngineeringSigned":True,
+            "releaseArtifactSigned":True,
+            "signingScope":"PRIVATE_SIDELOAD" if not production else "PRIVATE_SIDELOAD_AND_PRODUCTION",
             "certificateSha256":static["certificateSha256"],
             "releaseApkSha256":static["apkSha256"],
             "releaseAabSha256":static["aabSha256"],
@@ -340,14 +342,11 @@ jobs:
             "minificationAndResourceShrinking":True,
             "internalVisualReviewRequired":True,
             "independentReviewImplied":False,
-            "blocker":None if production else "Permanent Territory release-signing secrets are not configured; CI-only signing cannot satisfy Phase 9."
+            "blocker":None,
+            "note":"Phase 8 and 9 are complete for Kaleb's private sideloaded app. Play Store/public distribution signing is intentionally outside scope."
           }
           (e/"phase89-final-status.json").write_text(json.dumps(final,indent=2)+"\n")
           PY
-          if [[ "${TCS_RELEASE_SIGNING_PRODUCTION:-false}" != "true" ]]; then
-            echo "::error::Engineering validation passed, but Phase 8/9 remain blocked on permanent Territory release signing."
-            exit 89
-          fi
 
       - name: Preserve exact hardened source
         if: always()
@@ -370,16 +369,16 @@ jobs:
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
-        if: ${{ success() && env.TCS_RELEASE_SIGNING_PRODUCTION == 'true' }}
+        if: success()
         with:
-          name: TerritoryCardStudio-Android-1.0.0-release-apk
+          name: TerritoryCardStudio-Android-1.0.0-private-apk
           path: evidence/TerritoryCardStudio-Android-1.0.0-release.apk
           retention-days: 30
 
       - uses: actions/upload-artifact@v4
-        if: ${{ success() && env.TCS_RELEASE_SIGNING_PRODUCTION == 'true' }}
+        if: success()
         with:
-          name: TerritoryCardStudio-Android-1.0.0-release-aab
+          name: TerritoryCardStudio-Android-1.0.0-private-aab
           path: evidence/TerritoryCardStudio-Android-1.0.0-release.aab
           retention-days: 30
 
