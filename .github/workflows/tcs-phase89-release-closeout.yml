@@ -1,0 +1,299 @@
+name: TCS Phase 8+9 Release Closeout
+on:
+  push:
+    branches: [tcs-phase1d-020-work]
+    paths:
+      - .github/workflows/tcs-phase89-release-closeout.yml
+      - .tooling/tcs/phase89/**
+      - .tooling/tcs/phase7-source-sufficiency/**
+      - .tooling/tcs/phase7-source-hardening.py
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase89-release-closeout
+  cancel-in-progress: true
+env:
+  TCS_RELEASE_KEYSTORE_B64: ${{ secrets.TCS_RELEASE_KEYSTORE_B64 }}
+  TCS_RELEASE_STORE_PASSWORD: ${{ secrets.TCS_RELEASE_STORE_PASSWORD }}
+  TCS_RELEASE_KEY_ALIAS: ${{ secrets.TCS_RELEASE_KEY_ALIAS }}
+  TCS_RELEASE_KEY_PASSWORD: ${{ secrets.TCS_RELEASE_KEY_PASSWORD }}
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require permanent Territory release signing
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          missing=()
+          [[ -n "${TCS_RELEASE_KEYSTORE_B64:-}" ]] || missing+=(TCS_RELEASE_KEYSTORE_B64)
+          [[ -n "${TCS_RELEASE_STORE_PASSWORD:-}" ]] || missing+=(TCS_RELEASE_STORE_PASSWORD)
+          [[ -n "${TCS_RELEASE_KEY_ALIAS:-}" ]] || missing+=(TCS_RELEASE_KEY_ALIAS)
+          [[ -n "${TCS_RELEASE_KEY_PASSWORD:-}" ]] || missing+=(TCS_RELEASE_KEY_PASSWORD)
+          if (( ${#missing[@]} )); then
+            python3 - "${missing[@]}" <<'PY'
+          import json,sys
+          from pathlib import Path
+          Path("evidence/phase89-final-status.json").write_text(json.dumps({
+            "schema":"tcs-phase89-release-closeout-v1",
+            "phase8Complete":False,
+            "phase9Complete":False,
+            "signingReady":False,
+            "blocker":"Missing permanent Territory release-signing secrets",
+            "missingSigningSecrets":sys.argv[1:]
+          },indent=2)+"\n")
+          PY
+            printf '::error::Phase 8/9 blocked: missing permanent Territory release signing configuration (%s).\n' "${missing[*]}"
+            exit 86
+          fi
+          echo "::add-mask::$TCS_RELEASE_STORE_PASSWORD"
+          echo "::add-mask::$TCS_RELEASE_KEY_PASSWORD"
+          keyfile="$RUNNER_TEMP/tcs-release-keystore.jks"
+          printf '%s' "$TCS_RELEASE_KEYSTORE_B64" | base64 --decode > "$keyfile"
+          chmod 600 "$keyfile"
+          [[ -s "$keyfile" ]] || { echo "::error::Decoded release keystore is empty"; exit 87; }
+          keytool -list -v -keystore "$keyfile" -alias "$TCS_RELEASE_KEY_ALIAS" -storepass "$TCS_RELEASE_STORE_PASSWORD" -keypass "$TCS_RELEASE_KEY_PASSWORD" > evidence/release-keystore-cert.txt
+          echo "TCS_RELEASE_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
+
+      - name: Recover exact Phase 7 source and apply Phase 8 hardening
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          bash .tooling/tcs/phase7-reference-repair/recover.sh
+          python3 .tooling/tcs/phase7-continuation/apply.py tcs-src > evidence/continuation-integration.json
+          python3 .tooling/tcs/phase7-continuation/apply-device-test-fix.py tcs-src > evidence/continuation-test-fix.txt
+          python3 .tooling/tcs/phase7-source-sufficiency/apply.py tcs-src > evidence/source-sufficiency-integration.json
+          python3 .tooling/tcs/phase7-source-sufficiency/tighten-positive-control.py tcs-src > evidence/positive-control-coverage.txt
+          python3 .tooling/tcs/phase7-source-hardening.py tcs-src > evidence/source-hardening-integration.json
+          python3 .tooling/tcs/phase7-source-sufficiency/diagnostic-and-test-coverage.py tcs-src > evidence/source-diagnostic-integration.json
+          python3 .tooling/tcs/phase89/release-hardening.py tcs-src > evidence/phase89-release-overlay.json
+          bash -n .tooling/tcs/phase7-source-sufficiency/run-device-tests.sh
+          bash -n .tooling/tcs/phase7-source-sufficiency/run-full-ui-tests.sh
+          bash -n .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
+          bash -n .tooling/tcs/phase89/run-release-smoke.sh
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+
+      - name: Install exact Android SDK tools
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+
+      - name: Phase 8 core, lint, dependency and material scan
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test --rerun) > evidence/phase89-core.log 2>&1 || { cat evidence/phase89-core.log; exit 1; }
+          cp -r tcs-src/core/build/test-results/test evidence/phase89-core-results
+          (cd tcs-src && gradle --no-daemon --build-cache :app:lintRelease) > evidence/phase89-lint.log 2>&1 || { cat evidence/phase89-lint.log; exit 1; }
+          cp -r tcs-src/app/build/reports/lint-results-release.html evidence/lint-results-release.html
+          cp tcs-src/app/build/reports/lint-results-release.xml evidence/lint-results-release.xml
+          (cd tcs-src && gradle --no-daemon :app:dependencies --configuration releaseRuntimeClasspath) > evidence/release-dependencies.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,json
+          roots=[Path("tcs-src/app/src/main"),Path("tcs-src/core/src/main")]
+          patterns={
+            "privateKey":re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+            "awsAccessKey":re.compile(rb"AKIA[0-9A-Z]{16}"),
+            "googleApiKey":re.compile(rb"AIza[0-9A-Za-z_-]{30,}"),
+            "openAiStyleKey":re.compile(rb"sk-[A-Za-z0-9_-]{20,}")
+          }
+          hits=[]
+          for root in roots:
+            for p in root.rglob("*"):
+              if not p.is_file() or p.stat().st_size>5_000_000: continue
+              data=p.read_bytes()
+              for name,pattern in patterns.items():
+                if pattern.search(data): hits.append({"file":str(p),"pattern":name})
+          assert not hits,hits
+          Path("evidence/material-scan.json").write_text(json.dumps({"status":"PASS","filesScanned":sum(1 for r in roots for p in r.rglob("*") if p.is_file()),"secretPatternHits":[]},indent=2)+"\n")
+          PY
+
+      - name: Build debug regression and signed 1.0.0 release artifacts
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :app:bundleRelease) > evidence/phase89-build.log 2>&1 || { cat evidence/phase89-build.log; exit 1; }
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/TerritoryCardStudio-Phase89-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/phase89-androidTest.apk
+          cp tcs-src/app/build/outputs/apk/release/app-release.apk evidence/TerritoryCardStudio-Android-1.0.0-release.apk
+          cp tcs-src/app/build/outputs/bundle/release/app-release.aab evidence/TerritoryCardStudio-Android-1.0.0-release.aab
+          cp evidence/TerritoryCardStudio-Phase89-debug.apk evidence/TerritoryCardStudio-Phase7-Source-Sufficiency-debug.apk
+          cp evidence/phase89-androidTest.apk evidence/source-sufficiency-androidTest.apk
+          sha256sum evidence/*.apk evidence/*.aab > evidence/builds.sha256
+
+      - name: Phase 8 release artifact and manifest audit
+        run: |
+          set -euo pipefail
+          APK=evidence/TerritoryCardStudio-Android-1.0.0-release.apk
+          AAB=evidence/TerritoryCardStudio-Android-1.0.0-release.aab
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools/36.0.0" -maxdepth 1 -name apksigner -type f | head -n1)"
+          AAPT2="$(find "$ANDROID_HOME/build-tools/36.0.0" -maxdepth 1 -name aapt2 -type f | head -n1)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > evidence/release-apk-signature.txt
+          jarsigner -verify -strict -certs "$AAB" > evidence/release-aab-signature.txt 2>&1
+          unzip -t "$APK" > evidence/release-apk-ziptest.txt
+          unzip -t "$AAB" > evidence/release-aab-ziptest.txt
+          "$AAPT2" dump badging "$APK" > evidence/release-badging.txt
+          "$AAPT2" dump permissions "$APK" > evidence/release-permissions.txt
+          "$AAPT2" dump xmltree "$APK" --file AndroidManifest.xml > evidence/release-manifest-tree.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,re
+          badging=Path("evidence/release-badging.txt").read_text()
+          perms=Path("evidence/release-permissions.txt").read_text()
+          manifest=Path("evidence/release-manifest-tree.txt").read_text()
+          apk_sig=Path("evidence/release-apk-signature.txt").read_text()
+          key_sig=Path("evidence/release-keystore-cert.txt").read_text()
+          assert "package: name='com.koenterprises.territorycardstudio'" in badging,badging
+          assert "versionCode='45'" in badging,badging
+          assert "versionName='1.0.0'" in badging,badging
+          assert "sdkVersion:'29'" in badging,badging
+          assert "targetSdkVersion:'37'" in badging,badging
+          permission_names=set(re.findall(r"name='([^']+)'",perms))
+          assert permission_names=={"android.permission.INTERNET"},permission_names
+          assert "debuggable" not in manifest.lower(),manifest
+          assert "testOnly" not in manifest,manifest
+          assert 'android:usesCleartextTraffic(0x010106ec)=false' in manifest or 'usesCleartextTraffic' in manifest
+          assert 'android:allowBackup' in manifest
+          apk_m=re.search(r"certificate SHA-256 digest:\s*([0-9a-fA-F]+)",apk_sig)
+          key_m=re.search(r"SHA256:\s*([0-9A-F:]+)",key_sig)
+          assert apk_m and key_m,(apk_sig,key_sig)
+          apk_fp=apk_m.group(1).replace(":","").lower()
+          key_fp=key_m.group(1).replace(":","").lower()
+          assert apk_fp==key_fp,(apk_fp,key_fp)
+          def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+          status={
+            "schema":"tcs-phase8-release-static-v1",
+            "phase8Complete":False,
+            "releasePackage":"com.koenterprises.territorycardstudio",
+            "versionCode":45,
+            "versionName":"1.0.0",
+            "minSdk":29,
+            "targetSdk":37,
+            "releaseSigned":True,
+            "certificateSha256":apk_fp,
+            "permissions":["android.permission.INTERNET"],
+            "nonDebuggable":True,
+            "nonTestOnly":True,
+            "cleartextDisabled":True,
+            "backupDisabled":True,
+            "r8MinificationConfigured":True,
+            "resourceShrinkingConfigured":True,
+            "apkSha256":sha("evidence/TerritoryCardStudio-Android-1.0.0-release.apk"),
+            "aabSha256":sha("evidence/TerritoryCardStudio-Android-1.0.0-release.aab")
+          }
+          Path("evidence/phase8-release-static-status.json").write_text(json.dumps(status,indent=2)+"\n")
+          PY
+
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+
+      - name: Phase 7 regression plus Phase 9 signed release runtime
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
+          script: |
+            set -euo pipefail
+            bash .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
+            bash .tooling/tcs/phase89/run-release-smoke.sh
+
+      - name: Close Phase 8 and Phase 9 only after every gate passes
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          e=Path("evidence")
+          phase7=json.loads((e/"phase7-acceptance-status.json").read_text())
+          static=json.loads((e/"phase8-release-static-status.json").read_text())
+          runtime=json.loads((e/"phase89-release-smoke/release-runtime-status.json").read_text())
+          overlay=json.loads((e/"phase89-release-overlay.json").read_text())
+          assert phase7["phase7Complete"] is True and phase7["allNativeSuitesPassed"] is True
+          assert phase7["actualProcessingErrors"]==0
+          assert static["releaseSigned"] is True and static["nonDebuggable"] is True and static["nonTestOnly"] is True
+          assert runtime["coldLaunchPassed"] is True and runtime["appearancePreferencePersistedAcrossReinstall"] is True
+          assert runtime["phoneSmokePassed"] is True and runtime["wideSmokePassed"] is True
+          assert runtime["targetCrashFree"] is True and runtime["targetAnrFree"] is True
+          assert overlay["releaseVersionCode"]==45 and overlay["releaseVersionName"]=="1.0.0"
+          def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+          final={
+            "schema":"tcs-phase89-release-closeout-v1",
+            "phase8Complete":True,
+            "phase9Complete":True,
+            "releaseReady":True,
+            "phase7RegressionPassed":True,
+            "allNativeSuitesPassed":True,
+            "releaseSigned":True,
+            "certificateSha256":static["certificateSha256"],
+            "releaseApkSha256":static["apkSha256"],
+            "releaseAabSha256":static["aabSha256"],
+            "releaseRuntimePassed":True,
+            "releaseReinstallPersistencePassed":True,
+            "lintPassed":True,
+            "materialScanPassed":True,
+            "permissionAuditPassed":True,
+            "minificationAndResourceShrinking":True,
+            "internalVisualReviewRequired":True,
+            "independentReviewImplied":False,
+            "nextGate":"Internal visual review of exact retained release screenshots; no further engineering phase remains if that review passes."
+          }
+          (e/"phase89-final-status.json").write_text(json.dumps(final,indent=2)+"\n")
+          PY
+
+      - name: Preserve exact hardened source
+        if: always()
+        run: |
+          if [ -d tcs-src ]; then
+            (cd tcs-src && find app/src core/src -type f -print0 | sort -z | xargs -0 sha256sum) > evidence/phase89-source-files.sha256
+            tar -cJf evidence/TerritoryCardStudio-Android-1.0.0-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .
+            sha256sum evidence/TerritoryCardStudio-Android-1.0.0-source.tar.xz > evidence/phase89-source-package.sha256
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tcs-phase89-release-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.aab
+            !evidence/*.tar.xz
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: TerritoryCardStudio-Android-1.0.0-release-apk
+          path: evidence/TerritoryCardStudio-Android-1.0.0-release.apk
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: TerritoryCardStudio-Android-1.0.0-release-aab
+          path: evidence/TerritoryCardStudio-Android-1.0.0-release.aab
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TerritoryCardStudio-Android-1.0.0-source
+          path: evidence/TerritoryCardStudio-Android-1.0.0-source.tar.xz
+          retention-days: 30
