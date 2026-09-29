@@ -4,13 +4,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -93,7 +88,7 @@ class SimpleCreate101InstrumentationTest {
         rule.onNodeWithText("my-territory-map.jpg").assertIsDisplayed()
         rule.onNodeWithTag("simple-create-card").assertTextContains("Create Card From This Map")
         rule.onNodeWithText("minimum 2 independent geometry sources").assertDoesNotExist()
-        rule.onAllNodesWithText("Build remains locked").assertDoesNotExist()
+        rule.onNodeWithText("Build remains locked").assertDoesNotExist()
         rule.onNodeWithTag("show-advanced-tools").assertExists()
         screenshot("simple-create-101-dark-map-ready.png")
     }
