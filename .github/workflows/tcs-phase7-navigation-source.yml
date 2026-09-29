@@ -1,0 +1,26 @@
+name: TCS Phase7 Navigation Source Crosscheck
+on:
+  push:
+    branches: [phase7-real-image-acceptance]
+    paths:
+      - .github/workflows/tcs-phase7-navigation-source.yml
+      - .tooling/tcs/phase7-survey/followup.py
+permissions:
+  contents: read
+concurrency:
+  group: tcs-phase7-navigation-source-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read bounded official and community geometry sources
+        run: python3 .tooling/tcs/phase7-survey/followup.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase7-navigation-source-crosscheck
+          path: evidence/followup
+          retention-days: 14
