@@ -55,8 +55,12 @@ def main() -> None:
 
     production_path = root / "app/src/main/java/com/koenterprises/territorycardstudio/ProductionUi.kt"
     production_text = production_path.read_text()
-    production_text = production_text.replace("import androidx.compose.foundation.layout.weight\\n", "")
+    production_text = "".join(
+        line for line in production_text.splitlines(keepends=True)
+        if line.strip() != "import androidx.compose.foundation.layout.weight"
+    )
     production_path.write_text(production_text)
+    assert "import androidx.compose.foundation.layout.weight" not in production_text
 
     build = (root / "app/build.gradle.kts").read_text()
     manifest = (root / "app/src/main/AndroidManifest.xml").read_text()
