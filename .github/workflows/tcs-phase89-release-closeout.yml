@@ -98,7 +98,7 @@ jobs:
           set -euo pipefail
           SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-35;google_apis;x86_64'
 
       - name: Phase 8 core, lint, dependency and material scan
         run: |
@@ -239,31 +239,55 @@ jobs:
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
 
+      - name: Boot deterministic Android 35 emulator
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          AVDMANAGER="$(command -v avdmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/avdmanager' -type f | sort -V | tail -n 1)"
+          EMULATOR="$ANDROID_HOME/emulator/emulator"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          echo no | "$AVDMANAGER" create avd --force --name tcs_phase89 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          "$EMULATOR" -avd tcs_phase89 -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -accel on > evidence/emulator-boot.log 2>&1 &
+          echo $! > evidence/emulator.pid
+          adb wait-for-device
+          booted=false
+          for i in $(seq 1 180); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+              booted=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$booted" != true ]]; then
+            adb devices -l > evidence/emulator-devices-failed.txt || true
+            tail -300 evidence/emulator-boot.log || true
+            exit 1
+          fi
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell input keyevent 82 || true
+          adb devices -l > evidence/emulator-devices.txt
+          adb shell getprop > evidence/emulator-getprop.txt
+          printf '%s\n' '{"manualEmulatorBooted":true,"apiLevel":35,"target":"google_apis","arch":"x86_64"}' > evidence/emulator-boot-status.json
+
       - name: Phase 7 regression on hardened source
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
-          script: |
-            set -euo pipefail
-            bash .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
+        run: |
+          set -euo pipefail
+          bash .tooling/tcs/phase7-source-sufficiency/run-all-device-tests.sh
 
       - name: Phase 9 signed release install and runtime
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096
-          script: |
-            set -euo pipefail
-            bash .tooling/tcs/phase89/run-release-smoke.sh
+        run: |
+          set -euo pipefail
+          bash .tooling/tcs/phase89/run-release-smoke.sh
+
+      - name: Stop Android emulator
+        if: always()
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          if [[ -f evidence/emulator.pid ]]; then
+            kill "$(cat evidence/emulator.pid)" >/dev/null 2>&1 || true
+          fi
 
       - name: Close Phase 8 and Phase 9 only after every gate passes
         run: |
