@@ -56,8 +56,7 @@ new='''                        val eventTime=android.os.SystemClock.uptimeMillis
                         trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} injected=$injected action=$activated\\n")
                         lastClick=now
 '''
-if(!s.includes(old)) throw new Error("Picker action block not found");
-s=s.replace(old,new);
+assert s.count(old)==1;s=s.replace(old,new)
 ui_test.write_text(s)
 store=root/'app/src/main/java/com/koenterprises/territorycardstudio/AndroidNativeDraftStore.kt'
 s=store.read_text()
