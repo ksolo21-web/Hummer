@@ -42,18 +42,17 @@ ui.write_text(s)
 ui_test=root/'app/src/androidTest/java/com/koenterprises/territorycardstudio/Phase6NativeUiInstrumentationTest.kt'
 s=ui_test.read_text()
 old='import android.view.accessibility.AccessibilityNodeInfo\n'
-new='import android.view.accessibility.AccessibilityNodeInfo\nimport android.view.MotionEvent\n'
+new='import android.view.accessibility.AccessibilityNodeInfo\n'
 assert s.count(old)==1;s=s.replace(old,new)
 old='''                        val activated=node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                         trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} action=$activated\\n")
                         lastClick=now
 '''
-new='''                        val eventTime=android.os.SystemClock.uptimeMillis()
-                        val down=MotionEvent.obtain(eventTime,eventTime,MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY(),0)
-                        val up=MotionEvent.obtain(eventTime,eventTime+50,MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY(),0)
-                        val injected=try { automation.injectInputEvent(down,true) && automation.injectInputEvent(up,true) } finally { down.recycle();up.recycle() }
-                        val activated=if(injected) true else node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                        trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} injected=$injected action=$activated\\n")
+new='''                        automation.executeShellCommand("input tap ${bounds.centerX()} ${bounds.centerY()}").close()
+                        automation.waitForIdle(100,1000)
+                        val stillPicker=automation.rootInActiveWindow?.packageName?.toString()?.contains("documentsui")==true
+                        val activated=if(stillPicker) node.performAction(AccessibilityNodeInfo.ACTION_CLICK) else true
+                        trace.appendText("$name: ${node.viewIdResourceName} bounds=$bounds enabled=${node.isEnabled} clickable=${node.isClickable} shellTap=true fallbackAction=$activated\\n")
                         lastClick=now
 '''
 assert s.count(old)==1;s=s.replace(old,new)
