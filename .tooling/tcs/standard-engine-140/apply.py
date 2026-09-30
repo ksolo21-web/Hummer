@@ -22,7 +22,7 @@ FIXED={
 'app/build.gradle.kts':'9969616cedb747d56a7e4a014896f1f14b0d2094537dce49bf7379b01dcef99e',
 'app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt':'84243d53cbe971e72b2098f58cbad052d35fd453baf96fe1176436b905fae8b9',
 'app/src/androidTest/java/com/koenterprises/territorycardstudio/SimpleCreate101InstrumentationTest.kt':'d0dc6704d8e286ec15df08eeddcc82c3d5278a76020b49c582cb2a41a4c70440',
-'app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt':'b8617bc28b3cbf6a5a3cc7f5e8e391efc8079e5f11d03e35286fc70ae7ccb0a2',
+'app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt':'e719664c401be6d62ce3e68f2f77ce8a9a65156e580121912823df15be7cbdd0',
 }
 
 def sha(p:Path): return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -47,6 +47,12 @@ def main():
         subprocess.run(['git','apply','--directory='+root.name,patch_path],cwd=root.parent,check=True)
     finally:
         Path(patch_path).unlink(missing_ok=True)
+    service=root/'app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt'
+    service_text=service.read_text()
+    old='Typeface.create(Typeface.SANS_SERIF_CONDENSED,Typeface.BOLD)'
+    new='Typeface.create("sans-serif-condensed",Typeface.BOLD)'
+    assert old in service_text,'Expected preserved-source typeface expression missing'
+    service.write_text(service_text.replace(old,new))
     for rel,expected in FIXED.items():
         assert sha(root/rel)==expected,f'1.4.0 output mismatch: {rel}'
     print(json.dumps({
