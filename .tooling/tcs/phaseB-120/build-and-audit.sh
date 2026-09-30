@@ -14,7 +14,7 @@ APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
 "$AAPT2" dump badging evidence/Territory-Android-1.2.0-PhaseB-private.apk > evidence/badging.txt
 grep -q "versionCode='48'" evidence/badging.txt
 grep -q "versionName='1.2.0'" evidence/badging.txt
-grep -q "application-label:'Territory Card Studio'" evidence/badging.txt
+grep -q "application-label:'Territory'" evidence/badging.txt
 "$APKSIGNER" verify --verbose --print-certs evidence/Territory-Android-1.2.0-PhaseB-private.apk > evidence/apk-signature.txt
 unzip -t evidence/Territory-Android-1.2.0-PhaseB-private.apk > evidence/apk-ziptest.txt
 unzip -t evidence/Territory-Android-1.2.0-PhaseB-private.aab > evidence/aab-ziptest.txt
