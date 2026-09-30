@@ -1,0 +1,29 @@
+name: Territory Export APK Signer Tool
+on:
+  push:
+    branches: [tcs-maintenance-131-ocr-recovery-20260930]
+    paths:
+      - .github/workflows/tcs-export-apksigner-tool.yml
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Build Tools
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'build-tools;36.0.0'
+          mkdir -p out/apksigner-tool
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" out/apksigner-tool/
+          cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" out/apksigner-tool/
+          sha256sum out/apksigner-tool/* > out/apksigner-tool/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Territory-apksigner-36.0.0
+          path: out/apksigner-tool
+          retention-days: 1
