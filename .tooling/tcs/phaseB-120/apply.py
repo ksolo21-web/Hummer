@@ -3,7 +3,11 @@ from pathlib import Path
 import base64, hashlib, io, json, tarfile, sys
 
 ARCHIVE_SHA = "2b8ed716bcdedc2aead6a01b9f21b4a20b18f800805b42fe66bae13e35c1781e"
-CHUNK_SHA = ["f60f2895fae28a2f47119352480e63e81afa81e0c766f2ed6a1173a96a8136e3"]
+CHUNK_SHA = [
+    "7aec0c3935ca1b5067b5c42a1977f8e0430bdf1303f7b7a4768fb0e17f6ccc41",
+    "43f92518c947644636d43423a4560321c892818eb119284c5ec5787af1c067ba",
+    "3228ae465de0ac5574c2d8941f582edbb6cbbfbdc54f029cefa54623dec8c547",
+]
 EXPECTED_MEMBERS = {
     "app/build.gradle.kts",
     "app/src/main/java/com/koenterprises/territorycardstudio/ProductionUi.kt",
