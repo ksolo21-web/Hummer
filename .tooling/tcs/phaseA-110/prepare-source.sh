@@ -10,5 +10,6 @@ python3 .tooling/tcs/phase7-source-hardening.py tcs-src > evidence/source-harden
 python3 .tooling/tcs/phase7-source-sufficiency/diagnostic-and-test-coverage.py tcs-src > evidence/source-diagnostics.json
 python3 .tooling/tcs/phase89/release-hardening.py tcs-src > evidence/release-overlay.json
 python3 .tooling/tcs/simple-create-101/apply.py tcs-src > evidence/simple-create-101.json
+cp .tooling/tcs/simple-create-101/SimpleCreate101InstrumentationTest.kt tcs-src/app/src/androidTest/java/com/koenterprises/territorycardstudio/
 python3 .tooling/tcs/phaseA-110/apply.py tcs-src > evidence/phase-a-overlay.json
 python3 .tooling/tcs/phaseA-110/final-repair.py tcs-src > evidence/phase-a-final-repair.json
