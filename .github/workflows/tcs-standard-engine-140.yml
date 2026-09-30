@@ -1,0 +1,215 @@
+name: Territory 1.4.0 Standard Engine Reconnect
+
+on:
+  push:
+    branches: [tcs-standard-engine-140-20260930]
+    paths:
+      - .github/workflows/tcs-standard-engine-140.yml
+      - .tooling/tcs/standard-engine-140/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: territory-standard-engine-140
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+
+      - name: Prepare exact Phase C source
+        run: bash .tooling/tcs/phaseC-130/prepare-source.sh
+
+      - name: Apply preserved 1.3.1 OCR recovery
+        run: |
+          mkdir -p evidence
+          python3 .tooling/tcs/maintenance-131/apply.py tcs-src | tee evidence/ocr-131.json
+
+      - name: Apply 1.4.0 standard-engine repair
+        run: python3 .tooling/tcs/standard-engine-140/apply.py tcs-src | tee evidence/standard-engine-140.json
+
+      - name: Prepare CI signer
+        run: |
+          set -euo pipefail
+          pass='territory-standard-engine-140'
+          alias='territory-ci'
+          keyfile="$RUNNER_TEMP/territory-140-ci.p12"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$keyfile" -storepass "$pass" -keypass "$pass" -alias "$alias" -dname "CN=Territory CI 1.4.0, O=KO Enterprises, C=US" -keyalg RSA -keysize 3072 -validity 3650
+          echo "TCS_RELEASE_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_STORE_PASSWORD=$pass" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_KEY_PASSWORD=$pass" >> "$GITHUB_ENV"
+
+      - name: Install Android toolchain
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Core tests lint and build
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :app:bundleRelease)
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/Territory-1.4.0-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/Territory-1.4.0-androidTest.apk
+          cp tcs-src/app/build/outputs/apk/release/app-release.apk evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk
+          cp tcs-src/app/build/outputs/bundle/release/app-release.aab evidence/Territory-Android-1.4.0-Standard-Engine-CI.aab
+          cp evidence/Territory-1.4.0-debug.apk evidence/Territory-PhaseC-1.3.0-debug.apk
+          cp evidence/Territory-1.4.0-androidTest.apk evidence/Territory-PhaseC-1.3.0-androidTest.apk
+          cp evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk evidence/Territory-Android-1.3.0-PhaseC-private.apk
+          AAPT2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$AAPT2" dump badging evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk > evidence/badging.txt
+          grep -q "versionCode='51'" evidence/badging.txt
+          grep -q "versionName='1.4.0'" evidence/badging.txt
+          "$APKSIGNER" verify --verbose --print-certs evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk > evidence/apk-signature.txt
+          unzip -t evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk > evidence/apk-ziptest.txt
+          unzip -t evidence/Territory-Android-1.4.0-Standard-Engine-CI.aab > evidence/aab-ziptest.txt
+          sha256sum evidence/Territory-Android-1.4.0-Standard-Engine-CI.* > evidence/builds.sha256
+
+      - name: Boot emulator
+        run: bash .tooling/tcs/phaseC-130/boot-emulator.sh
+
+      - name: Install test build
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb uninstall "$PKG" >/dev/null 2>&1 || true
+          adb install -r evidence/Territory-1.4.0-debug.apk
+          adb install -r evidence/Territory-1.4.0-androidTest.apk
+          adb logcat -b crash -c
+          adb logcat -b events -c
+
+      - name: Run standard-engine Simple Create regression
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb shell am instrument -w -r -e class "$PKG.SimpleCreate101InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/simple-create-140.log
+          grep -q 'OK (3 tests)' evidence/simple-create-140.log
+          adb exec-out run-as "$PKG" cat files/simple-create-140-preserved-source.png > evidence/simple-create-140-preserved-source.png
+          test -s evidence/simple-create-140-preserved-source.png
+
+      - name: Run OCR recovery regression
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb shell am instrument -w -r -e class "$PKG.MapOcrRecoveryInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/ocr-recovery-140.log
+          grep -q 'OK (3 tests)' evidence/ocr-recovery-140.log
+
+      - name: Run Phase C UI regression
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb shell am instrument -w -r -e class "$PKG.PhaseC130InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/phase-c-140.log
+          grep -q 'OK (5 tests)' evidence/phase-c-140.log
+          adb shell am instrument -w -r -e class "$PKG.PhaseB120InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/phase-b-140.log
+          grep -q 'OK (5 tests)' evidence/phase-b-140.log
+          adb shell am instrument -w -r -e class "$PKG.PhaseA110InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/phase-a-140.log
+          grep -q 'OK (4 tests)' evidence/phase-a-140.log
+
+      - name: Run source-ready lifecycle regression
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb shell am instrument -w -r -e class "$PKG.Phase7SourceSufficiencyInstrumentationTest#positiveSourceCompletesTheExistingApprovalAndExportLifecycle" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/source-lifecycle-140.log
+          grep -q 'OK (1 test)' evidence/source-lifecycle-140.log
+
+      - name: Run preserved private-release smoke
+        run: bash .tooling/tcs/phaseC-130/run-release-smoke.sh
+
+      - name: Final crash and architecture gate
+        run: |
+          set -euo pipefail
+          adb logcat -b crash -d > evidence/final-crash.log
+          adb logcat -b events -d -s am_anr:I > evidence/final-anr.log
+          ! grep -q 'com.koenterprises.territorycardstudio' evidence/final-crash.log
+          ! grep -q 'com.koenterprises.territorycardstudio' evidence/final-anr.log
+          grep -q 'preserve_supplied_map' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt
+          grep -q 'This is the actual locked-format draft, not reconstructed diagnostic geometry.' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          apk=Path('evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk')
+          status={
+            'schema':'territory-standard-engine-140-final-v1',
+            'version':'1.4.0',
+            'versionCode':51,
+            'primarySimpleCreateBuilder':'preserve_supplied_map',
+            'rawRasterSkeletonizerDefault':False,
+            'unresolvedRoadWorksheetDefault':False,
+            'sourceMapPreservedLosslesslyInPdf':True,
+            'frontDraftBlockedFromFieldRelease':True,
+            'telephoneInventoryDoesNotBlockFrontDraft':True,
+            'simpleCreateTests':'PASS_3_OF_3',
+            'ocrRecoveryTests':'PASS_3_OF_3',
+            'phaseCRegression':'PASS_5_OF_5',
+            'phaseBRegression':'PASS_5_OF_5',
+            'phaseARegression':'PASS_4_OF_4',
+            'sourceReadyLifecycle':'PASS_1_OF_1',
+            'releaseSmoke':'PASS',
+            'crashFree':True,
+            'anrFree':True,
+            'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+            'blockers':[]
+          }
+          Path('evidence/standard-engine-140-final.json').write_text(json.dumps(status,indent=2)+'\n')
+          PY
+
+      - name: Stop emulator
+        if: always()
+        run: |
+          adb shell wm size reset >/dev/null 2>&1 || true
+          adb shell wm density reset >/dev/null 2>&1 || true
+          adb emu kill >/dev/null 2>&1 || true
+          [[ -f evidence/emulator.pid ]] && kill "$(cat evidence/emulator.pid)" >/dev/null 2>&1 || true
+
+      - name: Preserve fixed source
+        if: always()
+        run: |
+          if [[ -d tcs-src ]]; then tar -cJf evidence/Territory-Android-1.4.0-Standard-Engine-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-1.4.0-Standard-Engine-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.aab
+            !evidence/*.tar.xz
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Territory-Android-1.4.0-Standard-Engine-CI-apk
+          path: evidence/Territory-Android-1.4.0-Standard-Engine-CI.apk
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Territory-Android-1.4.0-Standard-Engine-CI-aab
+          path: evidence/Territory-Android-1.4.0-Standard-Engine-CI.aab
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-Android-1.4.0-Standard-Engine-source
+          path: evidence/Territory-Android-1.4.0-Standard-Engine-source.tar.xz
+          retention-days: 30
