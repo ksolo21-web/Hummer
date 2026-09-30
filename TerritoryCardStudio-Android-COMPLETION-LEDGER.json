@@ -1,8 +1,8 @@
 {
   "project": "Territory Card Studio Android",
   "ledger_version": 1,
-  "current_phase": 9,
-  "current_checkpoint": "phase9-complete-private-sideload-1.0.0",
+  "current_phase": "A",
+  "current_checkpoint": "phase-a-1.1.0-complete",
   "milestone_statuses": {
     "1A_dedicated_detail": "PASSED",
     "1B_1_split_detail": "PASSED",
@@ -48,13 +48,14 @@
     "3CA_road_label_preparation_transaction": "PASSED",
     "3CB_authority_aware_expanded_editing": "PASSED_PROPOSAL_EDITOR_SCOPE",
     "3CC_preparation_ui": "PASSED",
-    "3D_editing_integration": "PASSED"
+    "3D_editing_integration": "PASSED",
+    "A_simple_ui_icon_multiselect_create_flow": "PASSED"
   },
   "phase_milestone_before": "Phase3 PASSED; Phase4 IN_PROGRESS",
-  "phase_milestone_after": "Phase7 PASSED/FROZEN; Phase8 PASSED; Phase9 PASSED; private sideload 1.0.0 READY",
-  "last_completed_package": "TerritoryCardStudio-Android-1.0.0-private",
-  "next_open_gate": "NONE_PRIVATE_RELEASE_COMPLETE",
-  "next_bounded_task": "No remaining Phase 8/9 work. Future feature changes or a later APK update start a new maintenance/release cycle. Configure a stable private signer only if seamless in-place updates across future CI builds are required.",
+  "phase_milestone_after": "Phase7 PASSED/FROZEN; Phase8 PASSED; Phase9 PASSED; PhaseA 1.1.0 PASSED",
+  "last_completed_package": "Territory-Android-1.1.0-PhaseA",
+  "next_open_gate": "NONE_PHASE_A_COMPLETE",
+  "next_bounded_task": "No remaining Phase A work. Preserve the simplified UI, Concept A icon, multi-select territory types with minimum one, one-map sufficiency behavior, and hidden-by-default advanced engine in future maintenance.",
   "reopened_defects": [],
   "blocker_fingerprint": null,
   "blocker_route_attempts": 0,
@@ -330,7 +331,7 @@
     "internal_review_score": 10,
     "status": "PASS"
   },
-  "saved_at_utc": "2026-09-29T20:58:37Z",
+  "saved_at_utc": "2026-09-30T00:21:46Z",
   "phase2c_freeze_evidence": {
     "run_id": 36283734889,
     "run_head_sha": "a3dca692ba3c5dcbabc9ce5cab49970b17b9aa73",
@@ -3078,5 +3079,48 @@
     "apkSha256": "5f2a3a26ad7538cbba9745d8011c555567978228c3bc4588003ccfe63954bccd",
     "aabSha256": "2a5bc7310cf02b55da50c4591708f1445a7422ed24f49b797c5abe0ae6f5fc6c",
     "updateSigningNote": "Current private 1.0.0 is valid and accepted. A future CI build signed by a different certificate would require uninstall/reinstall unless a stable private signer is configured."
+  },
+  "phaseA_checkpoint": {
+    "status": "PASS",
+    "versionName": "1.1.0",
+    "versionCode": 47,
+    "phase7Frozen": true,
+    "phase7Reopened": false,
+    "finalRunId": 36649474334,
+    "finalRunHeadSha": "e66a713a299da107b35c34a3d1b00c4b6ac872b5",
+    "finalRunConclusion": "success",
+    "conceptAIcon": true,
+    "simpleNavigation": [
+      "Home",
+      "Territories",
+      "Create",
+      "Queue",
+      "More"
+    ],
+    "territoryTypeMultiSelect": true,
+    "minimumTerritoryTypesRequired": 1,
+    "exampleCombinationVerified": "Apartment + Regular",
+    "advancedToolsHiddenByDefault": true,
+    "advancedToolsStillAvailable": true,
+    "singleCompleteUserMapCanBeAuthoritative": true,
+    "sourceReadyLifecycleRegression": "PASS",
+    "simpleCreateRegressionTests": 2,
+    "phaseAUiTests": 4,
+    "coreRegression": "PASS",
+    "releaseLint": "PASS",
+    "privateReleaseRuntime": "PASS",
+    "lightPhone": "PASS",
+    "darkPhone": "PASS",
+    "wide": "PASS",
+    "crashAnr": "PASS_NONE",
+    "internalVisualReview": "PASS",
+    "independentReviewClaimed": false,
+    "blockers": [],
+    "apkArtifactId": 11068983928,
+    "aabArtifactId": 11069253413,
+    "evidenceArtifactId": 11069103712,
+    "sourceArtifactId": 11069957741,
+    "apkSha256": "9d187042b64c12a52a86795be15658c9096ea31993f356a7a1dace3e98a53d31",
+    "aabSha256": "53a7c449273e91ba54c4ee016a10c480f0e5a4eeb2edbb40618df395e84fba45"
   }
 }
