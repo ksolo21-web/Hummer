@@ -1,0 +1,234 @@
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -11,8 +11,8 @@
+         applicationId = "com.koenterprises.territorycardstudio"
+         minSdk = 29
+         targetSdk = 37
+-        versionCode = 49
+-        versionName = "1.3.0"
++        versionCode = 50
++        versionName = "1.3.1"
+ 
+         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+     }
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/AndroidMapImageInterpreter.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/AndroidMapImageInterpreter.kt
+@@ -65,7 +65,8 @@
+     }
+ }
+ 
+-class AndroidMapImageInterpreter {
++class AndroidMapImageInterpreter internal constructor(private val beforeOcrAttempt:(()->Unit)?=null) {
++    constructor():this(null)
+     fun interpret(file:File,expectedSha256:String,housingType:String="",buildingLabel:((String,Point2D)->BuildingLabelItem)?=null):InterpretedMapDraft =
+         interpretInternal(file,expectedSha256,housingType,buildingLabel,MapImageInputKind.COLORED_ROADS)
+     fun interpretOutlined(file:File,expectedSha256:String,housingType:String="",buildingLabel:((String,Point2D)->BuildingLabelItem)?=null):InterpretedMapDraft =
+@@ -74,40 +75,67 @@
+         require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed before image interpretation"}
+         val source=decode(file)
+         val pixels=IntArray(source.width*source.height);source.getPixels(pixels,0,source.width,0,0,source.width,source.height)
+-        var inFlight:com.google.android.gms.tasks.Task<com.google.mlkit.vision.text.Text>?=null
+         try {
+             val outlinedBoundary=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapBoundaryDetector.detect(source.width,source.height,pixels,proposeShortGaps=true) else null
+-            val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+-            val text=try {
++            val text=run {
+                 fun recognized(rotation:Int,region:AxisAlignedRect?=null,highContrast:Boolean=false,scaleOverride:Double?=null):List<MapImageText> {
+                     val left=region?.left?.toInt() ?: 0;val top=region?.top?.toInt() ?: 0
+                     val width=region?.let {(it.right-it.left).toInt()} ?: source.width
+                     val height=region?.let {(it.bottom-it.top).toInt()} ?: source.height
+                     val scale=scaleOverride ?: if(region==null && rotation==0)if(inputKind==MapImageInputKind.OUTLINED_AREA)2.0 else 1.0 else 3.0
+-                    var bitmap=if(scale==1.0)source else Bitmap.createBitmap(source,left,top,width,height,Matrix().apply {postScale(scale.toFloat(),scale.toFloat());postRotate(rotation.toFloat())},true)
+-                    if(highContrast) {
+-                        require(bitmap!==source)
+-                        val mutable=requireNotNull(bitmap.copy(Bitmap.Config.ARGB_8888,true));if(mutable!==bitmap)bitmap.recycle();bitmap=mutable
+-                        val enhanced=IntArray(bitmap.width*bitmap.height);bitmap.getPixels(enhanced,0,bitmap.width,0,0,bitmap.width,bitmap.height)
+-                        for(i in enhanced.indices){val p=enhanced[i];val gray=(((p ushr 16)and 255)+((p ushr 8)and 255)+(p and 255))/3;enhanced[i]=if(gray<150)0xFF000000.toInt() else 0xFFFFFFFF.toInt()}
+-                        bitmap.setPixels(enhanced,0,bitmap.width,0,0,bitmap.width,bitmap.height)
+-                    }
+-                    val task=recognizer.process(InputImage.fromBitmap(bitmap,0))
+-                    inFlight=task
+-                    // Timeout does not cancel ML Kit. Release its bitmap only after completion.
+-                    if(bitmap!==source)task.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {bitmap.recycle()}
+-                    val result=Tasks.await(task,60,TimeUnit.SECONDS)
+                     val numeric=Regex("^[| ]*[0-9]+(?:[ \t]*[-/–—−][ \t]*[0-9]+)*(?:[ \t]*[A-Z])?[| ]*$")
+                     fun box(b:android.graphics.Rect):AxisAlignedRect=when(rotation) {
+                         90->AxisAlignedRect(left+b.top/scale,top+height-b.right/scale,left+b.bottom/scale,top+height-b.left/scale)
+                         270->AxisAlignedRect(left+width-b.bottom/scale,top+b.left/scale,left+width-b.top/scale,top+b.right/scale)
+                         else->AxisAlignedRect(left+b.left/scale,top+b.top/scale,left+b.right/scale,top+b.bottom/scale)
+                     }
+-                    return result.textBlocks.flatMap {block->block.lines.flatMap {line->
+-                        val pieces=if(line.elements.size>1 && line.elements.all {numeric.matches(it.text)})line.elements.mapNotNull {e->e.boundingBox?.let {MapImageText(e.text,box(it))}}
+-                            else listOfNotNull(line.boundingBox?.let {MapImageText(line.text,box(it))})
+-                        pieces.filter {(rotation==0 && region==null) || numeric.matches(it.text) || inputKind==MapImageInputKind.OUTLINED_AREA}
+-                    }}
++                    fun bitmapForAttempt():Bitmap {
++                        var bitmap=if(scale==1.0 && rotation==0 && region==null)requireNotNull(source.copy(Bitmap.Config.ARGB_8888,false))
++                            else Bitmap.createBitmap(source,left,top,width,height,Matrix().apply {postScale(scale.toFloat(),scale.toFloat());postRotate(rotation.toFloat())},true).let {created->
++                                if(created===source)requireNotNull(source.copy(Bitmap.Config.ARGB_8888,false)) else created
++                            }
++                        if(highContrast) {
++                            val mutable=requireNotNull(bitmap.copy(Bitmap.Config.ARGB_8888,true));if(mutable!==bitmap)bitmap.recycle();bitmap=mutable
++                            val enhanced=IntArray(bitmap.width*bitmap.height);bitmap.getPixels(enhanced,0,bitmap.width,0,0,bitmap.width,bitmap.height)
++                            for(i in enhanced.indices){val p=enhanced[i];val gray=(((p ushr 16)and 255)+((p ushr 8)and 255)+(p and 255))/3;enhanced[i]=if(gray<150)0xFF000000.toInt() else 0xFFFFFFFF.toInt()}
++                            bitmap.setPixels(enhanced,0,bitmap.width,0,0,bitmap.width,bitmap.height)
++                        }
++                        return bitmap
++                    }
++                    fun once():com.google.mlkit.vision.text.Text {
++                        beforeOcrAttempt?.invoke()
++                        val bitmap=bitmapForAttempt()
++                        val recognizer=TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
++                        var task:com.google.android.gms.tasks.Task<com.google.mlkit.vision.text.Text>?=null
++                        try {
++                            task=recognizer.process(InputImage.fromBitmap(bitmap,0))
++                            return Tasks.await(task,60,TimeUnit.SECONDS)
++                        } finally {
++                            val pending=task
++                            if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {bitmap.recycle();recognizer.close()}
++                            else {bitmap.recycle();recognizer.close()}
++                        }
++                    }
++                    var failure:Exception?=null
++                    repeat(2) {
++                        try {
++                            val result=once()
++                            return result.textBlocks.flatMap {block->block.lines.flatMap {line->
++                                val pieces=if(line.elements.size>1 && line.elements.all {numeric.matches(it.text)})line.elements.mapNotNull {e->e.boundingBox?.let {MapImageText(e.text,box(it))}}
++                                    else listOfNotNull(line.boundingBox?.let {MapImageText(line.text,box(it))})
++                                pieces.filter {(rotation==0 && region==null) || numeric.matches(it.text) || inputKind==MapImageInputKind.OUTLINED_AREA}
++                            }}
++                        } catch(interrupted:InterruptedException) {
++                            Thread.currentThread().interrupt();throw interrupted
++                        } catch(error:Exception) {
++                            failure=error
++                        }
++                    }
++                    // OCR is an aid for labels, not authority for the road/color geometry.
++                    // If ML Kit fails internally twice, keep tracing the source and let the
++                    // existing unresolved-name findings drive explicit human review.
++                    check(failure!=null)
++                    return emptyList()
+                 }
+                 val normal=recognized(0)
+                 val rotated=if(inputKind==MapImageInputKind.OUTLINED_AREA)listOf(90,270).flatMap {recognized(it)} else if(housingType in setOf("apartment","condo","townhome","mobile_home","manufactured_home"))MapImageDraftExtractor.numericOcrRegions(source.width,source.height,pixels).flatMap {region->listOf(0,90,270).flatMap {rotation->recognized(rotation,region)}} else emptyList()
+@@ -136,10 +164,6 @@
+                     }
+                 }.orEmpty()
+                 normal+rotated+enhanced+vertical
+-            } finally {
+-                val pending=inFlight
+-                if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {recognizer.close()}
+-                else recognizer.close()
+             }
+             val outlined=if(inputKind==MapImageInputKind.OUTLINED_AREA)OutlinedMapRoadExtractor.extract(source.width,source.height,pixels,text,proposeShortGaps=true) else null
+             val extraction=if(outlined==null)MapImageDraftExtractor.extract(source.width,source.height,pixels,text) else {
+@@ -176,9 +200,7 @@
+             require(file.inputStream().use(BundleIntegrity::sha256)==expectedSha256) {"Source changed during image interpretation"}
+             return InterpretedMapDraft(expectedSha256,roads,observations,findings,text,buildings,buildingObservations,outlined,if(outlined==null)null else OutlinedMapTransform(scale,offsetX-left*scale,offsetY-top*scale))
+         } finally {
+-            val pending=inFlight
+-            if(pending!=null && !pending.isComplete)pending.addOnCompleteListener(java.util.concurrent.Executor {it.run()}) {source.recycle()}
+-            else source.recycle()
++            source.recycle()
+         }
+     }
+     internal fun decode(file:File):Bitmap {
+--- a/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
++++ b/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+@@ -34,6 +34,8 @@
+ import java.time.LocalDate
+ import java.time.temporal.ChronoUnit
+ import java.util.UUID
++
++internal fun friendlyMapReadFailure()="I couldn't finish reading this map automatically. Your map is still saved. Try Create Card From This Map again; if anything is still unresolved, review only those items instead of importing a different map."
+ 
+ @Composable private fun NativeField(label:String,value:String,tag:String,onChange:(String)->Unit) {
+     OutlinedTextField(value,onChange,label={Text(label)},modifier=Modifier.fillMaxWidth().testTag(tag))
+@@ -372,7 +374,7 @@
+                                         if(original!=null && failure is Exception)runCatching {withContext(Dispatchers.IO){store.recordSourceFailure(id,original.sha256,MapImageInputKind.valueOf(inputKind),failure)}}
+                                         inspectionGeneration++
+                                         val typed=failure as? MapSourceReadException
+-                                        message=(typed?.message ?: failure.message ?: "I couldn't read this map.")+" "+(typed?.request ?: "Try a clearer or more complete map.")
++                                        message=if(typed!=null)(typed.message ?: "I need a source correction.")+" "+typed.request else friendlyMapReadFailure()
+                                     };busy=false
+                                 }},modifier=Modifier.fillMaxWidth().testTag("simple-read-map")) {
+                                     Text(if(busy)"Reading map…" else "Create Card From This Map")
+--- /dev/null
++++ b/app/src/androidTest/java/com/koenterprises/territorycardstudio/MapOcrRecoveryInstrumentationTest.kt
+@@ -0,0 +1,75 @@
++package com.koenterprises.territorycardstudio
++
++import android.graphics.Bitmap
++import android.graphics.pdf.PdfRenderer
++import android.os.ParcelFileDescriptor
++import androidx.test.ext.junit.runners.AndroidJUnit4
++import androidx.test.platform.app.InstrumentationRegistry
++import com.koenterprises.territorycardstudio.core.BundleIntegrity
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++import org.junit.runner.RunWith
++import java.io.File
++
++@RunWith(AndroidJUnit4::class)
++class MapOcrRecoveryInstrumentationTest {
++    private fun referenceMap():File {
++        val instrumentation=InstrumentationRegistry.getInstrumentation()
++        val context=instrumentation.targetContext
++        val pdf=File(context.cacheDir,"ocr-recovery-reference.pdf")
++        val png=File(context.cacheDir,"ocr-recovery-reference.png")
++        instrumentation.context.assets.open("reference300.pdf").use {input->pdf.outputStream().use {input.copyTo(it)}}
++        PdfRenderer(ParcelFileDescriptor.open(pdf,ParcelFileDescriptor.MODE_READ_ONLY)).use {renderer->
++            renderer.openPage(0).use {page->
++                val scale=minOf(1400.0/page.width,1400.0/page.height)
++                val bitmap=Bitmap.createBitmap((page.width*scale).toInt(),(page.height*scale).toInt(),Bitmap.Config.ARGB_8888)
++                bitmap.eraseColor(android.graphics.Color.WHITE)
++                page.render(bitmap,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
++                png.outputStream().use {check(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))}
++                bitmap.recycle()
++            }
++        }
++        pdf.delete()
++        return png
++    }
++
++    @Test fun transientInternalOcrFailureRetriesAndStillReadsTheMap() {
++        val source=referenceMap()
++        try {
++            val sha=source.inputStream().use(BundleIntegrity::sha256)
++            var attempts=0
++            val result=AndroidMapImageInterpreter {
++                attempts++
++                if(attempts==1)throw NullPointerException("synthetic ML Kit internal null")
++            }.interpret(source,sha)
++            assertTrue("OCR was not retried",attempts>=2)
++            assertTrue("Road geometry should survive an OCR retry",result.roads.isNotEmpty())
++            assertTrue("The successful retry should still return labels",result.recognizedText.isNotEmpty())
++        } finally {source.delete()}
++    }
++
++    @Test fun persistentInternalOcrFailureFallsBackToGeometryInsteadOfAborting() {
++        val source=referenceMap()
++        try {
++            val sha=source.inputStream().use(BundleIntegrity::sha256)
++            var attempts=0
++            val result=AndroidMapImageInterpreter {
++                attempts++
++                throw NullPointerException("synthetic ML Kit internal null")
++            }.interpret(source,sha)
++            assertTrue("Two OCR attempts are required before fallback",attempts>=2)
++            assertTrue("Color/road geometry must still be extracted without OCR",result.roads.isNotEmpty())
++            assertTrue("Failed OCR must not invent text",result.recognizedText.isEmpty())
++            assertTrue("Missing labels must remain explicit review items",result.findings.any {it.id.startsWith("name-")})
++        } finally {source.delete()}
++    }
++
++    @Test fun unexpectedReaderExceptionsAreNeverRenderedAsRawSdkErrors() {
++        val message=friendlyMapReadFailure()
++        assertFalse(message.contains("null object reference",ignoreCase=true))
++        assertFalse(message.contains("java.",ignoreCase=true))
++        assertFalse(message.contains("com.google",ignoreCase=true))
++        assertTrue(message.contains("map is still saved",ignoreCase=true))
++    }
++}
