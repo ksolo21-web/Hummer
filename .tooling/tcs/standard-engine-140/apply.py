@@ -2,12 +2,12 @@
 from pathlib import Path
 import base64,hashlib,json,subprocess,sys,tempfile,zlib
 
-PATCH_SHA='0f2c02f40ef9f13ff50a65e2885c7a674f08e4304a75a5b9804257d6f34bf217'
+PATCH_SHA='57592587557e3b3b7f42e3f8f7bf5b0164641f34331890f4411f37d685699fca'
 CHUNK_SHA=[
-    '1896386c4db4b7acfea69b1a896a3f4d2d39ee32ea1e114db781eb8d2fdaafe3',
-    '7bb51408babcaa01dba5b0569348b02755429520ee30fc48a501a03bd39145fc',
-    'dfd6491f70294c419fecac98abce697d34fdc6d206461766200ebe361fd06b0d',
-    'd2029595a6a5fa292b12762c56267960ef8e048b8b8583b2d42892d5c2f5de6c',
+    'b056b6054ec81769cc09f841539f13ad4e4bb8c22e4fd6ee3065c4388dd604e5',
+    '286dd31fbfda75f7af316003869294690c2f047552f4ab2b5cc3746f5fd39e74',
+    '4e3e6dc9b4dfa5d55e6d254b0969bb5fc1f967eacabf97904e99c46042cec89d',
+    'b64b8e91ad931685c14bd39f7034ce59ec7bfe5683ccfabc2709564e555e9489',
 ]
 BASE={
 'app/build.gradle.kts':'63e71224cf196d3710edb89d89f3c860f444350d78cd38b3cbdfb34696a8fc70',
@@ -16,7 +16,7 @@ BASE={
 }
 FIXED={
 'app/build.gradle.kts':'9969616cedb747d56a7e4a014896f1f14b0d2094537dce49bf7379b01dcef99e',
-'app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt':'d7e41f1f44c7073552ef794ce6658fa36f980e20c325b851a9f880226fc90884',
+'app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt':'84243d53cbe971e72b2098f58cbad052d35fd453baf96fe1176436b905fae8b9',
 'app/src/androidTest/java/com/koenterprises/territorycardstudio/SimpleCreate101InstrumentationTest.kt':'d0dc6704d8e286ec15df08eeddcc82c3d5278a76020b49c582cb2a41a4c70440',
 'app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt':'b8617bc28b3cbf6a5a3cc7f5e8e391efc8079e5f11d03e35286fc70ae7ccb0a2',
 }
