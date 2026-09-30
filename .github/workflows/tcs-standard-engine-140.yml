@@ -138,8 +138,8 @@ jobs:
           adb logcat -b events -d -s am_anr:I > evidence/final-anr.log
           ! grep -q 'com.koenterprises.territorycardstudio' evidence/final-crash.log
           ! grep -q 'com.koenterprises.territorycardstudio' evidence/final-anr.log
-          grep -q 'preserve_supplied_map' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt
-          grep -q 'This is the actual locked-format draft, not reconstructed diagnostic geometry.' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+          grep -q 'never skeletonizes roads' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidPreservedSourceDraftService.kt
+          grep -q 'Card draft created from the exact supplied map. No road fragments were invented.' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
           python3 - <<'PY'
           from pathlib import Path
           import hashlib,json
@@ -151,7 +151,7 @@ jobs:
             'primarySimpleCreateBuilder':'preserve_supplied_map',
             'rawRasterSkeletonizerDefault':False,
             'unresolvedRoadWorksheetDefault':False,
-            'sourceMapPreservedLosslesslyInPdf':True,
+            'sourceMapPreservedWithoutRoadReconstruction':True,
             'frontDraftBlockedFromFieldRelease':True,
             'telephoneInventoryDoesNotBlockFrontDraft':True,
             'simpleCreateTests':'PASS_3_OF_3',
