@@ -3,7 +3,7 @@ name: Territory 1.4.0 Standard Engine Reconnect
 
 on:
   push:
-    branches: [tcs-standard-engine-140-20260930]
+    branches: [tcs-standard-engine-140-verify2-20260930]
     paths:
       - .github/workflows/tcs-standard-engine-140.yml
       - .tooling/tcs/standard-engine-140/**
