@@ -73,6 +73,17 @@ def main():
     )
     test.write_text(t)
 
+    simple=root/"app/src/androidTest/java/com/koenterprises/territorycardstudio/SimpleCreate101InstrumentationTest.kt"
+    st=simple.read_text()
+    st=one(
+        st,
+        'rule.onNodeWithText("Add the territory map and the app will do the rest.").assertIsDisplayed()',
+        'rule.onNodeWithText("Add the map. The app checks it, builds the card, and shows you the preview.").assertIsDisplayed()',
+        "updated Phase A simple-create copy"
+    )
+    simple.write_text(st)
+
+
     print(json.dumps({
         "schema":"territory-phase-a-final-repair-v1",
         "visibleMinimumTypeRequirement":True,
