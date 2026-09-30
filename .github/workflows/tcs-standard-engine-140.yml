@@ -1,4 +1,5 @@
 name: Territory 1.4.0 Standard Engine Reconnect
+# current-head gate: verified four-chunk patch
 
 on:
   push:
