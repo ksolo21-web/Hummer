@@ -65,7 +65,7 @@ for text in "Territory" "Ready for the field?" "View Territories" "Create Card" 
 done
 adb exec-out screencap -p > "$OUT/phaseB-release-home-light.png"
 
-tap_text "$OUT/home-light.xml" "Territories"
+tap_text "$OUT/home-light.xml" "View Territories"
 sleep 1
 dump_ui territories-light
 assert_text "$OUT/territories-light.xml" "Search territories"
@@ -116,7 +116,7 @@ adb shell am start -W -n "$ACT" > "$OUT/start-wide.txt"
 sleep 1
 dump_ui wide-home
 assert_text "$OUT/wide-home.xml" "View Territories"
-tap_text "$OUT/wide-home.xml" "Territories"
+tap_text "$OUT/wide-home.xml" "View Territories"
 sleep 1
 dump_ui wide-territories
 assert_text "$OUT/wide-territories.xml" "Search territories"
