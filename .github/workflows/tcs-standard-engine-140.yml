@@ -38,7 +38,9 @@ jobs:
           python3 .tooling/tcs/maintenance-131/apply.py tcs-src | tee evidence/ocr-131.json
 
       - name: Apply 1.4.0 standard-engine repair
-        run: python3 .tooling/tcs/standard-engine-140/apply.py tcs-src | tee evidence/standard-engine-140.json
+        run: |
+          set -euo pipefail
+          python3 .tooling/tcs/standard-engine-140/apply.py tcs-src | tee evidence/standard-engine-140.json
 
       - name: Prepare CI signer
         run: |
