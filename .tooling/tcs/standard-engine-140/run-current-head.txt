@@ -1,0 +1,2 @@
+Territory 1.4.0 current-head verification trigger after clean patch-package replacement.
+Verified four-chunk patch package; trigger clean current-head CI.
