@@ -1,0 +1,8 @@
+{
+  "project_id": "my-study-companion-abc01",
+  "android_app_id": "1:949620144971:android:63fec0446e8549d25946ce",
+  "package_name": "com.kreativstudio.app",
+  "storage_bucket": "my-study-companion-abc01.firebasestorage.app",
+  "expected_sha1": "5C:79:A8:F7:52:9B:0A:93:A2:69:AA:B1:67:6B:AE:9B:CE:B6:14:59",
+  "expected_sha256": "07:F0:25:19:C0:BD:05:62:F8:88:B2:FB:F1:F2:9B:1E:0B:43:1D:39:B9:1B:36:8C:72:04:29:D7:5D:84:D2:8D"
+}

@@ -1,0 +1,23 @@
+KREATIV Studio 0.1.3 — Tool Identity and Select/Move Repair
+
+Preserved:
+- Adaptive full-canvas layout
+- High-contrast canvas HUD
+- Google/Firebase sign-in configuration
+- Lessons and AI Mentor wiring
+- Existing drawing, layers, export, sync, and foldable behavior
+
+Repaired:
+- The old three-dot rail icon was incorrectly representing SELECT.
+- SELECT is now clearly labeled Select / Move and uses a selection-box icon.
+- Activating Select / Move displays a visible instruction: tap a visible stroke, shape, or text, then drag it.
+- The bottom HUD shows the same Select / Move instruction instead of an irrelevant opacity label.
+- Pencil and Pen now use different, recognizable icons.
+- Eraser, fill, line, rectangle, ellipse, and the remaining precision tools also use distinct icons instead of generic edit/add symbols.
+
+Expected Select / Move behavior:
+1. Tap Select / Move.
+2. Tap a visible unlocked stroke, shape, or text object.
+3. A dashed selection boundary appears.
+4. Drag the selected object to move it.
+5. Undo restores the previous position.

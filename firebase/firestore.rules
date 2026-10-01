@@ -1,0 +1,21 @@
+// KREATIV Studio Firestore rule fragment.
+//
+// IMPORTANT: This is intentionally NOT a standalone Firestore ruleset.
+// Merge these match blocks inside the existing shared project's
+// `match /databases/{database}/documents` block. Never replace the canonical
+// My Study Companion rules with a KREATIV-only catch-all.
+
+match /users/{userId}/kreativProjects/{projectId} {
+  allow read, create, update, delete: if request.auth != null
+    && request.auth.uid == userId;
+
+  match /snapshots/{snapshotId} {
+    allow read, create, update, delete: if request.auth != null
+      && request.auth.uid == userId;
+  }
+}
+
+match /users/{userId}/kreativPrivate/{documentId} {
+  allow read, create, update, delete: if request.auth != null
+    && request.auth.uid == userId;
+}
