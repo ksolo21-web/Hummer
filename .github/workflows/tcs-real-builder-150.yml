@@ -41,9 +41,9 @@ jobs:
         run: |
           set -euo pipefail
           python3 .tooling/tcs/real-builder-150/apply.py tcs-src | tee evidence/real-builder-150.json
-          grep -q '"version":"1.5.0"' evidence/real-builder-150.json
-          grep -q '"templateOnlyFallback":false' evidence/real-builder-150.json
-          grep -q '"frontMapMajorRoadMinimum":2' evidence/real-builder-150.json
+          grep -Eq '"version"[[:space:]]*:[[:space:]]*"1.5.0"' evidence/real-builder-150.json
+          grep -Eq '"templateOnlyFallback"[[:space:]]*:[[:space:]]*false' evidence/real-builder-150.json
+          grep -Eq '"frontMapMajorRoadMinimum"[[:space:]]*:[[:space:]]*2' evidence/real-builder-150.json
 
       - name: Prepare CI signer
         run: |
