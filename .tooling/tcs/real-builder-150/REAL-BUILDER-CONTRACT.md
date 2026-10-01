@@ -33,7 +33,7 @@ Previous 1.4.0 Simple Create behavior is rejected as insufficient.
    - apartment/condo/building-number treatment;
    - split/detail where required.
 7. Build a NEW measurable vector/PDF candidate with A33/R48/R52 styling and canonical identity.
-8. Verify two distinct major cross roads and connected approach.
+8. Verify **at least two distinct major cross roads are physically drawn and readably labeled on the FRONT-PAGE MAP AREA**, with a verified connected approach into the territory. This gate is mandatory and cannot be skipped. Directions text, sidebar text, metadata, a back page, or floating road names do not count. Prefer both roads in the main map; a front-page LOCATION inset is allowed only if main-map scale would otherwise become unreadable, and the inset must visibly show both roads plus the connected approach.
 9. Run deterministic source/topology/overlap/building/label/PDF gates.
 10. Freeze candidate.
 11. Run critic-only review on fresh full-page + 2x + overlapping 4x evidence.
@@ -57,7 +57,7 @@ A valid result must:
 - be materially different from merely embedding the source image;
 - identify the assigned residential Telephone territory;
 - preserve/derive the correct source relationships;
-- identify S Rochester Rd and W Avon Rd as major location context;
+- identify S Rochester Rd and W Avon Rd as major location context **and physically draw/readably label both on the front-page map area** with a connected approach; directions text alone does not satisfy this gate;
 - identify Meadowfield Dr and the interior Meadowfield streets;
 - classify boundary/interior/access work rules correctly;
 - contain no ordinary house footprints/numbers;
