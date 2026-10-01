@@ -1,0 +1,203 @@
+name: Territory 1.5.0 Real Builder
+
+on:
+  push:
+    branches: [tcs-real-builder-150-20261001]
+    paths:
+      - .github/workflows/tcs-real-builder-150.yml
+      - .tooling/tcs/real-builder-150/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: territory-real-builder-150
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: false
+
+      - name: Reconstruct exact 1.4 baseline
+        run: |
+          set -euo pipefail
+          bash .tooling/tcs/phaseC-130/prepare-source.sh
+          mkdir -p evidence
+          python3 .tooling/tcs/maintenance-131/apply.py tcs-src | tee evidence/ocr-131.json
+          python3 .tooling/tcs/standard-engine-140/apply.py tcs-src | tee evidence/standard-engine-140.json
+
+      - name: Apply 1.5 real builder
+        run: |
+          set -euo pipefail
+          python3 .tooling/tcs/real-builder-150/apply.py tcs-src | tee evidence/real-builder-150.json
+          grep -q '"version":"1.5.0"' evidence/real-builder-150.json
+          grep -q '"templateOnlyFallback":false' evidence/real-builder-150.json
+          grep -q '"frontMapMajorRoadMinimum":2' evidence/real-builder-150.json
+
+      - name: Prepare CI signer
+        run: |
+          set -euo pipefail
+          pass='territory-real-builder-150'
+          alias='territory-ci'
+          keyfile="$RUNNER_TEMP/territory-150-ci.p12"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$keyfile" -storepass "$pass" -keypass "$pass" -alias "$alias" -dname "CN=Territory CI 1.5.0, O=KO Enterprises, C=US" -keyalg RSA -keysize 3072 -validity 3650
+          echo "TCS_RELEASE_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_STORE_PASSWORD=$pass" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+          echo "TCS_RELEASE_KEY_PASSWORD=$pass" >> "$GITHUB_ENV"
+
+      - name: Install Android toolchain
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(command -v sdkmanager || find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -n1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Core tests lint and build
+        run: |
+          set -euo pipefail
+          (cd tcs-src && gradle --no-daemon --build-cache :core:test :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease)
+          cp tcs-src/app/build/outputs/apk/debug/app-debug.apk evidence/Territory-1.5.0-debug.apk
+          cp tcs-src/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk evidence/Territory-1.5.0-androidTest.apk
+          cp tcs-src/app/build/outputs/apk/release/app-release.apk evidence/Territory-Android-1.5.0-Real-Builder-CI.apk
+          AAPT2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$AAPT2" dump badging evidence/Territory-Android-1.5.0-Real-Builder-CI.apk > evidence/badging.txt
+          grep -q "versionCode='52'" evidence/badging.txt
+          grep -q "versionName='1.5.0'" evidence/badging.txt
+          "$APKSIGNER" verify --verbose --print-certs evidence/Territory-Android-1.5.0-Real-Builder-CI.apk > evidence/apk-signature.txt
+          unzip -t evidence/Territory-Android-1.5.0-Real-Builder-CI.apk > evidence/apk-ziptest.txt
+          sha256sum evidence/Territory-Android-1.5.0-Real-Builder-CI.apk > evidence/build.sha256
+
+      - name: Architecture vetoes
+        run: |
+          set -euo pipefail
+          UI=tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/NativeAuthoringUi.kt
+          SERVICES=tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/TerritoryCardStudioServices.kt
+          grep -q 'realBuilder.build' "$UI"
+          ! grep -q 'preservedDraftService.create' "$UI"
+          grep -q 'val realBuilder' "$SERVICES"
+          test -s tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidRealBuilderService.kt
+          test -s tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ReferenceMapBuildPlanner.kt
+          test -s tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/ReferenceMapLiveDiscovery.kt
+          test -s tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/FrontMapMajorCrossroadGate.kt
+          grep -q 'candidatePdfSha256 != source.sha256' tcs-src/app/src/main/java/com/koenterprises/territorycardstudio/AndroidRealBuilderService.kt
+          grep -q 'current_build_agent_assignment' tcs-src/core/src/main/kotlin/com/koenterprises/territorycardstudio/core/LiveGeometryVerification.kt
+
+      - name: Boot emulator
+        run: bash .tooling/tcs/phaseC-130/boot-emulator.sh
+
+      - name: Install test build
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb uninstall "$PKG" >/dev/null 2>&1 || true
+          adb install -r evidence/Territory-1.5.0-debug.apk
+          adb install -r evidence/Territory-1.5.0-androidTest.apk
+          adb logcat -b crash -c
+          adb logcat -b events -c
+
+      - name: Run Simple Create 1.5 regression
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb shell am instrument -w -r -e class "$PKG.SimpleCreate101InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/simple-create-150.log
+          grep -q 'OK (3 tests)' evidence/simple-create-150.log
+
+      - name: Preserve OCR and Phase A B C regressions
+        run: |
+          set -euo pipefail
+          PKG=com.koenterprises.territorycardstudio
+          adb shell am instrument -w -r -e class "$PKG.MapOcrRecoveryInstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/ocr-150.log
+          grep -q 'OK (3 tests)' evidence/ocr-150.log
+          adb shell am instrument -w -r -e class "$PKG.PhaseC130InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/phase-c-150.log
+          grep -q 'OK (5 tests)' evidence/phase-c-150.log
+          adb shell am instrument -w -r -e class "$PKG.PhaseB120InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/phase-b-150.log
+          grep -q 'OK (5 tests)' evidence/phase-b-150.log
+          adb shell am instrument -w -r -e class "$PKG.PhaseA110InstrumentationTest" "$PKG.test/androidx.test.runner.AndroidJUnitRunner" | tee evidence/phase-a-150.log
+          grep -q 'OK (4 tests)' evidence/phase-a-150.log
+
+      - name: Final crash and invariant gate
+        run: |
+          set -euo pipefail
+          adb logcat -b crash -d > evidence/final-crash.log
+          adb logcat -b events -d -s am_anr:I > evidence/final-anr.log
+          ! grep -q 'com.koenterprises.territorycardstudio' evidence/final-crash.log
+          ! grep -q 'com.koenterprises.territorycardstudio' evidence/final-anr.log
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          apk=Path('evidence/Territory-Android-1.5.0-Real-Builder-CI.apk')
+          status={
+            'schema':'territory-real-builder-150-ci-v1',
+            'version':'1.5.0',
+            'versionCode':52,
+            'simpleCreateUsesRealBuilder':True,
+            'templateOnlyFallback':False,
+            'sourceReferenceMustTransformToNewPdf':True,
+            'currentRoadDiscoveryRequired':True,
+            'residentialAddressDiscoveryRequired':True,
+            'buildAgentAuthorityReceiptRequired':True,
+            'frontPageMajorCrossroadMinimum':2,
+            'directionsOnlyDoesNotSatisfyMajorRoadGate':True,
+            'simpleCreateRegression':'PASS_3_OF_3',
+            'ocrRegression':'PASS_3_OF_3',
+            'phaseCRegression':'PASS_5_OF_5',
+            'phaseBRegression':'PASS_5_OF_5',
+            'phaseARegression':'PASS_4_OF_4',
+            'crashFree':True,
+            'anrFree':True,
+            'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+            'remaining_release_gates':['real T250 end-to-end build','real new-map end-to-end build','automatic critic-repair loop','stable signing']
+          }
+          Path('evidence/real-builder-150-ci.json').write_text(json.dumps(status,indent=2)+'\n')
+          PY
+
+      - name: Stop emulator
+        if: always()
+        run: |
+          adb shell wm size reset >/dev/null 2>&1 || true
+          adb shell wm density reset >/dev/null 2>&1 || true
+          adb emu kill >/dev/null 2>&1 || true
+          [[ -f evidence/emulator.pid ]] && kill "$(cat evidence/emulator.pid)" >/dev/null 2>&1 || true
+
+      - name: Preserve fixed source
+        if: always()
+        run: |
+          if [[ -d tcs-src ]]; then tar -cJf evidence/Territory-Android-1.5.0-Real-Builder-source.tar.xz --exclude=build --exclude=.gradle -C tcs-src .; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-1.5.0-Real-Builder-evidence
+          path: |
+            evidence
+            !evidence/*.apk
+            !evidence/*.tar.xz
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Territory-Android-1.5.0-Real-Builder-CI-apk
+          path: evidence/Territory-Android-1.5.0-Real-Builder-CI.apk
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Territory-Android-1.5.0-Real-Builder-source
+          path: evidence/Territory-Android-1.5.0-Real-Builder-source.tar.xz
+          retention-days: 30
